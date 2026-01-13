@@ -102,10 +102,18 @@ check_prerequisites() {
     exit 1
   }
 
-  for net in easypanel-estacao_terapia estacao-frontend-network; do
+  # Verificar e criar redes necessárias
+  REQUIRED_NETWORKS=("estacao-network")
+  
+  for net in "${REQUIRED_NETWORKS[@]}"; do
     if ! docker network ls --format '{{.Name}}' | grep -q "^${net}$"; then
-      log_error "Rede Docker ausente: $net"
-      exit 1
+      log_warning "Rede Docker ausente: $net - Criando..."
+      if docker network create --driver overlay "$net" 2>/dev/null; then
+        log_success "Rede $net criada com sucesso"
+      else
+        log_error "Falha ao criar rede: $net"
+        exit 1
+      fi
     fi
   done
 

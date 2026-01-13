@@ -51,7 +51,37 @@ fi
 echo "✅ Pré-requisitos validados"
 
 # ==============================
-# 3️⃣ Backup da config atual
+# 3️⃣ Criar/Verificar redes necessárias
+# ==============================
+echo ""
+echo "🌐 Verificando redes Docker..."
+
+# Criar rede backend se não existir
+if ! docker network ls --format '{{.Name}}' | grep -q "^estacao-backend-network$"; then
+    echo "   → Criando rede estacao-backend-network..."
+    docker network create --driver overlay estacao-backend-network || {
+        echo "❌ Falha ao criar rede backend!"
+        exit 1
+    }
+    echo "✅ Rede estacao-backend-network criada"
+else
+    echo "✅ Rede estacao-backend-network já existe"
+fi
+
+# Criar rede principal se não existir
+if ! docker network ls --format '{{.Name}}' | grep -q "^estacao-network$"; then
+    echo "   → Criando rede estacao-network..."
+    docker network create --driver overlay estacao-network || {
+        echo "❌ Falha ao criar rede principal!"
+        exit 1
+    }
+    echo "✅ Rede estacao-network criada"
+else
+    echo "✅ Rede estacao-network já existe"
+fi
+
+# ==============================
+# 4️⃣ Backup da config atual
 # ==============================
 echo ""
 echo "💾 Fazendo backup da config..."
@@ -60,7 +90,7 @@ cp docker-stack.yml "$BACKUP_FILE"
 echo "✅ Backup salvo em: $BACKUP_FILE"
 
 # ==============================
-# 4️⃣ Build das imagens NOVAS
+# 5️⃣ Build das imagens NOVAS
 # ==============================
 echo ""
 echo "🔨 Construindo imagens Docker..."
@@ -88,7 +118,7 @@ docker build \
 echo "✅ Socket compilada com sucesso"
 
 # ==============================
-# 5️⃣ Atualizar docker-stack.yml
+# 6️⃣ Atualizar docker-stack.yml
 # ==============================
 echo ""
 echo "📝 Atualizando docker-stack.yml..."
@@ -99,7 +129,7 @@ sed -i "s/{{TAG}}/${TAG}/g" "$DEPLOY_STACK_FILE"
 echo "✅ Stack configurado com nova tag: $TAG"
 
 # ==============================
-# 6️⃣ Deploy para Swarm (zero-downtime)
+# 7️⃣ Deploy para Swarm (zero-downtime)
 # ==============================
 echo ""
 echo "🚀 Fazendo deploy para Docker Swarm..."
@@ -118,7 +148,7 @@ docker stack deploy \
 echo "✅ Stack deployado com sucesso"
 
 # ==============================
-# 7️⃣ Aguardar convergência
+# 8️⃣ Aguardar convergência
 # ==============================
 echo ""
 echo "⏳ Aguardando serviços convergirem..."
@@ -138,7 +168,7 @@ echo "🔍 Replicas do Socket:"
 docker service ps estacaoterapia_socket-server --no-trunc 2>/dev/null | head -5 || echo "   (aguardando inicialização)"
 
 # ==============================
-# 8️⃣ Limpeza de imagens antigas
+# 9️⃣ Limpeza de imagens antigas
 # ==============================
 echo ""
 echo "🧹 Limpando imagens antigas..."

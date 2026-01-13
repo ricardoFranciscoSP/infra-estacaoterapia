@@ -11,14 +11,18 @@ ENV NODE_OPTIONS=--dns-result-order=ipv4first
 RUN apk add --no-cache bash openssl curl
 
 # Copiando apenas arquivos essenciais para cache
-COPY package.json yarn.lock ./
+COPY package.json yarn.lock* package-lock.json* ./
 
-# Configuração do Yarn para builds mais estáveis
-RUN yarn config set networkConcurrency 4 \
-    && yarn config set networkTimeout 600000 \
-    && yarn config set registry https://registry.npmmirror.com
-
-RUN yarn install --frozen-lockfile --non-interactive
+# Instalar dependências (suporta npm ou yarn)
+RUN if [ -f yarn.lock ]; then \
+        yarn config set networkConcurrency 4 && \
+        yarn config set networkTimeout 600000 && \
+        yarn install --frozen-lockfile --non-interactive; \
+    elif [ -f package-lock.json ]; then \
+        npm ci --prefer-offline --no-audit; \
+    else \
+        npm install --prefer-offline --no-audit; \
+    fi
 
 # Copia Prisma separadamente (para gerar client no builder)
 COPY prisma ./prisma
@@ -43,7 +47,11 @@ COPY . .
 RUN npx prisma generate
 
 # Build do projeto
-RUN yarn build
+RUN if [ -f yarn.lock ]; then \
+        yarn build; \
+    else \
+        npm run build; \
+    fi
 
 # Copiar templates
 RUN mkdir -p /app/dist/templates \
