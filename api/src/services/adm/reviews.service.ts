@@ -2,6 +2,7 @@ import prisma from "../../prisma/client";
 import { Prisma } from "../../generated/prisma/client";
 import { IReviewsService } from "../../interfaces/adm/iReview.interface";
 import { Request, Response } from "express";
+import { normalizeParamString } from "../../utils/validation.util";
 
 export class ReviewsService implements IReviewsService {
     private authorizationService: any;
@@ -37,9 +38,9 @@ export class ReviewsService implements IReviewsService {
     }
 
     async getById(req: Request, res: Response): Promise<Response> {
-        const { id } = req.params;
+        const id = normalizeParamString(req.params.id);
         const review = await prisma.review.findUnique({
-            where: { Id: id },
+            where: { Id: id || "" },
             include: {
                 User: {
                     select: {
@@ -68,9 +69,9 @@ export class ReviewsService implements IReviewsService {
     }
 
     async update(req: Request, res: Response): Promise<Response> {
-        const { id } = req.params;
+        const id = normalizeParamString(req.params.id);
         const { Rating, Comentario, Status, MostrarNaHome, MostrarNaPsicologo } = req.body;
-        
+
         // Atualiza apenas os campos permitidos
         const updateData: {
             Rating?: number;
@@ -79,15 +80,15 @@ export class ReviewsService implements IReviewsService {
             MostrarNaHome?: boolean;
             MostrarNaPsicologo?: boolean;
         } = {};
-        
+
         if (Rating !== undefined) updateData.Rating = Rating;
         if (Comentario !== undefined) updateData.Comentario = Comentario;
         if (Status !== undefined) updateData.Status = Status;
         if (MostrarNaHome !== undefined) updateData.MostrarNaHome = MostrarNaHome;
         if (MostrarNaPsicologo !== undefined) updateData.MostrarNaPsicologo = MostrarNaPsicologo;
-        
+
         const review = await prisma.review.update({
-            where: { Id: id },
+            where: { Id: id || "" },
             data: updateData,
             include: {
                 User: {
@@ -109,9 +110,9 @@ export class ReviewsService implements IReviewsService {
     }
 
     async delete(req: Request, res: Response): Promise<Response> {
-        const { id } = req.params;
+        const id = normalizeParamString(req.params.id);
         await prisma.review.delete({
-            where: { Id: id }
+            where: { Id: id || "" }
         });
         return res.status(204).send();
     }

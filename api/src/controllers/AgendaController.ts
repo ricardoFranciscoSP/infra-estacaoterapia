@@ -1,7 +1,7 @@
 
 import { AgendaService } from '../services/AgendaService';
 import { Request, Response } from 'express';
-import { normalizeQueryString } from '../utils/validation.util';
+import { normalizeQueryString, normalizeParamString } from '../utils/validation.util';
 export class AgendaController {
     listarHorariosDisponiveisPorPeriodoPsicologo = async (req: Request, res: Response): Promise<void> => {
         const { data, periodo } = req.query;
@@ -13,8 +13,8 @@ export class AgendaController {
         }
         try {
             console.log('[Controller] Chamando service.listarHorariosDisponiveisPorPeriodoTodosPsicologos');
-            const dataStr = normalizeQueryString(data);
-            const periodoStr = normalizeQueryString(periodo);
+            const dataStr = normalizeQueryString(data as any);
+            const periodoStr = normalizeQueryString(periodo as any);
             if (!dataStr || !periodoStr) {
                 res.status(400).json({ error: 'Parâmetros data e periodo são obrigatórios.' });
                 return;
@@ -39,8 +39,8 @@ export class AgendaController {
             res.status(400).json({ error: 'Parâmetros data e horario são obrigatórios.' });
             return;
         }
-        const dataStr = normalizeQueryString(data);
-        const horarioStr = normalizeQueryString(horario);
+        const dataStr = normalizeQueryString(data as any);
+        const horarioStr = normalizeQueryString(horario as any);
         if (!dataStr || !horarioStr) {
             res.status(400).json({ error: 'Parâmetros data e horario são obrigatórios.' });
             return;
@@ -62,7 +62,12 @@ export class AgendaController {
     listarAgendasPorPsicologo = async (req: Request, res: Response): Promise<void> => {
         const { psicologoId } = req.params;
         console.log('Psicologo ID:', psicologoId);
-        const agendas = await this.agendaService.listarAgendasPorPsicologo(psicologoId);
+        const psicologoIdStr = normalizeParamString(psicologoId);
+        if (!psicologoIdStr) {
+            res.status(400).json({ error: 'PsicologoId é obrigatório' });
+            return;
+        }
+        const agendas = await this.agendaService.listarAgendasPorPsicologo(psicologoIdStr);
         console.log('Agendas:', agendas);
         res.json(agendas);
     };
@@ -92,12 +97,17 @@ export class AgendaController {
         
         try {
             console.log('🔵 [AgendaController] Chamando agendaService.listarHorariosDisponiveisPorDataPsicologo...');
-            const dataStr = normalizeQueryString(data);
+            const psicologoIdStr = normalizeParamString(psicologoId);
+            if (!psicologoIdStr) {
+                res.status(400).json({ error: 'PsicologoId é obrigatório' });
+                return;
+            }
+            const dataStr = normalizeQueryString(data as any);
             if (!dataStr) {
                 res.status(400).json({ error: 'Data é obrigatória' });
                 return;
             }
-            const result = await this.agendaService.listarHorariosDisponiveisPorDataPsicologo(psicologoId, dataStr);
+            const result = await this.agendaService.listarHorariosDisponiveisPorDataPsicologo(psicologoIdStr, dataStr);
             
             // Ordena pelo horário
             result.sort((a, b) => a.horario.localeCompare(b.horario));
@@ -115,7 +125,7 @@ export class AgendaController {
 
     listarAgendasPorData = async (req: Request, res: Response): Promise<void> => {
         const { data } = req.query;
-        const dataStr = normalizeQueryString(data);
+        const dataStr = normalizeQueryString(data as any);
         if (!dataStr) {
             res.status(400).json({ error: 'Parâmetro data é obrigatório.' });
             return;
@@ -126,7 +136,7 @@ export class AgendaController {
 
     listarAgendasPorPeriodo = async (req: Request, res: Response): Promise<void> => {
         const { periodo } = req.query;
-        const periodoStr = normalizeQueryString(periodo);
+        const periodoStr = normalizeQueryString(periodo as any);
         if (!periodoStr) {
             res.status(400).json({ error: 'Parâmetro periodo é obrigatório.' });
             return;

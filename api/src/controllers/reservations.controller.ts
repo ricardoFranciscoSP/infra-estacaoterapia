@@ -14,6 +14,7 @@ import { GoogleCalendarService } from '../services/googleCalendar.service';
 import { EmailService } from '../services/email.service';
 import { AgoraService } from '../services/agora.service';
 import { deriveUidFromUuid } from '../utils/uid.util';
+import { normalizeParamString, normalizeQueryString } from '../utils/validation.util';
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
@@ -145,10 +146,11 @@ export class ReservationsController {
                 return res.status(400).json({ error: 'Consulta já cancelada.' });
             }
 
+            const motivo = normalizeQueryString(req.body?.motivo);
             const { protocolo, documentoUrl } = await this.reservationService.cancelReservation(
                 id,
                 userId,
-                req.body?.motivo,
+                motivo,
                 (req as MulterRequest).file
             );
 
@@ -159,7 +161,7 @@ export class ReservationsController {
             await logConsultaCancel(
                 userId,
                 id,
-                req.body?.motivo || 'Motivo não informado',
+                motivo || 'Motivo não informado',
                 protocolo || `CANCEL-${id}`,
                 tipoCancelamento,
                 ipAddress
@@ -1098,7 +1100,7 @@ export class ReservationsController {
      */
     async getTokenByChannel(req: Request, res: Response): Promise<Response> {
         try {
-            const { channel } = req.params;
+            const channel = normalizeParamString(req.params.channel);
 
             if (!channel) {
                 return res.status(400).json({ error: 'Channel é obrigatório' });
@@ -1111,13 +1113,13 @@ export class ReservationsController {
 
             console.log(`[ReservationsController] Buscando token para channel: ${channel}, userId: ${userId}`);
 
-            // Busca a reserva de sessão pelo channel
+            type ReservaSessaoComConsulta = Prisma.ReservaSessaoGetPayload<{ include: { Consulta: true } }>;
             const reservaSessao = await prisma.reservaSessao.findFirst({
                 where: { AgoraChannel: channel },
                 include: {
                     Consulta: true
                 }
-            });
+            }) as ReservaSessaoComConsulta | null;
 
             if (!reservaSessao) {
                 return res.status(404).json({
@@ -1250,7 +1252,7 @@ export class ReservationsController {
                 // Usa o token existente - NÃO gera novo token se já existe no banco
                 console.log(`[ReservationsController] Reutilizando token existente para ${currentRole}`);
                 token = existingToken;
-                
+
                 // IMPORTANTE: Não valida no Redis para evitar regeneração desnecessária
                 // O token no banco é a fonte de verdade. Se não estiver no Redis, apenas registra novamente.
                 console.log(`[ReservationsController] Token existente será reutilizado e registrado no Redis se necessário`);
@@ -1291,7 +1293,7 @@ export class ReservationsController {
             // IMPORTANTE: Sempre atualiza o token no banco para garantir que está persistido
             // Usa horário de Brasília para timestamps
             const { nowBrasiliaDate } = await import('../utils/timezone.util');
-            
+
             if (isPatient) {
                 updateData.AgoraTokenPatient = token;
                 updateData.PatientJoinedAt = nowBrasiliaDate();

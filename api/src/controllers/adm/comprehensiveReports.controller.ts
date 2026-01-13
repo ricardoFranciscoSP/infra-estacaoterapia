@@ -19,6 +19,7 @@ import {
 } from "../../services/adm/comprehensiveReports.service";
 import { ReportExportService } from "../../services/adm/reportExport.service";
 import { normalizeQueryString } from "../../utils/validation.util";
+import { Role } from "../../generated/prisma/client";
 
 const exportService = new ReportExportService();
 
@@ -317,11 +318,11 @@ export class ComprehensiveReportsController {
     async getAcessoReset(req: Request, res: Response): Promise<Response> {
         try {
             const filters: ComprehensiveReportFilters = {
-                startDate: normalizeQueryString(req.query.startDate),
-                endDate: normalizeQueryString(req.query.endDate),
-                role: normalizeQueryString(req.query.role) as string | undefined,
-                userId: normalizeQueryString(req.query.userId),
-                search: normalizeQueryString(req.query.search),
+                startDate: normalizeQueryString(req.query.startDate as any),
+                endDate: normalizeQueryString(req.query.endDate as any),
+                role: normalizeQueryString(req.query.role as any) as Role | undefined,
+                userId: normalizeQueryString(req.query.userId as any),
+                search: normalizeQueryString(req.query.search as any),
             };
 
             const format = normalizeQueryString(req.query.format);

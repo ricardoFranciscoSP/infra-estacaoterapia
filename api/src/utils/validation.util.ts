@@ -15,10 +15,10 @@ export function isValidCPF(cpf: string): boolean {
 }
 
 /**
- * Normaliza um valor de query/param que pode ser string | string[] | undefined para string
+ * Normaliza um valor de query/param que pode ser string | string[] | ParsedQs | (string | ParsedQs)[] | undefined para string
  * Se for array, retorna o primeiro elemento. Se for undefined, retorna undefined.
  */
-export function normalizeQueryString(value: string | string[] | undefined): string | undefined {
+export function normalizeQueryString(value: string | string[] | any | undefined): string | undefined {
     if (value === undefined) return undefined;
     if (Array.isArray(value)) {
         return value.length > 0 ? String(value[0]) : undefined;
@@ -27,19 +27,19 @@ export function normalizeQueryString(value: string | string[] | undefined): stri
 }
 
 /**
- * Normaliza um valor de query/param que pode ser string | string[] | undefined para string
+ * Normaliza um valor de query/param que pode ser string | string[] | ParsedQs | (string | ParsedQs)[] | undefined para string
  * Se for array, retorna o primeiro elemento. Se for undefined, retorna o valor padrão.
  */
-export function normalizeQueryStringWithDefault(value: string | string[] | undefined, defaultValue: string): string {
+export function normalizeQueryStringWithDefault(value: string | string[] | any | undefined, defaultValue: string): string {
     const normalized = normalizeQueryString(value);
     return normalized ?? defaultValue;
 }
 
 /**
- * Normaliza um valor de query/param que pode ser string | string[] | undefined para array de strings
+ * Normaliza um valor de query/param que pode ser string | string[] | ParsedQs | (string | ParsedQs)[] | undefined para array de strings
  * Se for string, retorna array com um elemento. Se for undefined, retorna array vazio.
  */
-export function normalizeQueryArray(value: string | string[] | undefined): string[] {
+export function normalizeQueryArray(value: string | string[] | any | undefined): string[] {
     if (value === undefined) return [];
     if (Array.isArray(value)) {
         return value.map(v => String(v));
@@ -51,7 +51,7 @@ export function normalizeQueryArray(value: string | string[] | undefined): strin
  * Normaliza um valor de query/param para número inteiro
  * Se for array, usa o primeiro elemento. Se for undefined ou inválido, retorna undefined.
  */
-export function normalizeQueryInt(value: string | string[] | undefined): number | undefined {
+export function normalizeQueryInt(value: string | string[] | any | undefined): number | undefined {
     const normalized = normalizeQueryString(value);
     if (normalized === undefined) return undefined;
     const parsed = parseInt(normalized, 10);
@@ -62,9 +62,21 @@ export function normalizeQueryInt(value: string | string[] | undefined): number 
  * Normaliza um valor de query/param para número inteiro com valor padrão
  * Se for array, usa o primeiro elemento. Se for undefined ou inválido, retorna o valor padrão.
  */
-export function normalizeQueryIntWithDefault(value: string | string[] | undefined, defaultValue: number): number {
+export function normalizeQueryIntWithDefault(value: string | string[] | any | undefined, defaultValue: number): number {
     const normalized = normalizeQueryInt(value);
     return normalized ?? defaultValue;
+}
+
+/**
+ * Normaliza um valor de req.params que pode ser string | string[] | undefined para string
+ * Se for array, retorna o primeiro elemento. Se for undefined, retorna undefined.
+ */
+export function normalizeParamString(value: string | string[] | undefined): string | undefined {
+    if (value === undefined) return undefined;
+    if (Array.isArray(value)) {
+        return value.length > 0 ? String(value[0]) : undefined;
+    }
+    return String(value);
 }
 
 // Adicione outras funções de validação aqui conforme necessário

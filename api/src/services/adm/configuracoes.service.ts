@@ -5,6 +5,7 @@ import { AuthorizationService } from "../authorization.service";
 import { IConfiguracoes } from "../../interfaces/adm/iConfiguracoes.interface";
 import { Request, Response } from "express";
 import { FAQ } from "../../types/configuracoes.types";
+import { normalizeQueryString, normalizeParamString } from "../../utils/validation.util";
 
 export class ConfiguracoesService implements IConfiguracoes {
     constructor(private authService: AuthorizationService) { }
@@ -165,7 +166,7 @@ export class ConfiguracoesService implements IConfiguracoes {
      */
     async getFaqPublic(req: Request, res: Response): Promise<Response> {
         try {
-            const { tipo } = req.query;
+            const tipo = normalizeQueryString(req.query.tipo);
 
             // ⚡ OTIMIZAÇÃO: Monta where clause diretamente
             const faqs = await prisma.faq.findMany({
@@ -351,8 +352,8 @@ export class ConfiguracoesService implements IConfiguracoes {
                     throw new Error("Acesso negado ao módulo de FAQs.");
                 }
             }
-            const { id } = req.params;
-            await prisma.faq.delete({ where: { Id: id } });
+            const id = normalizeParamString(req.params.id);
+            await prisma.faq.delete({ where: { Id: id || "" } });
             return res.status(204).send();
         } catch (error) {
             return res.status(500).json({ error: "Erro ao deletar FAQ." });
@@ -526,9 +527,9 @@ export class ConfiguracoesService implements IConfiguracoes {
                     throw new Error("Acesso negado ao módulo de Configurações.");
                 }
             }
-            const { id } = req.params;
+            const id = normalizeParamString(req.params.id);
             const configuracaoAtualizada = await prisma.configuracao.update({
-                where: { Id: id },
+                where: { Id: id || "" },
                 data: req.body
             });
             return res.status(200).json(configuracaoAtualizada);
@@ -556,8 +557,8 @@ export class ConfiguracoesService implements IConfiguracoes {
                     throw new Error("Acesso negado ao módulo de Configurações.");
                 }
             }
-            const { id } = req.params;
-            await prisma.configuracao.delete({ where: { Id: id } });
+            const id = normalizeParamString(req.params.id);
+            await prisma.configuracao.delete({ where: { Id: id || "" } });
             return res.status(204).send();
         } catch (error) {
             return res.status(500).json({ error: "Erro ao deletar configuração." });

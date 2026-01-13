@@ -118,12 +118,12 @@ function normalizeTipoPessoaJuridicaEnum(value: unknown): TipoPessoaJuridica | n
     } else if (value !== null && value !== undefined) {
         normalizedValue = String(value).trim();
     }
-    
+
     // Se já for um valor válido do enum, retorna diretamente
     if (normalizedValue && validValues.includes(normalizedValue as TipoPessoaJuridica)) {
         return normalizedValue as TipoPessoaJuridica;
     }
-    
+
     // Se não for, tenta mapear strings comuns para o enum
     if (normalizedValue) {
         const lowerValue = normalizedValue.toLowerCase();
@@ -143,7 +143,7 @@ function normalizeTipoPessoaJuridicaEnum(value: unknown): TipoPessoaJuridica | n
             return mapped;
         }
     }
-    
+
     return null;
 }
 
@@ -336,6 +336,19 @@ export class PsicologoController {
             const nowDate = new Date(DateUtils.now());
             const nowTime = DateUtils.currentTime();
 
+            type PsychologistWithProfiles = Prisma.UserGetPayload<{
+                include: {
+                    Address: true;
+                    Images: true;
+                    ReviewsMade: { include: { Psicologo: true } };
+                    ReviewsReceived: { include: { User: true } };
+                    ProfessionalProfiles: { include: { Formacoes: true; Documents: true } };
+                    PsychologistAgendas: true;
+                    WorkSchedules: true;
+                    ConsultaPsicologos: { include: { Paciente: true; Agenda: true } };
+                };
+            }>;
+
             const psychologist = await this.prisma.user.findUnique({
                 where: { Id: id, Status: UserStatus.Ativo },
                 include: {
@@ -378,7 +391,7 @@ export class PsicologoController {
                         },
                     },
                 },
-            });
+            }) as PsychologistWithProfiles | null;
 
             if (!psychologist) {
                 return this.sendErrorResponse(res, 404, "Psicólogo não encontrado.");
@@ -831,7 +844,7 @@ export class PsicologoController {
             const mappedSexoValues = sexoArray
                 .map(mapSexoFromFrontend)
                 .filter((value): value is SexoEnum => value !== null);
-            
+
             // Se houver valores válidos mapeados, aplica o filtro estrito
             if (mappedSexoValues.length > 0) {
                 andConditions.push({

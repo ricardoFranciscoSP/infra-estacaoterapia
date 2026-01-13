@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import fs from "fs";
 import path from "path";
 import { FilesService } from "../services/files.service";
-import { normalizeQueryString, normalizeQueryIntWithDefault } from "../utils/validation.util";
+import { normalizeQueryString, normalizeQueryIntWithDefault, normalizeParamString } from "../utils/validation.util";
 
 export class FilesController {
     static async viewPsychologistDocument(req: Request, res: Response) {
@@ -70,7 +70,11 @@ export class FilesController {
 
     static async userAvatarFull(req: Request, res: Response) {
         try {
-            const result = await FilesService.getUserAvatarFull(req.params.userId);
+            const userId = normalizeParamString(req.params.userId);
+            if (!userId) {
+                return res.status(400).json({ error: "userId é obrigatório" });
+            }
+            const result = await FilesService.getUserAvatarFull(userId);
             return res.json(result);
         } catch (error: any) {
             const status = error?.status || 500;
@@ -81,7 +85,11 @@ export class FilesController {
 
     static async userAvatarSigned(req: Request, res: Response) {
         try {
-            const result = await FilesService.getUserAvatarSigned(req.params.userId);
+            const userId = normalizeParamString(req.params.userId);
+            if (!userId) {
+                return res.status(400).json({ error: "userId é obrigatório" });
+            }
+            const result = await FilesService.getUserAvatarSigned(userId);
             return res.json(result);
         } catch (error: any) {
             const status = error?.status || 500;
@@ -123,7 +131,7 @@ export class FilesController {
 
     static async test(req: Request, res: Response) {
         try {
-            const filePath = normalizeQueryString(req.query.path);
+            const filePath = normalizeQueryString(req.query.path as any);
             if (!filePath) {
                 return res.status(400).json({ error: "path query parameter required" });
             }

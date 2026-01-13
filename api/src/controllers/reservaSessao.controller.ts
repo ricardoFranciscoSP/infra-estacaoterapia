@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { AuthorizationService } from "../services/authorization.service";
 import { ReservaSessaoService } from "../services/reservaSessao.service";
+import { normalizeParamString } from "../utils/validation.util";
 
 
 export class ReservaSessaoController {
@@ -20,7 +21,11 @@ export class ReservaSessaoController {
                 return res.status(401).json({ error: 'Unauthorized' });
             }
 
-            const reserva = await this.reservaSessaoService.getReservaSessao(req.params.id);
+            const id = normalizeParamString(req.params.id);
+            if (!id) {
+                return res.status(400).json({ error: 'ID é obrigatório' });
+            }
+            const reserva = await this.reservaSessaoService.getReservaSessao(id);
             return res.status(200).json(reserva);
         } catch (error) {
             console.error('Erro ao listar reservas:', error);
@@ -41,7 +46,7 @@ export class ReservaSessaoController {
                 return res.status(401).json({ error: 'Unauthorized' });
             }
 
-            const consultationId = req.params.id;
+            const consultationId = normalizeParamString(req.params.id);
             if (!consultationId) {
                 return res.status(400).json({ error: 'ID da consulta é obrigatório' });
             }
@@ -73,7 +78,7 @@ export class ReservaSessaoController {
                 return res.status(401).json({ error: 'Unauthorized' });
             }
 
-            const consultationId = req.params.id;
+            const consultationId = normalizeParamString(req.params.id);
             if (!consultationId) {
                 return res.status(400).json({ error: 'ID da consulta é obrigatório' });
             }
@@ -105,7 +110,7 @@ export class ReservaSessaoController {
                 return res.status(401).json({ error: 'Unauthorized' });
             }
 
-            const { channel } = req.params;
+            const channel = normalizeParamString(req.params.channel);
             
             if (!channel || channel.trim() === '') {
                 return res.status(400).json({ error: 'Channel é obrigatório' });

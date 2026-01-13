@@ -28,7 +28,11 @@ function getOrCreateSalt(): Uint8Array {
   }
 
   // Converte string hex de volta para Uint8Array
-  const saltBytes = new Uint8Array(salt.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16)));
+  const hexBytes = salt.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16));
+  // Cria um novo ArrayBuffer para garantir compatibilidade com Web Crypto API
+  const saltBuffer = new ArrayBuffer(hexBytes.length);
+  const saltBytes = new Uint8Array(saltBuffer);
+  saltBytes.set(hexBytes);
   return saltBytes;
 }
 

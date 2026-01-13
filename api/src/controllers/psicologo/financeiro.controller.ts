@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { AuthorizationService } from "../../services/authorization.service";
 import { IFinanceiroService } from "../../interfaces/psicoologo/iFinanceiro.interface";
+import { normalizeQueryInt } from "../../utils/validation.util";
 
 export class FinanceiroController {
 
