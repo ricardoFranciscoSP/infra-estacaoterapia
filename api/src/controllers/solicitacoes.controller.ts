@@ -8,6 +8,7 @@ import { isSolicitacaoFinanceira } from "../constants/tiposSolicitacao";
 import prisma from "../prisma/client";
 import { logSolicitacaoCreate, logSolicitacaoUpdate, logSolicitacaoDelete, logAuditFromRequest } from "../utils/auditLogger.util";
 import { getClientIp } from "../utils/getClientIp.util";
+import { normalizeParamStringRequired, normalizeQueryString } from "../utils/validation.util";
 
 export class SolicitacoesController {
     private authService: AuthorizationService;
@@ -139,7 +140,10 @@ export class SolicitacoesController {
 
     async getSolicitacoesByUserId(req: Request, res: Response) {
         try {
-            const userId = req.params.userId;
+            const userId = normalizeParamStringRequired(req.params.userId);
+            if (!userId) {
+                return res.status(400).json({ success: false, message: 'UserId é obrigatório' });
+            }
             const result = await this.solicitacoesService.getSolicitacoesByUserId(userId);
             return res.status(result.success ? 200 : 404).json(result);
         } catch (error) {
@@ -329,7 +333,10 @@ export class SolicitacoesController {
 
     async getSolicitacaoDocumentUrl(req: Request, res: Response) {
         try {
-            const { solicitacaoId } = req.params;
+            const solicitacaoId = normalizeParamStringRequired(req.params.solicitacaoId);
+            if (!solicitacaoId) {
+                return res.status(400).json({ success: false, message: 'SolicitacaoId é obrigatório' });
+            }
             const userId = this.authService.getLoggedUserId(req);
             if (!userId) {
                 return res.status(401).json({ success: false, message: 'Unauthorized' });
@@ -360,7 +367,10 @@ export class SolicitacoesController {
                 return res.status(401).json({ success: false, message: 'Unauthorized' });
             }
 
-            const { solicitacaoId } = req.params;
+            const solicitacaoId = normalizeParamStringRequired(req.params.solicitacaoId);
+            if (!solicitacaoId) {
+                return res.status(400).json({ success: false, message: 'SolicitacaoId é obrigatório' });
+            }
 
             // Buscar solicitação antes de deletar para registrar auditoria
             const solicitacao = await prisma.solicitacoes.findUnique({
@@ -411,14 +421,19 @@ export class SolicitacoesController {
                 }
             }
 
-            const { tipo, status, Protocol, Title, startDate, endDate } = req.query;
+            const tipo = normalizeQueryString(req.query.tipo);
+            const status = normalizeQueryString(req.query.status);
+            const Protocol = normalizeQueryString(req.query.Protocol);
+            const Title = normalizeQueryString(req.query.Title);
+            const startDate = normalizeQueryString(req.query.startDate);
+            const endDate = normalizeQueryString(req.query.endDate);
             const baseResult = await this.solicitacoesService.filter({
-                tipo: tipo as string,
-                status: status as string,
-                Protocol: Protocol as string,
-                Title: Title as string,
-                startDate: startDate ? new Date(startDate as string) : undefined,
-                endDate: endDate ? new Date(endDate as string) : undefined
+                tipo: tipo || undefined,
+                status: status || undefined,
+                Protocol: Protocol || undefined,
+                Title: Title || undefined,
+                startDate: startDate ? new Date(startDate) : undefined,
+                endDate: endDate ? new Date(endDate) : undefined
             });
 
             if (!baseResult.success || !baseResult.solicitacoes) {
@@ -448,7 +463,10 @@ export class SolicitacoesController {
                 return res.status(401).json({ error: 'Unauthorized' });
             }
 
-            const { solicitacaoId } = req.params;
+            const solicitacaoId = normalizeParamStringRequired(req.params.solicitacaoId);
+            if (!solicitacaoId) {
+                return res.status(400).json({ success: false, message: 'SolicitacaoId é obrigatório' });
+            }
             const { mensagem, status } = req.body;
 
             if (!mensagem || !mensagem.trim()) {

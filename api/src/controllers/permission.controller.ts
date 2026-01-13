@@ -4,6 +4,7 @@ import { PermissionService } from '../services/permission.service';
 import { Role, ActionType, Module } from '../types/permissions.types';
 import { logPermissionOperation, logAuditFromRequest } from '../utils/auditLogger.util';
 import { getClientIp } from '../utils/getClientIp.util';
+import { normalizeParamStringRequired } from '../utils/validation.util';
 
 export class PermissionController {
     constructor(
@@ -91,7 +92,11 @@ export class PermissionController {
                 return;
             }
 
-            const { id } = req.params;
+            const id = normalizeParamStringRequired(req.params.id);
+            if (!id) {
+                res.status(400).json({ message: "ID é obrigatório", success: false });
+                return;
+            }
             const permissionData = req.body;
             const permission = await this.permissionService.updatePermission(id, permissionData);
             res.status(200).json({ success: true, data: permission });
@@ -111,7 +116,11 @@ export class PermissionController {
                 return;
             }
 
-            const { id } = req.params;
+            const id = normalizeParamStringRequired(req.params.id);
+            if (!id) {
+                res.status(400).json({ message: "ID é obrigatório", success: false });
+                return;
+            }
             await this.permissionService.deletePermission(id);
             res.status(200).json({ success: true, message: "Permissão deletada com sucesso" });
         } catch (error) {
@@ -130,7 +139,11 @@ export class PermissionController {
                 return;
             }
 
-            const { role } = req.params;
+            const role = normalizeParamStringRequired(req.params.role);
+            if (!role) {
+                res.status(400).json({ message: "Role é obrigatório", success: false });
+                return;
+            }
             const permissions = await this.permissionService.getPermissionsByRole(role as any);
             res.status(200).json({ success: true, data: permissions });
         } catch (error) {
@@ -170,7 +183,11 @@ export class PermissionController {
                 return;
             }
 
-            const { userId } = req.params;
+            const userId = normalizeParamStringRequired(req.params.userId);
+            if (!userId) {
+                res.status(400).json({ message: "UserId é obrigatório", success: false });
+                return;
+            }
             const permissions = await this.permissionService.getUserPermissions(userId);
             res.status(200).json({ success: true, data: permissions });
         } catch (error) {
@@ -245,8 +262,14 @@ export class PermissionController {
                 return;
             }
 
-            const { userId, module, action } = req.params;
-            await this.permissionService.deleteUserPermission(userId, module as any, action as any);
+            const userId = normalizeParamStringRequired(req.params.userId);
+            const moduleParam = normalizeParamStringRequired(req.params.module);
+            const actionParam = normalizeParamStringRequired(req.params.action);
+            if (!userId || !moduleParam || !actionParam) {
+                res.status(400).json({ message: "userId, module e action são obrigatórios", success: false });
+                return;
+            }
+            await this.permissionService.deleteUserPermission(userId, moduleParam as any, actionParam as any);
             
             // Registrar auditoria
             const adminUserId = this.authService.getLoggedUserId(req);
@@ -256,8 +279,8 @@ export class PermissionController {
                         adminUserId,
                         ActionType.Delete,
                         userId,
-                        module,
-                        action,
+                        moduleParam,
+                        actionParam,
                         getClientIp(req)
                     );
                 } catch (auditError) {
@@ -282,7 +305,11 @@ export class PermissionController {
                 return;
             }
 
-            const { userId } = req.params;
+            const userId = normalizeParamStringRequired(req.params.userId);
+            if (!userId) {
+                res.status(400).json({ message: "UserId é obrigatório", success: false });
+                return;
+            }
             const result = await this.permissionService.getPermissionsForUser(userId);
             res.status(200).json({ success: true, data: result });
         } catch (error) {

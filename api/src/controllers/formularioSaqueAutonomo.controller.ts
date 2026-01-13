@@ -3,6 +3,7 @@ import { AuthorizationService } from '../services/authorization.service';
 import { FormularioSaqueAutonomoService } from '../services/formularioSaqueAutonomo.service';
 import { ICreateFormularioSaqueAutonomoDTO, IUpdateFormularioSaqueAutonomoDTO } from '../types/formularioSaqueAutonomo.types';
 import { Role } from '../types/permissions.types';
+import { normalizeParamString } from '../utils/validation.util';
 
 export class FormularioSaqueAutonomoController {
     private authService: AuthorizationService;
@@ -38,7 +39,8 @@ export class FormularioSaqueAutonomoController {
             }
 
             // Verificar se o usuário está tentando acessar seu próprio formulário
-            const psicologoAutonomoId = req.params.psicologoAutonomoId || userId;
+            const psicologoAutonomoIdParam = normalizeParamString(req.params.psicologoAutonomoId);
+            const psicologoAutonomoId = psicologoAutonomoIdParam || userId;
             if (psicologoAutonomoId !== userId) {
                 // Verificar se é admin ou management
                 const userRole = await this.authService.getUserRole(userId);

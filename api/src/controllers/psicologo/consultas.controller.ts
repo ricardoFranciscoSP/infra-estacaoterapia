@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { AuthorizationService } from "../../services/authorization.service";
 import { ConsultasService } from "../../services/psicologo/consultas.service";
 import { AgendaStatus } from "../../generated/prisma/client";
-import { normalizeQueryString, normalizeQueryInt } from "../../utils/validation.util";
+import { normalizeQueryString, normalizeQueryInt, normalizeParamStringRequired } from "../../utils/validation.util";
 
 export class ConsultasPsicologoController {
     /**
@@ -10,7 +10,7 @@ export class ConsultasPsicologoController {
      * POST /api/psicologo/consultas/iniciar/:id
      */
     async iniciarConsulta(req: Request, res: Response): Promise<void> {
-        const consultaId = req.params.id;
+        const consultaId = normalizeParamStringRequired(req.params.id);
         if (!consultaId) {
             res.status(400).json({ success: false, error: 'ID da consulta é obrigatório.' });
             return;
@@ -251,7 +251,11 @@ export class ConsultasPsicologoController {
      */
     async listarConsultasPorStatus(req: Request, res: Response): Promise<void> {
         const psicologoId = this.authService.getLoggedUserId(req);
-        const status = req.params.status;
+        const status = normalizeParamStringRequired(req.params.status);
+        if (!status) {
+            res.status(400).json({ error: "Status é obrigatório" });
+            return;
+        }
 
         if (!psicologoId) {
             res.status(401).json({ error: "Usuário não autenticado" });

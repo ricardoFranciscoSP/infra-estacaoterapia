@@ -5,7 +5,7 @@ import { AuthorizationService } from "../authorization.service";
 import { IConfiguracoes } from "../../interfaces/adm/iConfiguracoes.interface";
 import { Request, Response } from "express";
 import { FAQ } from "../../types/configuracoes.types";
-import { normalizeQueryString, normalizeParamString } from "../../utils/validation.util";
+import { normalizeQueryString, normalizeParamString, normalizeParamStringRequired } from "../../utils/validation.util";
 
 export class ConfiguracoesService implements IConfiguracoes {
     constructor(private authService: AuthorizationService) { }
@@ -129,7 +129,10 @@ export class ConfiguracoesService implements IConfiguracoes {
                     throw new Error("Acesso negado ao módulo de redes sociais.");
                 }
             }
-            const { id } = req.params;
+            const id = normalizeParamStringRequired(req.params.id);
+            if (!id) {
+                return res.status(400).json({ error: 'ID é obrigatório' });
+            }
             await prisma.redesSociais.delete({ where: { Id: id } });
             return res.status(204).send();
         } catch (error) {
@@ -255,7 +258,10 @@ export class ConfiguracoesService implements IConfiguracoes {
                     throw new Error("Acesso negado ao módulo de FAQs.");
                 }
             }
-            const { id } = req.params;
+            const id = normalizeParamStringRequired(req.params.id);
+            if (!id) {
+                return res.status(400).json({ error: 'ID é obrigatório' });
+            }
             const { Status, Tipo, ...rest } = req.body as Partial<FAQ>;
             const faqAtualizada = await prisma.faq.update({
                 where: { Id: id },
@@ -386,7 +392,10 @@ export class ConfiguracoesService implements IConfiguracoes {
      */
     async getById(req: Request, res: Response): Promise<Response> {
         try {
-            const { id } = req.params;
+            const id = normalizeParamStringRequired(req.params.id);
+            if (!id) {
+                return res.status(400).json({ error: 'ID é obrigatório' });
+            }
             const configuracao = await prisma.configuracao.findUnique({ where: { Id: id } });
             if (!configuracao) {
                 return res.status(404).json({ error: "Configuração não encontrada." });

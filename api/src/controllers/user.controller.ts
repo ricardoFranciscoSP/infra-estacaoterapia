@@ -7,6 +7,7 @@ import { GetUserBasicService } from '../services/getUserBasic.Service';
 import { GetUserDetailsService } from '../services/getUserDetails.service';
 import * as path from 'path';
 import { ContratoService, getTemplateContratoByTipoPlano } from '../services/gerarPdf.service';
+import { normalizeParamStringRequired } from '../utils/validation.util';
 interface IUserPayload {
     Id: string;
     Nome: string;
@@ -408,7 +409,10 @@ export class UserController {
             if (!userId) {
                 return res.status(401).json({ error: 'Unauthorized' });
             }
-            const { imageId } = req.params;
+            const imageId = normalizeParamStringRequired(req.params.imageId);
+            if (!imageId) {
+                return res.status(400).json({ message: "ID da imagem é obrigatório", success: false });
+            }
             const deletedImage = await this.userService.deleteImage(userId, imageId);
             if (!deletedImage) {
                 return res.status(404).json({ message: "Imagem não encontrada", success: false });

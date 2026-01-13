@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { AuthorizationService } from "../../services/authorization.service";
 import { UserPsicologoService } from "../../services/psicologo/user.psicologo.service";
+import { normalizeParamStringRequired } from "../../utils/validation.util";
 
 
 export class UserPsicologoController {
@@ -134,7 +135,10 @@ export class UserPsicologoController {
                 return res.status(401).json({ success: false, error: "Usuário não autenticado." });
             }
 
-            const { formacaoId } = req.params;
+            const formacaoId = normalizeParamStringRequired(req.params.formacaoId);
+            if (!formacaoId) {
+                return res.status(400).json({ success: false, error: "ID da formação é obrigatório." });
+            }
 
             const result = await this.userPsicologoService.removeFormacao(formacaoId);
             if (!result) {

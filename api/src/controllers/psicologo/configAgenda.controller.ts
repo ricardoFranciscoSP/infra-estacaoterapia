@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { ConfigAgendaService } from "../../services/psicologo/configAgenda.service";
 import { AuthorizationService } from "../../services/authorization.service";
+import { normalizeParamStringRequired } from "../../utils/validation.util";
 
 
 export class ConfigAgendaController {
@@ -37,7 +38,12 @@ export class ConfigAgendaController {
                 res.status(401).json({ error: "Usuário não autenticado" });
                 return;
             }
-            const { ano, mes } = req.params;
+            const ano = normalizeParamStringRequired(req.params.ano);
+            const mes = normalizeParamStringRequired(req.params.mes);
+            if (!ano || !mes) {
+                res.status(400).json({ error: "ano e mes são obrigatórios" });
+                return;
+            }
             const agendas = await this.service.listAllAgendaByMonth(
                 psicologoId,
                 Number(mes),
@@ -57,7 +63,7 @@ export class ConfigAgendaController {
                 return;
             }
 
-            const { data } = req.params;
+            const data = normalizeParamStringRequired(req.params.data);
 
             if (!data) {
                 return res.status(400).json({ error: "Parâmetro 'data' é obrigatório." });

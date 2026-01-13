@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { AuthorizationService } from "../services/authorization.service";
 import { ReviewService } from "../services/review.service";
 import { ActionType, Module } from "../types/permissions.types";
+import { normalizeParamStringRequired, normalizeQueryString } from "../utils/validation.util";
 
 export class ReviewController {
     constructor(
@@ -61,7 +62,10 @@ export class ReviewController {
      */
     async getReviews(req: Request, res: Response): Promise<Response> {
         try {
-            const { psicologoId } = req.params;
+            const psicologoId = normalizeParamStringRequired(req.params.psicologoId);
+            if (!psicologoId) {
+                return res.status(400).json({ success: false, error: "ID do psicólogo é obrigatório." });
+            }
             console.log('psicologoId:', psicologoId);
             const reviews = await this.reviewService.getApprovedReviews(psicologoId);
             console.log('reviews:', reviews);
@@ -79,7 +83,10 @@ export class ReviewController {
      */
     async deleteReview(req: Request, res: Response): Promise<Response> {
         try {
-            const { reviewId } = req.params;
+            const reviewId = normalizeParamStringRequired(req.params.reviewId);
+            if (!reviewId) {
+                return res.status(400).json({ success: false, error: "ID da avaliação é obrigatório." });
+            }
             const userId = this.authService.getLoggedUserId(req);
 
             if (!userId)
@@ -162,7 +169,10 @@ export class ReviewController {
      */
     async approveReview(req: Request, res: Response): Promise<Response> {
         try {
-            const { id } = req.params;
+            const id = normalizeParamStringRequired(req.params.id);
+            if (!id) {
+                return res.status(400).json({ success: false, error: "ID da avaliação é obrigatório." });
+            }
             const { status } = req.body;
             const userId = this.authService.getLoggedUserId(req);
 
@@ -206,9 +216,10 @@ export class ReviewController {
      */
     async hasPatientReviewedPsychologist(req: Request, res: Response): Promise<Response> {
         try {
-            const { patientId, psychologistId } = req.query;
+            const patientId = normalizeQueryString(req.query.patientId);
+            const psychologistId = normalizeQueryString(req.query.psychologistId);
 
-            if (!patientId || !psychologistId || typeof patientId !== 'string' || typeof psychologistId !== 'string') {
+            if (!patientId || !psychologistId) {
                 return res.status(400).json({ 
                     success: false, 
                     error: "patientId e psychologistId são obrigatórios." 

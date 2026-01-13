@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { AuthorizationService } from "../../services/authorization.service";
 import { ConsultasPacienteService } from "../../services/paciente/consultas.service";
 import { AgendaStatus } from "../../generated/prisma/client";
-import { normalizeQueryString, normalizeQueryInt } from "../../utils/validation.util";
+import { normalizeQueryString, normalizeQueryInt, normalizeParamStringRequired } from "../../utils/validation.util";
 
 export class ConsultasPacienteController {
     /**
@@ -10,7 +10,7 @@ export class ConsultasPacienteController {
      * POST /api/paciente/consultas/iniciar/:id
      */
     async iniciarConsulta(req: Request, res: Response): Promise<void> {
-        const consultaId = req.params.id;
+        const consultaId = normalizeParamStringRequired(req.params.id);
         if (!consultaId) {
             res.status(400).json({ success: false, error: 'ID da consulta é obrigatório.' });
             return;
@@ -29,7 +29,7 @@ export class ConsultasPacienteController {
      * Query param opcional: forceFinalize=true (força finalização mesmo se ambos não estiveram na sala)
      */
     async finalizarConsulta(req: Request, res: Response): Promise<void> {
-        const consultaId = req.params.id;
+        const consultaId = normalizeParamStringRequired(req.params.id);
 
         // Converte forceFinalize para boolean de forma segura
         const forceFinalizeParam = req.query.forceFinalize;
@@ -59,7 +59,7 @@ export class ConsultasPacienteController {
      * Retorna: { success: true, requiresReview: boolean, psychologistId?: string, consultaFinalizada: any }
      */
     async finalizarConsultaComReview(req: Request, res: Response): Promise<void> {
-        const consultaId = req.params.id;
+        const consultaId = normalizeParamStringRequired(req.params.id);
         const patientId = this.authService.getLoggedUserId(req);
 
         // Converte forceFinalize para boolean de forma segura

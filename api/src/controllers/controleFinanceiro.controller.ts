@@ -4,6 +4,7 @@ import { ControleFinanceiroService } from "../services/controleFinanceiro.servic
 import { AuthorizationService } from "../services/authorization.service";
 import { formatarListagemPagamentos } from "../utils/formatarVencimentoFinanceiro.util";
 import { stat } from "fs";
+import { normalizeParamStringRequired } from "../utils/validation.util";
 
 export class FinanceiroController {
     constructor(
@@ -119,7 +120,7 @@ export class FinanceiroController {
      * @returns Response de sucesso ou erro.
      */
     async excluirPagamento(req: Request, res: Response): Promise<Response> {
-        const { controleFinanceiroId } = req.params;
+        const controleFinanceiroId = normalizeParamStringRequired(req.params.controleFinanceiroId);
 
         if (!controleFinanceiroId) {
             return res.status(400).json({ message: "O campo 'controleFinanceiroId' é obrigatório." });

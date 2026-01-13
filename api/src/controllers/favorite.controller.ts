@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { AuthorizationService } from "../services/authorization.service";
 import { IFavoriteService } from "../interfaces/favorite.interface";
+import { normalizeParamStringRequired } from "../utils/validation.util";
 
 export class FavoriteController {
     private authService: AuthorizationService;
@@ -19,7 +20,10 @@ export class FavoriteController {
      */
     async toggleFavorite(req: Request, res: Response): Promise<Response> {
         try {
-            const { id: psychologistId } = req.params;
+            const psychologistId = normalizeParamStringRequired(req.params.id);
+            if (!psychologistId) {
+                return res.status(400).json({ message: "ID do psicólogo é obrigatório", success: false });
+            }
             const patientId = this.authService.getLoggedUserId(req);
 
             if (!patientId) {
@@ -63,7 +67,10 @@ export class FavoriteController {
      */
     async deleteFavorite(req: Request, res: Response): Promise<Response> {
         try {
-            const { id } = req.params;
+            const id = normalizeParamStringRequired(req.params.id);
+            if (!id) {
+                return res.status(400).json({ message: "ID do favorito é obrigatório", success: false });
+            }
             const patientId = this.authService.getLoggedUserId(req);
             if (!patientId) {
                 return res.status(401).json({ message: "Usuário não autenticado", success: false });

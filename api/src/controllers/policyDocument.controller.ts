@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { PolicyDocumentService } from '../services/policyDocument.service';
+import { normalizeParamStringRequired } from '../utils/validation.util';
 
 export class PolicyDocumentController {
   private service: PolicyDocumentService;
@@ -42,7 +43,10 @@ export class PolicyDocumentController {
    */
   async getDocumentById(req: Request, res: Response): Promise<Response> {
     try {
-      const { id } = req.params;
+      const id = normalizeParamStringRequired(req.params.id);
+      if (!id) {
+        return res.status(400).json({ error: 'ID é obrigatório' });
+      }
       const document = await this.service.getDocumentById(id);
       
       if (!document) {
@@ -143,7 +147,10 @@ export class PolicyDocumentController {
         return res.status(403).json({ error: 'Apenas administradores podem atualizar documentos' });
       }
 
-      const { id } = req.params;
+      const id = normalizeParamStringRequired(req.params.id);
+      if (!id) {
+        return res.status(400).json({ error: 'ID é obrigatório' });
+      }
       const { Titulo, Descricao, Tipo, PublicoPara, Ordem, Ativo, Url } = req.body;
       const file = req.file;
 
@@ -198,7 +205,10 @@ export class PolicyDocumentController {
         return res.status(403).json({ error: 'Apenas administradores podem deletar documentos' });
       }
 
-      const { id } = req.params;
+      const id = normalizeParamStringRequired(req.params.id);
+      if (!id) {
+        return res.status(400).json({ error: 'ID é obrigatório' });
+      }
       await this.service.deleteDocument(id);
       return res.json({ message: 'Documento deletado com sucesso' });
     } catch (error) {

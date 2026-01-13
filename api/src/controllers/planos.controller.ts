@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import prisma from "../prisma/client";
 import { AuthorizationService } from "../services/authorization.service";
 import { VindiService } from "../services/vindi.service";
+import { normalizeParamStringRequired } from "../utils/validation.util";
 
 export class PlanosController {
     private authService: AuthorizationService;
@@ -275,7 +276,10 @@ export class PlanosController {
      */
     async fetchPlanoById(req: Request, res: Response) {
         try {
-            const { id } = req.params;
+            const id = normalizeParamStringRequired(req.params.id);
+            if (!id) {
+                return res.status(400).json({ message: "ID é obrigatório" });
+            }
             // Busca por ProductId ou Tipo
             const plano = await prisma.planoAssinatura.findFirst({
                 where: {
@@ -319,7 +323,10 @@ export class PlanosController {
      */
     async updatePlano(req: Request, res: Response) {
         try {
-            const { id } = req.params;
+            const id = normalizeParamStringRequired(req.params.id);
+            if (!id) {
+                return res.status(400).json({ message: "ID é obrigatório", success: false });
+            }
             const userId = this.authService.getLoggedUserId(req);
 
             if (!userId) {
@@ -357,7 +364,10 @@ export class PlanosController {
      */
     async deletePlano(req: Request, res: Response) {
         try {
-            const { id } = req.params;
+            const id = normalizeParamStringRequired(req.params.id);
+            if (!id) {
+                return res.status(400).json({ message: "ID é obrigatório", success: false });
+            }
             const userId = this.authService.getLoggedUserId(req);
 
             if (!userId) {

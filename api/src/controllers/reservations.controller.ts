@@ -14,7 +14,7 @@ import { GoogleCalendarService } from '../services/googleCalendar.service';
 import { EmailService } from '../services/email.service';
 import { AgoraService } from '../services/agora.service';
 import { deriveUidFromUuid } from '../utils/uid.util';
-import { normalizeParamString, normalizeQueryString } from '../utils/validation.util';
+import { normalizeParamString, normalizeQueryString, normalizeParamStringRequired } from '../utils/validation.util';
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
@@ -37,7 +37,7 @@ export class ReservationsController {
      */
     async consultarAgenda(req: Request, res: Response): Promise<Response> {
         try {
-            const { psicologoId } = req.params;
+            const psicologoId = normalizeParamStringRequired(req.params.psicologoId);
             if (!psicologoId) {
                 return res.status(400).json({ error: 'ID do psicólogo é obrigatório.' });
             }
@@ -61,8 +61,8 @@ export class ReservationsController {
         const ipAddress = getClientIp(req);
 
         try {
-            const scheduleId = req.params.id;
-            if (!scheduleId || typeof scheduleId !== 'string') {
+            const scheduleId = normalizeParamStringRequired(req.params.id);
+            if (!scheduleId) {
                 return res.status(400).json({ error: 'ID de agendamento inválido' });
             }
             const userId = this.userService.getLoggedUserId(req);
@@ -127,7 +127,10 @@ export class ReservationsController {
         const ipAddress = getClientIp(req);
 
         try {
-            const { id } = req.params;
+            const id = normalizeParamStringRequired(req.params.id);
+            if (!id) {
+                return res.status(400).json({ error: 'ID é obrigatório' });
+            }
             const userId = this.userService.getLoggedUserId(req);
             if (!userId) {
                 return res.status(401).json({ error: 'Unauthorized' });
@@ -519,8 +522,8 @@ export class ReservationsController {
      */
     async fetchReservasId(req: Request, res: Response): Promise<Response> {
         try {
-            const { id } = req.params;
-            if (!id || id.trim() === '') {
+            const id = normalizeParamStringRequired(req.params.id);
+            if (!id) {
                 return res.status(400).json({ error: 'ID da reserva é obrigatório.' });
             }
 
@@ -1372,7 +1375,10 @@ export class ReservationsController {
         const ipAddress = getClientIp(req);
 
         try {
-            const { id } = req.params;
+            const id = normalizeParamStringRequired(req.params.id);
+            if (!id) {
+                return res.status(400).json({ error: 'ID é obrigatório' });
+            }
             const userId = this.userService.getLoggedUserId(req);
             if (!userId) {
                 return res.status(401).json({ error: 'Unauthorized' });
@@ -1623,7 +1629,10 @@ export class ReservationsController {
         const ipAddress = getClientIp(req);
 
         try {
-            const { id } = req.params;
+            const id = normalizeParamStringRequired(req.params.id);
+            if (!id) {
+                return res.status(400).json({ error: 'ID é obrigatório' });
+            }
             const userId = this.userService.getLoggedUserId(req);
             if (!userId) {
                 return res.status(401).json({ error: 'Unauthorized' });

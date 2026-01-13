@@ -8,7 +8,7 @@ import utc from "dayjs/plugin/utc";
 import { PsicologoService } from "../../services/getPsicologos";
 import { AgendaStatus, Role, Module, ActionType } from "../../types/permissions.types";
 import { Prisma } from "../../generated/prisma/client";
-import { normalizeQueryIntWithDefault, normalizeQueryArray } from "../../utils/validation.util";
+import { normalizeQueryIntWithDefault, normalizeQueryArray, normalizeParamString } from "../../utils/validation.util";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -331,7 +331,10 @@ export class PsicologoController {
      * Obtém detalhes de um psicólogo específico
      */
     async obterPsicologo(req: Request, res: Response): Promise<Response> {
-        const { id } = req.params;
+        const id = normalizeParamString(req.params.id);
+        if (!id) {
+            return res.status(400).json({ error: 'ID é obrigatório' });
+        }
         try {
             const nowDate = new Date(DateUtils.now());
             const nowTime = DateUtils.currentTime();
