@@ -12,13 +12,13 @@ const SALT_STORAGE = 'estacao_encryption_salt';
 /**
  * Gera um salt único se não existir
  */
-function getOrCreateSalt(): Uint8Array {
+function getOrCreateSalt(): ArrayBuffer {
   if (typeof window === 'undefined') {
     throw new Error('encryptedStorage só funciona no browser');
   }
 
   let salt = sessionStorage.getItem(SALT_STORAGE);
-  
+
   if (!salt) {
     // Gera um salt aleatório de 16 bytes
     const newSalt = new Uint8Array(16);
@@ -31,9 +31,8 @@ function getOrCreateSalt(): Uint8Array {
   const hexBytes = salt.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16));
   // Cria um novo ArrayBuffer para garantir compatibilidade com Web Crypto API
   const saltBuffer = new ArrayBuffer(hexBytes.length);
-  const saltBytes = new Uint8Array(saltBuffer);
-  saltBytes.set(hexBytes);
-  return saltBytes;
+  new Uint8Array(saltBuffer).set(hexBytes);
+  return saltBuffer;
 }
 
 /**
@@ -82,7 +81,7 @@ async function deriveEncryptionKey(): Promise<CryptoKey> {
   const encryptionKey = await crypto.subtle.deriveKey(
     {
       name: 'PBKDF2',
-      salt: salt,
+      salt,
       iterations: 100000,
       hash: 'SHA-256',
     },
