@@ -12,6 +12,7 @@ import { CancelamentoSessaoStatus, AgendaStatus } from "../generated/prisma/clie
 import { supabase, STORAGE_BUCKET } from "../services/storage.services";
 import { v4 as uuidv4 } from "uuid";
 import { CancelamentoResponse } from "../types/cancelamento.types";
+import { normalizeParamStringRequired, normalizeQueryString } from "../utils/validation.util";
 
 export class CancelamentoController {
     private emailService: IEmailService;
@@ -627,8 +628,8 @@ export class CancelamentoController {
      * @returns Response com contagem de cancelamentos.
      */
     async countByStatus(req: Request, res: Response) {
-        const { status } = req.query;
-        if (!status || typeof status !== 'string') {
+        const status = normalizeQueryString(req.query.status);
+        if (!status) {
             return res.status(400).json({ error: "Status é obrigatório" });
         }
         const count = await this.cancelamentoService.countByStatus(status);
@@ -643,7 +644,10 @@ export class CancelamentoController {
      */
     async updateStatus(req: Request, res: Response) {
         try {
-            const { id } = req.params;
+            const id = normalizeParamStringRequired(req.params.id);
+            if (!id) {
+                return res.status(400).json({ error: "ID é obrigatório" });
+            }
             const { status } = req.body;
 
             if (!status || typeof status !== 'string') {
@@ -1015,7 +1019,10 @@ export class CancelamentoController {
      * @returns Response com cancelamento ou erro.
      */
     async findById(req: Request, res: Response) {
-        const { id } = req.params;
+        const id = normalizeParamStringRequired(req.params.id);
+        if (!id) {
+            return res.status(400).json({ error: "ID é obrigatório" });
+        }
         // Busca já trazendo paciente e psicólogo
         const cancelamento = await this.cancelamentoService.findByIdWithUsers(id);
         if (!cancelamento) return res.status(404).json({ error: "Cancelamento não encontrado" });
@@ -1029,7 +1036,10 @@ export class CancelamentoController {
      * @returns Response com cancelamento atualizado ou erro.
      */
     async update(req: Request, res: Response) {
-        const { id } = req.params;
+        const id = normalizeParamStringRequired(req.params.id);
+        if (!id) {
+            return res.status(400).json({ error: "ID é obrigatório" });
+        }
         const data = req.body;
         const cancelamento = await this.cancelamentoService.update(id, data);
         if (!cancelamento) return res.status(404).json({ error: "Cancelamento não encontrado" });
@@ -1081,7 +1091,10 @@ export class CancelamentoController {
      * @returns Response de sucesso ou erro.
      */
     async delete(req: Request, res: Response) {
-        const { id } = req.params;
+        const id = normalizeParamStringRequired(req.params.id);
+        if (!id) {
+            return res.status(400).json({ error: "ID é obrigatório" });
+        }
         const cancelamento = await this.cancelamentoService.delete(id);
         if (!cancelamento) return res.status(404).json({ error: "Cancelamento não encontrado" });
         return res.status(200).json({ message: "Cancelamento deletado com sucesso" });
@@ -1095,7 +1108,10 @@ export class CancelamentoController {
      */
     async approve(req: Request, res: Response) {
         try {
-            const { id } = req.params;
+            const id = normalizeParamStringRequired(req.params.id);
+            if (!id) {
+                return res.status(400).json({ error: "ID é obrigatório" });
+            }
             const cancelamento = await this.cancelamentoService.approve(id);
             if (!cancelamento) return res.status(404).json({ error: "Cancelamento não encontrado" });
 
@@ -1333,7 +1349,10 @@ export class CancelamentoController {
      * @returns Response com cancelamento gerenciado ou erro.
      */
     async manage(req: Request, res: Response) {
-        const { id } = req.params;
+        const id = normalizeParamStringRequired(req.params.id);
+        if (!id) {
+            return res.status(400).json({ error: "ID é obrigatório" });
+        }
         const data = req.body;
         const cancelamento = await this.cancelamentoService.manage(id, data);
         if (!cancelamento) return res.status(404).json({ error: "Cancelamento não encontrado" });

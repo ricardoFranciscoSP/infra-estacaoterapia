@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { ControleFaturaService } from "../services/controleFatura.service";
 import { FaturaStatus } from "../types/controleFatura.types";
+import { normalizeParamStringRequired } from "../utils/validation.util";
 
 export class ControleFaturaController {
     private controleFaturaService: ControleFaturaService;
@@ -54,7 +55,10 @@ export class ControleFaturaController {
      * @returns Response com controle ou erro.
      */
     async getControleFaturaById(req: Request, res: Response): Promise<Response> {
-        const { id } = req.params;
+        const id = normalizeParamStringRequired(req.params.id);
+        if (!id) {
+            return res.status(400).json({ message: "ID é obrigatório." });
+        }
         try {
             const controle = await this.controleFaturaService.getControleFaturaById(id);
             if (!controle) {
@@ -74,7 +78,10 @@ export class ControleFaturaController {
      * @returns Response com controles ou erro.
      */
     async getControleFaturasByUserId(req: Request, res: Response): Promise<Response> {
-        const { userId } = req.params;
+        const userId = normalizeParamStringRequired(req.params.userId);
+        if (!userId) {
+            return res.status(400).json({ message: "UserId é obrigatório." });
+        }
         try {
             const controles = await this.controleFaturaService.getControleFaturasByUserId(userId);
             return res.status(200).json(controles);
@@ -91,7 +98,10 @@ export class ControleFaturaController {
      * @returns Response com controle atualizado ou erro.
      */
     async updateControleFaturaStatus(req: Request, res: Response): Promise<Response> {
-        const { id } = req.params;
+        const id = normalizeParamStringRequired(req.params.id);
+        if (!id) {
+            return res.status(400).json({ message: "ID é obrigatório." });
+        }
         const { status } = req.body;
         if (!status) {
             return res.status(400).json({ message: "Status é obrigatório." });
@@ -115,7 +125,10 @@ export class ControleFaturaController {
      * @returns Response de sucesso ou erro.
      */
     async deleteControleFatura(req: Request, res: Response): Promise<Response> {
-        const { id } = req.params;
+        const id = normalizeParamStringRequired(req.params.id);
+        if (!id) {
+            return res.status(400).json({ message: "ID é obrigatório." });
+        }
         try {
             await this.controleFaturaService.deleteControleFatura(id);
             return res.status(204).send();

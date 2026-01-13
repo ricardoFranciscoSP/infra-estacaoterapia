@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { AuthorizationService } from "../services/authorization.service";
 import { CicloPlanoService } from "../services/cicloPlano.service";
 import { asyncHandler } from "../middlewares/asyncHandler";
+import { normalizeParamStringRequired } from "../utils/validation.util";
 
 export class CicloPlanoController {
     constructor(
@@ -19,7 +20,7 @@ export class CicloPlanoController {
                 return res.status(401).json({ error: 'Unauthorized' });
             }
 
-            const { assinaturaPlanoId } = req.params;
+            const assinaturaPlanoId = normalizeParamStringRequired(req.params.assinaturaPlanoId);
             if (!assinaturaPlanoId) {
                 return res.status(400).json({ error: 'assinaturaPlanoId é obrigatório' });
             }
@@ -42,7 +43,7 @@ export class CicloPlanoController {
                 return res.status(401).json({ error: 'Unauthorized' });
             }
 
-            const { assinaturaPlanoId } = req.params;
+            const assinaturaPlanoId = normalizeParamStringRequired(req.params.assinaturaPlanoId);
             if (!assinaturaPlanoId) {
                 return res.status(400).json({ error: 'assinaturaPlanoId é obrigatório' });
             }

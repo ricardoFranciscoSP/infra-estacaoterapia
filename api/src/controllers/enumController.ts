@@ -39,6 +39,7 @@ import {
     getQueixa,
     getGrauInstrucao
 } from '../repositories/enumRepository';
+import { normalizeParamStringRequired, normalizeQueryStringWithDefault } from '../utils/validation.util';
 
 /**
  * Função auxiliar para formatar nomes de enum em formato legível
@@ -225,8 +226,13 @@ export const getEnumsFormatted = (req: Request, res: Response) => {
  */
 export const getSpecificEnum = (req: Request, res: Response) => {
     try {
-        const { enumName } = req.params;
-        const { formatted } = req.query;
+        const enumName = normalizeParamStringRequired(req.params.enumName);
+        if (!enumName) {
+            return res.status(400).json({
+                error: 'Nome do enum é obrigatório'
+            });
+        }
+        const formatted = normalizeQueryStringWithDefault(req.query.formatted, 'false');
 
         // Mapa de funções de enums disponíveis
         const enumMap: Record<string, () => string[]> = {
@@ -287,7 +293,8 @@ export const getSpecificEnum = (req: Request, res: Response) => {
         }
 
         res.setHeader('Cache-Control', 'public, max-age=3600');
-        res.status(200).json({ [enumName]: enumValues });
+        const response: Record<string, string[]> = { [enumName]: enumValues };
+        res.status(200).json(response);
     } catch (error) {
         console.error('Erro ao buscar enum específico:', error);
         res.status(500).json({
