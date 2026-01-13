@@ -49,10 +49,10 @@ export class FinanceiroController {
             return;
         }
 
-        const mes = req.query.mes ? parseInt(req.query.mes as string) : undefined;
-        const ano = req.query.ano ? parseInt(req.query.ano as string) : undefined;
-        const page = req.query.page ? parseInt(req.query.page as string) : 1;
-        const pageSize = req.query.pageSize ? parseInt(req.query.pageSize as string) : 10;
+        const mes = normalizeQueryInt(req.query.mes);
+        const ano = normalizeQueryInt(req.query.ano);
+        const page = normalizeQueryInt(req.query.page) ?? 1;
+        const pageSize = normalizeQueryInt(req.query.pageSize) ?? 10;
 
         const historico = await (this.financeiroService as any).getHistoricoSessoes(psicologoId, { mes, ano, page, pageSize });
         res.json(historico);
@@ -65,8 +65,8 @@ export class FinanceiroController {
             return;
         }
 
-        const ano = req.query.ano ? parseInt(req.query.ano as string) : undefined;
-        const mes = req.query.mes ? parseInt(req.query.mes as string) : undefined;
+        const ano = normalizeQueryInt(req.query.ano);
+        const mes = normalizeQueryInt(req.query.mes);
         const ganhos = await (this.financeiroService as any).getGanhosMensais(psicologoId, ano, mes);
         res.json(ganhos);
     }
@@ -78,8 +78,8 @@ export class FinanceiroController {
             return;
         }
 
-        const ano = req.query.ano ? parseInt(req.query.ano as string) : undefined;
-        const mes = req.query.mes ? parseInt(req.query.mes as string) : undefined;
+        const ano = normalizeQueryInt(req.query.ano);
+        const mes = normalizeQueryInt(req.query.mes);
         const atendimentos = await (this.financeiroService as any).getAtendimentosMensais(psicologoId, ano, mes);
         res.json(atendimentos);
     }

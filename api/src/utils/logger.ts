@@ -16,10 +16,10 @@ interface LogContext {
 /**
  * Configuração do logger
  */
-const logLevel: LogLevel = 
-    process.env.NODE_ENV === "production" ? "warn" : 
-    process.env.NODE_ENV === "development" ? "debug" : 
-    "info";
+const logLevel: LogLevel =
+    process.env.NODE_ENV === "production" ? "warn" :
+        process.env.NODE_ENV === "development" ? "debug" :
+            "info";
 
 /**
  * Formato de log para produção (JSON)
@@ -36,7 +36,7 @@ const productionFormat = winston.format.combine(
 const developmentFormat = winston.format.combine(
     winston.format.timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
     winston.format.colorize(),
-    winston.format.printf(({ timestamp, level, message, ...meta }) => {
+    winston.format.printf(({ timestamp, level, message, ...meta }: any) => {
         const metaStr = Object.keys(meta).length ? JSON.stringify(meta, null, 2) : "";
         return `${timestamp} [${level}]: ${message} ${metaStr}`;
     })

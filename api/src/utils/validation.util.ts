@@ -14,4 +14,57 @@ export function isValidCPF(cpf: string): boolean {
     return true;
 }
 
+/**
+ * Normaliza um valor de query/param que pode ser string | string[] | undefined para string
+ * Se for array, retorna o primeiro elemento. Se for undefined, retorna undefined.
+ */
+export function normalizeQueryString(value: string | string[] | undefined): string | undefined {
+    if (value === undefined) return undefined;
+    if (Array.isArray(value)) {
+        return value.length > 0 ? String(value[0]) : undefined;
+    }
+    return String(value);
+}
+
+/**
+ * Normaliza um valor de query/param que pode ser string | string[] | undefined para string
+ * Se for array, retorna o primeiro elemento. Se for undefined, retorna o valor padrão.
+ */
+export function normalizeQueryStringWithDefault(value: string | string[] | undefined, defaultValue: string): string {
+    const normalized = normalizeQueryString(value);
+    return normalized ?? defaultValue;
+}
+
+/**
+ * Normaliza um valor de query/param que pode ser string | string[] | undefined para array de strings
+ * Se for string, retorna array com um elemento. Se for undefined, retorna array vazio.
+ */
+export function normalizeQueryArray(value: string | string[] | undefined): string[] {
+    if (value === undefined) return [];
+    if (Array.isArray(value)) {
+        return value.map(v => String(v));
+    }
+    return [String(value)];
+}
+
+/**
+ * Normaliza um valor de query/param para número inteiro
+ * Se for array, usa o primeiro elemento. Se for undefined ou inválido, retorna undefined.
+ */
+export function normalizeQueryInt(value: string | string[] | undefined): number | undefined {
+    const normalized = normalizeQueryString(value);
+    if (normalized === undefined) return undefined;
+    const parsed = parseInt(normalized, 10);
+    return isNaN(parsed) ? undefined : parsed;
+}
+
+/**
+ * Normaliza um valor de query/param para número inteiro com valor padrão
+ * Se for array, usa o primeiro elemento. Se for undefined ou inválido, retorna o valor padrão.
+ */
+export function normalizeQueryIntWithDefault(value: string | string[] | undefined, defaultValue: number): number {
+    const normalized = normalizeQueryInt(value);
+    return normalized ?? defaultValue;
+}
+
 // Adicione outras funções de validação aqui conforme necessário

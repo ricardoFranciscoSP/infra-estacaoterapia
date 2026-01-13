@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import fs from "fs";
 import path from "path";
 import { FilesService } from "../services/files.service";
+import { normalizeQueryString, normalizeQueryIntWithDefault } from "../utils/validation.util";
 
 export class FilesController {
     static async viewPsychologistDocument(req: Request, res: Response) {
@@ -43,7 +44,7 @@ export class FilesController {
 
     static async documentThumbnail(req: Request, res: Response) {
         try {
-            const size = parseInt(req.query.size as string) || 200;
+            const size = normalizeQueryIntWithDefault(req.query.size, 200);
             const result = await FilesService.getDocumentThumbnail(req.params.id, size, req.user as any);
             return res.json(result);
         } catch (error: any) {
@@ -56,7 +57,7 @@ export class FilesController {
 
     static async userAvatar(req: Request, res: Response) {
         try {
-            const size = parseInt(req.query.size as string) || 200;
+            const size = normalizeQueryIntWithDefault(req.query.size, 200);
             const result = await FilesService.getUserAvatar(req.params.userId, size);
             return res.json(result);
         } catch (error: any) {
@@ -122,7 +123,7 @@ export class FilesController {
 
     static async test(req: Request, res: Response) {
         try {
-            const filePath = req.query.path as string;
+            const filePath = normalizeQueryString(req.query.path);
             if (!filePath) {
                 return res.status(400).json({ error: "path query parameter required" });
             }

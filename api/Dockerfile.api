@@ -74,17 +74,17 @@ COPY prisma.config.ts ./
 # Verificar qual gerenciador de pacotes usar e instalar dependências de produção
 RUN echo "[BUILD] Detectando gerenciador de pacotes..." && \
     if [ -f yarn.lock ]; then \
-        echo "[BUILD] Usando Yarn (yarn.lock encontrado)" && \
-        yarn install --production --frozen-lockfile --non-interactive && \
-        yarn prisma generate; \
+    echo "[BUILD] Usando Yarn (yarn.lock encontrado)" && \
+    yarn install --production --frozen-lockfile --non-interactive && \
+    yarn prisma generate; \
     elif [ -f package-lock.json ]; then \
-        echo "[BUILD] Usando NPM (package-lock.json encontrado)" && \
-        npm ci --only=production --prefer-offline --no-audit && \
-        npx prisma generate; \
+    echo "[BUILD] Usando NPM (package-lock.json encontrado)" && \
+    npm ci --only=production --prefer-offline --no-audit && \
+    npx prisma generate; \
     else \
-        echo "[BUILD] Nenhum lock file encontrado, usando npm install" && \
-        npm install --only=production --prefer-offline --no-audit && \
-        npx prisma generate; \
+    echo "[BUILD] Nenhum lock file encontrado, usando npm install" && \
+    npm install --only=production --prefer-offline --no-audit && \
+    npx prisma generate; \
     fi
 
 # ===============================

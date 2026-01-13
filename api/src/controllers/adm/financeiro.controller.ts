@@ -6,6 +6,7 @@ import { logAuditFromRequest } from '../../utils/auditLogger.util';
 import { ActionType, Module } from '../../types/permissions.types';
 import { getClientIp } from '../../utils/getClientIp.util';
 import prisma from '../../prisma/client';
+import { normalizeQueryString, normalizeQueryIntWithDefault } from '../../utils/validation.util';
 
 export class AdmFinanceiroController {
   private financeiroService: AdmFinanceiroService;
@@ -27,7 +28,7 @@ export class AdmFinanceiroController {
         return res.status(401).json({ success: false, error: 'Unauthorized' });
       }
 
-      const rawStatus = req.query.status as string | undefined;
+      const rawStatus = normalizeQueryString(req.query.status);
       const parsedStatus: FinanceiroPsicologoStatus | ControleFinanceiroStatus | undefined = (() => {
         if (!rawStatus) return undefined;
         if (Object.values(FinanceiroPsicologoStatus).includes(rawStatus as FinanceiroPsicologoStatus)) {
@@ -40,13 +41,13 @@ export class AdmFinanceiroController {
       })();
 
       const filtros = {
-        dataInicio: req.query.dataInicio as string | undefined,
-        dataFim: req.query.dataFim as string | undefined,
-        psicologoId: req.query.psicologoId as string | undefined,
+        dataInicio: normalizeQueryString(req.query.dataInicio),
+        dataFim: normalizeQueryString(req.query.dataFim),
+        psicologoId: normalizeQueryString(req.query.psicologoId),
         status: parsedStatus,
-        tipo: req.query.tipo as string | undefined,
-        page: req.query.page ? parseInt(req.query.page as string, 10) : 1,
-        pageSize: req.query.pageSize ? parseInt(req.query.pageSize as string, 10) : 50,
+        tipo: normalizeQueryString(req.query.tipo),
+        page: normalizeQueryIntWithDefault(req.query.page, 1),
+        pageSize: normalizeQueryIntWithDefault(req.query.pageSize, 50),
       };
 
       const resultado = await this.financeiroService.listarPagamentosPsicologos(filtros);
@@ -73,7 +74,7 @@ export class AdmFinanceiroController {
         return res.status(401).json({ success: false, error: 'Unauthorized' });
       }
 
-      const rawStatus = req.query.status as string | undefined;
+      const rawStatus = normalizeQueryString(req.query.status);
       const parsedStatus: FinanceiroPsicologoStatus | ControleFinanceiroStatus | undefined = (() => {
         if (!rawStatus) return undefined;
         if (Object.values(FinanceiroPsicologoStatus).includes(rawStatus as FinanceiroPsicologoStatus)) {
@@ -86,12 +87,12 @@ export class AdmFinanceiroController {
       })();
 
       const filtros = {
-        dataInicio: req.query.dataInicio as string | undefined,
-        dataFim: req.query.dataFim as string | undefined,
+        dataInicio: normalizeQueryString(req.query.dataInicio),
+        dataFim: normalizeQueryString(req.query.dataFim),
         status: parsedStatus,
-        tipo: req.query.tipo as string | undefined,
-        page: req.query.page ? parseInt(req.query.page as string, 10) : 1,
-        pageSize: req.query.pageSize ? parseInt(req.query.pageSize as string, 10) : 50,
+        tipo: normalizeQueryString(req.query.tipo),
+        page: normalizeQueryIntWithDefault(req.query.page, 1),
+        pageSize: normalizeQueryIntWithDefault(req.query.pageSize, 50),
       };
 
       const resultado = await this.financeiroService.listarPagamentosPacientes(filtros);
@@ -119,9 +120,9 @@ export class AdmFinanceiroController {
       }
 
       const filtros = {
-        status: req.query.status as string | undefined,
-        page: req.query.page ? parseInt(req.query.page as string, 10) : 1,
-        pageSize: req.query.pageSize ? parseInt(req.query.pageSize as string, 10) : 50,
+        status: normalizeQueryString(req.query.status),
+        page: normalizeQueryIntWithDefault(req.query.page, 1),
+        pageSize: normalizeQueryIntWithDefault(req.query.pageSize, 50),
       };
 
       console.log('[AdmFinanceiroController] Listando psicólogos com financeiro, filtros:', filtros);
@@ -338,9 +339,9 @@ export class AdmFinanceiroController {
       }
 
       const filtros = {
-        dataInicio: req.query.dataInicio as string | undefined,
-        dataFim: req.query.dataFim as string | undefined,
-        psicologoId: req.query.psicologoId as string | undefined,
+        dataInicio: normalizeQueryString(req.query.dataInicio),
+        dataFim: normalizeQueryString(req.query.dataFim),
+        psicologoId: normalizeQueryString(req.query.psicologoId),
       };
 
       const relatorio = await this.financeiroService.gerarRelatorio(filtros);

@@ -8,6 +8,7 @@ import utc from "dayjs/plugin/utc";
 import { PsicologoService } from "../../services/getPsicologos";
 import { AgendaStatus, Role, Module, ActionType } from "../../types/permissions.types";
 import { Prisma } from "../../generated/prisma/client";
+import { normalizeQueryIntWithDefault, normalizeQueryArray } from "../../utils/validation.util";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -495,10 +496,20 @@ export class PsicologoController {
      * Filtra psicólogos com base em critérios específicos
      */
     async filtrarPsicologos(req: Request, res: Response): Promise<Response> {
-        const filterOptions: PsychologistFilterOptions = req.query;
-        const { page = 1, pageSize = 10 } = req.query;
-        const pageNumber = parseInt(page as string);
-        const size = parseInt(pageSize as string);
+        const filterOptions: PsychologistFilterOptions = {
+            queixas: normalizeQueryArray(req.query.queixas),
+            abordagens: normalizeQueryArray(req.query.abordagens),
+            sexo: normalizeQueryArray(req.query.sexo),
+            atende: normalizeQueryArray(req.query.atende),
+            languages: normalizeQueryArray(req.query.languages),
+            dataDisponivel: typeof req.query.dataDisponivel === 'string' ? req.query.dataDisponivel : undefined,
+            periodo: typeof req.query.periodo === 'string' ? req.query.periodo as TimePeriod : undefined,
+            nome: typeof req.query.nome === 'string' ? req.query.nome : undefined,
+            page: normalizeQueryIntWithDefault(req.query.page, 1),
+            pageSize: normalizeQueryIntWithDefault(req.query.pageSize, 10),
+        };
+        const pageNumber = filterOptions.page ?? 1;
+        const size = filterOptions.pageSize ?? 10;
 
         try {
             const psychologists = await this.filterPsychologists(filterOptions, pageNumber, size);
@@ -603,7 +614,17 @@ export class PsicologoController {
     async listarPsicologosComFiltros(req: Request, res: Response): Promise<Response> {
         try {
             const psicologoService = new PsicologoService();
-            const psicologos = await psicologoService.getPsicologosComFiltros(req.query);
+            const filtrosNormalizados = {
+                queixas: normalizeQueryArray(req.query.queixas),
+                abordagem: normalizeQueryArray(req.query.abordagem),
+                sexo: typeof req.query.sexo === 'string' ? req.query.sexo : undefined,
+                atende: normalizeQueryArray(req.query.atende),
+                idiomas: normalizeQueryArray(req.query.idiomas),
+                dataDisponivel: typeof req.query.dataDisponivel === 'string' ? req.query.dataDisponivel : undefined,
+                periodo: normalizeQueryArray(req.query.periodo),
+                nome: typeof req.query.nome === 'string' ? req.query.nome : undefined,
+            };
+            const psicologos = await psicologoService.getPsicologosComFiltros(filtrosNormalizados);
             return res.status(200).json(psicologos);
         } catch (error) {
             console.error('Erro ao listar psicólogos com filtros:', error);

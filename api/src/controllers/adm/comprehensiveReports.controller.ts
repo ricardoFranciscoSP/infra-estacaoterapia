@@ -18,6 +18,7 @@ import {
     ComprehensiveReportFilters,
 } from "../../services/adm/comprehensiveReports.service";
 import { ReportExportService } from "../../services/adm/reportExport.service";
+import { normalizeQueryString } from "../../utils/validation.util";
 
 const exportService = new ReportExportService();
 
@@ -29,14 +30,14 @@ export class ComprehensiveReportsController {
     async getClientesCadastro(req: Request, res: Response): Promise<Response> {
         try {
             const filters: ComprehensiveReportFilters = {
-                startDate: req.query.startDate as string,
-                endDate: req.query.endDate as string,
-                status: req.query.status as string,
-                userId: req.query.userId as string,
-                search: req.query.search as string,
+                startDate: normalizeQueryString(req.query.startDate),
+                endDate: normalizeQueryString(req.query.endDate),
+                status: normalizeQueryString(req.query.status),
+                userId: normalizeQueryString(req.query.userId),
+                search: normalizeQueryString(req.query.search),
             };
 
-            const format = req.query.format as string;
+            const format = normalizeQueryString(req.query.format);
 
             const data = await getClientesCadastroReport(filters);
 
@@ -131,15 +132,15 @@ export class ComprehensiveReportsController {
     async getPsicologosCredenciamento(req: Request, res: Response): Promise<Response> {
         try {
             const filters: ComprehensiveReportFilters = {
-                startDate: req.query.startDate as string,
-                endDate: req.query.endDate as string,
-                status: req.query.status as string,
-                userId: req.query.userId as string,
-                psicologoId: req.query.psicologoId as string,
-                search: req.query.search as string,
+                startDate: normalizeQueryString(req.query.startDate),
+                endDate: normalizeQueryString(req.query.endDate),
+                status: normalizeQueryString(req.query.status),
+                userId: normalizeQueryString(req.query.userId),
+                psicologoId: normalizeQueryString(req.query.psicologoId),
+                search: normalizeQueryString(req.query.search),
             };
 
-            const format = req.query.format as string;
+            const format = normalizeQueryString(req.query.format);
 
             const data = await getPsicologosCredenciamentoReport(filters);
 
@@ -236,15 +237,15 @@ export class ComprehensiveReportsController {
     async getPlanosMovimentacao(req: Request, res: Response): Promise<Response> {
         try {
             const filters: ComprehensiveReportFilters = {
-                startDate: req.query.startDate as string,
-                endDate: req.query.endDate as string,
-                status: req.query.status as string,
-                userId: req.query.userId as string,
-                planoId: req.query.planoId as string,
-                tipoPlano: req.query.tipoPlano as string,
+                startDate: normalizeQueryString(req.query.startDate),
+                endDate: normalizeQueryString(req.query.endDate),
+                status: normalizeQueryString(req.query.status),
+                userId: normalizeQueryString(req.query.userId),
+                planoId: normalizeQueryString(req.query.planoId),
+                tipoPlano: normalizeQueryString(req.query.tipoPlano),
             };
 
-            const format = req.query.format as string;
+            const format = normalizeQueryString(req.query.format);
 
             const data = await getPlanosMovimentacaoReport(filters);
 
@@ -316,14 +317,14 @@ export class ComprehensiveReportsController {
     async getAcessoReset(req: Request, res: Response): Promise<Response> {
         try {
             const filters: ComprehensiveReportFilters = {
-                startDate: req.query.startDate as string,
-                endDate: req.query.endDate as string,
-                role: req.query.role as any,
-                userId: req.query.userId as string,
-                search: req.query.search as string,
+                startDate: normalizeQueryString(req.query.startDate),
+                endDate: normalizeQueryString(req.query.endDate),
+                role: normalizeQueryString(req.query.role) as string | undefined,
+                userId: normalizeQueryString(req.query.userId),
+                search: normalizeQueryString(req.query.search),
             };
 
-            const format = req.query.format as string;
+            const format = normalizeQueryString(req.query.format);
 
             const data = await getAcessoResetReport(filters);
 
@@ -381,15 +382,15 @@ export class ComprehensiveReportsController {
     async getSessoesHistorico(req: Request, res: Response): Promise<Response> {
         try {
             const filters: ComprehensiveReportFilters = {
-                startDate: req.query.startDate as string,
-                endDate: req.query.endDate as string,
-                status: req.query.status as string,
-                userId: req.query.userId as string,
-                pacienteId: req.query.pacienteId as string,
-                psicologoId: req.query.psicologoId as string,
+                startDate: normalizeQueryString(req.query.startDate),
+                endDate: normalizeQueryString(req.query.endDate),
+                status: normalizeQueryString(req.query.status),
+                userId: normalizeQueryString(req.query.userId),
+                pacienteId: normalizeQueryString(req.query.pacienteId),
+                psicologoId: normalizeQueryString(req.query.psicologoId),
             };
 
-            const format = req.query.format as string;
+            const format = normalizeQueryString(req.query.format);
 
             const data = await getSessaoHistoricoReport(filters);
 
@@ -453,15 +454,15 @@ export class ComprehensiveReportsController {
     async getAvaliacoesSessoes(req: Request, res: Response): Promise<Response> {
         try {
             const filters: ComprehensiveReportFilters = {
-                startDate: req.query.startDate as string,
-                endDate: req.query.endDate as string,
-                status: req.query.status as string,
-                userId: req.query.userId as string,
-                psicologoId: req.query.psicologoId as string,
-                pacienteId: req.query.pacienteId as string,
+                startDate: normalizeQueryString(req.query.startDate),
+                endDate: normalizeQueryString(req.query.endDate),
+                status: normalizeQueryString(req.query.status),
+                userId: normalizeQueryString(req.query.userId),
+                psicologoId: normalizeQueryString(req.query.psicologoId),
+                pacienteId: normalizeQueryString(req.query.pacienteId),
             };
 
-            const format = req.query.format as string;
+            const format = normalizeQueryString(req.query.format);
 
             const data = await getAvaliacaoSessaoReport(filters);
 
@@ -519,14 +520,14 @@ export class ComprehensiveReportsController {
     async getFaturamentoCliente(req: Request, res: Response): Promise<Response> {
         try {
             const filters: ComprehensiveReportFilters = {
-                startDate: req.query.startDate as string,
-                endDate: req.query.endDate as string,
-                status: req.query.status as string,
-                userId: req.query.userId as string,
-                pacienteId: req.query.pacienteId as string,
+                startDate: normalizeQueryString(req.query.startDate),
+                endDate: normalizeQueryString(req.query.endDate),
+                status: normalizeQueryString(req.query.status),
+                userId: normalizeQueryString(req.query.userId),
+                pacienteId: normalizeQueryString(req.query.pacienteId),
             };
 
-            const format = req.query.format as string;
+            const format = normalizeQueryString(req.query.format);
 
             const data = await getFaturamentoClienteReport(filters);
 
@@ -588,14 +589,14 @@ export class ComprehensiveReportsController {
     async getAcessoResetPsicologo(req: Request, res: Response): Promise<Response> {
         try {
             const filters: ComprehensiveReportFilters = {
-                startDate: req.query.startDate as string,
-                endDate: req.query.endDate as string,
-                userId: req.query.userId as string,
-                psicologoId: req.query.psicologoId as string,
-                search: req.query.search as string,
+                startDate: normalizeQueryString(req.query.startDate),
+                endDate: normalizeQueryString(req.query.endDate),
+                userId: normalizeQueryString(req.query.userId),
+                psicologoId: normalizeQueryString(req.query.psicologoId),
+                search: normalizeQueryString(req.query.search),
             };
 
-            const format = req.query.format as string;
+            const format = normalizeQueryString(req.query.format);
 
             const data = await getAcessoResetPsicologoReport(filters);
 
@@ -651,15 +652,15 @@ export class ComprehensiveReportsController {
     async getAgendaPsicologo(req: Request, res: Response): Promise<Response> {
         try {
             const filters: ComprehensiveReportFilters = {
-                startDate: req.query.startDate as string,
-                endDate: req.query.endDate as string,
-                status: req.query.status as string,
-                userId: req.query.userId as string,
-                psicologoId: req.query.psicologoId as string,
-                pacienteId: req.query.pacienteId as string,
+                startDate: normalizeQueryString(req.query.startDate),
+                endDate: normalizeQueryString(req.query.endDate),
+                status: normalizeQueryString(req.query.status),
+                userId: normalizeQueryString(req.query.userId),
+                psicologoId: normalizeQueryString(req.query.psicologoId),
+                pacienteId: normalizeQueryString(req.query.pacienteId),
             };
 
-            const format = req.query.format as string;
+            const format = normalizeQueryString(req.query.format);
 
             const data = await getAgendaPsicologoReport(filters);
 
@@ -717,14 +718,14 @@ export class ComprehensiveReportsController {
     async getCarteiraPagamentoPsicologo(req: Request, res: Response): Promise<Response> {
         try {
             const filters: ComprehensiveReportFilters = {
-                startDate: req.query.startDate as string,
-                endDate: req.query.endDate as string,
-                status: req.query.status as string,
-                userId: req.query.userId as string,
-                psicologoId: req.query.psicologoId as string,
+                startDate: normalizeQueryString(req.query.startDate),
+                endDate: normalizeQueryString(req.query.endDate),
+                status: normalizeQueryString(req.query.status),
+                userId: normalizeQueryString(req.query.userId),
+                psicologoId: normalizeQueryString(req.query.psicologoId),
             };
 
-            const format = req.query.format as string;
+            const format = normalizeQueryString(req.query.format);
 
             const data = await getCarteiraPagamentoPsicologoReport(filters);
 
@@ -792,14 +793,14 @@ export class ComprehensiveReportsController {
     async getOnboardingObjetivos(req: Request, res: Response): Promise<Response> {
         try {
             const filters: ComprehensiveReportFilters = {
-                startDate: req.query.startDate as string,
-                endDate: req.query.endDate as string,
-                userId: req.query.userId as string,
-                pacienteId: req.query.pacienteId as string,
-                search: req.query.search as string,
+                startDate: normalizeQueryString(req.query.startDate),
+                endDate: normalizeQueryString(req.query.endDate),
+                userId: normalizeQueryString(req.query.userId),
+                pacienteId: normalizeQueryString(req.query.pacienteId),
+                search: normalizeQueryString(req.query.search),
             };
 
-            const format = req.query.format as string;
+            const format = normalizeQueryString(req.query.format);
 
             const data = await getOnboardingObjetivosReport(filters);
 

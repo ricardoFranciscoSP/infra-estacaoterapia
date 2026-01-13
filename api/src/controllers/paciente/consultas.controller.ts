@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { AuthorizationService } from "../../services/authorization.service";
 import { ConsultasPacienteService } from "../../services/paciente/consultas.service";
 import { AgendaStatus } from "../../generated/prisma/client";
+import { normalizeQueryString, normalizeQueryInt } from "../../utils/validation.util";
 
 export class ConsultasPacienteController {
     /**
@@ -156,7 +157,7 @@ export class ConsultasPacienteController {
         }
 
         try {
-            const statusQuery = req.query.status as string | undefined;
+            const statusQuery = normalizeQueryString(req.query.status);
             let statusFiltro: AgendaStatus[] | undefined;
 
             // Se foi passado status na query, converte para array de AgendaStatus
@@ -241,7 +242,7 @@ export class ConsultasPacienteController {
         }
 
         try {
-            const statusQuery = req.query.status as string | undefined;
+            const statusQuery = normalizeQueryString(req.query.status);
             let statusFiltro: AgendaStatus[] | undefined;
 
             if (statusQuery) {
@@ -345,9 +346,9 @@ export class ConsultasPacienteController {
         }
 
         try {
-            const mes = parseInt(req.query.mes as string);
-            const ano = parseInt(req.query.ano as string);
-            const statusQuery = req.query.status as string | undefined;
+            const mes = normalizeQueryInt(req.query.mes);
+            const ano = normalizeQueryInt(req.query.ano);
+            const statusQuery = normalizeQueryString(req.query.status);
 
             // Validação de mês e ano
             if (!mes || !ano || mes < 1 || mes > 12 || ano < 2000 || ano > 2100) {
@@ -403,9 +404,9 @@ export class ConsultasPacienteController {
         }
 
         try {
-            const mes = parseInt(req.query.mes as string);
-            const ano = parseInt(req.query.ano as string);
-            const statusQuery = req.query.status as string | undefined;
+            const mes = normalizeQueryInt(req.query.mes);
+            const ano = normalizeQueryInt(req.query.ano);
+            const statusQuery = normalizeQueryString(req.query.status);
 
             if (!mes || !ano || mes < 1 || mes > 12 || ano < 2000 || ano > 2100) {
                 res.status(400).json({

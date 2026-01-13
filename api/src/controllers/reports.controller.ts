@@ -4,6 +4,7 @@ import { ReportsService, ReportFilters } from "../services/reports.service";
 import { AuditService } from "../services/audit.service";
 import { Role, Module, ActionType } from "../generated/prisma/client";
 import { getClientIp } from "../utils/getClientIp.util";
+import { normalizeQueryString } from "../utils/validation.util";
 
 export class ReportsController {
     constructor(
@@ -95,12 +96,12 @@ export class ReportsController {
             }
 
             const filters: ReportFilters = {
-                startDate: req.query.startDate as string | undefined,
-                endDate: req.query.endDate as string | undefined,
-                status: req.query.status as string | undefined,
-                role: req.query.role as Role | undefined,
-                userId: req.query.userId as string | undefined,
-                search: req.query.search as string | undefined,
+                startDate: normalizeQueryString(req.query.startDate),
+                endDate: normalizeQueryString(req.query.endDate),
+                status: normalizeQueryString(req.query.status),
+                role: normalizeQueryString(req.query.role) as Role | undefined,
+                userId: normalizeQueryString(req.query.userId),
+                search: normalizeQueryString(req.query.search),
             };
 
             const usuarios = await this.reportsService.getUsuariosAtivos(filters);
@@ -134,10 +135,10 @@ export class ReportsController {
             }
 
             const filters: ReportFilters = {
-                startDate: req.query.startDate as string | undefined,
-                endDate: req.query.endDate as string | undefined,
-                status: req.query.status as string | undefined,
-                search: req.query.search as string | undefined,
+                startDate: normalizeQueryString(req.query.startDate),
+                endDate: normalizeQueryString(req.query.endDate),
+                status: normalizeQueryString(req.query.status),
+                search: normalizeQueryString(req.query.search),
             };
 
             const planos = await this.reportsService.getPlanos(filters);
@@ -171,12 +172,12 @@ export class ReportsController {
             }
 
             const filters: ReportFilters = {
-                startDate: req.query.startDate as string | undefined,
-                endDate: req.query.endDate as string | undefined,
-                status: req.query.status as string | undefined,
-                role: req.query.role as Role | undefined,
-                userId: req.query.userId as string | undefined,
-                search: req.query.search as string | undefined,
+                startDate: normalizeQueryString(req.query.startDate),
+                endDate: normalizeQueryString(req.query.endDate),
+                status: normalizeQueryString(req.query.status),
+                role: normalizeQueryString(req.query.role) as Role | undefined,
+                userId: normalizeQueryString(req.query.userId),
+                search: normalizeQueryString(req.query.search),
             };
 
             const usuarios = await this.reportsService.getUsuariosInativos(filters);
@@ -210,11 +211,11 @@ export class ReportsController {
             }
 
             const filters: ReportFilters = {
-                startDate: req.query.startDate as string | undefined,
-                endDate: req.query.endDate as string | undefined,
-                status: req.query.status as string | undefined,
-                userId: req.query.userId as string | undefined,
-                search: req.query.search as string | undefined,
+                startDate: normalizeQueryString(req.query.startDate),
+                endDate: normalizeQueryString(req.query.endDate),
+                status: normalizeQueryString(req.query.status),
+                userId: normalizeQueryString(req.query.userId),
+                search: normalizeQueryString(req.query.search),
             };
 
             const faturamento = await this.reportsService.getFaturamento(filters);
@@ -248,11 +249,11 @@ export class ReportsController {
             }
 
             const filters: ReportFilters = {
-                startDate: req.query.startDate as string | undefined,
-                endDate: req.query.endDate as string | undefined,
-                status: req.query.status as string | undefined,
-                userId: req.query.userId as string | undefined,
-                search: req.query.search as string | undefined,
+                startDate: normalizeQueryString(req.query.startDate),
+                endDate: normalizeQueryString(req.query.endDate),
+                status: normalizeQueryString(req.query.status),
+                userId: normalizeQueryString(req.query.userId),
+                search: normalizeQueryString(req.query.search),
             };
 
             const repasse = await this.reportsService.getRepasse(filters);
@@ -286,11 +287,11 @@ export class ReportsController {
             }
 
             const filters: ReportFilters = {
-                startDate: req.query.startDate as string | undefined,
-                endDate: req.query.endDate as string | undefined,
-                status: req.query.status as string | undefined,
-                userId: req.query.userId as string | undefined,
-                search: req.query.search as string | undefined,
+                startDate: normalizeQueryString(req.query.startDate),
+                endDate: normalizeQueryString(req.query.endDate),
+                status: normalizeQueryString(req.query.status),
+                userId: normalizeQueryString(req.query.userId),
+                search: normalizeQueryString(req.query.search),
             };
 
             const avaliacoes = await this.reportsService.getAvaliacoes(filters);
@@ -324,11 +325,11 @@ export class ReportsController {
             }
 
             const filters: ReportFilters = {
-                startDate: req.query.startDate as string | undefined,
-                endDate: req.query.endDate as string | undefined,
-                status: req.query.status as string | undefined,
-                userId: req.query.userId as string | undefined,
-                search: req.query.search as string | undefined,
+                startDate: normalizeQueryString(req.query.startDate),
+                endDate: normalizeQueryString(req.query.endDate),
+                status: normalizeQueryString(req.query.status),
+                userId: normalizeQueryString(req.query.userId),
+                search: normalizeQueryString(req.query.search),
             };
 
             const sessoes = await this.reportsService.getSessoes(filters);
@@ -362,11 +363,11 @@ export class ReportsController {
             }
 
             const filters: ReportFilters = {
-                startDate: req.query.startDate as string | undefined,
-                endDate: req.query.endDate as string | undefined,
-                status: req.query.status as string | undefined,
-                userId: req.query.userId as string | undefined,
-                search: req.query.search as string | undefined,
+                startDate: normalizeQueryString(req.query.startDate),
+                endDate: normalizeQueryString(req.query.endDate),
+                status: normalizeQueryString(req.query.status),
+                userId: normalizeQueryString(req.query.userId),
+                search: normalizeQueryString(req.query.search),
             };
 
             const agenda = await this.reportsService.getAgenda(filters);
@@ -400,8 +401,8 @@ export class ReportsController {
             }
 
             const filters: ReportFilters = {
-                startDate: req.query.startDate as string | undefined,
-                endDate: req.query.endDate as string | undefined,
+                startDate: normalizeQueryString(req.query.startDate),
+                endDate: normalizeQueryString(req.query.endDate),
             };
 
             const summary = await this.reportsService.getSummary(filters);

@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { getAllQueuesStatus, getAllFailedJobs, getFailedJobs, getAllJobs, getAllJobsByStatus, cleanFailedJobs, cleanAllFailedJobs } from '../../utils/queueStatus';
+import { normalizeQueryString, normalizeQueryIntWithDefault, normalizeQueryInt } from '../../utils/validation.util';
 
 export class QueueController {
     /**
@@ -32,8 +33,8 @@ export class QueueController {
      */
     async getFailedJobs(req: Request, res: Response): Promise<Response> {
         try {
-            const queueName = req.query.queueName as string | undefined;
-            const limit = req.query.limit ? parseInt(req.query.limit as string) : 100;
+            const queueName = normalizeQueryString(req.query.queueName);
+            const limit = normalizeQueryIntWithDefault(req.query.limit, 100);
 
             let failedJobs;
             if (queueName) {
@@ -66,8 +67,8 @@ export class QueueController {
      */
     async getJobs(req: Request, res: Response): Promise<Response> {
         try {
-            const status = req.query.status as 'waiting' | 'active' | 'completed' | 'failed' | 'delayed' | undefined;
-            const limit = req.query.limit ? parseInt(req.query.limit as string) : 100;
+            const status = normalizeQueryString(req.query.status) as 'waiting' | 'active' | 'completed' | 'failed' | 'delayed' | undefined;
+            const limit = normalizeQueryIntWithDefault(req.query.limit, 100);
 
             console.log(`[QueueController] Buscando jobs com status: ${status || 'todos'}, limit: ${limit}`);
 
@@ -108,8 +109,8 @@ export class QueueController {
      */
     async cleanFailedJobs(req: Request, res: Response): Promise<Response> {
         try {
-            const queueName = req.query.queueName as string | undefined;
-            const olderThanMs = req.query.olderThanMs ? parseInt(req.query.olderThanMs as string) : undefined;
+            const queueName = normalizeQueryString(req.query.queueName);
+            const olderThanMs = normalizeQueryInt(req.query.olderThanMs);
 
             let result;
             if (queueName) {

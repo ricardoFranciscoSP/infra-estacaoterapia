@@ -4,6 +4,7 @@ import { IConsultas } from "../../interfaces/adm/iConsultas.interface";
 import { ConsultasService } from "../../services/adm/consultas.service";
 import { ActionType, Module } from "../../types/permissions.types";
 import { STATUS } from "../../constants/status.constants";
+import { normalizeQueryString } from "../../utils/validation.util";
 
 export class ConsultasController implements IConsultas {
     private service: ConsultasService;
@@ -83,7 +84,7 @@ export class ConsultasController implements IConsultas {
         }
 
         // year pode vir como string; garante número válido
-        const yearParam = req.query.year as string | undefined;
+        const yearParam = normalizeQueryString(req.query.year);
         const year = yearParam && !isNaN(Number(yearParam)) ? Number(yearParam) : undefined;
 
         try {
@@ -187,7 +188,7 @@ export class ConsultasController implements IConsultas {
             return res.status(403).json({ success: false, message: "Acesso negado" });
         }
 
-        const yearParam = req.query.year as string | undefined;
+        const yearParam = normalizeQueryString(req.query.year);
         const year = yearParam && !isNaN(Number(yearParam)) ? Number(yearParam) : undefined;
 
         try {

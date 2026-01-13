@@ -4,6 +4,7 @@ import prisma from "../prisma/client";
 import { WebHookService } from "../services/webhook.service";
 import { JobService } from "../services/jobService";
 import { getWebhookQueue } from "../workers/worker.webhook";
+import { normalizeQueryStringWithDefault } from "../utils/validation.util";
 
 export class WebHookController {
     /**
@@ -15,7 +16,7 @@ export class WebHookController {
     static async handleWebhook(req: Request, res: Response) {
         try {
             // Padrão unificado: salvar JSON cru + enfileirar com delay configurável (padrão: 35s)
-            const provider = String(req.query.provider || req.headers['x-webhook-provider'] || 'generic');
+            const provider = normalizeQueryStringWithDefault(req.query.provider || req.headers['x-webhook-provider'], 'generic');
             const eventType: string = req.body?.event?.type || req.body?.type || req.body?.eventType || 'unknown';
             const payload = req.body;
 

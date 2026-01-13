@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { AuthorizationService } from "../../services/authorization.service";
 import { ConsultasService } from "../../services/psicologo/consultas.service";
 import { AgendaStatus } from "../../generated/prisma/client";
+import { normalizeQueryString, normalizeQueryInt } from "../../utils/validation.util";
 
 export class ConsultasPsicologoController {
     /**
@@ -153,7 +154,7 @@ export class ConsultasPsicologoController {
         }
 
         try {
-            const statusQuery = req.query.status as string | undefined;
+            const statusQuery = normalizeQueryString(req.query.status);
             let statusFiltro: AgendaStatus[] | undefined;
 
             if (statusQuery) {
@@ -199,9 +200,9 @@ export class ConsultasPsicologoController {
         }
 
         try {
-            const mes = parseInt(req.query.mes as string);
-            const ano = parseInt(req.query.ano as string);
-            const statusQuery = req.query.status as string | undefined;
+            const mes = normalizeQueryInt(req.query.mes);
+            const ano = normalizeQueryInt(req.query.ano);
+            const statusQuery = normalizeQueryString(req.query.status);
 
             // Validação de mês e ano
             if (!mes || !ano || mes < 1 || mes > 12 || ano < 2000 || ano > 2100) {
@@ -300,7 +301,7 @@ export class ConsultasPsicologoController {
         }
 
         try {
-            const statusQuery = req.query.status as string | undefined;
+            const statusQuery = normalizeQueryString(req.query.status);
             let statusFiltro: AgendaStatus[] | undefined;
 
             if (statusQuery) {
@@ -341,9 +342,9 @@ export class ConsultasPsicologoController {
         }
 
         try {
-            const mes = parseInt(req.query.mes as string);
-            const ano = parseInt(req.query.ano as string);
-            const statusQuery = req.query.status as string | undefined;
+            const mes = normalizeQueryInt(req.query.mes);
+            const ano = normalizeQueryInt(req.query.ano);
+            const statusQuery = normalizeQueryString(req.query.status);
 
             if (!mes || !ano || mes < 1 || mes > 12 || ano < 2000 || ano > 2100) {
                 res.status(400).json({
@@ -448,12 +449,12 @@ export class ConsultasPsicologoController {
         }
 
         try {
-            const status = req.query.status as 'todos' | 'efetuada' | 'cancelada' | undefined;
-            const buscaPaciente = req.query.buscaPaciente as string | undefined;
-            const dataInicial = req.query.dataInicial as string | undefined;
-            const dataFinal = req.query.dataFinal as string | undefined;
-            const page = req.query.page ? parseInt(req.query.page as string) : undefined;
-            const pageSize = req.query.pageSize ? parseInt(req.query.pageSize as string) : undefined;
+            const status = normalizeQueryString(req.query.status) as 'todos' | 'efetuada' | 'cancelada' | undefined;
+            const buscaPaciente = normalizeQueryString(req.query.buscaPaciente);
+            const dataInicial = normalizeQueryString(req.query.dataInicial);
+            const dataFinal = normalizeQueryString(req.query.dataFinal);
+            const page = normalizeQueryInt(req.query.page);
+            const pageSize = normalizeQueryInt(req.query.pageSize);
 
             // Validação de status
             if (status && !['todos', 'efetuada', 'cancelada'].includes(status)) {

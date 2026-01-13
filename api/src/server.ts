@@ -5,11 +5,11 @@ import cookieParser from "cookie-parser";
 import http from "http";
 import router from "./routes";
 import { corsMiddleware } from "./middlewares/cors";
-import { 
-    securityHeaders, 
-    generalRateLimiter, 
+import {
+    securityHeaders,
+    generalRateLimiter,
     validateBodySize,
-    forceHttps 
+    forceHttps
 } from "./middlewares/security";
 import { logInfo, logDebug } from "./utils/logger";
 
@@ -77,13 +77,11 @@ app.use((req: Request, _res: Response, next: NextFunction): void => {
             method: req.method,
             path: req.path,
             url: req.url,
-            headers: {
-                'content-type': req.headers['content-type'],
-                'user-agent': req.headers['user-agent'],
-                'x-forwarded-for': req.headers['x-forwarded-for']
-            },
-            hasBody: !!req.body,
-            bodyPreview: req.body && typeof req.body === 'object' ? JSON.stringify(req.body).substring(0, 500) : 'no body',
+            contentType: String(req.headers['content-type'] || ''),
+            userAgent: String(req.headers['user-agent'] || ''),
+            xForwardedFor: typeof req.headers['x-forwarded-for'] === 'string' ? req.headers['x-forwarded-for'] : Array.isArray(req.headers['x-forwarded-for']) ? req.headers['x-forwarded-for'].join(', ') : '',
+            hasBody: req.body ? 1 : 0,
+            bodyLength: req.body && typeof req.body === 'object' ? JSON.stringify(req.body).substring(0, 500).length : 0,
         });
     }
     next();
@@ -168,11 +166,11 @@ server.listen(PORT, "0.0.0.0", async () => {
 
     // Iniciar workers BullMQ em production, staging, pre e development
     // Redis é obrigatório em todos os ambientes para garantir funcionamento dos jobs
-    const shouldStartWorkers = process.env.NODE_ENV === "production" || 
-                               process.env.NODE_ENV === "staging" || 
-                               process.env.NODE_ENV === "pre" ||
-                               process.env.NODE_ENV === "development";
-    
+    const shouldStartWorkers = process.env.NODE_ENV === "production" ||
+        process.env.NODE_ENV === "staging" ||
+        process.env.NODE_ENV === "pre" ||
+        process.env.NODE_ENV === "development";
+
     if (shouldStartWorkers) {
         try {
             console.log("🚦 Iniciando workers BullMQ...");

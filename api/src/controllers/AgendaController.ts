@@ -1,6 +1,7 @@
 
 import { AgendaService } from '../services/AgendaService';
 import { Request, Response } from 'express';
+import { normalizeQueryString } from '../utils/validation.util';
 export class AgendaController {
     listarHorariosDisponiveisPorPeriodoPsicologo = async (req: Request, res: Response): Promise<void> => {
         const { data, periodo } = req.query;
@@ -12,9 +13,15 @@ export class AgendaController {
         }
         try {
             console.log('[Controller] Chamando service.listarHorariosDisponiveisPorPeriodoTodosPsicologos');
+            const dataStr = normalizeQueryString(data);
+            const periodoStr = normalizeQueryString(periodo);
+            if (!dataStr || !periodoStr) {
+                res.status(400).json({ error: 'Parâmetros data e periodo são obrigatórios.' });
+                return;
+            }
             const result = await this.agendaService.listarHorariosDisponiveisPorPeriodoTodosPsicologos(
-                String(data),
-                String(periodo) as 'manha' | 'tarde' | 'noite'
+                dataStr,
+                periodoStr as 'manha' | 'tarde' | 'noite'
             );
             console.log('[Controller] Resultado do service:', result);
             res.json(result);
@@ -32,7 +39,13 @@ export class AgendaController {
             res.status(400).json({ error: 'Parâmetros data e horario são obrigatórios.' });
             return;
         }
-        const agendas = await this.agendaService.listarAgendasPorDataHorario(String(data), String(horario));
+        const dataStr = normalizeQueryString(data);
+        const horarioStr = normalizeQueryString(horario);
+        if (!dataStr || !horarioStr) {
+            res.status(400).json({ error: 'Parâmetros data e horario são obrigatórios.' });
+            return;
+        }
+        const agendas = await this.agendaService.listarAgendasPorDataHorario(dataStr, horarioStr);
         res.json(agendas);
     };
     private agendaService: AgendaService;
@@ -79,7 +92,12 @@ export class AgendaController {
         
         try {
             console.log('🔵 [AgendaController] Chamando agendaService.listarHorariosDisponiveisPorDataPsicologo...');
-            const result = await this.agendaService.listarHorariosDisponiveisPorDataPsicologo(psicologoId, String(data));
+            const dataStr = normalizeQueryString(data);
+            if (!dataStr) {
+                res.status(400).json({ error: 'Data é obrigatória' });
+                return;
+            }
+            const result = await this.agendaService.listarHorariosDisponiveisPorDataPsicologo(psicologoId, dataStr);
             
             // Ordena pelo horário
             result.sort((a, b) => a.horario.localeCompare(b.horario));
@@ -97,13 +115,23 @@ export class AgendaController {
 
     listarAgendasPorData = async (req: Request, res: Response): Promise<void> => {
         const { data } = req.query;
-        const agendas = await this.agendaService.listarAgendasPorData(String(data));
+        const dataStr = normalizeQueryString(data);
+        if (!dataStr) {
+            res.status(400).json({ error: 'Parâmetro data é obrigatório.' });
+            return;
+        }
+        const agendas = await this.agendaService.listarAgendasPorData(dataStr);
         res.json(agendas);
     };
 
     listarAgendasPorPeriodo = async (req: Request, res: Response): Promise<void> => {
         const { periodo } = req.query;
-        const agendas = await this.agendaService.listarAgendasPorPeriodo(periodo as 'manha' | 'tarde' | 'noite');
+        const periodoStr = normalizeQueryString(periodo);
+        if (!periodoStr) {
+            res.status(400).json({ error: 'Parâmetro periodo é obrigatório.' });
+            return;
+        }
+        const agendas = await this.agendaService.listarAgendasPorPeriodo(periodoStr as 'manha' | 'tarde' | 'noite');
         res.json(agendas);
     };
 

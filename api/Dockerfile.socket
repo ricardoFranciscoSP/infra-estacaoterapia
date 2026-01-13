@@ -18,14 +18,14 @@ COPY prisma.config.ts ./
 # Instala TODAS as deps (build precisa das dev)
 RUN echo "[BUILD SOCKET] Detectando gerenciador de pacotes..." && \
     if [ -f yarn.lock ]; then \
-        echo "[BUILD SOCKET] Usando Yarn (yarn.lock encontrado)" && \
-        yarn install --frozen-lockfile --non-interactive; \
+    echo "[BUILD SOCKET] Usando Yarn (yarn.lock encontrado)" && \
+    yarn install --frozen-lockfile --non-interactive; \
     elif [ -f package-lock.json ]; then \
-        echo "[BUILD SOCKET] Usando NPM (package-lock.json encontrado)" && \
-        npm ci --prefer-offline --no-audit; \
+    echo "[BUILD SOCKET] Usando NPM (package-lock.json encontrado)" && \
+    npm ci --prefer-offline --no-audit; \
     else \
-        echo "[BUILD SOCKET] Nenhum lock file encontrado, usando npm install" && \
-        npm install --prefer-offline --no-audit; \
+    echo "[BUILD SOCKET] Nenhum lock file encontrado, usando npm install" && \
+    npm install --prefer-offline --no-audit; \
     fi
 
 # ===============================
@@ -55,9 +55,9 @@ RUN npx prisma generate
 # Build do projeto
 RUN echo "[BUILD SOCKET] Compilando TypeScript..." && \
     if [ -f yarn.lock ]; then \
-        yarn tsc; \
+    yarn tsc; \
     else \
-        npm run build || npx tsc; \
+    npm run build || npx tsc; \
     fi
 
 # Copia templates manualmente
@@ -84,17 +84,17 @@ COPY prisma.config.ts ./
 # Apenas dependências de produção
 RUN echo "[BUILD SOCKET] Instalando dependências de produção..." && \
     if [ -f yarn.lock ]; then \
-        echo "[BUILD SOCKET] Usando Yarn" && \
-        yarn install --production --frozen-lockfile --non-interactive && \
-        yarn prisma generate; \
+    echo "[BUILD SOCKET] Usando Yarn" && \
+    yarn install --production --frozen-lockfile --non-interactive && \
+    yarn prisma generate; \
     elif [ -f package-lock.json ]; then \
-        echo "[BUILD SOCKET] Usando NPM" && \
-        npm ci --only=production --prefer-offline --no-audit && \
-        npx prisma generate; \
+    echo "[BUILD SOCKET] Usando NPM" && \
+    npm ci --only=production --prefer-offline --no-audit && \
+    npx prisma generate; \
     else \
-        echo "[BUILD SOCKET] Usando npm install" && \
-        npm install --only=production --prefer-offline --no-audit && \
-        npx prisma generate; \
+    echo "[BUILD SOCKET] Usando npm install" && \
+    npm install --only=production --prefer-offline --no-audit && \
+    npx prisma generate; \
     fi
 
 # ===============================

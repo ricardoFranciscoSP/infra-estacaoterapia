@@ -15,15 +15,15 @@ COPY package.json yarn.lock* package-lock.json* ./
 # Detectar e instalar dependências com o gerenciador apropriado
 RUN echo "[BUILD] Detectando gerenciador de pacotes..." && \
     if [ -f yarn.lock ]; then \
-        echo "[BUILD] Usando Yarn (yarn.lock encontrado)" && \
-        corepack enable && \
-        yarn install --frozen-lockfile --non-interactive; \
+    echo "[BUILD] Usando Yarn (yarn.lock encontrado)" && \
+    corepack enable && \
+    yarn install --frozen-lockfile --non-interactive; \
     elif [ -f package-lock.json ]; then \
-        echo "[BUILD] Usando NPM (package-lock.json encontrado)" && \
-        npm ci --prefer-offline --no-audit; \
+    echo "[BUILD] Usando NPM (package-lock.json encontrado)" && \
+    npm ci --prefer-offline --no-audit; \
     else \
-        echo "[BUILD] Nenhum lock file encontrado, usando npm install" && \
-        npm install --prefer-offline --no-audit; \
+    echo "[BUILD] Nenhum lock file encontrado, usando npm install" && \
+    npm install --prefer-offline --no-audit; \
     fi
 
 COPY . .
@@ -44,11 +44,11 @@ ENV NODE_ENV=production \
 # Build usando o gerenciador de pacotes apropriado
 RUN echo "[BUILD] Iniciando build do Next.js..." && \
     if [ -f yarn.lock ]; then \
-        echo "[BUILD] Executando: yarn build" && \
-        yarn build; \
+    echo "[BUILD] Executando: yarn build" && \
+    yarn build; \
     else \
-        echo "[BUILD] Executando: npm run build" && \
-        npm run build; \
+    echo "[BUILD] Executando: npm run build" && \
+    npm run build; \
     fi && \
     echo "[BUILD] Build concluído com sucesso!"
 
