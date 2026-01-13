@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Consulta Cancelada</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+
+<body style="margin:0; padding:0; background:#EDEBFF; font-family: Arial, Helvetica, sans-serif;">
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#EDEBFF;">
+        <tr>
+            <td align="center" style="padding:24px 12px;">
+                <img src="cid:logo.svg" alt="Estação Terapia" width="150"
+                    style="display:block; border:0; height:auto; margin: 0 0 30px 0;">
+                <table width="600" cellpadding="0" cellspacing="0" border="0"
+                    style="max-width:600px; background:#fff; border-radius:12px; box-shadow: 0 2px 12px rgba(60, 78, 143, 0.08);">
+                    <tr>
+                        <td style="padding:32px 28px;">
+                            <div style="text-align:center; margin-bottom:24px;">
+                                <div style="font-size:48px; margin-bottom:12px;">❌</div>
+                            </div>
+                            <h1
+                                style="font-size:24px; font-weight:700; color:#3c4e8f; margin:0 0 18px 0; text-align:center;">
+                                Consulta Cancelada
+                            </h1>
+                            <p style="margin:10px 0; line-height:1.6; color:#22223b; text-align:center;">
+                                Olá, {{destinatarioNome}}!
+                            </p>
+                            <p style="margin:16px 0; line-height:1.6; color:#22223b;">
+                                Informamos que a seguinte consulta foi <strong>cancelada</strong>:
+                            </p>
+
+                            <!-- Card de informações da consulta -->
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0"
+                                style="background:#F5F4FF; border-radius:8px; margin:16px 0; border-left:4px solid #E74C3C;">
+                                <tr>
+                                    <td style="padding:16px;">
+                                        <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                                            <tr>
+                                                <td style="padding:8px 0; color:#22223b; font-size:14px;">
+                                                    <strong>📅 Data:</strong>
+                                                </td>
+                                                <td
+                                                    style="padding:8px 0; color:#22223b; font-size:14px; text-align:right;">
+                                                    {{data}}
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding:8px 0; color:#22223b; font-size:14px;">
+                                                    <strong>⏰ Horário:</strong>
+                                                </td>
+                                                <td
+                                                    style="padding:8px 0; color:#22223b; font-size:14px; text-align:right;">
+                                                    {{horario}}
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding:8px 0; color:#22223b; font-size:14px;">
+                                                    <strong>👨‍⚕️ Psicólogo:</strong>
+                                                </td>
+                                                <td
+                                                    style="padding:8px 0; color:#22223b; font-size:14px; text-align:right;">
+                                                    {{psicologoNome}}
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding:8px 0; color:#22223b; font-size:14px;">
+                                                    <strong>👤 Paciente:</strong>
+                                                </td>
+                                                <td
+                                                    style="padding:8px 0; color:#22223b; font-size:14px; text-align:right;">
+                                                    {{pacienteNome}}
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <!-- Motivo do cancelamento -->
+                            <p style="margin:16px 0 8px 0; line-height:1.6; color:#22223b;">
+                                <strong>📌 Motivo:</strong>
+                            </p>
+                            <p
+                                style="margin:8px 0 16px 0; line-height:1.6; color:#666; background:#F9F9F9; padding:12px; border-radius:6px; border-left:3px solid #E74C3C;">
+                                {{motivo}}
+                            </p>
+
+                            <!-- Próximos passos -->
+                            <p style="margin:16px 0 10px 0; line-height:1.6; color:#22223b; font-weight:700;">
+                                📞 O que fazer agora?
+                            </p>
+                            <ul style="margin:0 0 16px 20px; padding:0; color:#22223b; line-height:1.8;">
+                                <li style="margin:8px 0;">Se você deseja reagendar, entre em contato pelo WhatsApp</li>
+                                <li style="margin:8px 0;">Suas sessões restantes continuam disponíveis</li>
+                                <li style="margin:8px 0;">Você pode agendar uma nova consulta a qualquer momento</li>
+                            </ul>
+
+                            <!-- CTA Button -->
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:24px 0;">
+                                <tr>
+                                    <td align="center">
+                                        <a href="https://wa.me/55{{contato}}" target="_blank"
+                                            style="display:inline-block; background:#3c4e8f; color:#fff; text-decoration:none; padding:12px 28px; border-radius:6px; font-weight:700; font-size:14px;">
+                                            Falar com suporte
+                                        </a>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <p style="margin:16px 0 10px 0; line-height:1.6; color:#22223b; font-size:13px;">
+                                Este é um e-mail automático. Por favor, não responda.<br>
+                                Para mais informações, entre em contato via WhatsApp: <strong>{{contato}}</strong>
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+                <table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px; margin-top:24px;">
+                    <tr>
+                        <td align="center" style="padding:18px 0 6px 0; color:#4A4A4A; font-size:12px;">Siga-nos nas
+                            redes sociais:</td>
+                    </tr>
+                    <tr>
+                        <td align="center" style="padding:6px 0 24px 0;">
+                            <a href="https://www.facebook.com/estacaoterapia" target="_blank" style="margin:0 6px;"><img
+                                    src="cid:facebook.png" alt="Facebook" width="24" height="24" style="border:0;"></a>
+                            <a href="https://www.instagram.com/estacaoterapia" target="_blank"
+                                style="margin:0 6px;"><img src="cid:instagram.png" alt="Instagram" width="24"
+                                    height="24" style="border:0;"></a>
+                            <a href="https://www.linkedin.com/company/estacaoterapia" target="_blank"
+                                style="margin:0 6px;"><img src="cid:linkedin.png" alt="LinkedIn" width="24" height="24"
+                                    style="border:0;"></a>
+                            <a href="https://www.tiktok.com/@estacaoterapia" target="_blank" style="margin:0 6px;"><img
+                                    src="cid:tiktok.png" alt="TikTok" width="24" height="24" style="border:0;"></a>
+                            <a href="https://www.youtube.com/@estacaoterapia" target="_blank" style="margin:0 6px;"><img
+                                    src="cid:youtube.png" alt="YouTube" width="24" height="24" style="border:0;"></a>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td align="center" style="color:#6A6A6A; font-size:11px;">&copy; {{year}} Estação Terapia. Todos
+                            os direitos reservados.</td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+
+</html>

@@ -1,0 +1,1582 @@
+generator client {
+  provider        = "prisma-client"
+  output          = "../src/generated/prisma"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model FinanceiroPsicologo {
+  Id                  String                    @id @default(uuid())
+  UserId              String
+  Valor               Float
+  Status              FinanceiroPsicologoStatus
+  DataVencimento      DateTime
+  Tipo                String
+  CreatedAt           DateTime                  @default(now())
+  UpdatedAt           DateTime                  @updatedAt
+  Periodo             String?
+  ConsultasRealizadas Int?
+  DataPagamento       DateTime?
+  UrlDocumentoStorage String?
+  User                User                      @relation("UserFinanceiroPsicologo", fields: [UserId], references: [Id], onDelete: Cascade)
+  ReservaSessao       ReservaSessao[]           @relation("ReservaSessaoFinanceiroPsicologo")
+}
+
+model DraftSession {
+  CreatedAt      DateTime           @default(now())
+  Id             String             @id @default(uuid())
+  IdAgenda       String
+  PatientId      String?
+  PsychologistId String
+  Status         DraftSessionStatus
+  UpdatedAt      DateTime           @updatedAt
+}
+
+/// Usuário do sistema: Paciente, Psicólogo, Admin, etc.
+model User {
+  Id                          String                   @id @default(uuid())
+  Nome                        String
+  Email                       String                   @unique
+  Cpf                         String                   @unique
+  Crp                         String?                  @unique
+  GoogleId                    String?                  @unique
+  Telefone                    String
+  DataNascimento              DateTime?
+  Sexo                        Sexo?
+  TermsAccepted               Boolean                  @default(false)
+  PrivacyAccepted             Boolean                  @default(false)
+  Status                      UserStatus               @default(Ativo)
+  Password                    String
+  Role                        Role
+  IsOnboard                   Boolean                  @default(false)
+  ResetPasswordToken          String?
+  DataAprovacao               DateTime?
+  VindiCustomerId             String?                  @unique
+  Pronome                     Pronome?
+  PaymentToken                String?
+  PaymentProfileId            String?
+  SubscriptionId              String?
+  Rg                          String?
+  AssinaturaContrato          Boolean?                 @default(false)
+  twoFASecret                 String?
+  isTwoFAEnabled              Boolean                  @default(false)
+  backupCodes                 String?
+  LastLogin                   DateTime?                @default(now())
+  CreatedAt                   DateTime                 @default(now())
+  UpdatedAt                   DateTime                 @updatedAt
+  deletedAt                   DateTime?
+  ResetPasswordTokenExpiresAt DateTime?                @db.Timestamp(6)
+  MustChangePassword          Boolean                  @default(false)
+  RacaCor                     RacaCor?
+  WhatsApp                    String?
+  Address                     Address[]                @relation("UserAddress")
+  AdminActionLogs             AdminActionLog[]         @relation("UserAdminActionLog")
+  PatientAgendas              Agenda[]                 @relation("PacienteAgenda")
+  PsychologistAgendas         Agenda[]                 @relation("PsicologoAgenda")
+  AssinaturaPlanos            AssinaturaPlano[]        @relation("UserAssinaturaPlano")
+  BannersCreated              Banner[]                 @relation("BannerCreator")
+  BannersUpdated              Banner[]                 @relation("BannerUpdater")
+  BillingAddress              BillingAddress[]         @relation("UserBillingAddress")
+  CancelamentosPac            CancelamentoSessao[]     @relation("CancelamentoPaciente")
+  CiclosPlano                 CicloPlano[]             @relation("UserCicloPlano")
+  Commissions                 Commission[]             @relation("UserCommission")
+  ConsultaPacientes           Consulta[]               @relation("PacienteReservations")
+  ConsultaPsicologos          Consulta[]               @relation("PsicologoReservations")
+  ConsultaAvulsaPaciente      ConsultaAvulsa[]         @relation("ConsultaAvulsaPaciente")
+  ConsultaAvulsaPsicologo     ConsultaAvulsa[]         @relation("ConsultaAvulsaPsicologo")
+  ConsultaParticipacao        ConsultaParticipacao[]   @relation("UserConsultaParticipacao")
+  ControleConsultaMensal      ControleConsultaMensal[]
+  CreditosAvulsos             CreditoAvulso[]          @relation("UserCreditoAvulso")
+  Document                    Document[]               @relation("UserDocuments")
+  Document_fiscal             Document_fiscal[]        @relation("UserDocument_fiscal")
+  FavoritesGiven              Favorite[]               @relation("PatientFavorites")
+  FavoritesReceived           Favorite[]               @relation("PsychologistFavoritedBy")
+  FinanceiroEntries           Financeiro[]             @relation("UserFinanceiro")
+  FinanceiroPsicologoEntries  FinanceiroPsicologo[]    @relation("UserFinanceiroPsicologo")
+  FormularioSaqueAutonomo     FormularioSaqueAutonomo? @relation("UserFormularioSaqueAutonomo")
+  Images                      Image[]                  @relation("UserImage")
+  LoginLog                    LoginLog[]
+  NotificationStatus          NotificationStatus[]     @relation("UserNotificationStatus")
+  Onboardings                 Onboarding[]             @relation("UserOnboarding")
+  CreatedPasswordResets       PasswordReset[]          @relation("AdminPasswordReset")
+  PasswordResets              PasswordReset[]          @relation("UserPasswordReset")
+  PessoalJuridica             PessoalJuridica?
+  PlanoAssinaturasAdmin       PlanoAssinatura[]        @relation("PlanoAdmin")
+  ProfessionalProfiles        ProfessionalProfile[]    @relation("UserProfessionalProfile")
+  RefreshTokens               RefreshToken[]           @relation("UserRefreshToken")
+  ReviewsReceived             Review[]                 @relation("PsychologistReviews")
+  ReviewsMade                 Review[]                 @relation("UserReviews")
+  Solicitacoes                Solicitacoes[]
+  UserPermissions             UserPermission[]         @relation("UserPermissions")
+  WorkSchedules               WorkSchedule[]           @relation("UserWorkSchedule")
+  PlanoAssinaturas            PlanoAssinatura[]        @relation("UserPlanoAssinatura")
+  PolicyDocumentsCreated      PolicyDocument[]         @relation("PolicyDocumentCreatedBy")
+  PolicyDocumentsUpdated      PolicyDocument[]         @relation("PolicyDocumentUpdatedBy")
+
+  @@map("User")
+}
+
+/// Perfil profissional do psicólogo, incluindo formação, idiomas, atendimentos e especializações
+model ProfessionalProfile {
+  Id                 String                    @id @default(uuid())
+  UserId             String
+  TipoAtendimento    TipoAtendimento[]
+  ExperienciaClinica ExperienciaClinica?
+  Idiomas            Languages[]
+  SobreMim           String?
+  Abordagens         Abordagem[]
+  Queixas            Queixa[]
+  Status             ProfessionalProfileStatus @default(Incompleto)
+  CreatedAt          DateTime                  @default(now())
+  UpdatedAt          DateTime                  @updatedAt
+  AreasAtuacao       String?
+  TipoPessoaJuridico TipoPessoaJuridica?
+  DadosBancarios     DadosBancarios?           @relation("ProfessionalProfileDadosBancarios")
+  Formacoes          Formacao[]                @relation("ProfessionalProfileFormacoes")
+  User               User                      @relation("UserProfessionalProfile", fields: [UserId], references: [Id], onDelete: Cascade)
+  Documents          PsychologistDocument[]    @relation("ProfessionalProfileDocuments")
+}
+
+/// Documentos vinculados ao perfil profissional
+model PsychologistDocument {
+  Id                    String              @id @default(uuid())
+  ProfessionalProfileId String
+  Url                   String
+  Type                  String?
+  Description           String?
+  CreatedAt             DateTime            @default(now())
+  UpdatedAt             DateTime            @updatedAt
+  ProfessionalProfile   ProfessionalProfile @relation("ProfessionalProfileDocuments", fields: [ProfessionalProfileId], references: [Id], onDelete: Cascade)
+}
+
+/// Endereços do usuário (residenciais)
+model Address {
+  Id          String   @id @default(uuid())
+  UserId      String
+  Rua         String
+  Numero      String?
+  Complemento String?
+  Bairro      String
+  Cidade      String
+  Estado      String
+  Cep         String
+  CreatedAt   DateTime @default(now())
+  UpdatedAt   DateTime @updatedAt
+  User        User     @relation("UserAddress", fields: [UserId], references: [Id], onDelete: Cascade)
+}
+
+/// Endereços para cobrança
+model BillingAddress {
+  Id          String   @id @default(uuid())
+  UserId      String
+  Rua         String
+  Numero      String?
+  Complemento String?
+  Bairro      String
+  Cidade      String
+  Estado      String
+  Cep         String
+  CreatedAt   DateTime @default(now())
+  UpdatedAt   DateTime @updatedAt
+  User        User     @relation("UserBillingAddress", fields: [UserId], references: [Id], onDelete: Cascade)
+}
+
+/// Imagens vinculadas ao usuário (ex: avatar, fotos)
+model Image {
+  Id        String   @id @default(uuid())
+  UserId    String
+  Url       String
+  CreatedAt DateTime @default(now())
+  UpdatedAt DateTime @updatedAt
+  User      User     @relation("UserImage", fields: [UserId], references: [Id], onDelete: Cascade)
+}
+
+/// Avaliações feitas por pacientes para psicólogos
+model Review {
+  Id                 String   @id @default(uuid())
+  UserId             String?
+  PsicologoId        String
+  Rating             Int
+  Comentario         String?
+  Status             String   @default("Pendente")
+  MostrarNaHome      Boolean? @default(false)
+  MostrarNaPsicologo Boolean? @default(false)
+  CreatedAt          DateTime @default(now())
+  UpdatedAt          DateTime @updatedAt
+  Psicologo          User     @relation("PsychologistReviews", fields: [PsicologoId], references: [Id], onDelete: Cascade)
+  User               User?    @relation("UserReviews", fields: [UserId], references: [Id], onDelete: Cascade)
+}
+
+/// Agenda de horários para consultas (disponibilidade, reservas)
+model Agenda {
+  Id          String       @id @default(uuid())
+  Data        DateTime
+  Horario     String
+  DiaDaSemana String
+  Status      AgendaStatus @default(Disponivel)
+  PsicologoId String
+  PacienteId  String?
+  CreatedAt   DateTime     @default(now())
+  UpdatedAt   DateTime     @updatedAt
+  Paciente    User?        @relation("PacienteAgenda", fields: [PacienteId], references: [Id], onDelete: Cascade)
+  Psicologo   User         @relation("PsicologoAgenda", fields: [PsicologoId], references: [Id], onDelete: Cascade)
+  Consultas   Consulta[]   @relation("AgendaConsulta")
+}
+
+/// Token para refresh de sessão
+model RefreshToken {
+  Id        String    @id @default(uuid())
+  UserId    String
+  Token     String    @unique
+  ExpiresAt DateTime
+  Status    String    @default("ACTIVE")
+  RevokedAt DateTime?
+  CreatedAt DateTime  @default(now())
+  UpdatedAt DateTime  @updatedAt
+  User      User      @relation("UserRefreshToken", fields: [UserId], references: [Id], onDelete: Cascade)
+}
+
+/// Horário de trabalho e pausas do psicólogo
+model WorkSchedule {
+  Id            String   @id @default(uuid())
+  UserId        String
+  DiaDaSemana   String
+  HorarioInicio String
+  HorarioFim    String
+  Status        String   @default("available")
+  Breaks        Json?
+  CreatedAt     DateTime @default(now())
+  UpdatedAt     DateTime @updatedAt
+  User          User     @relation("UserWorkSchedule", fields: [UserId], references: [Id], onDelete: Cascade)
+}
+
+/// Favoritos entre paciente e psicólogo
+model Favorite {
+  Id             String   @id @default(uuid())
+  PatientId      String
+  PsychologistId String
+  CreatedAt      DateTime @default(now())
+  Patient        User     @relation("PatientFavorites", fields: [PatientId], references: [Id], onDelete: Cascade)
+  Psychologist   User     @relation("PsychologistFavoritedBy", fields: [PsychologistId], references: [Id], onDelete: Cascade)
+}
+
+/// Planos de assinatura disponíveis
+model PlanoAssinatura {
+  Id          String            @id @default(uuid())
+  Nome        String
+  Descricao   Json?
+  Preco       Float
+  Duracao     Int
+  Tipo        String
+  Status      String            @default("ativo")
+  Destaque    Boolean?
+  AdminId     String?
+  VindiPlanId String?           @unique
+  ProductId   String?
+  CreatedAt   DateTime          @default(now())
+  UpdatedAt   DateTime          @updatedAt
+  Assinaturas AssinaturaPlano[]
+  Financeiros Financeiro[]
+  Admin       User?             @relation("PlanoAdmin", fields: [AdminId], references: [Id])
+  Users       User[]            @relation("UserPlanoAssinatura")
+}
+
+/// Modelo para assinatura de planos por usuários
+/// Representa o plano contratado que permanece fixo (não muda na renovação)
+model AssinaturaPlano {
+  Id                     String                   @id @default(uuid())
+  UserId                 String
+  PlanoAssinaturaId      String
+  DataInicio             DateTime
+  DataFim                DateTime?
+  Status                 PlanoCompraStatus
+  CreatedAt              DateTime                 @default(now())
+  UpdatedAt              DateTime                 @updatedAt
+  VindiSubscriptionId    String?                  @unique
+  PlanoAssinatura        PlanoAssinatura          @relation(fields: [PlanoAssinaturaId], references: [Id], onDelete: Cascade)
+  User                   User                     @relation("UserAssinaturaPlano", fields: [UserId], references: [Id], onDelete: Cascade)
+  Ciclos                 CicloPlano[]             @relation("AssinaturaPlanoCiclos")
+  ControleConsultaMensal ControleConsultaMensal[] @relation("AssinaturaPlanoControleConsultaMensal")
+  Financeiro             Financeiro[]             @relation("AssinaturaPlanoFinanceiro")
+}
+
+/// Modelo para ciclos de renovação (Sprints)
+/// Cada renovação cria um novo ciclo com suas próprias datas, consultas e financeiro
+model CicloPlano {
+  Id                     String                   @id @default(uuid())
+  AssinaturaPlanoId      String
+  UserId                 String
+  CicloInicio            DateTime
+  CicloFim               DateTime
+  Status                 String                   @default("Ativo")
+  ConsultasDisponiveis   Int                      @default(4)
+  ConsultasUsadas        Int                      @default(0)
+  CreatedAt              DateTime                 @default(now())
+  UpdatedAt              DateTime                 @updatedAt
+  AssinaturaPlano        AssinaturaPlano          @relation("AssinaturaPlanoCiclos", fields: [AssinaturaPlanoId], references: [Id], onDelete: Cascade)
+  User                   User                     @relation("UserCicloPlano", fields: [UserId], references: [Id], onDelete: Cascade)
+  Consultas              Consulta[]               @relation("CicloPlanoConsulta")
+  ControleConsultaMensal ControleConsultaMensal[] @relation("CicloPlanoControleConsultaMensal")
+  Financeiro             Financeiro?              @relation("CicloPlanoFinanceiro")
+
+  @@index([AssinaturaPlanoId])
+  @@index([UserId])
+  @@index([CicloInicio, CicloFim])
+}
+
+/// Consulta agendada ou reservada
+/// Status normalizado: Agendada, EmAndamento, Realizada, PacienteNaoCompareceu, 
+/// PsicologoNaoCompareceu, Cancelada*, Reagendada*
+model Consulta {
+  Id                   String                 @id @default(uuid())
+  Date                 DateTime
+  Time                 String
+  GoogleEventId        String?
+  PacienteId           String?
+  PsicologoId          String?
+  AgendaId             String?
+  Valor                Float?
+  CreatedAt            DateTime               @default(now())
+  UpdatedAt            DateTime               @updatedAt
+  CicloPlanoId         String?
+  Status               ConsultaStatus         @default(Reservado)
+  /// Indica se a consulta foi faturada para o psicólogo (repasse)
+  Faturada             Boolean                @default(false)
+  /// Origem do status: Sistêmico, Psicólogo, Admin, Paciente, Management
+  OrigemStatus         String?
+  /// Tipo de gatilho: Home - Módulo Agendamento, Sessão, etc
+  TelaGatilho          String?
+  /// Ação de saldo: Não altera, Devolve sessão
+  AcaoSaldo            String                 @default("Nao altera")
+  Cancelamentos        CancelamentoSessao[]   @relation("ConsultaCancelamento")
+  Commission           Commission[]
+  Agenda               Agenda?                @relation("AgendaConsulta", fields: [AgendaId], references: [Id])
+  CicloPlano           CicloPlano?            @relation("CicloPlanoConsulta", fields: [CicloPlanoId], references: [Id])
+  Paciente             User?                  @relation("PacienteReservations", fields: [PacienteId], references: [Id], onDelete: Cascade)
+  Psicologo            User?                  @relation("PsicologoReservations", fields: [PsicologoId], references: [Id], onDelete: Cascade)
+  ConsultaParticipacao ConsultaParticipacao[] @relation("ConsultaParticipacaoConsulta")
+  ReservaSessao        ReservaSessao?         @relation("ConsultaToReservaSessao")
+
+  @@index([CicloPlanoId])
+}
+
+/// Controle financeiro para planos, consultas, pagamentos e faturas
+model Financeiro {
+  Id                String                   @id @default(uuid())
+  UserId            String
+  PlanoAssinaturaId String?
+  Valor             Float
+  DataVencimento    DateTime
+  Status            ControleFinanceiroStatus
+  FaturaId          String?                  @unique
+  Tipo              TipoFatura
+  CreatedAt         DateTime                 @default(now())
+  UpdatedAt         DateTime                 @updatedAt
+  CicloPlanoId      String?                  @unique
+  CicloPlano        CicloPlano?              @relation("CicloPlanoFinanceiro", fields: [CicloPlanoId], references: [Id])
+  Fatura            Fatura?                  @relation("FaturaFinanceiro", fields: [FaturaId], references: [Id], onDelete: Cascade)
+  PlanoAssinatura   PlanoAssinatura?         @relation(fields: [PlanoAssinaturaId], references: [Id])
+  User              User                     @relation("UserFinanceiro", fields: [UserId], references: [Id], onDelete: Cascade)
+  AssinaturaPlano   AssinaturaPlano[]        @relation("AssinaturaPlanoFinanceiro")
+
+  @@index([CicloPlanoId])
+  @@index([FaturaId, Status])
+  @@index([Status])
+}
+
+/// Faturas para cobrança e controle de pagamento
+model Fatura {
+  Id             String       @id @default(uuid())
+  CodigoFatura   String?      @unique
+  Valor          Float
+  Status         FaturaStatus
+  DataEmissao    DateTime     @default(now())
+  DataVencimento DateTime     @default(dbgenerated("(now() + '30 days'::interval)"))
+  Tipo           TipoFatura
+  CustomerId     String?
+  UserId         String?
+  CreatedAt      DateTime     @default(now())
+  UpdatedAt      DateTime     @updatedAt
+  Financeiros    Financeiro?  @relation("FaturaFinanceiro")
+
+  @@index([CodigoFatura, Status])
+  @@index([Status])
+}
+
+/// Seed para consultas avulsas
+model ConsultaAvulsa {
+  Id           String               @id @default(uuid())
+  PacienteId   String
+  PsicologoId  String?
+  Status       ConsultaAvulsaStatus
+  DataCriacao  DateTime             @default(now())
+  Quantidade   Int                  @default(1)
+  Tipo         TipoFatura?
+  CodigoFatura String?              @unique
+  Paciente     User                 @relation("ConsultaAvulsaPaciente", fields: [PacienteId], references: [Id], onDelete: Cascade)
+  Psicologo    User?                @relation("ConsultaAvulsaPsicologo", fields: [PsicologoId], references: [Id], onDelete: Cascade)
+}
+
+/// Logs de ações Administrativas para auditoria
+model AdminActionLog {
+  Id          String     @id @default(uuid())
+  UserId      String
+  ActionType  ActionType
+  Module      Module
+  Description String
+  Timestamp   DateTime   @default(now())
+  IpAddress   String?
+  Status      String?    @default("Sucesso")
+  Metadata    String?
+  User        User       @relation("UserAdminActionLog", fields: [UserId], references: [Id], onDelete: Cascade)
+}
+
+/// Modelo para rastrear redefinições de senha
+model PasswordReset {
+  Id            String    @id @default(uuid())
+  UserId        String
+  TokenHash     String
+  ExpiresAt     DateTime
+  UsedAt        DateTime?
+  CreatedAt     DateTime  @default(now())
+  CreatedBy     String
+  CreatedByUser User      @relation("AdminPasswordReset", fields: [CreatedBy], references: [Id], onDelete: Cascade)
+  User          User      @relation("UserPasswordReset", fields: [UserId], references: [Id], onDelete: Cascade)
+}
+
+/// Modelo para formações acadêmicas
+model Formacao {
+  Id                    String              @id @default(uuid())
+  ProfessionalProfileId String
+  TipoFormacao          TipoFormacao
+  Instituicao           String
+  Curso                 String
+  DataInicio            String
+  DataConclusao         String?
+  Status                String              @default("Em Andamento")
+  CreatedAt             DateTime            @default(now())
+  UpdatedAt             DateTime            @updatedAt
+  ProfessionalProfile   ProfessionalProfile @relation("ProfessionalProfileFormacoes", fields: [ProfessionalProfileId], references: [Id], onDelete: Cascade)
+}
+
+/// Modelo para notificações do usuário
+model Notification {
+  Id                 String               @id @default(uuid())
+  Title              String
+  Message            String
+  Type               String?              @default("info")
+  IsForAllUsers      Boolean              @default(false)
+  NotificationStatus NotificationStatus[]
+}
+
+model NotificationStatus {
+  Id             String       @id @default(uuid())
+  UserId         String
+  Status         String       @default("unread")
+  Tipo           String?
+  NotificationId String
+  ReadAt         DateTime?
+  CreatedAt      DateTime     @default(now())
+  UpdatedAt      DateTime     @updatedAt
+  Notification   Notification @relation(fields: [NotificationId], references: [Id])
+  User           User         @relation("UserNotificationStatus", fields: [UserId], references: [Id], onDelete: Cascade)
+}
+
+/// Modelo para onboarding do usuário
+model Onboarding {
+  Id        String   @id @default(uuid())
+  UserId    String
+  Step      String
+  Completed Boolean  @default(false)
+  CreatedAt DateTime @default(now())
+  UpdatedAt DateTime @updatedAt
+  User      User     @relation("UserOnboarding", fields: [UserId], references: [Id], onDelete: Cascade)
+}
+
+model CancelamentoSessao {
+  Id          String                   @id @default(uuid())
+  SessaoId    String
+  AutorId     String
+  Motivo      String
+  Protocolo   String                   @unique
+  Tipo        AutorTipoCancelamento
+  Data        DateTime                 @default(now())
+  PacienteId  String
+  PsicologoId String
+  Horario     String
+  LinkDock    String?
+  Status      CancelamentoSessaoStatus
+  Autor       User                     @relation("CancelamentoPaciente", fields: [AutorId], references: [Id], onDelete: Cascade, map: "CancelamentoSessao_AutorId_CancelamentoPaciente_fkey")
+  Sessao      Consulta                 @relation("ConsultaCancelamento", fields: [SessaoId], references: [Id], onDelete: Cascade)
+  Documents   Document[]               @relation("CancelamentoDocument")
+}
+
+/// Modelo para créditos avulsos do usuário
+model CreditoAvulso {
+  Id           String               @id @default(uuid())
+  UserId       String
+  Valor        Float
+  Status       ConsultaAvulsaStatus
+  Data         DateTime             @default(now())
+  ValidUntil   DateTime?
+  Quantidade   Int                  @default(1)
+  CodigoFatura String?
+  Tipo         TipoFatura?
+  User         User                 @relation("UserCreditoAvulso", fields: [UserId], references: [Id], onDelete: Cascade)
+}
+
+/// Modelo para comissões do usuário
+model Commission {
+  Id          String              @id @default(uuid())
+  PsicologoId String
+  PacienteId  String?
+  Valor       Float
+  TipoPlano   CommissionTipoPlano
+  Status      CommissionStatus    @default(pendente)
+  Type        String?
+  ConsultaId  String?
+  Periodo     String?
+  CreatedAt   DateTime            @default(now())
+  UpdatedAt   DateTime            @updatedAt
+  Consulta    Consulta?           @relation(fields: [ConsultaId], references: [Id])
+  Psicologo   User                @relation("UserCommission", fields: [PsicologoId], references: [Id], onDelete: Cascade)
+}
+
+/// Modelo de permissões por ação, módulo e role
+model Permission {
+  Id              String           @id @default(uuid())
+  Role            Role
+  Module          Module
+  Action          ActionType
+  CreatedAt       DateTime         @default(now())
+  UpdatedAt       DateTime         @updatedAt
+  RolePermissions RolePermission[] @relation("RolePermissionToPermission")
+
+  @@unique([Role, Module, Action])
+}
+
+/// Permissões específicas para cada perfil (role)
+model RolePermission {
+  Id          String       @id @default(uuid())
+  Role        Role
+  CreatedAt   DateTime     @default(now())
+  UpdatedAt   DateTime     @updatedAt
+  Permissions Permission[] @relation("RolePermissionToPermission")
+}
+
+/// Permissões específicas por usuário (sobrescreve permissões do role)
+model UserPermission {
+  Id        String     @id @default(uuid())
+  UserId    String
+  Module    Module
+  Action    ActionType
+  Allowed   Boolean    @default(true)
+  CreatedAt DateTime   @default(now())
+  UpdatedAt DateTime   @updatedAt
+  User      User       @relation("UserPermissions", fields: [UserId], references: [Id], onDelete: Cascade)
+
+  @@unique([UserId, Module, Action])
+}
+
+model TarefasAgendadas {
+  id           String   @id @default(uuid())
+  consulta_id  String
+  dataExecucao DateTime
+  executada    Boolean  @default(false)
+}
+
+model ReservaSessao {
+  Id                     String                @id @default(uuid())
+  ScheduledAt            String?
+  PatientId              String?
+  PsychologistId         String?
+  PatientJoinedAt        DateTime?
+  PsychologistJoinedAt   DateTime?
+  Status                 AgendaStatus          @default(Reservado)
+  AgoraChannel           String?
+  ReservationId          String?
+  Uid                    Int?
+  ConsultaId             String                @unique
+  createdAt              DateTime              @default(now())
+  updatedAt              DateTime              @updatedAt
+  AgoraTokenPatient      String?
+  AgoraTokenPsychologist String?
+  AgendaId               String?
+  UidPsychologist        Int?
+  Consulta               Consulta              @relation("ConsultaToReservaSessao", fields: [ConsultaId], references: [Id], onDelete: Cascade)
+  FinanceiroPsicologo    FinanceiroPsicologo[] @relation("ReservaSessaoFinanceiroPsicologo")
+
+  @@index([ScheduledAt, Status])
+  @@index([Status])
+}
+
+model ControleConsultaMensal {
+  Id                   String                       @id @default(uuid())
+  UserId               String
+  AssinaturaPlanoId    String
+  MesReferencia        Int
+  AnoReferencia        Int
+  Status               ControleConsultaMensalStatus @default(Ativo)
+  Validade             DateTime                     @default(dbgenerated("(now() + '30 days'::interval)"))
+  ConsultasDisponiveis Int                          @default(4)
+  Used                 Int?                         @default(0)
+  Available            Int?                         @default(4)
+  CreatedAt            DateTime                     @default(now())
+  UpdatedAt            DateTime                     @updatedAt
+  CicloPlanoId         String?
+  AssinaturaPlano      AssinaturaPlano              @relation("AssinaturaPlanoControleConsultaMensal", fields: [AssinaturaPlanoId], references: [Id], onDelete: Cascade)
+  CicloPlano           CicloPlano?                  @relation("CicloPlanoControleConsultaMensal", fields: [CicloPlanoId], references: [Id])
+  User                 User                         @relation(fields: [UserId], references: [Id], onDelete: Cascade)
+
+  @@unique([UserId, AssinaturaPlanoId, MesReferencia, AnoReferencia])
+  @@index([CicloPlanoId])
+}
+
+model Transaction {
+  Id          String   @id @default(uuid())
+  VindiBillId Int
+  Amount      Float
+  Status      String
+  QrCode      String
+  QrCodeText  String
+  CustomerId  String
+  CreatedAt   DateTime @default(now())
+}
+
+model Job {
+  Id          String   @id @default(uuid())
+  Type        String
+  Payload     Json
+  Status      String   @default("pending")
+  RunAt       DateTime
+  Cron        String?
+  Attempts    Int      @default(0)
+  MaxAttempts Int      @default(3)
+  LastError   String?
+  CreatedAt   DateTime @default(now())
+  UpdatedAt   DateTime @updatedAt
+
+  @@index([Status, RunAt])
+  @@index([Type, Status])
+}
+
+model ConsultaParticipacao {
+  Id           String    @id @default(uuid())
+  ConsultaId   String
+  UserId       String
+  TipoUsuario  String
+  EntradaEm    DateTime?
+  SaidaEm      DateTime?
+  DuracaoEmMin Int?
+  Consulta     Consulta  @relation("ConsultaParticipacaoConsulta", fields: [ConsultaId], references: [Id], onDelete: Cascade)
+  User         User      @relation("UserConsultaParticipacao", fields: [UserId], references: [Id], onDelete: Cascade)
+}
+
+model Faq {
+  Id        String    @id @default(uuid())
+  Pergunta  String
+  Resposta  String
+  Status    FaqStatus @default(Ativo)
+  Tipo      FaqTipo
+  CreatedAt DateTime  @default(now())
+  UpdatedAt DateTime  @updatedAt
+}
+
+model Configuracao {
+  Id                             String   @id @default(uuid())
+  googleTagManager               String?
+  googleAnalytics                String?
+  googleAds                      String?
+  agoraAppId                     String?
+  agoraAppCertificate            String?
+  vindiApiKey                    String?
+  darkMode                       Boolean? @default(false)
+  idiomaPadrao                   String?  @default("pt-BR")
+  idiomasDisponiveis             String?
+  logoUrl                        String?
+  tituloSistema                  String?
+  fusoHorarioPadrao              String?  @default("America/Sao_Paulo")
+  duracaoConsultaMin             Int?     @default(50)
+  intervaloEntreConsultas        Int?     @default(10)
+  antecedenciaMinAgendamento     Int?     @default(1)
+  antecedenciaMaxAgendamento     Int?     @default(4320)
+  antecedenciaCancelamento       Int?     @default(24)
+  emitirNotaFiscal               Boolean? @default(false)
+  emailHost                      String?
+  emailPort                      Int?
+  emailUser                      String?
+  emailPassword                  String?
+  emailFrom                      String?
+  lembreteAntesConsulta          Int?     @default(60)
+  enviarNotificacaoSMS           Boolean? @default(false)
+  enviarNotificacaoPush          Boolean? @default(false)
+  politicaPrivacidadeUrl         String?
+  termosUsoUrl                   String?
+  consentimentoGravacao          Boolean? @default(false)
+  tempoRetencaoDadosMeses        Int?     @default(24)
+  anonimizarDadosInativos        Boolean? @default(true)
+  tempoExpiracaoSessaoMinutos    Int?     @default(60)
+  politicaSenhaMinCaracteres     Int?     @default(8)
+  exigir2FA                      Boolean? @default(false)
+  bloqueioTentativasFalhas       Int?     @default(5)
+  CreatedAt                      DateTime @default(now())
+  UpdatedAt                      DateTime @updatedAt
+  horarioGeracaoAutomaticaAgenda String?
+  percentualRepasseJuridico      Float?   @default(40.0)
+  percentualRepasseAutonomo      Float?   @default(32.0)
+  manutencao                     Boolean? @default(false)
+}
+
+model RedesSociais {
+  Id        String   @id @default(uuid())
+  Facebook  String?
+  Instagram String?
+  Linkedin  String?
+  X         String?
+  Tiktok    String?
+  Youtube   String?
+  CreatedAt DateTime @default(now())
+  UpdatedAt DateTime @updatedAt
+}
+
+model PessoalJuridica {
+  Id                String           @id @default(uuid())
+  CNPJ              String           @unique
+  PsicologoId       String           @unique
+  RazaoSocial       String
+  NomeFantasia      String?
+  InscricaoEstadual String?
+  SimplesNacional   Boolean?         @default(false)
+  CreatedAt         DateTime         @default(now())
+  UpdatedAt         DateTime         @updatedAt
+  DescricaoExtenso  String?
+  DadosBancarios    DadosBancarios?
+  EnderecoEmpresa   EnderecoEmpresa?
+  Psicologo         User             @relation(fields: [PsicologoId], references: [Id], onDelete: Cascade)
+}
+
+model DadosBancarios {
+  Id                  String               @id @default(uuid())
+  PessoalJuridicaId   String?              @unique
+  CreatedAt           DateTime             @default(now())
+  UpdatedAt           DateTime             @updatedAt
+  ChavePix            String
+  PsicologoAutonomoId String?              @unique
+  PessoalJuridica     PessoalJuridica?     @relation(fields: [PessoalJuridicaId], references: [Id], onDelete: Cascade)
+  ProfessionalProfile ProfessionalProfile? @relation("ProfessionalProfileDadosBancarios", fields: [PsicologoAutonomoId], references: [Id], onDelete: Cascade)
+
+  @@index([PessoalJuridicaId])
+  @@index([PsicologoAutonomoId])
+}
+
+/// Endereço da empresa (Pessoa Jurídica)
+model EnderecoEmpresa {
+  Id                String          @id @default(uuid())
+  PessoalJuridicaId String          @unique
+  Rua               String
+  Numero            String?
+  Complemento       String?
+  Bairro            String
+  Cidade            String
+  Estado            String
+  Cep               String
+  CreatedAt         DateTime        @default(now())
+  UpdatedAt         DateTime        @updatedAt
+  PessoalJuridica   PessoalJuridica @relation(fields: [PessoalJuridicaId], references: [Id], onDelete: Cascade)
+}
+
+model Document {
+  Id                   String              @id @default(uuid())
+  UserId               String
+  Url                  String
+  Type                 String?
+  Description          String?
+  DataHoraAceite       DateTime
+  IpNavegador          String
+  AssinaturaDigital    String?
+  CreatedAt            DateTime            @default(now())
+  UpdatedAt            DateTime            @updatedAt
+  CancelamentoSessaoId String?
+  SolicitacaoId        String?
+  CancelamentoSessao   CancelamentoSessao? @relation("CancelamentoDocument", fields: [CancelamentoSessaoId], references: [Id])
+  Solicitacao          Solicitacoes?       @relation(fields: [SolicitacaoId], references: [Id])
+  User                 User                @relation("UserDocuments", fields: [UserId], references: [Id], onDelete: Cascade)
+}
+
+/// Documento Fiscal para Solicitações (especialmente de Saque)
+model Document_fiscal {
+  Id            String       @id @default(uuid())
+  UserId        String
+  SolicitacaoId String
+  Url           String
+  NomeArquivo   String
+  TipoDocumento String
+  TamanhoByte   Int?
+  MimeType      String?
+  CreatedAt     DateTime     @default(now())
+  UpdatedAt     DateTime     @updatedAt
+  Solicitacao   Solicitacoes @relation("SolicitacaoDocument_fiscal", fields: [SolicitacaoId], references: [Id], onDelete: Cascade)
+  User          User         @relation("UserDocument_fiscal", fields: [UserId], references: [Id], onDelete: Cascade)
+
+  @@index([UserId])
+  @@index([SolicitacaoId])
+}
+
+model Solicitacoes {
+  Id               String            @id @default(uuid())
+  UserId           String
+  Title            String
+  Tipo             String
+  Status           String            @default("Pendente")
+  Protocol         String            @unique
+  Descricao        String?
+  Documentos       String?
+  Log              String?
+  SLA              Int?
+  CreatedAt        DateTime          @default(now())
+  UpdatedAt        DateTime          @updatedAt
+  Documents        Document[]
+  Documents_fiscal Document_fiscal[] @relation("SolicitacaoDocument_fiscal")
+  User             User              @relation(fields: [UserId], references: [Id], onDelete: Cascade)
+}
+
+/// Modelo de banners para carrossel/slider
+model Banner {
+  Id               String   @id @default(uuid())
+  Titulo           String?
+  Descricao        String?
+  UrlImagemDesktop String
+  UrlImagemMobile  String
+  LinkDestino      String?
+  Ordem            Int      @default(0)
+  Ativo            Boolean  @default(true)
+  CreatedAt        DateTime @default(now())
+  UpdatedAt        DateTime @updatedAt
+  CreatedBy        String
+  UpdatedBy        String?
+  AltTextDesktop   String?
+  AltTextMobile    String?
+  TitleSEO         String?
+  MetaDescription  String?
+  Creator          User     @relation("BannerCreator", fields: [CreatedBy], references: [Id])
+  Updater          User?    @relation("BannerUpdater", fields: [UpdatedBy], references: [Id])
+
+  @@index([Ativo])
+  @@index([Ordem])
+}
+
+model FormularioSaqueAutonomo {
+  Id                       String   @id @default(uuid())
+  PsicologoAutonomoId      String   @unique
+  NumeroRg                 String?
+  DataEmissaoRg            String?
+  OrgaoEmissor             String?
+  UfOrgaoEmissor           String?
+  DataNascimento           String?
+  Nacionalidade            String?
+  CidadeNascimentoPessoa   String?
+  EstadoNascimentoPessoa   String?
+  Sexo                     String?
+  Raca                     String?
+  EstadoCivil              String?
+  NomeConjuge              String?
+  RegimeBens               String?
+  PossuiDependente         String?
+  TipoDependente           String?
+  NomeDependente           String?
+  CpfDependente            String?
+  DataNascimentoDependente String?
+  CidadeNascimento         String?
+  EstadoNascimento         String?
+  PossuiDeficiencia        String?
+  ChavePix                 String?
+  Status                   Boolean  @default(false)
+  CreatedAt                DateTime @default(now())
+  UpdatedAt                DateTime @updatedAt
+  PsicologoAutonomo        User     @relation("UserFormularioSaqueAutonomo", fields: [PsicologoAutonomoId], references: [Id], onDelete: Cascade)
+}
+
+model LoginLog {
+  Id        String   @id @default(uuid())
+  UserId    String
+  Email     String?
+  Ip        String?
+  UserAgent String?
+  Success   Boolean
+  Message   String?
+  CreatedAt DateTime @default(now())
+  User      User     @relation(fields: [UserId], references: [Id], onDelete: Cascade)
+}
+
+model WebhookEvent {
+  id            String        @id @default(cuid())
+  provider      String
+  eventType     String
+  payload       Json
+  status        WebhookStatus @default(PENDING)
+  attempts      Int           @default(0)
+  lastAttemptAt DateTime?
+  createdAt     DateTime      @default(now())
+  processedAt   DateTime?
+}
+
+model PaymentAudit {
+  id        String   @id @default(cuid())
+  eventType String
+  userId    String?
+  paymentId String?
+  status    String
+  message   String?
+  cardLast4 String?
+  amount    Float?
+  metadata  Json?
+  createdAt DateTime @default(now())
+}
+
+enum CommissionStatus {
+  pendente
+  disponivel
+  retido
+  pago
+}
+
+enum FinanceiroPsicologoStatus {
+  pendente
+  processando
+  aprovado
+  cancelado
+  retido
+  pago
+  PagamentoEmAnalise
+}
+
+enum CommissionTipoPlano {
+  mensal
+  trimestral
+  semestral
+  avulsa
+}
+
+enum DraftSessionStatus {
+  draft
+  auth_done
+  awaiting_plan
+  paid
+  completed
+  expired
+}
+
+/// ENUMS
+enum ControleConsultaStatus {
+  Ativo
+  Inativo
+  Completed
+}
+
+enum PlanoCompraStatus {
+  AguardandoPagamento
+  Ativo
+  Expirado
+  Cancelado
+}
+
+enum TipoCobranca {
+  Mensal
+  Trimestral
+  Semestral
+  Anual
+  Avulso
+  Multa
+  Primeira
+}
+
+enum ControleFinanceiroStatus {
+  AguardandoPagamento
+  Cancelado
+  EmMonitoramento
+  Reprovado
+  Aprovado
+  EmDisputa
+  Chargeback
+  Multa
+}
+
+enum Sexo {
+  Masculino
+  Feminino
+  NaoBinario
+  PrefiroNaoDeclarar
+}
+
+enum RacaCor {
+  Branca
+  Preta
+  Parda
+  Amarela
+  Indigena
+  PrefiroNaoInformar
+}
+
+enum UserStatus {
+  Ativo
+  Inativo
+  Bloqueado
+  Pendente
+  Deletado
+  EmAnalise
+  EmAnaliseContrato
+}
+
+enum Role {
+  Admin
+  Patient
+  Psychologist
+  Management
+  Finance
+}
+
+enum ActionType {
+  Read
+  Create
+  Update
+  Delete
+  Manage
+  Approve
+}
+
+enum Module {
+  Users
+  Reports
+  Plans
+  Payments
+  Sessions
+  Profiles
+  Evaluations
+  Onboarding
+  Finance
+  Agenda
+  Notifications
+  Promotions
+  SystemSettings
+  Psychologists
+  Clients
+  Contracts
+  Reviews
+  Cancelamentos
+  WorkSchedule
+  RedesSociais
+  Faq
+  Configuracoes
+  Permission
+  PolicyDocuments
+}
+
+enum TipoPessoaJuridica {
+  PjAutonomo
+  Ei
+  Mei
+  SociedadeLtda
+  Eireli
+  Slu
+  Outro
+  Autonomo
+  Juridico
+}
+
+enum Languages {
+  Portugues
+  Ingles
+  Espanhol
+  Frances
+  Alemao
+  Italiano
+  Japones
+  Chines
+  Arabe
+  Libras
+  Outro
+}
+
+enum TipoAtendimento {
+  Idoso
+  Adultos
+  Casais
+  Adolescentes
+  Criancas
+  Grupo
+  Familia
+}
+
+enum TipoFormacao {
+  Curso
+  Graduacao
+  PosGraduacao
+  Mestrado
+  Doutorado
+  PosDoutorado
+  Residencia
+  Especializacao
+  CursoLivre
+  Certificacao
+  Outro
+  Bacharelado
+}
+
+enum Recorrencia {
+  Mensal
+  Trimestral
+  Semestral
+}
+
+enum AutorTipoCancelamento {
+  Paciente
+  Psicologo
+  Admin
+  Management
+  Sistema
+}
+
+enum AgendaStatus {
+  Disponivel
+  Indisponivel
+  Bloqueado
+  Reservado
+  Cancelado
+  Andamento
+  Concluido
+  Cancelled_by_patient
+  Cancelled_by_psychologist
+  Cancelled_no_show
+  Reagendada
+}
+
+enum ExperienciaClinica {
+  Nenhuma
+  Menos1Ano
+  Entre1_3Anos
+  Entre3_5Anos
+  Entre5_10Anos
+  Mais10Anos
+}
+
+enum Pronome {
+  EleDele
+  ElaDela
+  ElesDeles
+  ElasDelas
+  EluDelu
+  Outro
+  Dr
+  Dra
+  Psic
+  Prof
+  Mestre
+  Phd
+}
+
+enum Abordagem {
+  Acp
+  AnaliseBioenergetica
+  AnaliseComportamento
+  AnaliseExistencial
+  AnaliseTransacional
+  AssessoramentoAcademico
+  AvaliacaoPerfilProfissional
+  AvaliacaoNeuropsicologicaTriagem
+  AvaliacaoPsicologicaBariatrica
+  AvaliacaoPsicologicaClinicaTriagem
+  AvaliacaoEmissaoLaudoTriagem
+  CoachingCarreira
+  CoachingEmagrecimento
+  CoachingNegocios
+  CoachingVida
+  CoachingExecutivo
+  ConstrucionismoSocial
+  CorporalReichiana
+  CuidadosPaliativos
+  DaseinAnalyses
+  Esquizoanalise
+  EvolucaoEmocional
+  ExpressaoCratividade
+  FenomenologiaExistencial
+  GestaltTerapia
+  Hipnoterapia
+  Humanista
+  InterpretacaoSonhos
+  Logoterapia
+  Ludoterapia
+  Mindfulness
+  Neurociencias
+  Neuropsicopedagogia
+  OrientacaoEducadores
+  OrientacaoPais
+  OrientacaoProfissionalVocacional
+  PlanejamentoPsicopedagogico
+  PsicanaliseBion
+  PsicanaliseFreud
+  PsicanaliseKlein
+  PsicanaliseLacan
+  PsicanaliseWinnicott
+  Psicodinamica
+  Psicodrama
+  PsicologiaAnaliticaJunguiana
+  PsicologiaClinica
+  PsicologiaAtividade
+  PsicologiaEsporte
+  PsicologiaSelfKohut
+  PsicologiaEscolarEducacional
+  PsicologiaHistoricoCultural
+  PsicologiaOncologica
+  PsicologiaOrganizacionalTrabalho
+  PsicologiaTranspessoal
+  Psiconefrologia
+  Psicopedagogia
+  Psicossomatica
+  PsicossomaticaPsicanalitica
+  PsicoterapiaAnaliticaFuncionalFap
+  PsicoterapiaBreve
+  PsicoterapiaSexual
+  TeoriaApego
+  TerapiaAfirmativa
+  TerapiaBaseadaMindfulnessTbm
+  TerapiaCognitivaComportamentalTcc
+  TerapiaCognitivaComportamentalBaseadaProcessos
+  TerapiaCognitivaProcessualTcp
+  TerapiaComportamentalDialeticaDbt
+  TerapiaAceitacaoCompromissoAct
+  TerapiaAtivacaoComportamental
+  TerapiaCasal
+  TerapiaExposicaoPrevencaoRespostaFobiasTpr
+  TerapiaExposicaoPrevencaoRespostaTocTpr
+  TerapiaReversaoHabitosTrh
+  TerapiaEsquemaJeffreyYoungTe
+  TerapiaLuto
+  TerapiaEmdr
+  TerapiaFamiliar
+  TerapiaFocadaCompaixaoTfc
+  TerapiaFocadaEmocoesTfe
+  TerapiaFocadaEsquemaEmocional
+  TerapiaNarrativa
+  TerapiaSexual
+  TerapiaSistemica
+  Transpessoal
+}
+
+enum Queixa {
+  Abandono
+  AdopcaoFilhos
+  Agorafobia
+  Agressividade
+  AlteracaoHumor
+  Angustia
+  AnorexiaNervosa
+  Ansiedade
+  AnsiedadeDoenca
+  AnsiedadeSocial
+  AssedioMoral
+  Autocritismo
+  Autolesao
+  Automutilacao
+  BabyBlues
+  BaixaAutoconfianca
+  BaixaAutoeficacia
+  BaixaAutoestima
+  BaixoDesenvolvimentoPessoal
+  BloqueioCritico
+  Borderline
+  BulimiaNervosa
+  BullyingImportunacao
+  BuscaAprovacaoExcessiva
+  DiagnosticoCancer
+  DiagnosticoDoencaTerminal
+  Ciumes
+  Claustofobia
+  Cleptomania
+  CompulsaoAlimentar
+  CompulsoesRituais
+  ConflitosAmorosos
+  ConflitosAmorososFamiliares
+  ConflitosConjugais
+  ConflitosFamiliares
+  ConflitosLegais
+  DependenciaEmocional
+  DependenciaQuimica
+  Depressao
+  DepressaoPosParto
+  DesadaptacaoMudanca
+  DesafiosAdolescencia
+  Desanimo
+  DescontroleEmocional
+  Desmotivacao
+  SofrimentoGravidez
+  DificuldadeEmagrecimento
+  DificuldadeFocar
+  DificuldadeAprendizagem
+  DificuldadeFoco
+  DificuldadeLideranca
+  DificuldadesRelacionamentoFilhos
+  Discalculia
+  DisforiaGenero
+  DisforiaRejeicao
+  DisfuncaoErectil
+  DisfuncoesSexuais
+  Dislexia
+  DismorfismoCorporal
+  Distimia
+  DoencasCronicas
+  DorCronica
+  EjaculacaoPrecoce
+  Encoprese
+  Enurese
+  EsquecimentosFrequentes
+  Esquizofrenia
+  EstresseExcessivo
+  EstressePosTraumatico
+  ExplosoesRaiva
+  FaltaAssertividade
+  FaltaAutoconhecimento
+  FaltaDesejo
+  FaltaPrazer
+  FaltaPropositoVida
+  FobiaSocial
+  FobiasEspecificas
+  Hiperatividade
+  Hipocondria
+  HivAids
+  IdeacaoSuicida
+  IdososTerceiraIdade
+  Impaciencia
+  Impulsividade
+  Insonia
+  IntoleranciaReligiosa
+  LgbtqiapnIdentidadeGenero
+  LutoSuicidio
+  MedoMorte
+  MedoSolidao
+  MedoAviao
+  MedoDirigir
+  MedoExamesDoencas
+  MedoFalarPublico
+  MedoExacerbado
+  Menopausa
+  Mitomania
+  MorteLuto
+  Obesidade
+  Obsessoes
+  OrientacaoSexual
+  OuvirVerCoisas
+  Passividade
+  PensamentosIntrusivosPerturbadores
+  PensarDemais
+  Perfeccionismo
+  PessoasDeficienciaPcd
+  Piromania
+  PreconceitoLgbtqiapn
+  PreparacaoAposentadoria
+  ProblemasAprendizagem
+  ProblemasFinanceiros
+  Procrastinacao
+  Racismo
+  Raiva
+  ReabilitacaoNeuropsicologica
+  RelacionamentoConflitosAmorosos
+  RelacionamentoConflitosFamiliares
+  RelacionamentosAfetivos
+  RelacionamentosAmigos
+  Resiliencia
+  SaudeTrabalhador
+  SentimentoFracasso
+  SentirForaCorpo
+  SindromeBurnout
+  SofrimentoMudancaCarreira
+  SofrimentoTerceiraIdade
+  SupervisaoClinicaPsicologia
+  Tanatofobia
+  TdaTdah
+  Tdah
+  Tea
+  TimidezExcessiva
+  Toc
+  Traicao
+  TransicaoCarreiras
+  TranstornoBipolar
+  TranstornoAnsiedadeGeneralizada
+  TranstornoDeficitAtencaoHiperatividade
+  TranstornoEstressePosTraumatico
+  TranstornoPanico
+  TranstornoPersonalidade
+  TranstornoPersonalidadeAntissocial
+  TranstornoPersonalidadeBorderline
+  TranstornoPersonalidadeDependente
+  TranstornoPersonalidadeEsquizotipica
+  TranstornoPersonalidadeEvitativa
+  TranstornoPersonalidadeNarcisista
+  TranstornoEspectroAutista
+  TranstornoSono
+  TranstornoObsessivoCompulsivo
+  TranstornoPorUsoAlcool
+  TranstornosAlimentares
+  TraumasAbusos
+  TreinamentoEmpresarial
+  Tricotilomania
+  Trifofobia
+  Vaginismo
+  ViciosJogos
+  ViciosPornografia
+  ViciosTelas
+  ViolenciaDomestica
+  ViolenciaSexual
+  Xenofobia
+}
+
+enum ConsultaAvulsaStatus {
+  Ativa
+  Concluida
+  Cancelada
+  Expirada
+  Pendente
+  Reagendada
+}
+
+enum FaturaStatus {
+  Paid
+  Pending
+  Failed
+  Canceled
+}
+
+enum TipoFatura {
+  Plano
+  ConsultaAvulsa
+  PrimeiraConsulta
+  Multa
+  Upgrade
+  Downgrade
+}
+
+enum CancelamentoSessaoStatus {
+  EmAnalise
+  Deferido
+  Indeferido
+  Cancelado
+}
+
+/// Status de Consulta normalizado conforme regras de negócio
+/// Valores baseados em: Tabela de Status do Sistema (12/12/2025)
+/// Origem: Sistêmico, Psicólogo, Admin, Paciente, Management
+/// Ação de Saldo: Não altera, Devolve sessão
+/// Faturada (Repasse Psicólogo): Sim ou Não
+enum ConsultaStatus {
+  /// Agendada - Agenda criada, Psicólogo disponível, Paciente marcado
+  /// Origem: Sistêmico/Psicólogo/Admin | Saldo: Não altera | Faturada: Sim
+  Agendada
+  /// Em Andamento - Consulta iniciada, ambos conectados
+  /// Origem: Sistêmico | Saldo: Não altera | Faturada: Sim
+  EmAndamento
+  /// Realizada - Consulta completada normalmente
+  /// Origem: Sistêmico | Saldo: Não altera | Faturada: Sim
+  Realizada
+  /// Paciente Não Compareceu - Falta do paciente
+  /// Origem: Sistêmico | Saldo: Não devolve | Faturada: Sim
+  PacienteNaoCompareceu
+  /// Psicólogo Não Compareceu - Falta do psicólogo
+  /// Origem: Sistêmico | Saldo: Devolve sessão | Faturada: Não
+  PsicologoNaoCompareceu
+  /// Cancelada Paciente no Prazo - Paciente cancela com tempo
+  /// Origem: Paciente | Saldo: Devolve sessão | Faturada: Não
+  CanceladaPacienteNoPrazo
+  /// Cancelada Psicólogo no Prazo - Psicólogo cancela com tempo
+  /// Origem: Psicólogo | Saldo: Devolve sessão | Faturada: Não
+  CanceladaPsicologoNoPrazo
+  /// Reagendada Paciente no Prazo - Paciente reagenda com antecedência
+  /// Origem: Paciente | Saldo: Devolve sessão | Faturada: Não
+  ReagendadaPacienteNoPrazo
+  /// Reagendada Psicólogo no Prazo - Psicólogo reagenda com antecedência
+  /// Origem: Psicólogo | Saldo: Devolve sessão | Faturada: Não
+  ReagendadaPsicologoNoPrazo
+  /// Cancelada Paciente Fora do Prazo - Paciente cancela fora da janela
+  /// Origem: Paciente | Saldo: Não devolve | Faturada: Sim
+  CanceladaPacienteForaDoPrazo
+  /// Cancelada Psicólogo Fora do Prazo - Psicólogo cancela fora da janela (com análise)
+  /// Origem: Psicólogo | Saldo: Devolve sessão (sempre - a nota "abranda pena, se deferida" refere-se apenas à penalização do psicólogo) | Faturada: Sim/Não
+  CanceladaPsicologoForaDoPrazo
+  /// Cancelada por Força Maior - Cancelamento do sistema (após análise)
+  /// Origem: Sistêmico | Saldo: Devolve sessão (se deferida) | Faturada: Não
+  CanceladaForcaMaior
+  /// Cancelada Não Cumprimento Contratual Paciente - Paciente não cumpriu contrato
+  /// Origem: Psicólogo/Admin | Saldo: Não devolve (se deferida) | Faturada: Sim/Não
+  CanceladaNaoCumprimentoContratualPaciente
+  /// Reagendada Psicólogo Fora do Prazo - Psicólogo reagenda fora da janela
+  /// Origem: Psicólogo | Saldo: Devolve sessão | Faturada: Não
+  ReagendadaPsicologoForaDoPrazo
+  /// Cancelada Não Cumprimento Contratual Psicólogo - Psicólogo não cumpriu contrato
+  /// Origem: Paciente | Saldo: Devolve sessão (se deferida) | Faturada: Sim/Não
+  CanceladaNaoCumprimentoContratualPsicologo
+  /// Psicólogo Descredenciado - Psicólogo foi descredenciado
+  /// Origem: Admin/Gestão | Saldo: Devolve sessão | Faturada: Não
+  PsicologoDescredenciado
+  /// Cancelado Administrador - Cancelado por administrador
+  /// Origem: Admin/Gestão | Saldo: Devolve sessão | Faturada: Não
+  CanceladoAdministrador
+  /// Reservado - Consulta marcada (status legado/compatibilidade)
+  /// Nota: Preferir usar Agendada para novos fluxos
+  Reservado
+  /// Cancelado - Status genérico (legado, usar estados específicos)
+  Cancelado
+}
+
+enum ControleConsultaMensalStatus {
+  AguardandoPagamento
+  Ativo
+  Inativo
+  Expirado
+  Cancelado
+  Completo
+  Reagendada
+}
+
+enum FaqStatus {
+  Ativo
+  Inativo
+}
+
+enum FaqTipo {
+  Paciente
+  Psicologo
+}
+
+enum ProfessionalProfileStatus {
+  Preenchido
+  Incompleto
+}
+
+enum WebhookStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+/// Documentos de Políticas e Termos
+model PolicyDocument {
+  Id          String   @id @default(uuid())
+  Titulo      String
+  Descricao   String?
+  Url         String
+  Tipo        String   @default("pdf") // pdf, texto
+  PublicoPara String   @default("todos") // paciente, psicologo, todos
+  Ordem       Int      @default(0)
+  Ativo       Boolean  @default(true)
+  CreatedAt   DateTime @default(now())
+  UpdatedAt   DateTime @updatedAt
+  CreatedById String?
+  UpdatedById String?
+  CreatedBy   User?    @relation("PolicyDocumentCreatedBy", fields: [CreatedById], references: [Id])
+  UpdatedBy   User?    @relation("PolicyDocumentUpdatedBy", fields: [UpdatedById], references: [Id])
+
+  @@index([PublicoPara])
+  @@index([Ativo])
+  @@map("PolicyDocument")
+}

@@ -1,0 +1,61 @@
+<!-- Card -->
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600"
+    style="max-width:600px; background:#FFFFFF; border:none; border-radius:16px; box-shadow: 0 4px 24px rgba(109, 117, 192, 0.12), 0 1px 3px rgba(0, 0, 0, 0.08);">
+    <tr>
+        <td style="padding:40px 36px;">
+            <h1 style="font-size:28px; font-weight:700; color:#1F1F2E; margin:0 0 28px 0; font-family: 'Fira Sans', Arial, Helvetica, sans-serif; letter-spacing:-0.5px; line-height:36px;">
+                Parabéns! Um cliente agendou consulta com você
+            </h1>
+
+            <p style="margin:0 0 20px 0; font-size:16px; line-height:26px; color:#2A2A2A; font-family: 'Fira Sans', Arial, Helvetica, sans-serif; font-weight:400;">
+                Olá, <strong style="color:#6D75C0; font-weight:600;">{{primeiro_nome}}</strong>,
+            </p>
+
+            <p style="margin:0 0 28px 0; font-size:16px; line-height:26px; color:#4A4A4A; font-family: 'Fira Sans', Arial, Helvetica, sans-serif;">
+                Você tem um novo agendamento de paciente. Aqui estão os detalhes:
+            </p>
+
+            <div style="background:linear-gradient(135deg, #F5F7FA 0%, #EDEBFF 100%); border-left:4px solid #8C8CF7; padding:20px; margin:0 0 28px 0; border-radius:8px; box-shadow: 0 2px 8px rgba(109, 117, 192, 0.1);">
+                <p style="margin:0 0 10px 0; font-size:14px; line-height:22px; color:#2A2A2A; font-family: 'Fira Sans', Arial, Helvetica, sans-serif;">
+                    <strong style="color:#6D75C0; font-weight:600;">Nome:</strong> <span style="color:#4A4A4A;">{{nome_paciente}}</span>
+                </p>
+
+                <p style="margin:0 0 10px 0; font-size:14px; line-height:22px; color:#2A2A2A; font-family: 'Fira Sans', Arial, Helvetica, sans-serif;">
+                    <strong style="color:#6D75C0; font-weight:600;">E-mail:</strong> <span style="color:#4A4A4A;">{{email_paciente}}</span>
+                </p>
+
+                <p style="margin:0 0 10px 0; font-size:14px; line-height:22px; color:#2A2A2A; font-family: 'Fira Sans', Arial, Helvetica, sans-serif;">
+                    <strong style="color:#6D75C0; font-weight:600;">Data:</strong> <span style="color:#4A4A4A;">{{data_sessao}}</span>
+                </p>
+
+                <p style="margin:0; font-size:14px; line-height:22px; color:#2A2A2A; font-family: 'Fira Sans', Arial, Helvetica, sans-serif;">
+                    <strong style="color:#6D75C0; font-weight:600;">Horário:</strong> <span style="color:#4A4A4A;">{{horario_sessao}}</span>
+                </p>
+            </div>
+
+            <p style="margin:0 0 32px 0; font-size:16px; line-height:26px; color:#4A4A4A; font-family: 'Fira Sans', Arial, Helvetica, sans-serif;">
+                No dia da sessão, entre em seu perfil ESTAÇÃO TERAPIA e tenha uma excelente consulta 💜
+            </p>
+
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center"
+                style="margin:0 0 32px 0;">
+                <tr>
+                    <td align="center" style="background:linear-gradient(135deg, #8C8CF7 0%, #6D75C0 100%); border-radius:10px; box-shadow: 0 4px 12px rgba(140, 140, 247, 0.3);">
+                        <a href="{{dashboardUrl}}"
+                            style="display:inline-block; padding:16px 32px; font-size:16px; color:#FFFFFF; text-decoration:none; font-weight:600; border-radius:10px; font-family: 'Fira Sans', Arial, Helvetica, sans-serif; letter-spacing:0.3px;">
+                            Acessar Plataforma
+                        </a>
+                    </td>
+                </tr>
+            </table>
+
+            <p style="clear:both; margin:32px 0 0 0; font-size:14px; line-height:22px; color:#6A6A6A; font-family: 'Fira Sans', Arial, Helvetica, sans-serif;">
+                Por favor, não responda a esse e-mail. Caso precise de ajuda, entre em contato através de:
+            </p>
+
+            <p style="margin:8px 0 0 0; font-size:14px; line-height:22px; color:#6A6A6A; font-family: 'Fira Sans', Arial, Helvetica, sans-serif;">
+                <a href="mailto:support@estacaoterapia.com.br" style="color:#8C8CF7; text-decoration:none; font-weight:500;">support@estacaoterapia.com.br</a>
+            </p>
+        </td>
+    </tr>
+</table>

@@ -1,0 +1,121 @@
+'use server';
+
+import { cookies } from 'next/headers';
+import { User } from '@/store/authStore';
+
+// Configuração dos cookies (para dados de usuário salvos pelo Next.js)
+const COOKIE_OPTIONS = {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax' as const,
+    path: '/',
+};
+
+const USER_COOKIE_NAME = 'user-data';
+const ONBOARDING_COOKIE_NAME = 'onboarding-data';
+const USER_COOKIE_MAX_AGE = 60 * 60 * 24 * 7; // 7 dias
+
+/**
+ * Define o cookie do usuário no servidor (apenas dados do usuário, NÃO tokens)
+ * Os tokens de autenticação (token, refreshToken, role) são setados pelo BACKEND
+ */
+export async function setUserCookie(user: User | null) {
+    console.log('[setUserCookie] Salvando dados do usuário...', { hasUser: !!user, userId: user?.Id });
+    const cookieStore = await cookies();
+
+    if (user) {
+        const userJson = JSON.stringify(user);
+        cookieStore.set(USER_COOKIE_NAME, userJson, {
+            ...COOKIE_OPTIONS,
+            maxAge: USER_COOKIE_MAX_AGE,
+        });
+        console.log('[setUserCookie] ✅ Cookie user-data salvo com sucesso');
+    } else {
+        cookieStore.delete(USER_COOKIE_NAME);
+    }
+}
+
+/**
+ * Obtém o cookie do usuário do servidor
+ */
+export async function getUserCookie(): Promise<User | null> {
+    const cookieStore = await cookies();
+    const userCookie = cookieStore.get(USER_COOKIE_NAME);
+
+    if (!userCookie?.value) {
+        return null;
+    }
+
+    try {
+        return JSON.parse(userCookie.value);
+    } catch {
+        return null;
+    }
+}
+
+/**
+ * Remove o cookie do usuário
+ */
+export async function removeUserCookie() {
+    const cookieStore = await cookies();
+    cookieStore.delete(USER_COOKIE_NAME);
+}
+
+/**
+ * Define o cookie de onboarding no servidor
+ */
+export async function setOnboardingCookie(onboarding: unknown | null) {
+    const cookieStore = await cookies();
+
+    if (onboarding) {
+        cookieStore.set(ONBOARDING_COOKIE_NAME, JSON.stringify(onboarding), {
+            ...COOKIE_OPTIONS,
+            maxAge: USER_COOKIE_MAX_AGE,
+        });
+    } else {
+        cookieStore.delete(ONBOARDING_COOKIE_NAME);
+    }
+}
+
+/**
+ * Obtém o cookie de onboarding do servidor
+ */
+export async function getOnboardingCookie(): Promise<unknown | null> {
+    const cookieStore = await cookies();
+    const onboardingCookie = cookieStore.get(ONBOARDING_COOKIE_NAME);
+
+    if (!onboardingCookie?.value) {
+        return null;
+    }
+
+    try {
+        return JSON.parse(onboardingCookie.value);
+    } catch {
+        return null;
+    }
+}
+
+/**
+ * Remove o cookie de onboarding
+ */
+export async function removeOnboardingCookie() {
+    const cookieStore = await cookies();
+    cookieStore.delete(ONBOARDING_COOKIE_NAME);
+}
+
+/**
+ * Limpa todos os cookies de autenticação
+ * Os cookies HttpOnly (token, refreshToken, role) são limpos pelo BACKEND
+ * Aqui limpamos apenas os cookies do Next.js (user-data, onboarding-data)
+ */
+export async function clearAuthCookies() {
+    console.log('[clearAuthCookies] Limpando cookies do Next.js...');
+    const cookieStore = await cookies();
+
+    // Remove cookies da aplicação Next.js
+    cookieStore.delete(USER_COOKIE_NAME);
+    cookieStore.delete(ONBOARDING_COOKIE_NAME);
+
+    console.log('[clearAuthCookies] ✅ Cookies do Next.js limpos');
+    console.log('[clearAuthCookies] ℹ️ Cookies HttpOnly (token, refreshToken, role) são limpos pelo BACKEND');
+}

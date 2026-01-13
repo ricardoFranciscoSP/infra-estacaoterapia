@@ -59,4 +59,4 @@ backups/*.dump
 
 # Vercel
 .vercel
-.netlify
+.netlifyapi/src/config/service-account.json

@@ -1,0 +1,34 @@
+# llms.txt for Estação Terapia https://estacaoterapia.com.br
+# Author: Development Team
+# Last-Updated: 2025-12-17
+# Purpose: Guide large language models (LLMs) in semantically indexing the main sections of the Estação Terapia site.
+# Source: Next.js App Router - Public Routes Only
+
+## Home & Página Inicial
+- https://estacaoterapia.com.br/
+
+## Plataforma de Busca - Encontrar Psicólogo/Terapeuta
+- https://estacaoterapia.com.br/ver-psicologos
+- https://estacaoterapia.com.br/psicologo/
+
+## Para Psicólogos e Terapeutas - Informações Profissionais
+- https://estacaoterapia.com.br/para-psicologos
+- https://estacaoterapia.com.br/termo-de-uso-psicologo
+
+## Suporte ao Cliente
+- https://estacaoterapia.com.br/fale-conosco
+- https://estacaoterapia.com.br/faq
+
+## Políticas Institucionais e Legais
+- https://estacaoterapia.com.br/politica-de-privacidade
+- https://estacaoterapia.com.br/politica-de-cancelamento
+- https://estacaoterapia.com.br/politica-de-cookies
+- https://estacaoterapia.com.br/termo-de-uso
+
+## Onboarding e Informações
+- https://estacaoterapia.com.br/boas-vindas
+- https://estacaoterapia.com.br/cadastro-em-analise
+- https://estacaoterapia.com.br/objetivos
+
+## Acesso à API
+- https://estacaoterapia.com.br/api/llms (Versão dinâmica deste arquivo)

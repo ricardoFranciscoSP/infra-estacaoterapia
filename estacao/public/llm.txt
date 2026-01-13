@@ -1,0 +1,164 @@
+# LLM.txt for Estação Terapia
+
+## Site Information
+- **Name**: Estação Terapia
+- **Description**: Plataforma de terapia online para pacientes e psicólogos
+- **URL**: https://pre.estacaoterapia.com.br (preview) / https://estacaoterapia.com.br (production)
+- **Language**: Portuguese (pt-BR)
+- **Framework**: Next.js 15.4.1 with React 19.1.0
+
+## Technology Stack
+
+### Frontend
+- **Framework**: Next.js 15.4.1 (App Router)
+- **React**: 19.1.0
+- **TypeScript**: Yes
+- **Styling**: Tailwind CSS
+- **Fonts**: Fira Sans (Google Fonts)
+- **Animations**: Framer Motion
+- **State Management**: Zustand
+- **Data Fetching**: TanStack Query (React Query)
+- **HTTP Client**: Axios
+
+### Backend API
+- **URL**: Configured via NEXT_PUBLIC_API_URL
+- **Framework**: Express.js with TypeScript
+- **Database**: PostgreSQL with Prisma ORM
+- **Authentication**: JWT tokens (httpOnly cookies)
+
+### Key Libraries
+- **agora-rtc-react**: Video conferencing
+- **react-hot-toast**: Notifications
+- **dayjs**: Date manipulation
+- **chart.js**: Data visualization
+- **react-cookie-consent**: Cookie consent management
+
+## Architecture
+
+### Directory Structure
+```
+src/
+├── app/              # Next.js App Router pages
+│   ├── (public)/     # Public pages (homepage, FAQ, etc.)
+│   ├── (auth)/       # Authentication pages
+│   ├── (painel)/     # Patient dashboard
+│   ├── (painel-psicologo)/ # Psychologist dashboard
+│   └── (adm-estacao)/ # Admin panel
+├── components/       # React components
+├── hooks/           # Custom React hooks
+├── services/        # API service functions
+├── store/           # Zustand stores
+├── lib/             # Utility libraries
+└── types/           # TypeScript type definitions
+```
+
+### Routing
+- Uses Next.js App Router (file-based routing)
+- Route groups: (public), (auth), (painel), (painel-psicologo), (adm-estacao)
+- Dynamic routes: [id], [channel]
+
+### Data Flow
+1. Components use hooks to fetch data
+2. Hooks call services
+3. Services use Axios to call API
+4. Data cached with TanStack Query
+5. State managed with Zustand stores
+
+## Key Features
+
+### Public Features
+- Homepage with banner carousel
+- Psychologist listings
+- FAQ section
+- Plans and pricing
+- Contact form
+
+### Patient Features
+- Dashboard
+- Consultation scheduling
+- Video consultations (Agora.io)
+- Payment management
+- Profile management
+
+### Psychologist Features
+- Dashboard
+- Agenda management
+- Consultation management
+- Financial reports
+- Profile management
+
+### Admin Features
+- User management
+- Consultation management
+- Financial reports
+- Configuration settings
+- Maintenance mode
+
+## Performance Optimizations
+
+### Implemented
+- Next.js Image optimization with WebP/AVIF
+- Font optimization with display: swap
+- Script loading with next/script (lazyOnload for analytics)
+- Dynamic imports for non-critical components
+- Code splitting
+- Image aspect ratios to prevent layout shifts
+
+### Best Practices
+- SSR for initial load
+- Client-side rendering for interactive components
+- Lazy loading for below-the-fold content
+- Preconnect to external domains (GTM, GA)
+
+## SEO & Accessibility
+
+### Metadata
+- Title and description in layout.tsx
+- OpenGraph tags
+- Language declaration (pt-BR)
+
+### Accessibility
+- Semantic HTML (main, header, footer)
+- ARIA labels where needed
+- Minimum 44px touch targets
+- Heading hierarchy (h1, h2, h3...)
+
+## Environment Variables
+
+Required:
+- NEXT_PUBLIC_API_URL: Backend API URL
+- NEXT_PUBLIC_WEBSITE_URL: Website URL
+- NEXT_PUBLIC_SOCKET_URL: WebSocket URL
+- NEXT_PUBLIC_VINDI_PUBLIC_KEY: Payment gateway public key
+- NEXT_PUBLIC_URL_VINDI_API: Payment gateway API URL
+
+## Build & Deployment
+
+- Build command: `yarn build`
+- Start command: `yarn start`
+- Output: standalone mode
+- Docker support: Yes
+
+## Maintenance Mode
+
+- Controlled via admin panel
+- Blocks non-admin users when active
+- Redirects to /manutencao page
+- API endpoint: /api/configuracoes/manutencao
+
+## Important Notes
+
+1. All user-facing text is in Portuguese (pt-BR)
+2. Uses Brazil timezone (America/Sao_Paulo)
+3. Payment processing via Vindi gateway
+4. Video calls via Agora.io platform
+5. Image storage on Supabase
+6. Cookies required for authentication (httpOnly)
+
+## Code Style
+
+- TypeScript strict mode
+- ESLint configured
+- Functional components with hooks
+- Custom hooks for reusable logic
+- Service layer for API calls

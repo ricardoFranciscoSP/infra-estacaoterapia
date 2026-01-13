@@ -1,0 +1,12 @@
+import { api } from "@/lib/axios";
+
+export const admConsultasService = () => {
+    return {
+        getConsultasRealizadas: () => api.get('/admin/consultas/realizadas'),
+        getConsultasMensais: () => api.get('/admin/consultas/mensais'),
+        getConsultasMensaisTodas: () => api.get('/admin/consultas/mensais-todas'),
+        getConsultasCanceladas: () => api.get('/admin/consultas/canceladas'),
+        getConsultasMesAtual: () => api.get('/admin/consultas/mes-atual'),
+        getConsultasMesAtualLista: () => api.get('/admin/consultas/mes-atual-lista'),
+    };
+}

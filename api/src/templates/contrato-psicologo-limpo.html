@@ -1,0 +1,927 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contrato de Parceria e Intermediação de Prestação de Serviços de Psicologia</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Times New Roman', serif;
+            font-size: 12pt;
+            line-height: 1.5;
+            color: #000;
+            background-color: #fff;
+            padding: 2cm;
+            max-width: 21cm;
+            margin: 0 auto;
+        }
+
+        /* ABNT2: Margens */
+        @page {
+            margin: 2cm 2cm 2cm 3cm;
+            size: A4 portrait;
+        }
+
+        h1,
+        h2,
+        h3 {
+            font-weight: bold;
+            margin-top: 12pt;
+            margin-bottom: 6pt;
+        }
+
+        h1 {
+            font-size: 14pt;
+            text-align: center;
+        }
+
+        h2 {
+            font-size: 12pt;
+            margin-top: 18pt;
+        }
+
+        h3 {
+            font-size: 12pt;
+            margin-left: 1cm;
+        }
+
+        p {
+            text-align: justify;
+            margin-bottom: 6pt;
+            text-indent: 1.25cm;
+        }
+
+        .texto-inicial {
+            text-indent: 0;
+            margin-bottom: 12pt;
+        }
+
+        .clausula-numero {
+            font-weight: bold;
+            margin-left: 0;
+            text-indent: 0;
+        }
+
+        .sub-clausula {
+            margin-left: 1cm;
+            text-indent: 0.25cm;
+        }
+
+        .clausula-titulo {
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .item-lista {
+            margin-left: 1.5cm;
+            text-indent: -0.5cm;
+            text-align: justify;
+            margin-bottom: 6pt;
+        }
+
+        strong {
+            font-weight: bold;
+        }
+
+        em {
+            font-style: italic;
+        }
+
+        .espaço-assinatura {
+            margin-top: 60pt;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 40pt;
+        }
+
+        .bloco-assinatura {
+            width: 100%;
+            text-align: center;
+        }
+
+        .linha-assinatura {
+            border-bottom: 1px solid #000;
+            width: 280pt;
+            margin: 0 auto 6pt;
+            height: 30pt;
+        }
+
+        .nome-assinante {
+            font-weight: bold;
+            margin-top: 6pt;
+        }
+
+        .data {
+            text-align: right;
+            margin-top: 30pt;
+            margin-bottom: 30pt;
+        }
+
+        .titulo-documento {
+            text-align: center;
+            font-weight: bold;
+            font-size: 13pt;
+            margin-bottom: 12pt;
+            text-transform: uppercase;
+        }
+
+        .alinhado-direita {
+            text-align: right;
+        }
+
+        .alinhado-centro {
+            text-align: center;
+        }
+
+        .quebra-pagina {
+            page-break-after: always;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 12pt 0;
+        }
+
+        table th,
+        table td {
+            border: 1pt solid #000;
+            padding: 6pt;
+            text-align: left;
+            font-size: 11pt;
+        }
+
+        table th {
+            background-color: #f0f0f0;
+            font-weight: bold;
+        }
+
+        .legenda-tabela {
+            font-size: 10pt;
+            margin-top: 6pt;
+            text-align: justify;
+        }
+
+        .paragrafo-unico {
+            font-weight: bold;
+            margin-left: 1cm;
+            text-indent: 0;
+        }
+
+        @media print {
+            body {
+                padding: 0;
+            }
+
+            .quebra-pagina {
+                page-break-before: always;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="titulo-documento">
+        Contrato de Parceria e Intermediação de Prestação de Serviços de Psicologia
+    </div>
+
+    <p class="alinhado-centro"><strong>ESTAÇÃO TERAPIA</strong></p>
+
+    <p class="texto-inicial">
+        Pelo presente instrumento, CONTRATO DE PARCERIA E INTERMEDIAÇÃO DE PRESTAÇÃO DE SERVIÇOS DE PSICOLOGIA, celebram
+        entre si:
+    </p>
+
+    <p class="texto-inicial">
+        De um lado, <strong>ESTAÇÃO TERAPIA</strong>, pessoa jurídica de direito privado, inscrita no CNPJ sob o nº
+        {{cnpj_intermediador}}, com sede na {{endereco_intermediador}}, nº {{numero_intermediador}},
+        {{complemento_intermediador}}, {{bairro_intermediador}}, {{cidade_intermediador}}/{{uf_intermediador}}, neste
+        ato representada por {{representante_intermediador}}, portador(a) do RG nº {{rg_representante_intermediador}} e
+        inscrito(a) no CPF sob nº {{cpf_representante_intermediador}}, daqui em diante denominada simplesmente
+        <strong>INTERMEDIADOR</strong>; e
+    </p>
+
+    <p class="texto-inicial">
+        De outro lado, <strong>{{razao_social_psicologo}}</strong>, {{tipo_psicologo}}, {{documento_psicologo}} nº
+        {{numero_documento_psicologo}}, inscrito(a) no CRP sob nº {{crp_psicologo}}, com residência e domicílio no
+        endereço {{endereco_psicologo}}, nº {{numero_psicologo}}, {{complemento_psicologo}}, {{bairro_psicologo}},
+        {{cidade_psicologo}}/{{uf_psicologo}}, daqui em diante designado(a) simplesmente <strong>PSICÓLOGO(A)</strong>;
+        e
+    </p>
+
+    <p class="texto-inicial">
+        Ambas designadas individualmente como "Parte" e, em conjunto, como "Partes". Resolvem celebrar o presente
+        Contrato que se regerá pelas seguintes cláusulas e condições:
+    </p>
+
+    <!-- CLÁUSULA 1 -->
+    <h2>1. OBJETO</h2>
+
+    <p class="sub-clausula">
+        <strong>1.1.</strong> O presente Contrato tem por objeto a parceria e intermediação da prestação de serviços de
+        <strong>PSICOLOGIA</strong>, na forma de terapia <em>on-line</em>, por meio de plataforma/site do
+        <strong>INTERMEDIADOR</strong>, denominado <strong>ESTAÇÃO TERAPIA</strong>.
+    </p>
+
+    <p class="sub-clausula">
+        <strong>1.2.</strong> A intermediação do <strong>INTERMEDIADOR</strong> ao(à) <strong>PSICÓLOGO(A)</strong> se
+        fará por meio de plataforma virtual, cujo site pertence ao <strong>INTERMEDIADOR</strong>.
+    </p>
+
+    <p class="sub-clausula">
+        <strong>1.3.</strong> O <strong>INTERMEDIADOR</strong>, por meio da Plataforma <strong>ESTAÇÃO TERAPIA</strong>,
+        disponibilizará ao(à) <strong>PSICÓLOGO(A)</strong> o acesso a pacientes/clientes <strong>maiores de 18
+            (dezoito) anos</strong> que tenham sido prospectados por ações de divulgação e marketing em redes sociais,
+        sites de busca, serviços de streaming de vídeo, dispositivos digitais outdoor ou indoor públicos e outros meios
+        digitais, de forma segura e <strong>em conformidade com as normas do Conselho Federal de Psicologia e demais
+            legislações aplicáveis</strong>. O <strong>INTERMEDIADOR</strong> será responsável pela apresentação, em
+        tais canais de prospecção, de potenciais pacientes/clientes ao(s/à)(s) <strong>PSICÓLOGO(A)(S)</strong>,
+        facilitando o contato e a contratação dos serviços de psicoterapia por meio da Plataforma.
+    </p>
+
+    <p class="sub-clausula">
+        <strong>1.4.</strong> O <strong>INTERMEDIADOR</strong> será o responsável pela gestão contratual, comercial,
+        transacional e pela qualidade da usabilidade tecnológica da Plataforma <strong>ESTAÇÃO TERAPIA</strong> em toda
+        a jornada digital do paciente/cliente, incluindo, mas não se limitando a cadastro, contratação de serviços,
+        cobrança, processamento de pagamentos, suporte help desk à plataforma e solicitações de cancelamento.
+    </p>
+
+    <p class="sub-clausula">
+        <strong>1.5.</strong> O(A) <strong>PSICÓLOGO(A)</strong> <strong>autônomo(a)</strong> ou a <strong>PESSOA
+            JURÍDICA</strong> prestadora de serviços será responsável, de forma <strong>exclusiva</strong> e
+        <strong>integral</strong>, pela efetiva prestação dos atendimentos em psicoterapia, bem como pelo registro,
+        armazenamento, guarda e gestão dos prontuários e demais documentos clínicos relativos aos atendimentos
+        realizados, por sua própria conta e risco.
+    </p>
+
+    <p class="paragrafo-unico">
+        <strong>Parágrafo único.</strong> O(A) <strong>PSICÓLOGO(A)</strong> deverá zelar pela qualidade técnica e ética
+        dos atendimentos, assegurando condições adequadas de sigilo, segurança e continuidade do cuidado, observando
+        todas as normas éticas, técnicas, resoluções, notas técnicas e demais atos normativos expedidos pelo Conselho
+        Federal de Psicologia e pelos Conselhos Regionais de Psicologia, bem como a legislação aplicável à prática
+        profissional, além das regras de uso da Plataforma <strong>ESTAÇÃO TERAPIA</strong> e demais condições
+        contratuais livremente pactuadas entre as partes neste instrumento, sem que disso resulte qualquer subordinação
+        jurídica ou vínculo de emprego com o <strong>INTERMEDIADOR</strong>.
+    </p>
+
+    <p class="sub-clausula">
+        <strong>1.6.</strong> Ao assinar o presente contrato, o(a) <strong>PSICÓLOGO(A)</strong> será incluído(a) na
+        Plataforma <strong>ESTAÇÃO TERAPIA</strong> como <strong>PARCEIRO(A)</strong>, com a criação de um perfil
+        profissional por meio do qual constarão a sua apresentação pessoal, incluindo fotos, informações sobre formação,
+        experiência, área de atuação e demais dados profissionais necessários para que possa ser encontrado(a) pelos
+        pacientes/clientes do <strong>INTERMEDIADOR</strong> via marketplace de profissionais da Plataforma.
+    </p>
+
+    <p class="sub-clausula">
+        <strong>1.7.</strong> Para fins de credenciamento, regularidade fiscal, operacional e processamento de repasse
+        de pagamentos, o(a) <strong>PSICÓLOGO(A)</strong> deverá ainda fornecer os dados cadastrais e fiscais, bem como
+        a documentação comprobatória exigida pela <strong>ESTAÇÃO TERAPIA</strong>, nos termos deste contrato e de seus
+        anexos.
+    </p>
+
+    <p class="sub-clausula">
+        <strong>1.8.</strong> O papel da plataforma <strong>ESTAÇÃO TERAPIA</strong>, pertencente ao
+        <strong>INTERMEDIADOR</strong>, será vincular o(a) <strong>PSICÓLOGO(A)</strong> ao paciente/cliente maior de 18
+        anos para fins de consulta de psicoterapia, por meio de videoconferência, em sessões cuja duração, conforme
+        padrão estabelecido e reconhecido pela comunidade profissional e acordado entre <strong>PSICÓLOGO(A)</strong> e
+        o paciente/cliente, é de 50 (cinquenta) minutos.
+    </p>
+
+    <p class="sub-clausula">
+        <strong>1.9.</strong> A plataforma não atende paciente/clientes em situações de urgência psiquiátrica, risco de
+        suicídio, automutilação, surtos psicóticos, ou qualquer emergência médica. Em casos assim, o(a)
+        <strong>PSICÓLOGO(A)</strong> deverá orientar o paciente/cliente a procurar serviços de urgência como
+        <strong>CAPS, SAMU (192)</strong> ou <strong>CVV (188)</strong>.
+    </p>
+
+    <p class="sub-clausula">
+        <strong>1.10.</strong> Os pacientes/clientes chegarão à Plataforma <strong>ESTAÇÃO TERAPIA</strong> por meio dos
+        canais de marketing e divulgação do <strong>INTERMEDIADOR</strong> e, uma vez cadastrados, poderão pesquisar e
+        selecionar, de forma autônoma, <strong>PSICÓLOGO(A)</strong> de sua preferência no marketplace de profissionais
+        para realização de uma sessão inicial/experimental. Após essa sessão inicial, o paciente/cliente poderá ou não
+        optar por dar continuidade ao acompanhamento psicológico com o mesmo profissional, podendo também escolher
+        outro(a) <strong>PSICÓLOGO(A)</strong> cadastrado(a) na Plataforma.
+    </p>
+
+    <p class="sub-clausula">
+        <strong>1.11.</strong> Optando o paciente/cliente por seguir em acompanhamento com o mesmo
+        <strong>PSICÓLOGO(A)</strong>, caberá exclusivamente a este(a), no exercício independente de sua atividade
+        profissional, realizar a avaliação clínica dos sintomas, queixas, demandas e necessidades do paciente/cliente e,
+        a partir disso, estruturar um plano de tratamento flexível, personalizado e multifacetado, fundamentado em seu
+        julgamento técnico e nas abordagens psicológicas que considerar mais adequadas às necessidades específicas do
+        paciente/cliente, em conformidade com as normas aplicáveis à prática da psicologia.
+    </p>
+
+    <p class="sub-clausula">
+        <strong>1.12.</strong> O <strong>INTERMEDIADOR</strong> cumpre <strong>TODAS AS RESOLUÇÕES DO CONSELHO FEDERAL
+            DE PSICOLOGIA</strong>, no entanto, o(a) <strong>PSICÓLOGO(A)</strong> é <strong>responsável</strong> pelo
+        serviço de psicoterapia prestado e de igual forma deverá atuar com estrita observância às <strong>TODAS AS
+            RESOLUÇÕES DO CONSELHO FEDERAL DE PSICOLOGIA</strong>.
+    </p>
+
+    <p class="sub-clausula">
+        <strong>1.13.</strong> O(A) <strong>PSICÓLOGO(A)</strong> é profissional liberal e poderá atender em outras
+        plataformas, clínicas, consultórios ou ambientes virtuais e presenciais, inclusive concorrentes, bem como manter
+        sua própria carteira de pacientes, uma vez que a <strong>ESTAÇÃO TERAPIA</strong> não exige exclusividade de
+        prestação de serviços. Essa faculdade <strong>refere-se a pacientes/clientes que não tenham sido captados ou
+            encaminhados pela Plataforma ESTAÇÃO TERAPIA</strong>, permanecendo o(a) <strong>PSICÓLOGO(A)</strong> livre
+        para organizar sua agenda e demais vínculos profissionais, respeitadas as normas éticas da profissão.
+    </p>
+
+    <p class="sub-clausula">
+        <strong>1.14.</strong> É vedado ao(à) <strong>PSICÓLOGO(A)</strong> utilizar-se dos dados de contato,
+        informações ou qualquer outro acesso obtido em razão deste Contrato para aliciar, desviar ou incentivar
+        pacientes/clientes originados da Plataforma <strong>ESTAÇÃO TERAPIA</strong> a migrarem seus atendimentos para
+        outros ambientes, canais, plataformas ou serviços fora da intermediação da <strong>ESTAÇÃO TERAPIA</strong>.
+    </p>
+
+    <p class="sub-clausula">
+        <strong>1.15.</strong> Independentemente de atuar ou não em outras plataformas ou serviços concorrentes, o(a)
+        <strong>PSICÓLOGO(A)</strong> compromete-se <strong>a manter sigilo absoluto sobre todas as informações
+            estratégicas, comerciais, tecnológicas, operacionais e de negócios da ESTAÇÃO TERAPIA</strong>, bem como
+        sobre quaisquer <strong>dados, documentos ou conteúdos a que tiver acesso em razão deste Contrato</strong>,
+        observando integralmente o Termo de Confidencialidade/Non-Disclosure Agreement (NDA) que integra o presente
+        instrumento e é por ele expressamente aceito no ato da assinatura.
+    </p>
+
+    <p class="sub-clausula">
+        <strong>1.16.</strong> São <strong>requisitos para aprovação do credenciamento</strong> do(a)
+        <strong>PSICÓLOGO(A)</strong>, na condição de profissional <strong>autônomo(a) (pessoa física)</strong> ou de
+        <strong>PESSOA JURÍDICA</strong>:
+    </p>
+
+    <p class="item-lista">
+        <strong>a)</strong> Possuir <strong>CRP ativo</strong> e <strong>regular</strong>, seja em nome da pessoa física
+        ou da pessoa jurídica responsável pela prestação dos serviços, conforme o caso;
+    </p>
+
+    <p class="item-lista">
+        <strong>b)</strong> Apresentar todos os documentos e dados cadastrais solicitados pela Plataforma, tanto da
+        pessoa física quanto da pessoa jurídica que deseja realizar o credenciamento, dentro do prazo estipulado pelo
+        <strong>INTERMEDIADOR</strong>, responsabilizando-se integralmente por sua veracidade, autenticidade e
+        atualização contínua;
+    </p>
+
+    <p class="item-lista">
+        <strong>c)</strong> Dispor de <strong>computador</strong> ou <strong>notebook (preferencialmente)</strong> e/ou
+        smartphone compatível, com <strong>acesso estável à internet</strong>, em <strong>condições técnicas
+            adequadas</strong> para a realização dos atendimentos on-line;
+    </p>
+
+    <p class="item-lista">
+        <strong>d)</strong> Possuir conexão de internet estável em padrão mínimo que assegure boa qualidade de áudio e
+        vídeo, sem prejuízo à experiência do paciente/cliente, preferencialmente por meio de banda larga fixa,
+        admitindo-se outras tecnologias (como 4G/5G) <strong>desde que cumpram os requisitos de estabilidade e qualidade
+            descritos neste Contrato e em seus anexos</strong>, ficando sob responsabilidade do(a)
+        <strong>PSICÓLOGO(A)</strong> garantir tais condições.
+    </p>
+
+    <p class="item-lista">
+        <strong>e)</strong> Após o cadastro, o(a) <strong>PSICÓLOGO(A)</strong> que iniciar sua atuação na Plataforma na
+        condição de <strong>autônomo(a) (pessoa física)</strong>, inicialmente pelo prazo de <strong>120 (cento e vinte)
+            dias</strong> contados da aprovação de seu credenciamento. A partir do decurso deste prazo, caso o regime
+        atual (autônomo) não seja interessante ao profissional, prestador de serviço e sem vínculo empregatício, o
+        <strong>INTERMEDIADOR</strong> poderá sugerir que o(a) <strong>PSICÓLOGO(A)</strong> migre para a modalidade de
+        Pessoa Jurídica. Não é uma obrigação, é uma sugestão pensada para organização fiscal de parceria e para quem,
+        com o tempo, sente que vale a pena formalizar de outra forma. Nessa hipótese, a migração para PJ será
+        formalizada com a apresentação, pelo(à) <strong>PSICÓLOGO(A)</strong>, da documentação referente ao regime
+        comercial adotado, nos termos do procedimento descrito no ANEXO I.
+    </p>
+
+    <p class="item-lista">
+        <strong>f)</strong> Findo o prazo referido na alínea anterior, o <strong>INTERMEDIADOR</strong> poderá,
+        observando seu histórico de atendimentos e o faturamento alcançado na Plataforma, conforme parágrafo anterior,
+        sugerir que o(a) <strong>PSICÓLOGO(A)</strong> migre para a modalidade de Pessoa Jurídica. Caso o(a)
+        <strong>PSICÓLOGO(A)</strong> ainda não possua as condições para tal migração, o prazo inicial de <strong>120
+            (cento e vinte) dias</strong> poderá ser prorrogado de forma pontual, mediante alinhamento e comunicação
+        expressa por meio da Plataforma ou de outro canal oficial, sem que tal prorrogação constitua novação contratual
+        ou gere direito à concessão de novas prorrogações em situações futuras.
+    </p>
+
+    <p class="item-lista">
+        <strong>g)</strong> O <strong>INTERMEDIADOR</strong> poderá, para novas adesões e ciclos futuros, revisar os
+        prazos e condições de credenciamento e de eventual migração de modalidade <strong>(autônomo(a)/PESSOA
+            JURÍDICA)</strong>, mediante atualização deste Contrato e/ou de seus anexos e comunicação prévia por meio da
+        Plataforma, sem efeitos retroativos sobre situações já regularizadas e sem prejuízo das prorrogações específicas
+        que tenham sido formalmente concedidas.
+    </p>
+
+    <p class="item-lista">
+        <strong>h)</strong> O não atendimento, pelo(à) <strong>PSICÓLOGO(A)</strong>, às exigências previstas nesta
+        cláusula e em seus desdobramentos, após o decurso do prazo de <strong>120 (cento e vinte) dias</strong> e de
+        eventual prorrogação concedida por escrito, poderá acarretar, a critério do <strong>INTERMEDIADOR</strong>, como
+        consequência da não conformidade com os requisitos da parceria, mediante comunicação, com 30 dias de
+        antecedência, a inativação temporária e/ou o descredenciamento do <strong>PARCEIRO</strong> na Plataforma
+        <strong>ESTAÇÃO TERAPIA</strong>, até a devida <strong>atualização cadastral</strong>, sem que disso decorra
+        qualquer responsabilidade indenizatória do <strong>INTERMEDIADOR</strong>, ressalvados os valores devidos,
+        acordados no modelo de parceria de serviços já prestados pelo(à) <strong>PSICÓLOGO(A)</strong> autônomo,
+        prestador de serviços, sem vínculo empregatício por meio da Plataforma.
+    </p>
+
+    <p class="item-lista">
+        <strong>i)</strong> No caso de profissional <strong>autônomo(a)</strong> residente em município em que haja
+        incidência de ISS sobre a atividade, deverá comprovar, quando exigido, a sua inscrição municipal ou registro
+        equivalente junto à Prefeitura do domicílio, mediante envio de comprovante formal ao endereço de e-mail indicado
+        pelo <strong>INTERMEDIADOR</strong> (atualmente credenciamento@estacaoterapia.com.br), no prazo máximo de
+        <strong>5 (cinco) dias úteis</strong> contados da realização do pré-cadastro (formulário de cadastro para acesso
+        à plataforma), caso o documento não tenha sido anexado no ato deste cadastramento;
+    </p>
+
+    <p class="item-lista">
+        <strong>j)</strong> Caso o município de residência do <strong>autônomo(a)</strong> não tenha incidência de ISS
+        para o serviço de psicologia ou preveja hipótese de não incidência/isenção, <strong>apresentar via
+            e-mail</strong> credenciamento@estacaoterapia.com.br certidão ou declaração oficial da Prefeitura atestando
+        tal condição ou, na sua impossibilidade, declaração de próprio punho e reconhecido firma, do(a)
+        <strong>PSICÓLOGO(A)</strong> sobre a não incidência, acompanhada de cópia ou impressão (print) da norma
+        municipal aplicável anexada;
+    </p>
+
+    <p class="item-lista">
+        <strong>k)</strong> Nos casos em que a legislação municipal exigir cadastro específico para recolhimento de ISS
+        por profissionais autônomos, providenciar tal inscrição e manter-se em conformidade com as regras locais,
+        observadas as condições estabelecidas nas alíneas anteriores;
+    </p>
+
+    <p class="item-lista">
+        <strong>l)</strong> Responder às solicitações de documentação complementar encaminhadas pelo
+        <strong>INTERMEDIADOR</strong>, inclusive por meio do e-mail credenciamento@estacaoterapia.com.br, no prazo
+        máximo de <strong>5 (cinco) dias úteis</strong>, sob pena de inativação temporária de sua conta na Plataforma.
+    </p>
+
+    <!-- CLÁUSULA 2 -->
+    <h2>2. PRAZO</h2>
+
+    <p class="sub-clausula">
+        <strong>2.1.</strong> O presente Contrato é firmado por prazo indeterminado, a contar da data de sua assinatura
+        e poderá ser rescindido por ambas as partes conforme previsto nas cláusulas seguintes.
+    </p>
+
+    <p class="sub-clausula">
+        <strong>2.2.</strong> Fica desde já estabelecido que o encerramento deste Contrato não elide a obrigatoriedade e
+        a executoriedade das obrigações que, em razão da natureza que se revestem, sobrevivam a esta contratação,
+        especialmente as disposições sobre confidencialidade e responsabilidade das Partes.
+    </p>
+
+    <!-- CLÁUSULA 3 -->
+    <h2>3. PREÇO E FORMA DE PAGAMENTO</h2>
+
+    <p class="sub-clausula">
+        <strong>3.1.</strong> O preço das sessões individuais de psicoterapia e dos planos será definido e exibido na
+        Plataforma ("Preço de Vitrine"), sendo integralmente pago pelo paciente/cliente ao
+        <strong>INTERMEDIADOR</strong>, que atuará como intermediador financeiro e operacional dos pagamentos e repasses
+        decorrentes deste Contrato.
+    </p>
+
+    <p class="sub-clausula">
+        <strong>3.2.</strong> Pela prestação dos serviços contratados e pela utilização da Plataforma, o
+        <strong>INTERMEDIADOR</strong> repassará ao(à) <strong>PSICÓLOGO(A)</strong>, por cada sessão individual de 50
+        (cinquenta) minutos, conforme padrão estabelecido e reconhecido pela comunidade profissional e acordado entre
+        <strong>PSICÓLOGO(A)</strong> e o paciente/cliente, efetivamente realizada e paga pelo paciente/cliente, os
+        seguintes percentuais sobre o Preço de Vitrine da sessão:
+    </p>
+
+    <p class="item-lista">
+        <strong>a)</strong> <strong>PSICÓLOGO(A)</strong> cadastrado(a) como <strong>PESSOA JURÍDICA</strong> (CNPJ):
+        <strong>40% (quarenta por cento)</strong>;
+    </p>
+
+    <p class="item-lista">
+        <strong>b)</strong> <strong>PSICÓLOGO(A)</strong> cadastrado(a) como profissional <strong>autônomo(a) (pessoa
+            física)</strong>: <strong>40% (quarenta por cento)</strong>.
+    </p>
+
+    <p class="paragrafo-unico">
+        <strong>§1º.</strong> Do valor total pago pelo paciente/cliente (correspondente a 100% do Preço de Vitrine da
+        sessão), será repassado ao(à) <strong>PSICÓLOGO(A)</strong> o percentual previsto nas alíneas "a" e "b" desta
+        cláusula, e a parcela remanescente do Preço de Vitrine constituirá a remuneração do
+        <strong>INTERMEDIADOR</strong> pela intermediação, tecnologia, estrutura e demais serviços prestados, podendo
+        ser utilizada, a critério do <strong>INTERMEDIADOR</strong>, para custeio de despesas operacionais,
+        investimentos, tributos e demais encargos relacionados à operação da Plataforma.
+    </p>
+
+    <p class="paragrafo-unico">
+        <strong>§2º.</strong> Eventuais campanhas promocionais, cupons de desconto ou ajustes comerciais poderão
+        impactar o valor efetivamente pago pelo paciente/cliente, hipótese em que os percentuais acima incidirão sobre o
+        valor efetivamente recebido pelo <strong>INTERMEDIADOR</strong>, conforme regras da campanha divulgadas na
+        Plataforma.
+    </p>
+
+    <p class="paragrafo-unico">
+        <strong>§3º.</strong> O montante devido ao(à) <strong>PSICÓLOGO(A)</strong>, apurado pela aplicação do
+        percentual de repasse previsto nesta cláusula sobre o valor efetivamente pago pelo paciente/cliente, poderá
+        sofrer, quando exigido pela legislação vigente, retenções na fonte de tributos e contribuições de
+        responsabilidade do próprio profissional, realizadas pelo <strong>INTERMEDIADOR</strong> na qualidade de
+        responsável/substituto tributário. O valor efetivamente creditado ao(à) <strong>PSICÓLOGO(A)</strong> será,
+        assim, considerado líquido dessas retenções, não sendo descontados, em nenhuma hipótese, tributos ou
+        contribuições devidas exclusivamente pelo <strong>INTERMEDIADOR</strong> na qualidade de tomador dos serviços e
+        operador da Plataforma.
+    </p>
+
+    <p class="sub-clausula">
+        <strong>3.3.</strong> Os tributos incidentes sobre a remuneração do(a) <strong>PSICÓLOGO(A)</strong> e sobre a
+        receita do <strong>INTERMEDIADOR</strong> serão suportados por cada parte na forma da legislação aplicável,
+        observado o que segue:
+    </p>
+
+    <p class="item-lista">
+        <strong>i.</strong> Quando se tratar de <strong>PSICÓLOGO(A)</strong> cadastrado(a) como <strong>PESSOA
+            JURÍDICA</strong> (CNPJ), caberá exclusivamente à <strong>PESSOA JURÍDICA</strong> prestadora de serviços
+        apurar, declarar e recolher todos os tributos e contribuições incidentes sobre os valores que lhe forem pagos a
+        título de remuneração, isentando o <strong>INTERMEDIADOR</strong> de qualquer responsabilidade por tais
+        encargos, ressalvadas apenas as hipóteses legais em que venha a ser expressamente indicado como responsável
+        tributário;
+    </p>
+
+    <p class="item-lista">
+        <strong>ii.</strong> Quando se tratar de <strong>PSICÓLOGO(A)</strong> cadastrado(a) como profissional
+        <strong>autônomo(a) (pessoa física)</strong>, o <strong>INTERMEDIADOR</strong> efetuará, sempre que exigido pela
+        legislação vigente, as retenções na fonte de tributos e contribuições de responsabilidade do próprio
+        profissional, na condição de responsável/substituto tributário, tais como, exemplificativamente, <strong>Imposto
+            de Renda Pessoa Física (IRPF)</strong> e <strong>contribuição previdenciária</strong> devida pelo segurado,
+        procedendo ao seu recolhimento aos órgãos competentes, sem prejuízo das contribuições e encargos que recaiam
+        exclusivamente sobre o <strong>INTERMEDIADOR</strong> em razão de sua própria receita ou da contratação de
+        serviços, os quais não serão, em qualquer hipótese, descontados dos percentuais de repasse previstos na cláusula
+        3.2.
+    </p>
+
+    <p class="sub-clausula">
+        <strong>3.4.</strong> O preço pago pelo paciente/cliente à Plataforma, correspondente a 100% (cem por cento) do
+        Preço de Vitrine da sessão, inclui todos os tributos de responsabilidade do <strong>INTERMEDIADOR</strong>
+        relacionados à sua própria receita de intermediação, bem como todos os custos e despesas, diretos e indiretos,
+        por ele incorridos para a prestação dos serviços de intermediação e operação da Plataforma, sem qualquer direito
+        de reembolso ou ressarcimento pelo(à) <strong>PSICÓLOGO(A)</strong>. Os percentuais de repasse previstos na
+        cláusula 3.2 não serão reduzidos por tributos ou encargos que recaiam exclusivamente sobre o
+        <strong>INTERMEDIADOR</strong>.
+    </p>
+
+    <p class="sub-clausula">
+        <strong>3.5.</strong> Além do repasse previsto na cláusula 3.2, o(a) <strong>PSICÓLOGO(A)</strong> poderá, a
+        exclusivo critério do <strong>INTERMEDIADOR</strong>, participar de programa de premiação e incentivos, desde
+        que cumpra as regras descritas no Anexo V - "<strong>PROGRAMA DE RECONHECIMENTO DE PARCEIROS ESTAÇÃO
+            VALORIZA</strong>", o qual faz parte integrante deste Contrato.
+    </p>
+
+    <p class="sub-clausula">
+        <strong>3.6.</strong> O(A) <strong>PSICÓLOGO(A)</strong> emitirá e enviará, por meio da Plataforma do
+        <strong>INTERMEDIADOR</strong>, Nota Fiscal de Serviços (quando atuar como pessoa jurídica) ou Recibo de
+        prestação de serviços pelo Psicólogo (quando atuar como profissional autônomo – pessoa física), correspondente
+        ao valor total de sua remuneração devida no período obtido no campo "Valor Liberado para Saque" na tela
+        "Financeiro", isto é, ao valor do repasse disponibilizado na Plataforma, calculado com base nos percentuais
+        estabelecidos na cláusula 3.2 e informado previamente pelo <strong>INTERMEDIADOR</strong>, após a apuração das
+        sessões elegíveis ao pagamento até o dia 20 (vinte) de cada mês, por meio do dashboard financeiro da Plataforma
+        <strong>ESTAÇÃO TERAPIA</strong>.
+    </p>
+
+    <p class="clausula-numero"><strong>4. OBRIGAÇÕES DO INTERMEDIADOR</strong></p>
+
+    <p class="sub-clausula"><strong>4.1.</strong> Fornecer acesso à Plataforma ESTAÇÃO TERAPIA, mantendo infraestrutura
+        técnica adequada para realização dos atendimentos.</p>
+
+    <p class="sub-clausula"><strong>4.2.</strong> Intermediar o encontro entre psicólogo(a) e pacientes/clientes,
+        conforme disponibilidade do profissional.</p>
+
+    <p class="sub-clausula"><strong>4.3.</strong> Processar pagamentos referentes aos atendimentos realizados.</p>
+
+    <p class="sub-clausula"><strong>4.4.</strong> Manter confidencialidade das informações pessoais do(a) PSICÓLOGO(A),
+        em conformidade com LGPD.</p>
+
+    <p class="sub-clausula"><strong>4.5.</strong> Disponibilizar canais oficiais de suporte e comunicação.</p>
+
+    <p class="clausula-numero"><strong>5. OBRIGAÇÕES DO PSICÓLOGO(A)</strong></p>
+
+    <p class="sub-clausula"><strong>5.1.</strong> Manter CRP ativo e regular durante toda a vigência da parceria.</p>
+
+    <p class="sub-clausula"><strong>5.2.</strong> Fornecer dados cadastrais verídicos e manter documentação sempre
+        atualizada.</p>
+
+    <p class="sub-clausula"><strong>5.3.</strong> Observar todas as normas éticas do Conselho Federal de Psicologia
+        (CFP).</p>
+
+    <p class="sub-clausula"><strong>5.4.</strong> Ser responsável por manter conexão de internet estável e
+        infraestrutura técnica adequada.</p>
+
+    <p class="sub-clausula"><strong>5.5.</strong> Realizar atendimentos <strong>exclusivamente em ambiente privado,
+            silencioso, estável e livre de interrupções</strong>, garantindo confidencialidade.</p>
+
+    <p class="sub-clausula"><strong>5.6.</strong> Não realizar gravações não autorizadas de pacientes/clientes.</p>
+
+    <p class="sub-clausula"><strong>5.7.</strong> Não realizar sessões em veículos, espaços públicos ou local que
+        comprometa a privacidade.</p>
+
+    <p class="sub-clausula"><strong>5.8.</strong> Organizar autonomamente seus horários de atendimento, assumindo
+        compromisso profissional com sessões de 50 minutos.</p>
+
+    <p class="sub-clausula"><strong>5.9.</strong> Manter agenda na Plataforma sempre atualizada. Ausência de horários
+        disponíveis por mais de 30 dias pode resultar em suspensão da visibilidade do perfil.</p>
+
+    <p class="sub-clausula"><strong>5.10.</strong> Inatividade (sem login) por período superior a 60 dias consecutivos
+        pode resultar em descredenciamento.</p>
+
+    <p class="sub-clausula"><strong>5.11.</strong> Acessar a sala virtual com antecedência razoável (mínimo 10 minutos)
+        para testar recursos técnicos.</p>
+
+    <p class="sub-clausula"><strong>5.12.</strong> Cumprir regras de agendamento, cancelamento e atrasos (ANEXOS I e
+        III).</p>
+
+    <p class="sub-clausula"><strong>5.13.</strong> Após as sessões, registrar prontuário em conformidade com Resolução
+        CFP nº 006/2019, mantendo guarda por mínimo 5 (cinco) anos.</p>
+
+    <p class="sub-clausula"><strong>5.14.</strong> Observar procedimento de tratamento de reclamações (ANEXO I).</p>
+
+    <p class="sub-clausula"><strong>5.15.</strong> Responder a solicitações de esclarecimento do INTERMEDIADOR em prazo
+        máximo de 3 (três) dias úteis.</p>
+
+    <p class="clausula-numero"><strong>6. RESPONSABILIDADE DAS PARTES</strong></p>
+
+    <p class="sub-clausula"><strong>6.1.</strong> Cada parte responde exclusivamente por suas obrigações fiscais,
+        previdenciárias, trabalhistas e sociais.</p>
+
+    <p class="sub-clausula"><strong>6.2.</strong> Este Contrato não gera vínculo empregatício, subordinação ou controle
+        de jornada.</p>
+
+    <p class="sub-clausula"><strong>6.3.</strong> O PSICÓLOGO(A) assume reclamações de terceiros relacionadas à
+        prestação de serviços.</p>
+
+    <p class="sub-clausula"><strong>6.4.</strong> Em caso de condenações ou prejuízos causados pela conduta do
+        PSICÓLOGO(A), poderá haver compensação nos repasses futuros.</p>
+
+    <p class="clausula-numero"><strong>7. DA PLATAFORMA - SALA VIRTUAL E AGENDAMENTO</strong></p>
+
+    <p class="sub-clausula"><strong>7.1.</strong> A Plataforma disponibilizará sala virtual para atendimentos de 50
+        (cinquenta) minutos cada sessão.</p>
+
+    <p class="sub-clausula"><strong>7.2.</strong> O PSICÓLOGO(A) deverá acessar funcionalidades para
+        configurar/atualizar disponibilidade de horários.</p>
+
+    <p class="sub-clausula"><strong>7.3.</strong> Pacientes/clientes poderão agendar com até 1 (uma) hora de
+        antecedência.</p>
+
+    <p class="sub-clausula"><strong>7.4.</strong> Cancelamentos de pacientes com 24h de antecedência não geram custo e
+        não há repasse ao PSICÓLOGO(A).</p>
+
+    <p class="sub-clausula"><strong>7.5.</strong> Cancelamentos fora do prazo poderão resultar em cobrança ao paciente e
+        repasse ao PSICÓLOGO(A), exceto em motivos de força maior.</p>
+
+    <p class="clausula-numero"><strong>8. EXECUÇÃO DOS SERVIÇOS</strong></p>
+
+    <p class="sub-clausula"><strong>8.1.</strong> Atendimentos podem ser acessados via celular, tablet ou computador com
+        internet banda larga.</p>
+
+    <p class="sub-clausula"><strong>8.2.</strong> Recomenda-se fortemente uso de notebooks/desktops com banda larga
+        fixa.</p>
+
+    <p class="sub-clausula"><strong>8.3.</strong> O PSICÓLOGO(A) aceita a política de agendamento, reagendamento e
+        cancelamento (ANEXO III).</p>
+
+    <p class="sub-clausula"><strong>8.4.</strong> Conexão móvel (4G/5G) é admitida na impossibilidade de banda larga
+        fixa.</p>
+
+    <p class="sub-clausula"><strong>8.5.</strong> Cancelamentos pelo PSICÓLOGO(A) devem ser realizados via Plataforma
+        com mín. 24h de antecedência e justificativa documentada.</p>
+
+    <p class="sub-clausula"><strong>8.6.</strong> Indisponibilidade técnica sob responsabilidade do PSICÓLOGO(A) deverá
+        ser reportada ao suporte para reagendamento.</p>
+
+    <p class="sub-clausula"><strong>8.7.</strong> PSICÓLOGO(A) declara possuir estação de trabalho ergonômica e segura.
+    </p>
+
+    <p class="sub-clausula"><strong>8.8.</strong> Agendamentos de próximas sessões podem ser sugeridos durante/após
+        atendimento.</p>
+
+    <p class="sub-clausula"><strong>8.9.</strong> Videoconferência deve ocorrer exclusivamente no ambiente de videossala
+        da Plataforma.</p>
+
+    <p class="sub-clausula"><strong>8.10.</strong> Impossibilidades de comparecimento por internação hospitalar devem
+        ser comunicadas ao suporte com atestado médico.</p>
+
+    <p class="clausula-numero"><strong>9. RESCISÃO CONTRATUAL E DESCREDENCIAMENTO</strong></p>
+
+    <p class="sub-clausula"><strong>9.1.</strong> O Contrato poderá ser rescindido por: (a) falência/recuperação
+        judicial; (b) força maior ou caso fortuito; (c) descumprimento contratual não sanado em 10 (dez) dias.</p>
+
+    <p class="sub-clausula"><strong>9.2.</strong> Descredenciamento voluntário pelo PSICÓLOGO(A) requer aviso prévio
+        mínimo de 30 (trinta) dias via Plataforma.</p>
+
+    <p class="sub-clausula"><strong>9.3.</strong> Durante período de aviso, o PSICÓLOGO(A) compromete-se a honrar
+        atendimentos já agendados ou cooperar com remanejamento.</p>
+
+    <p class="sub-clausula"><strong>9.4.</strong> O PSICÓLOGO(A) será descredenciado por descumprimento do ANEXO I.</p>
+
+    <p class="clausula-numero"><strong>10. CONSEQUÊNCIAS CONTRATUAIS E INFRAÇÕES</strong></p>
+
+    <p class="sub-clausula"><strong>10.1.</strong> Infrações CRÍTICAS (conforme ANEXO I) podem resultar em multa até 80%
+        (oitenta por cento) do valor bruto das sessões do mês ou descredenciamento imediato.</p>
+
+    <p class="sub-clausula"><strong>10.2.</strong> Reincidência em descumprimento CRÍTICO pode elevar multa a 100% (cem
+        por cento) ou resultar em descredenciamento.</p>
+
+    <p class="sub-clausula"><strong>10.3.</strong> Multas têm natureza de cláusula penal não compensatória. Prejuízos
+        superiores podem gerar indenização suplementar.</p>
+
+    <p class="sub-clausula"><strong>10.4.</strong> Infrações GRAVES podem resultar em suspensão temporária ou
+        descredenciamento.</p>
+
+    <p class="sub-clausula"><strong>10.5.</strong> Histórico de inconformidades pode excluir o(a) PSICÓLOGO(A) de
+        programas de reconhecimento (ANEXO V).</p>
+
+    <p class="clausula-numero"><strong>11. PROPRIEDADE INTELECTUAL, IMAGEM E USO DA MARCA</strong></p>
+
+    <p class="sub-clausula"><strong>11.1.</strong> Todos os direitos patrimoniais da Plataforma ESTAÇÃO TERAPIA são de
+        titularidade exclusiva do INTERMEDIADOR (marca, código, funcionalidades, base de pacientes, etc).</p>
+
+    <p class="sub-clausula"><strong>11.2.</strong> O PSICÓLOGO(A) recebe licença limitada, não exclusiva, intransferível
+        e revogável, exclusivamente para prestação de serviços.</p>
+
+    <p class="sub-clausula"><strong>11.3.</strong> Dados clínicos (prontuários, anotações técnicas) pertencem ao
+        PSICÓLOGO(A), que permanece integralmente responsável pela guarda, confidencialidade e sigilo.</p>
+
+    <p class="sub-clausula"><strong>11.4.</strong> A ESTAÇÃO TERAPIA pode armazenar/processar dados clínicos como
+        Operadora, observando sigilo profissional e LGPD.</p>
+
+    <p class="sub-clausula"><strong>11.5.</strong> É vedado reproduzir, copiar, ceder ou utilizar conteúdos, materiais,
+        fluxos ou treinamentos fornecidos pelo INTERMEDIADOR sem autorização expressa.</p>
+
+    <p class="sub-clausula"><strong>11.6.</strong> O PSICÓLOGO(A) pode ser convidado a autorizar de forma não exclusiva,
+        gratuita e revogável o uso de: nome, nome social, título profissional, mini-bio, especialidades, cidade/UF,
+        fotografia de perfil e depoimentos em divulgação profissional na Plataforma (páginas internas, materiais de
+        marketing digital, redes sociais oficiais).</p>
+
+    <p class="sub-clausula"><strong>11.7.</strong> Participações em lives, entrevistas, vídeos, podcasts ou ações
+        especiais são facultativas e não geram remuneração adicional, salvo ajuste específico.</p>
+
+    <p class="sub-clausula"><strong>11.8.</strong> O PSICÓLOGO(A) pode revogar autorização de uso de imagem mediante
+        solicitação expressa por escrito.</p>
+
+    <p class="sub-clausula"><strong>11.9.</strong> É vedado utilizar nome, marca, logotipo do INTERMEDIADOR para se
+        apresentar como sócio(a), empregado(a), gestor(a) ou representante legal; para abrir perfis que induzam ao erro
+        quanto à titularidade; ou para ofertar serviços não vinculados à Plataforma.</p>
+
+    <p class="sub-clausula"><strong>11.10.</strong> Base de pacientes/clientes é ativo estratégico e sigiloso. É vedado:
+        (a) utilizar dados para desviar atendimentos para fora da Plataforma; (b) compartilhar/ceder/exportar base; (c)
+        utilizar informações para concorrência desleal.</p>
+
+    <p class="sub-clausula"><strong>11.11.</strong> Após término do Contrato, o PSICÓLOGO(A) cessará uso da Plataforma,
+        marca e materiais, mantendo apenas prontuários conforme lei.</p>
+
+    <p class="clausula-numero"><strong>12. PROTEÇÃO DE DADOS PESSOAIS E PRIVACIDADE (LGPD)</strong></p>
+
+    <p class="sub-clausula"><strong>12.1.</strong> As Partes cumprem LGPD e normas de sigilo profissional, realizando
+        tratamento de dados em conformidade.</p>
+
+    <p class="sub-clausula"><strong>12.2.</strong> ESTAÇÃO TERAPIA atua como Controladora de dados
+        cadastrais/operacionais; PSICÓLOGO(A) como Controlador autônomo de dados clínicos; ESTAÇÃO TERAPIA como
+        Operadora quando armazenar dados clínicos.</p>
+
+    <p class="sub-clausula"><strong>12.3.</strong> ESTAÇÃO TERAPIA designará DPO (Data Protection Officer) como ponto de
+        contato em privacidade.</p>
+
+    <p class="sub-clausula"><strong>12.4.</strong> Operações de tratamento observam bases legais: execução de contrato
+        (art. 7º, V LGPD), cumprimento legal (art. 7º, II), proteção da vida (art. 7º, VII), tutela de saúde (art. 11,
+        II, f).</p>
+
+    <p class="sub-clausula"><strong>12.5.</strong> Infraestrutura tecnológica utiliza criptografia AES 128/256,
+        controles de identidade/acesso, certificações ISO/IEC 27001, 27017, 27018, 27701, conformidade GDPR e HIPAA.</p>
+
+    <p class="sub-clausula"><strong>12.6.</strong> ESTAÇÃO TERAPIA pode substituir fornecedores de tecnologia mantendo
+        nível de segurança equivalente.</p>
+
+    <p class="sub-clausula"><strong>12.7.</strong> Plataforma observa transferência internacional de dados (brasileiros
+        no exterior) com cláusulas contratuais adequadas.</p>
+
+    <p class="sub-clausula"><strong>12.8.</strong> Dados cadastrais poderão ser compartilhados com terceiros (provedores
+        de nuvem, videoconferência, pagamento, contabilidade, antifraude) sob confidencialidade e conformidade LGPD.</p>
+
+    <p class="sub-clausula"><strong>12.9.</strong> É vedado ao PSICÓLOGO(A) compartilhar/ceder/exportar base de
+        pacientes para terceiros ou sistemas externos, salvo em hipóteses previstas em lei ou contrato.</p>
+
+    <p class="sub-clausula"><strong>12.10.</strong> Cada Parte responde pela proteção dos dados sob sua guarda e pela
+        exatidão das informações que inserir.</p>
+
+    <p class="sub-clausula"><strong>12.11.</strong> Em caso de vazamento/incidente de dados, a Parte afetada deverá: (a)
+        comunicar a outra com celeridade; (b) adotar medidas corretivas; (c) cooperar com avaliação de comunicação à
+        ANPD; (d) fornecer informações técnicas.</p>
+
+    <p class="sub-clausula"><strong>12.12.</strong> PSICÓLOGO(A) será responsável por atender solicitações de pacientes
+        sobre dados clínicos; ESTAÇÃO TERAPIA prestará apoio técnico.</p>
+
+    <p class="sub-clausula"><strong>12.13.</strong> ESTAÇÃO TERAPIA responderá a solicitações sobre dados
+        cadastrais/operacionais nos prazos LGPD.</p>
+
+    <p class="clausula-numero"><strong>13. INFORMAÇÃO CONFIDENCIAL E TERMO DE CONFIDENCIALIDADE (NDA)</strong></p>
+
+    <p class="sub-clausula"><strong>13.1.</strong> Informações Confidenciais incluem: (a) informações sobre Plataforma,
+        modelo de negócio, processos, algoritmos, estratégia; (b) base de pacientes/clientes, dados de uso; (c)
+        treinamentos, manuais, guias, políticas internas; (d) Informações Clínicas Sigilosas armazenadas na Plataforma.
+    </p>
+
+    <p class="sub-clausula"><strong>13.2.</strong> Distinguem-se: (a) Informações Clínicas Sigilosas: prontuários,
+        anotações, hipóteses diagnósticas, conforme Resolução CFP nº 001/2009 e 006/2019; (b) Informações Operacionais:
+        metadados, logs, datas/horários, registros de acesso.</p>
+
+    <p class="sub-clausula"><strong>13.3.</strong> O PSICÓLOGO(A) obriga-se a manter sigilo absoluto sobre Informações
+        Confidenciais, não divulgando, repassando ou cedendo a terceiros não autorizados.</p>
+
+    <p class="sub-clausula"><strong>13.4.</strong> Proibições: (a) usar informações para fins concorrenciais ou
+        benefício próprio; (b) divulgar a empresas/plataformas concorrentes; (c) faltar com cuidados de proteção.</p>
+
+    <p class="sub-clausula"><strong>13.5.</strong> ESTAÇÃO TERAPIA não terá acesso ao conteúdo de Informações Clínicas
+        Sigilosas, exceto por ordem judicial/administrativa específica, observando necessidade, sigilo profissional CFP
+        e minimização (LGPD).</p>
+
+    <p class="sub-clausula"><strong>13.6.</strong> Recebendo ordem do CFP/CRP ou autoridade, o PSICÓLOGO(A) deverá: (a)
+        atender diretamente ao órgão requerente; (b) notificar previamente ESTAÇÃO TERAPIA; (c) limitar-se ao
+        estritamente solicitado, resguardando sigilo profissional.</p>
+
+    <p class="sub-clausula"><strong>13.7.</strong> Se ordem dirigida à ESTAÇÃO TERAPIA, esta poderá implementar legal
+        hold, criptografia, trilhas de auditoria, limitando divulgação ao mínimo necessário.</p>
+
+    <p class="sub-clausula"><strong>13.8.</strong> Análises automatizadas para fraude, segurança, acesso ou qualidade
+        NÃO alcançarão conteúdo de Informações Clínicas Sigilosas, apenas dados operacionais.</p>
+
+    <p class="sub-clausula"><strong>13.9.</strong> Mediante solicitação, tratamentos automatizados poderão ser objeto de
+        revisão humana, observando minimização e prazo de retenção.</p>
+
+    <p class="sub-clausula"><strong>13.10.</strong> Ao término do Contrato, o PSICÓLOGO(A) deverá, em 5 (cinco) dias,
+        devolver/apagar todas as Informações Confidenciais de titularidade da ESTAÇÃO TERAPIA, exceto prontuários
+        legalmente obrigados a manter.</p>
+
+    <p class="sub-clausula"><strong>13.11.</strong> Obrigações de confidencialidade vigoram: (a) durante vigência do
+        Contrato; (b) após término: prazo indeterminado para dados pessoais/clínicos sujeitos a sigilo; mínimo 5 (cinco)
+        anos para demais informações comerciais, ou prazo superior se legalmente exigido.</p>
+
+    <p class="sub-clausula"><strong>13.12.</strong> Esta cláusula constitui Acordo de Confidencialidade (NDA) de caráter
+        amplo, irrevogável, automaticamente aceito pelo PSICÓLOGO(A) ao assinar o Contrato.</p>
+
+    <p class="sub-clausula"><strong>13.13.</strong> Violação sujeita o infrator a: (a) indenização integral por
+        perdas/danos; (b) penalidades contratuais; (c) medidas judiciais/extrajudiciais cíveis, administrativas e
+        criminais.</p>
+
+    <p class="clausula-numero"><strong>14. DISPOSIÇÕES GERAIS</strong></p>
+
+    <p class="sub-clausula"><strong>14.1.</strong> Cada Parte indenizará a outra contra prejuízos decorrentes de
+        descumprimento contratual.</p>
+
+    <p class="sub-clausula"><strong>14.2.</strong> Nenhuma disposição outorga poderes de representação ou estabelece
+        relacionamento trabalhista.</p>
+
+    <p class="sub-clausula"><strong>14.3.</strong> O Contrato poderá ser suspenso/rescindido por evento de força maior
+        que inviabilize a prestação, sem ônus adicional.</p>
+
+    <p class="sub-clausula"><strong>14.4.</strong> O PSICÓLOGO(A) poderá ser substituído por outro(a) credenciado(a) com
+        CRP ativo, com comunicação prévia; permanecerá solidariamente responsável. Subcontratação requer consentimento
+        expresso do INTERMEDIADOR.</p>
+
+    <p class="sub-clausula"><strong>14.5.</strong> O Contrato não poderá ser cedido/transferido sem autorização expressa
+        por escrito.</p>
+
+    <p class="sub-clausula"><strong>14.6.</strong> Direitos e obrigações vinculam Partes, herdeiros e sucessores a
+        qualquer título.</p>
+
+    <p class="sub-clausula"><strong>14.7.</strong> Omissão/tolerância de uma Parte não constitui novação ou renúncia de
+        direitos.</p>
+
+    <p class="sub-clausula"><strong>14.8.</strong> Cláusulas e condições podem ser alteradas pelo INTERMEDIADOR com
+        antecedência mínima de 30 dias via Plataforma. O PSICÓLOGO(A) pode manifestar discordância ou rescindir.</p>
+
+    <p class="sub-clausula"><strong>14.9.</strong> Nulidade de qualquer cláusula não afeta as demais, que continuarão
+        válidas.</p>
+
+    <p class="clausula-numero"><strong>15. FORO</strong></p>
+
+    <p class="sub-clausula"><strong>15.1.</strong> Elegem-se o Foro da Comarca de <strong>Barueri, Estado de São
+            Paulo</strong> para dirimir quaisquer dúvidas ou litígios decorrentes deste Contrato, renunciando
+        expressamente a qualquer outro.</p>
+
+    <!-- SEÇÃO DE ASSINATURAS -->
+    <div class="quebra-pagina"></div>
+
+    <div class="data">
+        Barueri, {{diaAssinatura}} de {{mesAssinatura}} de {{anoAssinatura}}.
+    </div>
+
+    <div class="espaço-assinatura">
+        <div class="bloco-assinatura">
+            <p><strong>INTERMEDIADOR: ESTAÇÃO TERAPIA</strong></p>
+            <div class="linha-assinatura"></div>
+            <p class="nome-assinante">{{assinaturaIntermediador}}</p>
+        </div>
+
+        <div class="bloco-assinatura">
+            <p><strong>PSICÓLOGO(A) - PESSOA FÍSICA / PESSOA JURÍDICA</strong></p>
+            <div class="linha-assinatura"></div>
+            <p class="nome-assinante">{{assinaturaPsicologo}}</p>
+        </div>
+    </div>
+
+</body>
+
+</html>

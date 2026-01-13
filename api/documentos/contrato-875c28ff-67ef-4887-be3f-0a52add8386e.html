@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contrato de Prestação de Serviços</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css ">
+    <style>
+        /* ...existing code from cancelAppointment.html... */
+        body {
+            font-family: 'Inter', Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #f4f6fb;
+            color: #22223b;
+            min-height: 100vh;
+        }
+
+        .email-container {
+            width: 100vw;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #f4f6fb;
+            padding: 32px 0;
+        }
+
+        .email-card {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px 0 rgba(60, 78, 143, 0.08);
+            max-width: 420px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 32px 28px 18px 28px;
+            box-sizing: border-box;
+        }
+
+        .email-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 18px;
+        }
+
+        .logo-et {
+            width: 140px;
+            height: auto;
+        }
+
+        .email-title {
+            font-size: 1.18rem;
+            font-weight: 700;
+            color: #3c4e8f;
+            margin: 0 0 18px 0;
+            text-align: left;
+        }
+
+        .email-body {
+            font-size: 1rem;
+            color: #22223b;
+            margin-bottom: 18px;
+        }
+
+        .email-body p {
+            margin: 10px 0;
+            line-height: 1.6;
+        }
+
+        .email-body ul {
+            margin: 8px 0 12px 18px;
+            padding: 0;
+            color: #3c4e8f;
+            font-size: 0.98rem;
+        }
+
+        .email-body li {
+            margin-bottom: 4px;
+        }
+
+        .agradecimento {
+            margin: 18px 0 10px 0;
+            font-weight: 500;
+            color: #3c4e8f;
+            text-align: center;
+        }
+
+        .download-section {
+            text-align: center;
+            margin: 18px 0 0 0;
+        }
+
+        .download-link {
+            display: inline-block;
+            background: #3c4e8f;
+            color: #fff;
+            font-weight: 600;
+            padding: 10px 22px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-size: 1rem;
+            margin-top: 6px;
+            transition: background 0.2s;
+        }
+
+        .download-link:hover {
+            background: #7d8cff;
+        }
+
+        .download-link i {
+            margin-right: 8px;
+        }
+
+        .email-footer {
+            margin-top: 24px;
+            text-align: center;
+            color: #7d8cff;
+            font-size: 0.97rem;
+        }
+
+        @media (max-width: 500px) {
+            .email-card {
+                padding: 18px 6vw 12px 6vw;
+            }
+
+            .logo-et {
+                width: 110px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="email-container">
+        <div class="email-card">
+            <header class="email-header">
+                <img src="https://pre.estacaoterapia.com.br/logo.svg" alt="Logo Estação Terapia" class="logo-et">
+            </header>
+            <h1 class="email-title">Olá, este é o seu contrato de adesão à plataforma!</h1>
+            <div class="email-body">
+                <p><strong>Olá ,</strong></p>
+                <p>É uma satisfação ter você conosco, fazendo parte da nossa plataforma!</p>
+                <p>Antes de iniciarmos sua jornada por aqui, precisamos concluir uma etapa essencial que é a <a href="#"
+                        style="color: #3c4e8f; text-decoration: underline;">assinatura do seu contrato de adesão</a>.
+                </p>
+                <p>O documento está anexado neste e-mail. Pedimos que leia com atenção, assine e depois faça o upload
+                    dele diretamente na plataforma.</p>
+                <div class="upload-instructions">
+                    <p style="font-weight: 600; color: #3c4e8f; margin-bottom: 6px;">Para fazer o upload é fácil:</p>
+                    <ul>
+                        <li>Faça o login normalmente na plataforma;</li>
+                        <li>Após o login você será direcionado para uma tela de boas-vindas onde precisará inserir o
+                            documento;</li>
+                        <li>Insira e prossiga normalmente com seu primeiro acesso;</li>
+                        <li>Você cairá dentro da plataforma normalmente;</li>
+                    </ul>
+                </div>
+                <p>Essa etapa é extremamente crucial para garantir transparência e segurança. Caso tenha alguma dúvida
+                    durante o processo, você pode entrar em contato com a nossa equipe, que estaremos à disposição para
+                    ajudar.</p>
+                <p class="agradecimento">Agradecemos por caminhar junto com a gente e ter você conosco <span
+                        style="color: #7d8cff;">&#x1F49C;</span></p>
+                <div class="download-section">
+                    <a href="" class="download-link" target="_blank">
+                        <i class="fas fa-download"></i> Baixar contrato de adesão
+                    </a>
+                </div>
+            </div>
+            <footer class="email-footer">
+                <p>Equipe Estação terapia!</p>
+            </footer>
+        </div>
+    </div>
+</body>
+
+</html>
