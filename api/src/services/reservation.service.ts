@@ -447,7 +447,12 @@ export class ReservationService implements IReservationService {
     async createReservation(scheduleId: string, userId: string | { userId: string; manterSaldo?: boolean; reservaAntigaId?: string }): Promise<{ reservation: ConsultaWithRelations; updatedAgenda: AgendaType }> {
         let manterSaldo = false;
         let reservaAntigaId: string | undefined = undefined;
-        let realUserId: string = typeof userId === 'object' && userId !== null ? userId.userId : userId;
+        let realUserId: string;
+        if (typeof userId === 'object' && userId !== null && 'userId' in userId) {
+            realUserId = userId.userId;
+        } else {
+            realUserId = userId as string;
+        }
         if (typeof userId === 'object' && userId !== null) {
             manterSaldo = userId.manterSaldo ?? false;
             reservaAntigaId = userId.reservaAntigaId;
@@ -1213,7 +1218,7 @@ export class ReservationService implements IReservationService {
                     PsicologoId: reservation.PsicologoId!,
                     AutorId: userRole === 'Paciente' ? reservation.PacienteId! : reservation.PsicologoId!,
                     Status: 'EmAnalise',
-                    Tipo: (userRole as AutorTipoCancelamento) || 'PACIENTE' // Valor padrão se não informado
+                    Tipo: (userRole === 'Paciente' ? 'Paciente' : 'Psicologo') as AutorTipoCancelamento
                 }
             });
         });

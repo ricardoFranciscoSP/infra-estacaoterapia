@@ -110,7 +110,7 @@ export class UserPsicologoController {
             if (!userId) {
                 return res.status(401).json({ success: false, error: "Usuário não autenticado." });
             }
-            const { imageId } = req.params;
+            const imageId = normalizeParamStringRequired(req.params.imageId);
             if (!imageId) {
                 return res.status(400).json({ success: false, error: "ID da imagem não fornecido." });
             }

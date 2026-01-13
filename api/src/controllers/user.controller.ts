@@ -112,7 +112,10 @@ export class UserController {
      */
     async fetchById(req: Request, res: Response): Promise<Response> {
         try {
-            const { id } = req.params;
+            const id = normalizeParamStringRequired(req.params.id);
+            if (!id) {
+                return res.status(400).json({ error: 'ID é obrigatório' });
+            }
             const userId = this.authService.getLoggedUserId(req);
             if (!userId) {
                 return res.status(401).json({ error: 'Unauthorized' });
@@ -201,7 +204,10 @@ export class UserController {
      */
     async delete(req: Request, res: Response): Promise<Response> {
         try {
-            const { id } = req.params;
+            const id = normalizeParamStringRequired(req.params.id);
+            if (!id) {
+                return res.status(400).json({ error: 'ID é obrigatório' });
+            }
             const deletedUser = await this.userService.deleteUser(id);
             return res.status(200).json(deletedUser);
         } catch (error: any) {
@@ -379,7 +385,10 @@ export class UserController {
      */
     async updateUserImage(req: Request, res: Response) {
         try {
-            const { id } = req.params;
+            const id = normalizeParamStringRequired(req.params.id);
+            if (!id) {
+                return res.status(400).json({ error: 'ID é obrigatório' });
+            }
             const userId = this.authService.getLoggedUserId(req);
             if (!userId) {
                 return res.status(401).json({ error: 'Unauthorized' });

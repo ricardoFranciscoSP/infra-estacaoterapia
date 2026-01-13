@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { AuthorizationService } from "../../services/authorization.service";
 import { IConfigAgendaService } from "../../interfaces/psicoologo/configAgenda.interface";
 import { ActionType, Module } from "../../types/permissions.types";
+import { normalizeParamStringRequired } from "../../utils/validation.util";
 
 export class ConfigAgendaController {
 
@@ -37,7 +38,10 @@ export class ConfigAgendaController {
     // Obter agenda por psicologoId
     async obterAgenda(req: Request, res: Response) {
         try {
-            const psicologoId = req.params.psicologoId;
+            const psicologoId = normalizeParamStringRequired(req.params.psicologoId);
+            if (!psicologoId) {
+                return res.status(400).json({ error: 'psicologoId é obrigatório' });
+            }
             const userId = this.authService.getLoggedUserId(req);
             if (!userId) {
                 return res.status(401).json({ error: 'Unauthorized' });
@@ -60,7 +64,10 @@ export class ConfigAgendaController {
             if (!userId) {
                 return res.status(401).json({ error: 'Unauthorized' });
             }
-            const id = req.params.id;
+            const id = normalizeParamStringRequired(req.params.id);
+            if (!id) {
+                return res.status(400).json({ error: 'id é obrigatório' });
+            }
             const data = req.body;
             await this.configAgendaService.atualizarAgenda(id, data);
             res.status(200).json({ message: "Agenda atualizada com sucesso" });
@@ -77,7 +84,10 @@ export class ConfigAgendaController {
             if (!userId) {
                 return res.status(401).json({ error: 'Unauthorized' });
             }
-            const id = req.params.id;
+            const id = normalizeParamStringRequired(req.params.id);
+            if (!id) {
+                return res.status(400).json({ error: 'id é obrigatório' });
+            }
             await this.configAgendaService.deletarAgenda(id);
             res.status(204).send();
         } catch (error) {

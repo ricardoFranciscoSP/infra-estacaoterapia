@@ -120,7 +120,7 @@ export class QueueController {
                 result = await cleanAllFailedJobs(olderThanMs);
             }
 
-            const totalRemoved = Object.values(result).reduce((sum, count) => sum + count, 0);
+            const totalRemoved = Object.values(result).reduce((sum: number, count: unknown) => sum + (Number(count) || 0), 0);
 
             return res.status(200).json({
                 success: true,

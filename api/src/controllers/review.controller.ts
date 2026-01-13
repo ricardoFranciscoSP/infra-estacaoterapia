@@ -122,7 +122,11 @@ export class ReviewController {
             if (!canUpdate)
                 return res.status(403).json({ error: "Acesso negado" });
 
-            const updatedReview = await this.reviewService.updateReview(reviewId, userId, rating, comment);
+            const reviewIdNormalized = normalizeParamStringRequired(req.params.reviewId || '');
+            if (!reviewIdNormalized) {
+                return res.status(400).json({ success: false, error: "ID da avaliação é obrigatório." });
+            }
+            const updatedReview = await this.reviewService.updateReview(reviewIdNormalized, userId, rating, comment);
             return res.status(200).json({ success: true, updatedReview });
         } catch (error) {
             return res.status(500).json({ success: false, error: "Erro ao atualizar avaliação." });
@@ -137,7 +141,10 @@ export class ReviewController {
      */
     async getAverageRating(req: Request, res: Response): Promise<Response> {
         try {
-            const { psicologoId } = req.params;
+            const psicologoId = normalizeParamStringRequired(req.params.psicologoId);
+            if (!psicologoId) {
+                return res.status(400).json({ success: false, error: "ID do psicólogo é obrigatório." });
+            }
             const averageRating = await this.reviewService.getAverageRating(psicologoId);
             return res.status(200).json({ success: true, averageRating });
         } catch (error) {
@@ -153,7 +160,10 @@ export class ReviewController {
      */
     async getReviewsId(req: Request, res: Response): Promise<Response> {
         try {
-            const { psicologoId } = req.params;
+            const psicologoId = normalizeParamStringRequired(req.params.psicologoId);
+            if (!psicologoId) {
+                return res.status(400).json({ success: false, error: "ID do psicólogo é obrigatório." });
+            }
             const reviews = await this.reviewService.getReviewsByPsicologoId(psicologoId);
             return res.status(200).json({ success: true, reviews });
         } catch (error) {

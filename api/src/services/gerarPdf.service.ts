@@ -689,7 +689,15 @@ export class ContratoService {
         console.log(`[preparePsicologoData] Dados do contratante:`, JSON.stringify(psicologo.contratante || {}, null, 2).substring(0, 500));
 
         // Validação segura do objeto contratante
-        const contratante = psicologo.contratante || {};
+        const contratante: {
+            rg?: string;
+            logradouro?: string;
+            numero?: string;
+            complemento?: string;
+            bairro?: string;
+            cidade?: string;
+            uf?: string;
+        } = psicologo.contratante || {};
 
         // Gera data e hora do contrato
         const now = new Date();

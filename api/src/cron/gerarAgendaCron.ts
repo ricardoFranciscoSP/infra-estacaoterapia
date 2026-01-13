@@ -14,7 +14,7 @@ export const gerarAgendaCron = async () => {
             throw new Error(result.error);
         }
         
-        const totalCriados = result.resultados?.reduce((acc, r) => acc + (r.criados || 0), 0) || 0;
+        const totalCriados = (result.resultados || []).reduce((acc: number, r: { psicologoId: string; criados?: number; error?: string }) => acc + (Number(r.criados) || 0), 0);
         console.log(`✅ [gerarAgendaCron] Cron job para gerar agendas finalizado. Total de agendas criadas: ${totalCriados}`);
         
         return result;

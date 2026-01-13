@@ -1036,7 +1036,7 @@ export class UserPsicologoService implements IUserPsicologoService {
             }
 
             // Retorna o usuário atualizado com todos os relacionamentos
-            return await tx.user.findUnique({
+            const user = await tx.user.findUnique({
                 where: { Id: userId },
                 include: {
                     Address: true,
@@ -1059,7 +1059,17 @@ export class UserPsicologoService implements IUserPsicologoService {
                     Solicitacoes: true,
                     LoginLog: true
                 }
-            }) as UserPsicologo | null;
+            });
+            
+            if (!user) return null;
+            
+            // Converte Address array para objeto único se necessário para compatibilidade com UserPsicologo
+            const userData = {
+                ...user,
+                Address: Array.isArray(user.Address) && user.Address.length > 0 ? user.Address[0] : null
+            };
+            
+            return userData as unknown as UserPsicologo;
             }, {
                 timeout: 30000 // 30 segundos de timeout
             });

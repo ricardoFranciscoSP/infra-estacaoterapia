@@ -44,7 +44,7 @@ export class DraftSessionService {
         if (redisClient) {
             const value = await redisClient.get(key);
             if (!value || value !== draft.Id) throw new Error('Reserva expirada ou inválida');
-            redisValue = value;
+            redisValue = typeof value === 'string' ? value : draft.Id;
         }
 
         // Chama o fluxo oficial de agendamento

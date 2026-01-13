@@ -139,7 +139,7 @@ export class SessionDurationService {
             // Recupera dados da sessão do Redis
             const redis = await this.getRedis();
             const sessionDataStr = await redis.get(this.redisKey(consultaId));
-            if (!sessionDataStr) {
+            if (!sessionDataStr || typeof sessionDataStr !== 'string') {
                 console.warn(`[SessionDuration] Sessão não encontrada no Redis: ${consultaId}`);
                 return;
             }
@@ -266,7 +266,7 @@ export class SessionDurationService {
         try {
             const redis = await this.getRedis();
             const sessionDataStr = await redis.get(this.redisKey(consultaId));
-            if (!sessionDataStr) {
+            if (!sessionDataStr || typeof sessionDataStr !== 'string') {
                 console.warn(`[SessionDuration] Sessão não encontrada para pausar: ${consultaId}`);
                 return;
             }
@@ -294,7 +294,7 @@ export class SessionDurationService {
         try {
             const redis = await this.getRedis();
             const sessionDataStr = await redis.get(this.redisKey(consultaId));
-            if (!sessionDataStr) {
+            if (!sessionDataStr || typeof sessionDataStr !== 'string') {
                 console.warn(`[SessionDuration] Sessão não encontrada para retomar: ${consultaId}`);
                 return;
             }
@@ -322,7 +322,7 @@ export class SessionDurationService {
         try {
             const redis = await this.getRedis();
             const sessionDataStr = await redis.get(this.redisKey(consultaId));
-            if (!sessionDataStr) {
+            if (!sessionDataStr || typeof sessionDataStr !== 'string') {
                 console.warn(`[SessionDuration] Sessão não encontrada para encerrar: ${consultaId}`);
                 return;
             }
@@ -360,7 +360,7 @@ export class SessionDurationService {
         try {
             const redis = await this.getRedis();
             const sessionDataStr = await redis.get(this.redisKey(consultaId));
-            if (!sessionDataStr) {
+            if (!sessionDataStr || typeof sessionDataStr !== 'string') {
                 return null;
             }
 
