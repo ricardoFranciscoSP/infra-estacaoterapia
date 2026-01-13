@@ -168,33 +168,17 @@ build_image() {
 
   log_info "Variáveis de ambiente carregadas com sucesso"
 
-  # Buscar imagens antigas para cache (últimas 3 tags)
-  local cache_args=(
-    --cache-from "${IMAGE_NAME}:latest"
-  )
-  
-  local old_tags
-  old_tags=$(docker images "${IMAGE_NAME}" --format "{{.Tag}}" --filter "reference=${IMAGE_NAME}:*" 2>/dev/null | grep -E "^[0-9]{8}-[0-9]{6}$" | sort -r | head -n 3 || true)
-  
-  if [ -n "$old_tags" ]; then
-    log_info "Encontradas imagens antigas para cache"
-    while IFS= read -r tag; do
-      if [ -n "$tag" ] && [ "$tag" != "$IMAGE_TAG" ]; then
-        cache_args+=(--cache-from "${IMAGE_NAME}:${tag}")
-        log_info "Usando cache de: ${IMAGE_NAME}:${tag}"
-      fi
-    done <<< "$old_tags"
-  else
-    log_info "Nenhuma imagem antiga encontrada para cache"
-  fi
-
+  # ⚠️ NUNCA usar cache - sempre fazer rebuild completo
+  # Isso garante que todas as dependências e código sejam atualizados
   log_info "Iniciando build da imagem..."
+  log_warning "🔴 Cache DESABILITADO - Será feito rebuild completo"
   log_info "Isso pode levar vários minutos..."
   log_info "Aguarde, o build está em andamento..."
   echo ""
 
   # Prepara os build args
   local build_args=(
+    --no-cache
     --tag "${IMAGE_NAME}:${IMAGE_TAG}"
     --tag "${IMAGE_NAME}:latest"
     --build-arg "NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}"
@@ -204,8 +188,8 @@ build_image() {
     --build-arg "NEXT_PUBLIC_URL_VINDI_API=${NEXT_PUBLIC_URL_VINDI_API}"
   )
 
-  # Adiciona cache args
-  build_args+=("${cache_args[@]}")
+  # Adiciona --no-cache (sem cache args mais)
+  # build_args já contém --no-cache no início
 
   # Verificar arquivos de lock antes do build
   log_info "Verificando gerenciador de pacotes..."

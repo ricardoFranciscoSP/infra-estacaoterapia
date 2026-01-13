@@ -111,6 +111,7 @@ echo "   → estacaoterapia-api:prd-$TAG"
 echo "   📁 Contexto: $(pwd)"
 echo "   📄 Dockerfile: ./Dockerfile.api"
 docker build \
+    --no-cache \
     --build-arg NODE_ENV=production \
     --progress=plain \
     -t "estacaoterapia-api:prd-${TAG}" \
@@ -131,6 +132,7 @@ echo "   → estacaoterapia-socket-server:prd-$TAG"
 echo "   📁 Contexto: $(pwd)"
 echo "   📄 Dockerfile: ./Dockerfile.socket"
 docker build \
+    --no-cache \
     --build-arg NODE_ENV=production \
     --progress=plain \
     -t "estacaoterapia-socket-server:prd-${TAG}" \
