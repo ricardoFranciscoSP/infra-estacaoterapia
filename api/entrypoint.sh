@@ -1,0 +1,192 @@
+#!/bin/sh
+set -e
+
+SERVER_TYPE="${SERVER_TYPE:-api}"
+
+# =========================
+# Função: carregar secrets
+# =========================
+load_secrets() {
+  local secret_file="$1"
+  [ -z "$secret_file" ] && return 0
+  [ ! -f "$secret_file" ] && return 0
+
+  echo "🔐 Carregando secrets: $secret_file"
+
+  while IFS= read -r line || [ -n "$line" ]; do
+    case "$line" in
+      ""|\#*) continue ;;
+    esac
+
+    key="${line%%=*}"
+    value="${line#*=}"
+
+    case "$key" in
+      ''|*[!A-Za-z0-9_]*|[0-9]*) continue ;;
+    esac
+
+    export "$key=$value"
+  done < "$secret_file"
+}
+
+# =========================
+# Função retry
+# =========================
+retry() {
+  local n=0
+  local max="${RETRY_MAX_ATTEMPTS:-30}"
+  local delay="${RETRY_DELAY:-2}"
+
+  until "$@"; do
+    n=$((n + 1))
+    if [ "$n" -ge "$max" ]; then
+      echo "❌ Falha após $max tentativas"
+      return 1
+    fi
+    echo "⏳ Retry $n/$max em ${delay}s..."
+    sleep "$delay"
+  done
+}
+
+# =========================
+# API
+# =========================
+start_api() {
+  echo "🚀 Iniciando API"
+
+  load_secrets /run/secrets/estacao_api.env
+  echo "✅ Secrets carregados para API"
+
+  # Log das variáveis de ambiente que importam
+  echo "📋 Variáveis de Ambiente Carregadas:"
+  echo "   • REDIS_HOST: ${REDIS_HOST:-não definido}"
+  echo "   • REDIS_PORT: ${REDIS_PORT:-não definido}"
+  echo "   • REDIS_DB: ${REDIS_DB:-não definido}"
+  echo "   • REDIS_PASSWORD: ${REDIS_PASSWORD:+definido ($(echo -n "$REDIS_PASSWORD" | wc -c) chars)}"
+  echo "   • REDIS_URL: ${REDIS_URL:-não definido}"
+
+  PG_HOST="${PG_HOST:-pgbouncer}"
+  PG_PORT="${PG_PORT:-6432}"
+  REDIS_HOST="${REDIS_HOST:-redis_prd}"
+  REDIS_PORT="${REDIS_PORT:-6379}"
+  POSTGRES_DB="${POSTGRES_DB:-estacaoterapia}"
+
+  echo "📋 Conexões (finais):"
+  echo "   PostgreSQL → $PG_HOST:$PG_PORT"
+  echo "   Redis      → $REDIS_HOST:$REDIS_PORT (auth: ${REDIS_PASSWORD:+SIM}${REDIS_PASSWORD:-NÃO})"
+
+  # Tentar resolver host de Redis com alternativas comuns no Swarm
+  echo "🔎 Checando Redis..."
+  for candidate in "$REDIS_HOST" "tasks.$REDIS_HOST" "estacao_terapia_redis_prd" "tasks.estacao_terapia_redis_prd"; do
+    if retry nc -z "$candidate" "$REDIS_PORT" >/dev/null 2>&1; then
+      REDIS_HOST="$candidate"
+      echo "✅ Redis acessível via: $REDIS_HOST"
+      break
+    fi
+  done
+  retry nc -z "$REDIS_HOST" "$REDIS_PORT"
+
+  # Tentar resolver host de PgBouncer com alternativas (VIP e tasks)
+  echo "🔎 Checando PgBouncer..."
+  for candidate in "$PG_HOST" "tasks.$PG_HOST" "estacaoterapia_pgbouncer" "tasks.estacaoterapia_pgbouncer"; do
+    if retry nc -z "$candidate" "$PG_PORT" >/dev/null 2>&1; then
+      PG_HOST="$candidate"
+      echo "✅ PgBouncer acessível via: $PG_HOST"
+      break
+    fi
+  done
+  retry nc -z "$PG_HOST" "$PG_PORT"
+
+  if [ -n "$POSTGRES_USER" ] && [ -n "$POSTGRES_PASSWORD" ]; then
+    DATABASE_URL="${DATABASE_URL:-postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${PG_HOST}:${PG_PORT}/${POSTGRES_DB}?schema=public}"
+    export DATABASE_URL
+    echo "✅ DATABASE_URL configurada"
+  fi
+
+  # CRÍTICO: Exportar as variáveis de Redis antes de iniciar Node.js
+  export REDIS_HOST
+  export REDIS_PORT
+  export REDIS_DB
+  export REDIS_PASSWORD
+  export REDIS_URL
+  echo "✅ Variáveis Redis exportadas para Node.js"
+
+  exec "$@"
+}
+
+# =========================
+# SOCKET SERVER
+# =========================
+start_socket() {
+  echo "🚀 Iniciando Socket Server"
+
+  load_secrets /run/secrets/estacao_socket.env
+  echo "✅ Secrets carregados para Socket"
+
+  # Log das variáveis de ambiente que importam
+  echo "📋 Variáveis de Ambiente Carregadas:"
+  echo "   • REDIS_HOST: ${REDIS_HOST:-não definido}"
+  echo "   • REDIS_PORT: ${REDIS_PORT:-não definido}"
+  echo "   • REDIS_DB: ${REDIS_DB:-não definido}"
+  echo "   • REDIS_PASSWORD: ${REDIS_PASSWORD:+definido ($(echo -n "$REDIS_PASSWORD" | wc -c) chars)}"
+  echo "   • REDIS_URL: ${REDIS_URL:-não definido}"
+
+  PG_HOST="${PG_HOST:-pgbouncer}"
+  PG_PORT="${PG_PORT:-6432}"
+  REDIS_HOST="${REDIS_HOST:-redis_prd}"
+  REDIS_PORT="${REDIS_PORT:-6379}"
+  API_BASE_URL="${API_BASE_URL:-http://api:3333}"
+
+  echo "📋 Conexões (finais):"
+  echo "   PostgreSQL → $PG_HOST:$PG_PORT"
+  echo "   Redis      → $REDIS_HOST:$REDIS_PORT (auth: ${REDIS_PASSWORD:+SIM}${REDIS_PASSWORD:-NÃO})"
+  echo "   API        → $API_BASE_URL"
+
+  echo "🔎 Checando Redis..."
+  for candidate in "$REDIS_HOST" "tasks.$REDIS_HOST" "estacao_terapia_redis_prd" "tasks.estacao_terapia_redis_prd"; do
+    if retry nc -z "$candidate" "$REDIS_PORT" >/dev/null 2>&1; then
+      REDIS_HOST="$candidate"
+      echo "✅ Redis acessível via: $REDIS_HOST"
+      break
+    fi
+  done
+  retry nc -z "$REDIS_HOST" "$REDIS_PORT"
+
+  echo "🔎 Checando PgBouncer..."
+  for candidate in "$PG_HOST" "tasks.$PG_HOST" "estacaoterapia_pgbouncer" "tasks.estacaoterapia_pgbouncer"; do
+    if retry nc -z "$candidate" "$PG_PORT" >/dev/null 2>&1; then
+      PG_HOST="$candidate"
+      echo "✅ PgBouncer acessível via: $PG_HOST"
+      break
+    fi
+  done
+  retry nc -z "$PG_HOST" "$PG_PORT"
+
+  API_HOST=$(echo "$API_BASE_URL" | sed 's|http://||;s|https://||' | cut -d: -f1)
+  API_PORT=$(echo "$API_BASE_URL" | cut -d: -f3)
+
+  echo "🔎 Checando API..."
+  retry nc -z "$API_HOST" "${API_PORT:-3333}"
+
+  # CRÍTICO: Exportar as variáveis de Redis antes de iniciar Node.js
+  export REDIS_HOST
+  export REDIS_PORT
+  export REDIS_DB
+  export REDIS_PASSWORD
+  export REDIS_URL
+  echo "✅ Variáveis Redis exportadas para Node.js"
+
+  exec "$@"
+}
+
+# =========================
+# Dispatcher
+# =========================
+case "$SERVER_TYPE" in
+  socket)
+    start_socket "$@"
+    ;;
+  api|*)
+    start_api "$@"
+    ;;
+esac

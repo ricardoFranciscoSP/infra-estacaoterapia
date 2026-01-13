@@ -1,0 +1,60 @@
+# ============================================
+# FRONTEND - DOCKER SWARM STACK
+# Para uso com Docker Swarm
+# Use docker-compose.yml na raiz para Docker Compose
+# ============================================
+
+networks:
+  estacao-network:
+    external: false
+    driver: overlay
+
+services:
+  estacao_next_prd:
+    image: ${IMAGE_TAG:-estacaoterapia-next-prd:latest}
+    user: ${DEPLOY_UID_GID:-deploy:deploy}
+
+    deploy:
+      replicas: 1
+      update_config:
+        order: start-first
+        parallelism: 1
+        delay: 15s
+        failure_action: rollback
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3001/"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+
+    env_file:
+      - /opt/secrets/nextjs-prd.env
+
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      HOSTNAME: 0.0.0.0
+      NEXT_TELEMETRY_DISABLED: 1
+      NEXT_PUBLIC_API_URL: https://api-prd.estacaoterapia.com.br
+      NEXT_PUBLIC_WEBSITE_URL: https://estacaoterapia.com.br
+      NEXT_PUBLIC_SOCKET_URL: https://ws.prd.estacaoterapia.com.br
+
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /app/.next
+    cap_drop:
+      - ALL
+
+    networks:
+      - estacao-network
+    
+    stop_grace_period: 60s
+    stop_signal: SIGTERM

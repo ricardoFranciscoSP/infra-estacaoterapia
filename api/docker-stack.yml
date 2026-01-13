@@ -1,0 +1,155 @@
+# ============================================
+# API BACKEND - DOCKER SWARM STACK
+# Para uso com Docker Swarm
+# Use docker-compose.yml na raiz para Docker Compose
+# ============================================
+
+networks:
+  estacao-backend-network:
+    external: true
+    name: estacao-backend-network
+  
+  estacao-network:
+    external: false
+    driver: overlay
+
+services:
+  # =====================================
+  # API NODE.JS – PRODUÇÃO
+  # =====================================
+  api:
+    image: estacaoterapia-api:prd-{{TAG}}
+    user: '997:1001'
+
+    entrypoint: ['/bin/sh', '/entrypoint.sh']
+    command: ['node', 'dist/server.js']
+
+    secrets:
+      - source: estacao_api_env
+        target: estacao_api.env
+
+    environment:
+      NODE_ENV: production
+      NODE_OPTIONS: '--max-old-space-size=2048'
+      PG_HOST: pgbouncer
+      PG_PORT: '6432'
+      REDIS_HOST: redis
+      REDIS_PORT: '6379'
+      REDIS_DB: '1'
+      # REDIS_PASSWORD e REDIS_URL devem vir dos secrets (estacao_api_env)
+      # Não definir aqui para evitar exposição
+
+    volumes:
+      - type: bind
+        source: ./entrypoint.sh
+        target: /entrypoint.sh
+        read_only: true
+      - type: volume
+        source: documentos_data
+        target: /app/documentos
+
+    tmpfs:
+      - /tmp
+      - /app/data
+
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:3333/health']
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+    deploy:
+      replicas: 1
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: start-first
+        failure_action: rollback
+        monitor: 5s
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+
+    networks:
+      - estacao-backend-network
+      - estacao-network
+
+  # =====================================
+  # PGBOUNCER
+  # =====================================
+  pgbouncer:
+    image: edoburu/pgbouncer:latest
+    secrets:
+      - source: pgbouncer.ini
+        target: /etc/pgbouncer/pgbouncer.ini
+      - source: userlist.txt
+        target: /etc/pgbouncer/userlist.txt
+    deploy:
+      replicas: 1
+      endpoint_mode: dnsrr
+      restart_policy:
+        condition: on-failure
+    networks:
+      estacao-backend-network:
+        aliases:
+          - pgbouncer
+
+  # =====================================
+  # SOCKET SERVER
+  # =====================================
+  socket-server:
+    image: estacaoterapia-socket-server:prd-{{TAG}}
+    user: '997:1001'
+
+    entrypoint: ['/bin/sh', '/entrypoint.sh']
+    command: ['node', 'dist/socket/server.js']
+
+    secrets:
+      - source: estacao_socket_env
+        target: estacao_socket.env
+
+    environment:
+      NODE_ENV: production
+      PORT: '3334'
+      SOCKET_SERVER: 'true'
+      SERVER_TYPE: socket
+      PG_HOST: pgbouncer
+      PG_PORT: '6432'
+      API_BASE_URL: 'http://api:3333'
+      # Credenciais devem vir dos secrets (estacao_socket_env)
+
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:3334/health']
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+    deploy:
+      replicas: 1
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: start-first
+        failure_action: rollback
+        monitor: 5s
+      restart_policy:
+        condition: on-failure
+
+    networks:
+      - estacao-backend-network
+      - estacao-network
+
+volumes:
+  documentos_data:
+
+secrets:
+  estacao_api_env:
+    external: true
+  estacao_socket_env:
+    external: true
+  pgbouncer.ini:
+    external: true
+  userlist.txt:
+    external: true

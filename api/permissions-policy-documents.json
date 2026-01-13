@@ -1,0 +1,49 @@
+{
+  "module": "PolicyDocuments",
+  "description": "Permissões para gestão de documentos de políticas e termos",
+  "permissions": [
+    {
+      "Role": "Admin",
+      "Module": "PolicyDocuments",
+      "Action": "Read",
+      "description": "Permite visualizar documentos de políticas e termos"
+    },
+    {
+      "Role": "Admin",
+      "Module": "PolicyDocuments",
+      "Action": "Create",
+      "description": "Permite criar novos documentos de políticas e termos"
+    },
+    {
+      "Role": "Admin",
+      "Module": "PolicyDocuments",
+      "Action": "Update",
+      "description": "Permite editar documentos de políticas e termos existentes"
+    },
+    {
+      "Role": "Admin",
+      "Module": "PolicyDocuments",
+      "Action": "Delete",
+      "description": "Permite excluir documentos de políticas e termos"
+    },
+    {
+      "Role": "Admin",
+      "Module": "PolicyDocuments",
+      "Action": "Manage",
+      "description": "Permite gerenciar completamente o módulo de documentos de políticas e termos"
+    },
+    {
+      "Role": "Patient",
+      "Module": "PolicyDocuments",
+      "Action": "Read",
+      "description": "Permite visualizar documentos de políticas e termos disponíveis para pacientes"
+    },
+    {
+      "Role": "Psychologist",
+      "Module": "PolicyDocuments",
+      "Action": "Read",
+      "description": "Permite visualizar documentos de políticas e termos disponíveis para psicólogos"
+    }
+  ]
+}
+
