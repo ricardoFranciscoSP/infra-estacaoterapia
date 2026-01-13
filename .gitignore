@@ -69,3 +69,4 @@ backups/
 # Git repositories (submódulos removidos)
 api/.git/
 estacao/.git/
+.md
