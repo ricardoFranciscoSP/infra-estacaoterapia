@@ -1,0 +1,71 @@
+# Dependencies
+node_modules/
+yarn.lock
+package-lock.json
+
+# Environment variables (NUNCA commitar!)
+.env
+.env.local
+.env.production
+.env.*.local
+*.env
+!*.env.example
+!env.example
+
+# Build outputs
+dist/
+build/
+generated/
+.next/
+out/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.tsbuildinfo
+
+# Backups
+*.backup
+*.bak
+*.tar.gz
+backups/
+postgres_backup.tar.gz
+
+# Service account
+.service-account.json
+
+# Vercel / Netlify
+.vercel
+.netlify
+
+# Docker secrets
+secrets/
+*.secret
+
+# Data directories (podem conter dados sensíveis)
+data/
+backups/
+
+# Git repositories (submódulos removidos)
+api/.git/
+estacao/.git/
