@@ -94,25 +94,51 @@ echo "✅ Backup salvo em: $BACKUP_FILE"
 # ==============================
 echo ""
 echo "🔨 Construindo imagens Docker..."
+
+# Verificar arquivos de lock antes do build
+echo ""
+echo "📋 Verificando gerenciador de pacotes..."
+if [ -f "yarn.lock" ]; then
+    echo "   ✓ yarn.lock encontrado - Usando Yarn"
+elif [ -f "package-lock.json" ]; then
+    echo "   ✓ package-lock.json encontrado - Usando NPM"
+else
+    echo "   ⚠ Nenhum lock file encontrado - Usando NPM padrão"
+fi
+
+echo ""
 echo "   → estacaoterapia-api:prd-$TAG"
+echo "   📁 Contexto: $(pwd)"
+echo "   📄 Dockerfile: ./Dockerfile.api"
 docker build \
     --build-arg NODE_ENV=production \
+    --progress=plain \
     -t "estacaoterapia-api:prd-${TAG}" \
     -f ./Dockerfile.api \
     . || {
+        echo ""
         echo "❌ Falha ao construir imagem API!"
+        echo "📝 Verifique os logs acima para detalhes"
+        echo "📁 Diretório: $(pwd)"
+        echo "📋 Arquivos disponíveis:"
+        ls -la | grep -E "(package\.json|yarn\.lock|package-lock\.json)"
         exit 1
     }
 echo "✅ API compilada com sucesso"
 
 echo ""
 echo "   → estacaoterapia-socket-server:prd-$TAG"
+echo "   📁 Contexto: $(pwd)"
+echo "   📄 Dockerfile: ./Dockerfile.socket"
 docker build \
     --build-arg NODE_ENV=production \
+    --progress=plain \
     -t "estacaoterapia-socket-server:prd-${TAG}" \
     -f ./Dockerfile.socket \
     . || {
+        echo ""
         echo "❌ Falha ao construir imagem Socket!"
+        echo "📝 Verifique os logs acima para detalhes"
         exit 1
     }
 echo "✅ Socket compilada com sucesso"

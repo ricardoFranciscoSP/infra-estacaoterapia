@@ -9,8 +9,22 @@ RUN apk add --no-cache libc6-compat
 
 ENV NEXT_TELEMETRY_DISABLED=1
 
-COPY package.json package-lock.json ./
-RUN npm ci --prefer-offline --no-audit
+# Copiar package.json e lock files (opcionais)
+COPY package.json yarn.lock* package-lock.json* ./
+
+# Detectar e instalar dependências com o gerenciador apropriado
+RUN echo "[BUILD] Detectando gerenciador de pacotes..." && \
+    if [ -f yarn.lock ]; then \
+        echo "[BUILD] Usando Yarn (yarn.lock encontrado)" && \
+        corepack enable && \
+        yarn install --frozen-lockfile --non-interactive; \
+    elif [ -f package-lock.json ]; then \
+        echo "[BUILD] Usando NPM (package-lock.json encontrado)" && \
+        npm ci --prefer-offline --no-audit; \
+    else \
+        echo "[BUILD] Nenhum lock file encontrado, usando npm install" && \
+        npm install --prefer-offline --no-audit; \
+    fi
 
 COPY . .
 
@@ -27,7 +41,16 @@ ENV NODE_ENV=production \
     NEXT_PUBLIC_VINDI_PUBLIC_KEY=${NEXT_PUBLIC_VINDI_PUBLIC_KEY} \
     NEXT_PUBLIC_URL_VINDI_API=${NEXT_PUBLIC_URL_VINDI_API}
 
-RUN npm run build
+# Build usando o gerenciador de pacotes apropriado
+RUN echo "[BUILD] Iniciando build do Next.js..." && \
+    if [ -f yarn.lock ]; then \
+        echo "[BUILD] Executando: yarn build" && \
+        yarn build; \
+    else \
+        echo "[BUILD] Executando: npm run build" && \
+        npm run build; \
+    fi && \
+    echo "[BUILD] Build concluído com sucesso!"
 
 
 # ============================================

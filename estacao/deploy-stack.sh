@@ -207,9 +207,23 @@ build_image() {
   # Adiciona cache args
   build_args+=("${cache_args[@]}")
 
+  # Verificar arquivos de lock antes do build
+  log_info "Verificando gerenciador de pacotes..."
+  if [ -f "yarn.lock" ]; then
+    log_info "✓ yarn.lock encontrado - Usando Yarn"
+  elif [ -f "package-lock.json" ]; then
+    log_info "✓ package-lock.json encontrado - Usando NPM"
+  else
+    log_warning "Nenhum lock file encontrado - Usando NPM padrão"
+  fi
+
   # Executa o build com progresso
   log_info "Executando docker build..."
+  log_info "📁 Contexto: $(pwd)"
+  log_info "📄 Dockerfile: ./Dockerfile"
   log_info "Build args: NEXT_PUBLIC_API_URL, NEXT_PUBLIC_WEBSITE_URL, NEXT_PUBLIC_SOCKET_URL, NEXT_PUBLIC_VINDI_PUBLIC_KEY, NEXT_PUBLIC_URL_VINDI_API"
+  log_info "📋 Arquivos disponíveis no contexto:"
+  ls -la | grep -E "(package\.json|yarn\.lock|package-lock\.json|Dockerfile)" || true
   echo ""
   
   # Desabilita temporariamente o exit on error para capturar o código de retorno
@@ -236,6 +250,12 @@ build_image() {
   else
     log_error "Falha no build da imagem Docker (código de saída: $build_exit_code)"
     log_error "Verifique os logs acima para mais detalhes"
+    log_error ""
+    log_error "📋 Debug - Arquivos no diretório:"
+    ls -la | grep -E "(package\.json|yarn\.lock|package-lock\.json|Dockerfile)" || true
+    log_error ""
+    log_error "📋 Debug - Conteúdo do Dockerfile (primeiras 20 linhas):"
+    head -20 Dockerfile || true
     exit 1
   fi
 }

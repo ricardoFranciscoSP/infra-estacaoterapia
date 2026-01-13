@@ -15,13 +15,13 @@ COPY package.json yarn.lock* package-lock.json* ./
 
 # Instalar dependências (suporta npm ou yarn)
 RUN if [ -f yarn.lock ]; then \
-        yarn config set networkConcurrency 4 && \
-        yarn config set networkTimeout 600000 && \
-        yarn install --frozen-lockfile --non-interactive; \
+    yarn config set networkConcurrency 4 && \
+    yarn config set networkTimeout 600000 && \
+    yarn install --frozen-lockfile --non-interactive; \
     elif [ -f package-lock.json ]; then \
-        npm ci --prefer-offline --no-audit; \
+    npm ci --prefer-offline --no-audit; \
     else \
-        npm install --prefer-offline --no-audit; \
+    npm install --prefer-offline --no-audit; \
     fi
 
 # Copia Prisma separadamente (para gerar client no builder)
@@ -48,9 +48,9 @@ RUN npx prisma generate
 
 # Build do projeto
 RUN if [ -f yarn.lock ]; then \
-        yarn build; \
+    yarn build; \
     else \
-        npm run build; \
+    npm run build; \
     fi
 
 # Copiar templates
@@ -67,13 +67,25 @@ WORKDIR /app
 ENV NODE_OPTIONS=--dns-result-order=ipv4first
 
 # Copiando apenas arquivos essenciais
-COPY package.json yarn.lock ./
+COPY package.json yarn.lock* package-lock.json* ./
 COPY prisma ./prisma
 COPY prisma.config.ts ./
 
-# Apenas dependências de produção
-RUN yarn install --production --frozen-lockfile --non-interactive \
-    && yarn prisma generate
+# Verificar qual gerenciador de pacotes usar e instalar dependências de produção
+RUN echo "[BUILD] Detectando gerenciador de pacotes..." && \
+    if [ -f yarn.lock ]; then \
+        echo "[BUILD] Usando Yarn (yarn.lock encontrado)" && \
+        yarn install --production --frozen-lockfile --non-interactive && \
+        yarn prisma generate; \
+    elif [ -f package-lock.json ]; then \
+        echo "[BUILD] Usando NPM (package-lock.json encontrado)" && \
+        npm ci --only=production --prefer-offline --no-audit && \
+        npx prisma generate; \
+    else \
+        echo "[BUILD] Nenhum lock file encontrado, usando npm install" && \
+        npm install --only=production --prefer-offline --no-audit && \
+        npx prisma generate; \
+    fi
 
 # ===============================
 # ETAPA 4 — RUNNER PRD
