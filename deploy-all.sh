@@ -67,8 +67,9 @@ check_prerequisites() {
     log_success "Docker instalado: $(docker --version)"
     
     # Verificar Docker Swarm
-    if ! docker info 2>/dev/null | grep -q "Swarm: active"; then
-        log_error "Docker Swarm não está ativo!"
+    swarm_state=$(docker info --format '{{.Swarm.LocalNodeState}}' 2>/dev/null || echo "error")
+    if [ "$swarm_state" != "active" ]; then
+        log_error "Docker Swarm não está ativo (estado atual: ${swarm_state:-desconhecido})"
         log_info "Execute: docker swarm init"
         exit 1
     fi
