@@ -8,6 +8,19 @@ set -e
 
 echo "🚀 Iniciando Estação Terapia com Caddy..."
 
+# Detecta comando Docker Compose (docker-compose ou docker compose)
+if command -v docker-compose &> /dev/null; then
+    DOCKER_COMPOSE="docker-compose"
+elif docker compose version &> /dev/null; then
+    DOCKER_COMPOSE="docker compose"
+else
+    echo "❌ Docker Compose não encontrado!"
+    echo "   Instale com: apt-get install docker-compose-plugin"
+    exit 1
+fi
+
+echo "📦 Usando: $DOCKER_COMPOSE"
+
 # Verifica se o Docker está rodando
 if ! docker info > /dev/null 2>&1; then
     echo "❌ Docker não está rodando. Por favor, inicie o Docker primeiro."
@@ -34,7 +47,7 @@ docker volume create caddy_config 2>/dev/null || echo "Volume caddy_config já e
 
 # Inicia os serviços
 echo "🐳 Iniciando serviços Docker Compose..."
-docker-compose up -d
+$DOCKER_COMPOSE up -d
 
 # Aguarda os serviços iniciarem
 echo "⏳ Aguardando serviços iniciarem..."
@@ -44,14 +57,14 @@ sleep 10
 echo "🏥 Verificando saúde dos serviços..."
 
 # PostgreSQL
-if docker-compose exec -T postgres pg_isready -U estacaoterapia > /dev/null 2>&1; then
+if $DOCKER_COMPOSE exec -T postgres pg_isready -U estacaoterapia > /dev/null 2>&1; then
     echo "✅ PostgreSQL está rodando"
 else
     echo "⚠️ PostgreSQL ainda não está pronto"
 fi
 
 # Redis
-if docker-compose exec -T redis redis-cli --raw incr ping > /dev/null 2>&1; then
+if $DOCKER_COMPOSE exec -T redis redis-cli --raw incr ping > /dev/null 2>&1; then
     echo "✅ Redis está rodando"
 else
     echo "⚠️ Redis ainda não está pronto"
@@ -94,7 +107,7 @@ echo "   API: https://api-prd.estacaoterapia.com.br"
 echo "   WebSocket: https://ws.prd.estacaoterapia.com.br"
 echo ""
 echo "📊 Para ver os logs:"
-echo "   docker-compose logs -f"
+echo "   $DOCKER_COMPOSE logs -f"
 echo ""
 echo "🛑 Para parar os serviços:"
-echo "   docker-compose down"
+echo "   $DOCKER_COMPOSE down"
