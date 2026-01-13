@@ -96,23 +96,37 @@ check_prerequisites() {
     fi
     log_success "Diretório Frontend encontrado"
     
-    # Verifica scripts de deploy
+    # Verifica e prepara scripts de deploy
+    log_info "Verificando scripts de deploy..."
+    
+    # API
     if [ ! -f "$API_DIR/deploy.sh" ]; then
-        log_error "Script de deploy da API não encontrado!"
+        log_error "Script de deploy da API não encontrado: $API_DIR/deploy.sh"
+        log_info "Listando conteúdo de $API_DIR:"
+        ls -la "$API_DIR" | grep -E '\.sh$' || true
         exit 1
     fi
-    log_success "Script de deploy da API encontrado"
+    chmod +x "$API_DIR/deploy.sh" 2>/dev/null || {
+        log_error "Não foi possível dar permissão ao script da API"
+        exit 1
+    }
+    log_success "Script de deploy da API encontrado e executável"
     
+    # Frontend
     if [ ! -f "$FRONTEND_DIR/deploy-stack.sh" ]; then
-        log_error "Script de deploy do Frontend não encontrado!"
+        log_error "Script de deploy do Frontend não encontrado: $FRONTEND_DIR/deploy-stack.sh"
+        log_info "Listando conteúdo de $FRONTEND_DIR:"
+        ls -la "$FRONTEND_DIR" | grep -E '\.sh$' || true
         exit 1
     fi
-    log_success "Script de deploy do Frontend encontrado"
+    chmod +x "$FRONTEND_DIR/deploy-stack.sh" 2>/dev/null || {
+        log_error "Não foi possível dar permissão ao script do Frontend"
+        exit 1
+    }
+    log_success "Script de deploy do Frontend encontrado e executável"
     
-    # Dá permissão aos scripts
-    chmod +x "$API_DIR/deploy.sh" 2>/dev/null || true
-    chmod +x "$FRONTEND_DIR/deploy.sh" 2>/dev/null || true
-    chmod +x "$FRONTEND_DIR/deploy-stack.sh" 2>/dev/null || true
+    # Scripts opcionais
+    [ -f "$FRONTEND_DIR/deploy.sh" ] && chmod +x "$FRONTEND_DIR/deploy.sh" 2>/dev/null || true
 }
 
 # =========================
