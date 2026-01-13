@@ -4,6 +4,7 @@ import { ConsultaStatusService } from "../services/consultaStatus.service";
 import { ProximaConsultaService } from "../services/proximaConsulta.service";
 import { AutorTipoCancelamento } from "../types/permissions.types";
 import { nowBrasiliaDate } from "../utils/timezone.util";
+import { normalizeParamString, normalizeQueryString } from "../utils/validation.util";
 
 /**
  * Controller para endpoints internos usados pelo socket-server
@@ -24,7 +25,7 @@ export class InternalController {
      */
     async getConsulta(req: Request, res: Response): Promise<void> {
         try {
-            const { consultationId } = req.params;
+            const consultationId = normalizeParamString(req.params.consultationId);
 
             if (!consultationId) {
                 res.status(400).json({
@@ -56,8 +57,8 @@ export class InternalController {
                     Id: consulta.Id,
                     PacienteId: consulta.PacienteId,
                     PsicologoId: consulta.PsicologoId,
-                    Paciente: consulta.Paciente ? { Id: consulta.Paciente.Id } : undefined,
-                    Psicologo: consulta.Psicologo ? { Id: consulta.Psicologo.Id } : undefined
+                    Paciente: consulta.PacienteId ? { Id: consulta.PacienteId } : undefined,
+                    Psicologo: consulta.PsicologoId ? { Id: consulta.PsicologoId } : undefined
                 }
             });
         } catch (error) {
@@ -75,7 +76,7 @@ export class InternalController {
      */
     async updateReservaSessaoJoin(req: Request, res: Response): Promise<void> {
         try {
-            const { consultationId } = req.params;
+            const consultationId = normalizeParamString(req.params.consultationId);
             const { field, timestamp } = req.body;
 
             if (!consultationId || !field || !timestamp) {
@@ -119,7 +120,7 @@ export class InternalController {
      */
     async getReservaSessao(req: Request, res: Response): Promise<void> {
         try {
-            const { consultationId } = req.params;
+            const consultationId = normalizeParamString(req.params.consultationId);
 
             if (!consultationId) {
                 res.status(400).json({
@@ -172,7 +173,7 @@ export class InternalController {
      */
     async countUnreadNotifications(req: Request, res: Response): Promise<void> {
         try {
-            const { userId } = req.params;
+            const userId = normalizeParamString(req.params.userId);
 
             if (!userId) {
                 res.status(400).json({
@@ -183,7 +184,7 @@ export class InternalController {
             }
 
             const count = await prisma.notificationStatus.count({
-                where: { UserId: userId, Status: "unread" }
+                where: { UserId: userId, Status: "unread" as any }
             });
 
             res.status(200).json({
@@ -205,7 +206,7 @@ export class InternalController {
      */
     async markNotificationAsRead(req: Request, res: Response): Promise<void> {
         try {
-            const { notificationId } = req.params;
+            const notificationId = normalizeParamString(req.params.notificationId);
             const { userId } = req.body;
 
             if (!notificationId || !userId) {
@@ -220,7 +221,7 @@ export class InternalController {
                 where: {
                     UserId: userId,
                     NotificationId: notificationId,
-                    Status: "unread"
+                    Status: "unread" as any
                 },
                 data: {
                     Status: "read",
@@ -247,7 +248,7 @@ export class InternalController {
      */
     async markAllNotificationsAsRead(req: Request, res: Response): Promise<void> {
         try {
-            const { userId } = req.params;
+            const userId = normalizeParamString(req.params.userId);
 
             if (!userId) {
                 res.status(400).json({
@@ -258,7 +259,7 @@ export class InternalController {
             }
 
             await prisma.notificationStatus.updateMany({
-                where: { UserId: userId, Status: "unread" },
+                where: { UserId: userId, Status: "unread" as any },
                 data: {
                     Status: "read",
                     ReadAt: new Date()
@@ -284,7 +285,7 @@ export class InternalController {
      */
     async getConfiguracao(req: Request, res: Response): Promise<void> {
         try {
-            const { key } = req.params;
+            const key = normalizeParamString(req.params.key);
 
             // O modelo Configuracao é um singleton - sempre busca a primeira/única configuração
             const config = await prisma.configuracao.findFirst();
@@ -301,7 +302,7 @@ export class InternalController {
             if (key) {
                 // Verifica se o campo existe na configuração
                 if (key in config) {
-                    const value = (config as any)[key];
+                    const value = (config as any)[key as string];
                     res.status(200).json({
                         success: true,
                         data: {
@@ -338,7 +339,7 @@ export class InternalController {
      */
     async getUser(req: Request, res: Response): Promise<void> {
         try {
-            const { userId } = req.params;
+            const userId = normalizeParamString(req.params.userId);
 
             if (!userId) {
                 res.status(400).json({
@@ -455,7 +456,7 @@ export class InternalController {
      */
     async processInactivity(req: Request, res: Response): Promise<void> {
         try {
-            const { consultationId } = req.params;
+            const consultationId = normalizeParamString(req.params.consultationId);
             const { missingRole } = req.body;
 
             if (!consultationId || !missingRole) {
@@ -546,7 +547,7 @@ export class InternalController {
      */
     async buscarProximaConsulta(req: Request, res: Response): Promise<void> {
         try {
-            const { psicologoId } = req.params;
+            const psicologoId = normalizeParamString(req.params.psicologoId);
 
             if (!psicologoId) {
                 res.status(400).json({
@@ -577,7 +578,7 @@ export class InternalController {
      */
     async buscarProximaConsultaPaciente(req: Request, res: Response): Promise<void> {
         try {
-            const { pacienteId } = req.params;
+            const pacienteId = normalizeParamString(req.params.pacienteId);
 
             if (!pacienteId) {
                 res.status(400).json({

@@ -7,6 +7,7 @@ import { ContratoPsicologoData } from "../../types/contrato.types";
 import { logAuditFromRequest, logUserOperation, logPsychologistApproval } from "../../utils/auditLogger.util";
 import { getClientIp } from "../../utils/getClientIp.util";
 import prisma from "../../prisma/client";
+import { normalizeParamStringRequired } from "../../utils/validation.util";
 
 export class PsicologoController implements IPsicologoController {
     private service: PsicologoService;
@@ -51,7 +52,7 @@ export class PsicologoController implements IPsicologoController {
         if (!hasPermission) {
             return res.status(403).json({ message: "Acesso negado" });
         }
-        const { id } = req.params;
+        const id = normalizeParamStringRequired(req.params.id);
 
         // Buscar dados do psicólogo antes de deletar para auditoria
         const psicologo = await prisma.user.findUnique({
@@ -93,7 +94,7 @@ export class PsicologoController implements IPsicologoController {
         if (!hasPermission) {
             return res.status(403).json({ message: "Acesso negado" });
         }
-        const { id } = req.params;
+        const id = normalizeParamStringRequired(req.params.id);
         const data = req.body;
 
         // Buscar dados do psicólogo antes de atualizar para auditoria
@@ -163,7 +164,7 @@ export class PsicologoController implements IPsicologoController {
         if (!hasPermission) {
             return res.status(403).json({ message: "Acesso negado" });
         }
-        const { id } = req.params;
+        const id = normalizeParamStringRequired(req.params.id);
         const psicologo = await this.service.getById(user, id);
         if (!psicologo) {
             return res.status(404).json({ message: "Psicólogo não encontrado" });

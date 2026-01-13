@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { AddressService } from '../services/address.service';
 import { Address } from '../interfaces/address.interface';
 import axios from 'axios';
+import { normalizeParamStringRequired } from '../utils/validation.util';
 
 const addressService = new AddressService();
 
@@ -36,7 +37,7 @@ export class AddressController {
 
     async listByUser(req: Request, res: Response) {
         try {
-            const { userId } = req.params;
+            const userId = normalizeParamStringRequired(req.params.userId);
             const addresses = await addressService.getAddressesByUser(userId);
             res.json(addresses);
         } catch (error) {
@@ -46,7 +47,7 @@ export class AddressController {
 
     async getAddressByCep(req: Request, res: Response) {
         try {
-            const { cep } = req.params;
+            const cep = normalizeParamStringRequired(req.params.cep);
             const cleanCep = cep.replace(/\D/g, '');
 
             if (cleanCep.length !== 8) {

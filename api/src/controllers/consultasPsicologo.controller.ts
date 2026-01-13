@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { normalizeParamStringRequired } from "../utils/validation.util";
 import { AuthorizationService } from '../services/authorization.service';
 import { IConsultasPsicologoService } from "../interfaces/consultasPsicologo.interface";
 
@@ -41,7 +42,7 @@ export class ConsultasPsicologoController {
     async getReservasPorId(req: Request, res: Response): Promise<Response> {
         const userId = this.authService.getLoggedUserId(req);
         if (!userId) return res.status(401).json({ error: 'Unauthorized' });
-        const reservationId = req.params.id;
+        const reservationId = normalizeParamStringRequired(req.params.id);
         return this.consultasService.getReservasPorId(userId, reservationId, res);
     }
 
@@ -54,7 +55,7 @@ export class ConsultasPsicologoController {
     async cancelarReserva(req: Request, res: Response): Promise<Response> {
         const userId = this.authService.getLoggedUserId(req);
         if (!userId) return res.status(401).json({ error: 'Unauthorized' });
-        const reservationId = req.params.id;
+        const reservationId = normalizeParamStringRequired(req.params.id);
         return this.consultasService.cancelarReserva(userId, reservationId, res);
     }
 
@@ -67,7 +68,7 @@ export class ConsultasPsicologoController {
     async releaseSchedule(req: Request, res: Response): Promise<Response> {
         const userId = this.authService.getLoggedUserId(req);
         if (!userId) return res.status(401).json({ error: 'Unauthorized' });
-        const agendaId = req.params.id;
+        const agendaId = normalizeParamStringRequired(req.params.id);
         return this.consultasService.releaseSchedule(userId, agendaId, res);
     }
 

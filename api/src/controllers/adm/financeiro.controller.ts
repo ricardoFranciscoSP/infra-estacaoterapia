@@ -6,7 +6,7 @@ import { logAuditFromRequest } from '../../utils/auditLogger.util';
 import { ActionType, Module } from '../../types/permissions.types';
 import { getClientIp } from '../../utils/getClientIp.util';
 import prisma from '../../prisma/client';
-import { normalizeQueryString, normalizeQueryIntWithDefault } from '../../utils/validation.util';
+import { normalizeQueryString, normalizeQueryIntWithDefault, normalizeParamStringRequired } from '../../utils/validation.util';
 
 export class AdmFinanceiroController {
   private financeiroService: AdmFinanceiroService;
@@ -368,7 +368,7 @@ export class AdmFinanceiroController {
         return res.status(401).json({ success: false, error: 'Unauthorized' });
       }
 
-      const { id } = req.params;
+      const id = normalizeParamStringRequired(req.params.id);
       
       if (!id) {
         return res.status(400).json({ success: false, error: 'ID do psicólogo é obrigatório' });

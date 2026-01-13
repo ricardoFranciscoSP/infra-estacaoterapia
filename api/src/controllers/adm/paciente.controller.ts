@@ -6,6 +6,7 @@ import { ActionType, Module } from "../../types/permissions.types";
 import { logUserOperation } from "../../utils/auditLogger.util";
 import { getClientIp } from "../../utils/getClientIp.util";
 import prisma from "../../prisma/client";
+import { normalizeParamStringRequired } from "../../utils/validation.util";
 
 export class PacienteController implements IPaciente {
     private service: PacienteService;
@@ -50,7 +51,7 @@ export class PacienteController implements IPaciente {
         if (!hasPermission) {
             return res.status(403).json({ message: "Acesso negado" });
         }
-        const { id } = req.params;
+        const id = normalizeParamStringRequired(req.params.id);
         
         // Buscar dados do paciente antes de deletar para auditoria
         const paciente = await prisma.user.findUnique({
@@ -92,7 +93,7 @@ export class PacienteController implements IPaciente {
         if (!hasPermission) {
             return res.status(403).json({ message: "Acesso negado" });
         }
-        const { id } = req.params;
+        const id = normalizeParamStringRequired(req.params.id);
         const data = req.body;
         
         // Buscar dados do paciente antes de atualizar para auditoria
@@ -137,7 +138,7 @@ export class PacienteController implements IPaciente {
         if (!hasPermission) {
             return res.status(403).json({ message: "Acesso negado" });
         }
-        const { id } = req.params;
+        const id = normalizeParamStringRequired(req.params.id);
         const cliente = await this.service.getById(user, id);
         if (!cliente) {
             return res.status(404).json({ message: "Cliente não encontrado" });

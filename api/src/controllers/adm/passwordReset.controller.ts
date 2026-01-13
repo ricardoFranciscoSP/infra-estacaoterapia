@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { PasswordResetService } from '../../services/adm/passwordReset.service';
 import { EmailService } from '../../services/email.service';
 import { getClientIp } from '../../utils/getClientIp.util';
+import { normalizeParamStringRequired } from '../../utils/validation.util';
 
 export class PasswordResetController {
     private passwordResetService: PasswordResetService;
@@ -17,7 +18,7 @@ export class PasswordResetController {
      */
     async generateResetLink(req: Request, res: Response): Promise<Response> {
         try {
-            const { userId } = req.params;
+            const userId = normalizeParamStringRequired(req.params.userId);
             const admin = req.user; // Admin autenticado
 
             if (!userId) {
@@ -53,7 +54,7 @@ export class PasswordResetController {
      */
     async generateRandomPassword(req: Request, res: Response): Promise<Response> {
         try {
-            const { userId } = req.params;
+            const userId = normalizeParamStringRequired(req.params.userId);
             const admin = req.user; // Admin autenticado
 
             console.log('[PasswordResetController] Recebida requisição para gerar senha aleatória. userId:', userId);

@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { AuthorizationService } from "../services/authorization.service";
 import { AuditService, AuditLogData } from "../services/audit.service";
 import { ActionType, Module } from "../generated/prisma/client";
+import { normalizeParamStringRequired } from "../utils/validation.util";
 
 export class AuditController {
     constructor(
@@ -176,7 +177,7 @@ export class AuditController {
                 return;
             }
 
-            const { id } = req.params;
+            const id = normalizeParamStringRequired(req.params.id);
 
             if (!id) {
                 res.status(400).json({
@@ -222,7 +223,7 @@ export class AuditController {
                 return;
             }
 
-            const { userId } = req.params;
+            const userId = normalizeParamStringRequired(req.params.userId);
 
             if (!userId) {
                 res.status(400).json({

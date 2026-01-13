@@ -4,6 +4,7 @@ import { ConfiguracoesService } from "../../services/adm/configuracoes.service";
 import { logConfigOperation, logAuditFromRequest } from "../../utils/auditLogger.util";
 import { ActionType, Module } from "../../types/permissions.types";
 import { getClientIp } from "../../utils/getClientIp.util";
+import { normalizeParamString, normalizeQueryString } from "../../utils/validation.util";
 
 export class ConfiguracoesController {
     private service: ConfiguracoesService;
@@ -169,7 +170,7 @@ export class ConfiguracoesController {
         }
         
         const originalJson = res.json.bind(res);
-        const configKey = req.params.id || 'N/A';
+        const configKey = normalizeParamString(req.params.id) || 'N/A';
         
         res.json = function(data: any) {
             // Registrar auditoria após sucesso

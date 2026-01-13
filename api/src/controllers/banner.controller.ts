@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { BannerService } from '../services/banner.service';
 import { MulterRequest } from '../types/multerRequest';
+import { normalizeParamStringRequired, normalizeQueryString } from '../utils/validation.util';
 
 export class BannerController {
     constructor(private bannerService: BannerService) {}
@@ -12,7 +13,7 @@ export class BannerController {
      */
     async findAll(req: Request, res: Response): Promise<Response> {
         try {
-            const ativosApenas = req.query.ativos === 'true';
+            const ativosApenas = normalizeQueryString(req.query.ativos) === 'true';
             // ⚡ OTIMIZAÇÃO: Rotas públicas não precisam de Creator/Updater (reduz joins)
             const includeCreator = false; // Sempre false para rotas públicas
             
@@ -38,7 +39,7 @@ export class BannerController {
      */
     async findById(req: Request, res: Response): Promise<Response> {
         try {
-            const { id } = req.params;
+            const id = normalizeParamStringRequired(req.params.id);
             const banner = await this.bannerService.findById(id);
             if (!banner) {
                 return res.status(404).json({ error: 'Banner não encontrado' });
@@ -119,7 +120,7 @@ export class BannerController {
      */
     async update(req: MulterRequest, res: Response): Promise<Response> {
         try {
-            const { id } = req.params;
+            const id = normalizeParamStringRequired(req.params.id);
             const userId = req.user?.Id;
             if (!userId) {
                 return res.status(401).json({ error: 'Usuário não autenticado' });
@@ -194,7 +195,7 @@ export class BannerController {
      */
     async delete(req: Request, res: Response): Promise<Response> {
         try {
-            const { id } = req.params;
+            const id = normalizeParamStringRequired(req.params.id);
             await this.bannerService.delete(id);
             return res.status(200).json({ message: 'Banner deletado com sucesso' });
         } catch (error: unknown) {
@@ -215,7 +216,7 @@ export class BannerController {
      */
     async toggleActive(req: Request, res: Response): Promise<Response> {
         try {
-            const { id } = req.params;
+            const id = normalizeParamStringRequired(req.params.id);
             const userId = req.user?.Id;
             if (!userId) {
                 return res.status(401).json({ error: 'Usuário não autenticado' });

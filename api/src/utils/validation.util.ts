@@ -79,4 +79,17 @@ export function normalizeParamString(value: string | string[] | undefined): stri
     return String(value);
 }
 
+/**
+ * Normaliza um valor de req.params que pode ser string | string[] | undefined para string
+ * Se for array, retorna o primeiro elemento. Se for undefined, retorna string vazia.
+ * Use esta função quando o parâmetro é obrigatório.
+ */
+export function normalizeParamStringRequired(value: string | string[] | undefined): string {
+    if (value === undefined) return '';
+    if (Array.isArray(value)) {
+        return value.length > 0 ? String(value[0]) : '';
+    }
+    return String(value);
+}
+
 // Adicione outras funções de validação aqui conforme necessário

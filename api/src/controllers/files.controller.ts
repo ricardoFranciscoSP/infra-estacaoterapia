@@ -2,12 +2,12 @@ import { Request, Response } from "express";
 import fs from "fs";
 import path from "path";
 import { FilesService } from "../services/files.service";
-import { normalizeQueryString, normalizeQueryIntWithDefault, normalizeParamString } from "../utils/validation.util";
+import { normalizeQueryString, normalizeQueryIntWithDefault, normalizeParamString, normalizeParamStringRequired } from "../utils/validation.util";
 
 export class FilesController {
     static async viewPsychologistDocument(req: Request, res: Response) {
         try {
-            const result = await FilesService.getPsychologistDocument(req.params.id, req.user as any);
+            const result = await FilesService.getPsychologistDocument(normalizeParamStringRequired(req.params.id), req.user as any);
             return res.json(result);
         } catch (error: any) {
             const status = error?.status || 500;
@@ -19,7 +19,7 @@ export class FilesController {
 
     static async listPsychologistDocuments(req: Request, res: Response) {
         try {
-            const userId = req.params.profileId; // parâmetro tratado como userId por compatibilidade
+            const userId = normalizeParamStringRequired(req.params.profileId); // parâmetro tratado como userId por compatibilidade
             const result = await FilesService.listDocumentsByUserId(userId, req.user as any);
             return res.json(result);
         } catch (error: any) {
@@ -32,7 +32,7 @@ export class FilesController {
 
     static async downloadPsychologistDocument(req: Request, res: Response) {
         try {
-            const result = await FilesService.getDownloadUrl(req.params.id, req.user as any);
+            const result = await FilesService.getDownloadUrl(normalizeParamStringRequired(req.params.id), req.user as any);
             return res.json(result);
         } catch (error: any) {
             const status = error?.status || 500;
@@ -45,7 +45,7 @@ export class FilesController {
     static async documentThumbnail(req: Request, res: Response) {
         try {
             const size = normalizeQueryIntWithDefault(req.query.size, 200);
-            const result = await FilesService.getDocumentThumbnail(req.params.id, size, req.user as any);
+            const result = await FilesService.getDocumentThumbnail(normalizeParamStringRequired(req.params.id), size, req.user as any);
             return res.json(result);
         } catch (error: any) {
             const status = error?.status || 500;
@@ -58,7 +58,7 @@ export class FilesController {
     static async userAvatar(req: Request, res: Response) {
         try {
             const size = normalizeQueryIntWithDefault(req.query.size, 200);
-            const result = await FilesService.getUserAvatar(req.params.userId, size);
+            const result = await FilesService.getUserAvatar(normalizeParamStringRequired(req.params.userId), size);
             return res.json(result);
         } catch (error: any) {
             const status = error?.status || 500;
@@ -148,7 +148,7 @@ export class FilesController {
      */
     static async viewDocument(req: Request, res: Response) {
         try {
-            const result = await FilesService.getDocument(req.params.id, req.user as any);
+            const result = await FilesService.getDocument(normalizeParamStringRequired(req.params.id), req.user as any);
             return res.json(result);
         } catch (error: any) {
             const status = error?.status || 500;
@@ -160,7 +160,7 @@ export class FilesController {
 
     static async deletePsychologistDocument(req: Request, res: Response) {
         try {
-            const result = await FilesService.deletePsychologistDocument(req.params.id, req.user as any);
+            const result = await FilesService.deletePsychologistDocument(normalizeParamStringRequired(req.params.id), req.user as any);
             return res.json(result);
         } catch (error: any) {
             const status = error?.status || 500;
