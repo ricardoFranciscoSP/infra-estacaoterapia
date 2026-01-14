@@ -42,8 +42,10 @@ services:
         - /bin/sh
         - -c
         - >
+          PASS_LEN=$$(wc -c < $$POSTGRES_PASSWORD_FILE | tr -d ' ') &&
+          echo "postgres healthcheck: password length=$$PASS_LEN" &&
           PGPASSWORD=$$(cat $$POSTGRES_PASSWORD_FILE) &&
-          psql -U $(cat /run/secrets/postgres_user) -d $(cat /run/secrets/postgres_db) -h localhost -c "SELECT 1;" >/dev/null 2>&1
+          psql -U estacaoterapia -d estacaoterapia -h localhost -c 'SELECT 1;' >/dev/null 2>&1
       interval: 10s
       timeout: 5s
       retries: 5
