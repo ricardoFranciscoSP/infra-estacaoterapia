@@ -131,15 +131,15 @@ if (isSocketServer) {
 // Para socket-server, não configuramos handlers de erro de conexão para evitar logs desnecessários
 const pool = new Pool({
     connectionString: databaseUrl,
-    // Configurações otimizadas para conexões remotas
+    // Configurações otimizadas para conexões remotas via PGBouncer
     max: 20, // Máximo de conexões no pool
-    min: isSocketServer ? 0 : 1, // Socket-server: 0 (lazy), API: 1 (mantém conexão)
-    idleTimeoutMillis: 60000, // Fecha conexões idle após 60s
-    connectionTimeoutMillis: isSocketServer ? 60000 : 30000, // Socket-server: timeout maior (não tenta conectar)
-    statement_timeout: 300000, // 5 minutos para queries longas
+    min: isSocketServer ? 0 : 2, // Socket-server: 0 (lazy), API: 2 (mantém pool mínimo)
+    idleTimeoutMillis: 30000, // Fecha conexões idle após 30s
+    connectionTimeoutMillis: 60000, // 60s para estabelecer conexão (maior que o server_connect_timeout do PGBouncer)
+    statement_timeout: 180000, // 3 minutos para queries longas
     query_timeout: 60000, // 1 minuto para queries normais
-    keepAlive: !isSocketServer, // Socket-server: não mantém conexão ativa
-    keepAliveInitialDelayMillis: isSocketServer ? 0 : 10000, // Socket-server: sem keepalive
+    keepAlive: true, // Mantém conexão ativa (importante para PGBouncer)
+    keepAliveInitialDelayMillis: 10000, // 10s antes do primeiro keepalive
     ssl: false, // Desabilitado para servidor remoto sem SSL
     application_name: isSocketServer ? 'estacao-socket-server' : 'estacao-api-dev',
     // Socket-server: desabilita validação inicial da connection string

@@ -82,6 +82,58 @@ start_api() {
   load_secrets /run/secrets/estacao_api.env
   echo "✅ Secrets carregados para API"
 
+  # Exportar TODAS as variáveis do secret para o ambiente Node.js
+  # Ambiente
+  export NODE_ENV
+  export PORT
+  
+  # Segurança
+  export JWT_SECRET
+  export REFRESH_SECRET
+  export ENCRYPTION_KEY
+  
+  # URLs
+  export URL_FRONT
+  export FRONTEND_URL
+  export BASE_URL
+  export SOCKET_URL
+  export CORS_ENV
+  
+  # Supabase
+  export SUPABASE_URL
+  export SUPABASE_ANON_KEY
+  export SUPABASE_SERVICE_ROLE_KEY
+  export SUPABASE_STORAGE_REGION
+  export SUPABASE_BUCKET
+  export SUPABASE_BUCKET_PUBLIC
+  
+  # Google OAuth
+  export GOOGLE_CLIENT_ID
+  
+  # Agora (RTC/RTM)
+  export AGORA_APP_ID
+  export AGORA_APP_CERTIFICATE
+  
+  # Vindi
+  export VINDI_API_KEY_PRIVADA
+  export VINDI_API_KEY_PUBLICA
+  export VINDI_API_URL
+  
+  # Email (Brevo)
+  export BREVO_API_KEY
+  export EMAIL_FROM
+  export EMAIL_FROM_NAME
+  
+  # Integrações externas
+  export TOKEN_INFO_SIMPLES_API_KEY
+  
+  # PostgreSQL (serão atualizados após resolução do host)
+  export POSTGRES_USER
+  export POSTGRES_PASSWORD
+  export POSTGRES_DB
+
+  echo "✅ Variáveis de secrets exportadas para Node.js"
+
   # Priorizar senha do secret redis_password se disponível
   if [ -f /run/secrets/redis_password ]; then
     REDIS_PASSWORD=$(cat /run/secrets/redis_password | tr -d '\n\r')
@@ -90,17 +142,28 @@ start_api() {
 
   # Log das variáveis de ambiente que importam
   echo "📋 Variáveis de Ambiente Carregadas:"
+  echo "   • NODE_ENV: ${NODE_ENV:-não definido}"
+  echo "   • PORT: ${PORT:-não definido}"
   echo "   • REDIS_HOST: ${REDIS_HOST:-não definido}"
   echo "   • REDIS_PORT: ${REDIS_PORT:-não definido}"
   echo "   • REDIS_DB: ${REDIS_DB:-não definido}"
   echo "   • REDIS_PASSWORD: ${REDIS_PASSWORD:+definido ($(echo -n "$REDIS_PASSWORD" | wc -c) chars)}"
   echo "   • REDIS_URL: ${REDIS_URL:-não definido}"
+  echo "   • DATABASE_URL: ${DATABASE_URL:+definido}"
+  echo "   • JWT_SECRET: ${JWT_SECRET:+definido}"
+  echo "   • SUPABASE_URL: ${SUPABASE_URL:-não definido}"
+  echo "   • VINDI_API_URL: ${VINDI_API_URL:-não definido}"
 
   PG_HOST="${PG_HOST:-pgbouncer}"
   PG_PORT="${PG_PORT:-6432}"
   REDIS_HOST="${REDIS_HOST:-redis}"
   REDIS_PORT="${REDIS_PORT:-6379}"
   POSTGRES_DB="${POSTGRES_DB:-estacaoterapia}"
+
+  # Exportar variáveis do PostgreSQL
+  export PG_HOST
+  export PG_PORT
+  export POSTGRES_DB
 
   echo "📋 Conexões (finais):"
   echo "   PostgreSQL → $PG_HOST:$PG_PORT"
@@ -128,10 +191,17 @@ start_api() {
   done
   retry nc -z "$PG_HOST" "$PG_PORT"
 
+  # Exportar PG_HOST novamente após resolução
+  export PG_HOST
+  echo "✅ PG_HOST=$PG_HOST exportado"
+
   if [ -n "$POSTGRES_USER" ] && [ -n "$POSTGRES_PASSWORD" ]; then
     DATABASE_URL="${DATABASE_URL:-postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${PG_HOST}:${PG_PORT}/${POSTGRES_DB}?schema=public}"
     export DATABASE_URL
-    echo "✅ DATABASE_URL configurada"
+    echo "✅ DATABASE_URL configurada e exportada"
+    echo "   Host: $PG_HOST:$PG_PORT"
+    echo "   Database: $POSTGRES_DB"
+    echo "   User: $POSTGRES_USER"
 
     # Verificar se banco já foi restaurado antes de tentar restaurar
     if [ -n "$RESTORE_DB" ] && [ "$RESTORE_DB" = "true" ]; then
@@ -185,6 +255,10 @@ start_socket() {
   REDIS_PORT="${REDIS_PORT:-6379}"
   API_BASE_URL="${API_BASE_URL:-http://api:3333}"
 
+  # Exportar variáveis do PostgreSQL
+  export PG_HOST
+  export PG_PORT
+
   echo "📋 Conexões (finais):"
   echo "   PostgreSQL → $PG_HOST:$PG_PORT"
   echo "   Redis      → $REDIS_HOST:$REDIS_PORT (auth: ${REDIS_PASSWORD:+SIM}${REDIS_PASSWORD:-NÃO})"
@@ -209,6 +283,10 @@ start_socket() {
     fi
   done
   retry nc -z "$PG_HOST" "$PG_PORT"
+
+  # Exportar PG_HOST novamente após resolução
+  export PG_HOST
+  echo "✅ PG_HOST=$PG_HOST exportado"
 
   API_HOST=$(echo "$API_BASE_URL" | sed 's|http://||;s|https://||' | cut -d: -f1)
   API_PORT=$(echo "$API_BASE_URL" | cut -d: -f3)
