@@ -82,6 +82,12 @@ start_api() {
   load_secrets /run/secrets/estacao_api.env
   echo "✅ Secrets carregados para API"
 
+  # Priorizar senha do secret redis_password se disponível
+  if [ -f /run/secrets/redis_password ]; then
+    REDIS_PASSWORD=$(cat /run/secrets/redis_password | tr -d '\n\r')
+    echo "✅ REDIS_PASSWORD carregada do secret redis_password"
+  fi
+
   # Log das variáveis de ambiente que importam
   echo "📋 Variáveis de Ambiente Carregadas:"
   echo "   • REDIS_HOST: ${REDIS_HOST:-não definido}"
@@ -158,6 +164,12 @@ start_socket() {
 
   load_secrets /run/secrets/estacao_socket.env
   echo "✅ Secrets carregados para Socket"
+
+  # Priorizar senha do secret redis_password se disponível
+  if [ -f /run/secrets/redis_password ]; then
+    REDIS_PASSWORD=$(cat /run/secrets/redis_password | tr -d '\n\r')
+    echo "✅ REDIS_PASSWORD carregada do secret redis_password"
+  fi
 
   # Log das variáveis de ambiente que importam
   echo "📋 Variáveis de Ambiente Carregadas:"

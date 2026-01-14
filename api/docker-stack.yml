@@ -56,7 +56,7 @@ services:
   redis:
     image: estacaoterapia-redis:prd-{{TAG}}
     secrets:
-      - estacao_api_env
+      - redis_password
     volumes:
       - redis_data:/data
     networks:
@@ -64,7 +64,7 @@ services:
     healthcheck:
       test:
         - CMD-SHELL
-        - 'REDIS_PASS=$$(grep ''^REDIS_PASSWORD='' /run/secrets/estacao_api_env | cut -d= -f2) && redis-cli -a "$$REDIS_PASS" --raw incr ping > /dev/null || exit 1'
+        - 'REDIS_PASS=$$(cat /run/secrets/redis_password) && if [ -n "$$REDIS_PASS" ]; then redis-cli -a "$$REDIS_PASS" --raw incr ping > /dev/null || exit 1; else redis-cli --raw incr ping > /dev/null || exit 1; fi'
       interval: 10s
       timeout: 5s
       retries: 5
@@ -224,4 +224,6 @@ secrets:
   pgbouncer.ini:
     external: true
   userlist.txt:
+    external: true
+  redis_password:
     external: true
