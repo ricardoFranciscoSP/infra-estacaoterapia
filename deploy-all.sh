@@ -19,12 +19,14 @@ NC='\033[0m'
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 API_DIR="$SCRIPT_DIR/api"
 FRONTEND_DIR="$SCRIPT_DIR/estacao"
+COROOT_DIR="$SCRIPT_DIR"
 LOG_FILE="deploy-$(date +%Y%m%d_%H%M%S).log"
 
 # Contadores
 START_TIME=$(date +%s)
 DEPLOY_API_SUCCESS=0
 DEPLOY_FRONTEND_SUCCESS=0
+DEPLOY_CADDY_SUCCESS=0
 
 ###############################################################################
 # Funções de Log
@@ -100,7 +102,12 @@ check_prerequisites() {
         exit 1
     fi
     log_success "Script de deploy do Frontend encontrado"
-}
+    
+    if [ ! -f "$SCRIPT_DIR/deploy.sh" ]; then
+        log_warning "Script de deploy do Caddy não encontrado: $SCRIPT_DIR/deploy.sh (Caddy não será deployado)"
+    else
+        log_success "Script de deploy do Caddy encontrado"
+    fi
 
 ###############################################################################
 # Funções de Git
@@ -207,6 +214,49 @@ deploy_frontend() {
     fi
 }
 
+deploy_caddy() {
+    log_header "🔗 Deploy do Caddy (Reverse Proxy)"
+    
+    cd "$SCRIPT_DIR"
+    
+    # Verificar se script existe
+    if [ ! -f "./deploy.sh" ]; then
+        log_warning "Script de deploy do Caddy não encontrado, pulando..."
+        return 0
+    fi
+    
+    log_info "Diretório: $SCRIPT_DIR"
+    log_info "Iniciando deploy do Caddy..."
+    
+    # Verificar se docker-stack.caddy.yml existe
+    if [ ! -f "./docker-stack.caddy.yml" ]; then
+        log_warning "Arquivo docker-stack.caddy.yml não encontrado, pulando Caddy..."
+        return 0
+    fi
+    
+    # Garantir permissões de execução
+    chmod +x ./deploy.sh 2>/dev/null || true
+    
+    # Deploy do Caddy via docker stack deploy
+    log_info "Deployando stack do Caddy..."
+    
+    if docker stack deploy -c docker-stack.caddy.yml caddy 2>&1 | tee -a "$LOG_FILE"; then
+        log_success "Deploy do Caddy concluído com sucesso"
+        DEPLOY_CADDY_SUCCESS=1
+        
+        # Aguardar o serviço iniciar
+        log_info "Aguardando Caddy iniciar..."
+        sleep 5
+        
+        # Verificar status
+        docker service ls --filter "name=caddy_caddy" 2>&1 | tee -a "$LOG_FILE" || true
+        
+        return 0
+    else
+        log_error "Falha no deploy do Caddy"
+        return 1
+    fi
+
 ###############################################################################
 # Função de Validação Final
 ###############################################################################
@@ -233,6 +283,12 @@ validate_deployment() {
     if [ $DEPLOY_FRONTEND_SUCCESS -eq 1 ]; then
         log_info "Serviços do Frontend (estacao):"
         docker service ps estacao_next_prd --format "table {{.Name}}\t{{.CurrentState}}" 2>&1 | tee -a "$LOG_FILE" || true
+    fi
+    
+    # Verificar serviços do Caddy
+    if [ $DEPLOY_CADDY_SUCCESS -eq 1 ]; then
+        log_info "Serviços do Caddy:"
+        docker service ps caddy_caddy --format "table {{.Name}}\t{{.CurrentState}}" 2>&1 | tee -a "$LOG_FILE" || true
     fi
     
     echo ""
@@ -263,6 +319,12 @@ print_summary() {
         echo -e "  ${GREEN}✓${NC} Frontend: Sucesso" | tee -a "$LOG_FILE"
     else
         echo -e "  ${RED}✗${NC} Frontend: Falha" | tee -a "$LOG_FILE"
+    fi
+    
+    if [ $DEPLOY_CADDY_SUCCESS -eq 1 ]; then
+        echo -e "  ${GREEN}✓${NC} Caddy: Sucesso" | tee -a "$LOG_FILE"
+    else
+        echo -e "  ${RED}⚠${NC} Caddy: Não deployado" | tee -a "$LOG_FILE"
     fi
     
     echo "" | tee -a "$LOG_FILE"
@@ -304,6 +366,13 @@ main() {
     # Deploy do Frontend
     if ! deploy_frontend; then
         log_warning "Deploy do Frontend falhou"
+    fi
+    
+    cd "$SCRIPT_DIR"
+    
+    # Deploy do Caddy
+    if ! deploy_caddy; then
+        log_warning "Deploy do Caddy falhou ou foi pulado"
     fi
     
     cd "$SCRIPT_DIR"

@@ -13,7 +13,7 @@ volumes:
     external: true
   caddy_config:
     external: true
-
+ 
 services:
   caddy:
     image: caddy:2-alpine
