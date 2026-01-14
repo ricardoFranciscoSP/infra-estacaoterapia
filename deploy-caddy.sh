@@ -54,6 +54,21 @@ else
     echo "✅ Rede estacao-network já existe"
 fi
 
+# Verificar se rede de ingresso existe
+echo ""
+echo "🌐 Verificando rede de ingresso..."
+if ! docker network ls --format '{{.Name}}' | grep -q "^ingress$"; then
+    echo "   ⚠️ Rede de ingresso não encontrada!"
+    echo "   → Criando rede de ingresso..."
+    docker network create --driver overlay --ingress --opt com.docker.network.driver.overlay.vxlanid=4096 ingress || {
+        echo "❌ Falha ao criar rede de ingresso!"
+        echo "   → Continuando com deploy..."
+    }
+    echo "✅ Rede de ingresso criada"
+else
+    echo "✅ Rede de ingresso já existe"
+fi
+
 # ==============================
 # 3️⃣ Criar/Verificar volumes necessários
 # ==============================
@@ -79,10 +94,21 @@ done
 echo ""
 echo "🚀 Fazendo deploy do Caddy para Docker Swarm..."
 
+# Listar redes disponíveis para debug
+echo "   📡 Redes disponíveis:"
+docker network ls --format "   {{.Driver}}: {{.Name}}" | head -10
+
 docker stack deploy \
     --compose-file docker-stack.caddy.yml \
     caddy || {
         echo "❌ Falha ao fazer deploy!"
+        echo ""
+        echo "🔧 Informações de diagnóstico:"
+        echo "   • Docker Swarm status: $(docker info | grep -A1 'Swarm:')"
+        echo "   • Redes overlay:"
+        docker network ls --filter driver=overlay --format "     {{.Driver}}: {{.Name}}"
+        echo "   • Rede de ingresso:"
+        docker network ls --filter name=ingress --format "     {{.Driver}}: {{.Name}}"
         exit 1
     }
 
