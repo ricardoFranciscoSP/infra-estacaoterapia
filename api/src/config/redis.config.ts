@@ -45,9 +45,13 @@ let ioredisConnectionPromise: Promise<IORedis> | null = null;
  * 
  * IMPORTANTE: As configurações são lidas dinamicamente de process.env para permitir
  * que o entrypoint.sh resolva os hostnames antes do Node.js tentar conectar
+ * 
+ * Em Docker Swarm, o Redis pode ser acessado por:
+ * - estacaoterapia_redis: nome do serviço completo
+ * - redis: alias configurado no docker-stack.yml
  */
 const getRedisConfig = () => ({
-    host: process.env.REDIS_HOST || "redis",
+    host: process.env.REDIS_HOST || "redis", // Usa alias de rede
     port: Number(process.env.REDIS_PORT || 6379),
     db: Number(process.env.REDIS_DB || 0),
     password: process.env.REDIS_PASSWORD || "",
@@ -298,7 +302,7 @@ function createIORedisClient(): IORedis {
         password: configPassword,
         maxRetriesPerRequest: null,
         connectTimeout: 30_000,
-        lazyConnect: false,
+        lazyConnect: true, // CRÍTICO: Não bloqueia inicialização da API se Redis não estiver disponível
         keepAlive: 30000,
         enableOfflineQueue: true,
         enableReadyCheck: true,
@@ -324,7 +328,7 @@ function createIORedisClient(): IORedis {
     console.log(`   │  • Command Timeout: ${redisConfig.commandTimeout}ms (${redisConfig.commandTimeout / 1000}s)`);
     console.log(`   │  • Max Retries: ${MAX_RETRIES} tentativas`);
     console.log("   ├─ Comportamento");
-    console.log(`   │  • Lazy Connect: ${redisConfig.lazyConnect ? 'SIM (aguarda primeiro comando)' : 'NÃO (conecta imediatamente)'}`);
+    console.log(`   │  • Lazy Connect: ${redisConfig.lazyConnect ? 'SIM (não bloqueia startup)' : 'NÃO (bloqueia até conectar)'}`);
     console.log(`   │  • Keep Alive: ${redisConfig.keepAlive}ms (${redisConfig.keepAlive / 1000}s)`);
     console.log(`   │  • Enable Ready Check: ${redisConfig.enableReadyCheck ? 'SIM (valida conexão)' : 'NÃO'}`);
     console.log(`   │  • Enable Offline Queue: ${redisConfig.enableOfflineQueue ? 'SIM (guarda comandos se offline)' : 'NÃO'}`);
@@ -338,6 +342,10 @@ function createIORedisClient(): IORedis {
     console.log("   ├─ Performance");
     console.log(`   │  • Auto Pipelining: ${redisConfig.enableAutoPipelining ? 'HABILITADO' : 'DESABILITADO (previne EPIPE)'}`);
     console.log(`   │  • Show Friendly Errors: ${redisConfig.showFriendlyErrorStack ? 'SIM' : 'NÃO'}`);
+    console.log("   ├─ Swarm Docker");
+    console.log(`   │  • Nome Serviço Swarm: estacaoterapia_redis`);
+    console.log(`   │  • Nome Stack: estacaoterapia`);
+    console.log(`   │  • DNS Interno: ${configHost} (resolvido pelo entrypoint.sh)`);
     console.log("   └─ Ambiente");
     console.log(`      • NODE_ENV: ${process.env.NODE_ENV || 'não definido'}`);
     console.log(`      • REDIS_HOST: ${process.env.REDIS_HOST || 'não definido (usando default)'}`);

@@ -172,72 +172,80 @@ server.listen(PORT, "0.0.0.0", async () => {
         process.env.NODE_ENV === "development";
 
     if (shouldStartWorkers) {
-        try {
-            console.log("🚦 Iniciando workers BullMQ...");
-
-            await waitForRedisReady(); // garante que Redis está ok
-
-            // Inicializa workers de Controle de Consulta (passa io para session worker)
-            const { startControleConsultaWorkers } = await import("./workers/controleConsultaWorkers");
-            // Socket.io é inicializado separadamente, então passa undefined aqui
-            await startControleConsultaWorkers(undefined);
-            console.log("✅ Workers de Controle de Consulta inicializados (com Session Worker)");
-
-            // Inicializa worker de Consultas
-            const { startConsultationWorker } = await import("./jobs/consultationJobs");
-            await startConsultationWorker();
-            console.log("✅ Worker de Consultas inicializado");
-
-            // Inicializa worker de Agenda
-            const { startAgendaWorker, scheduleMonthlyAgendaJob } = await import("./jobs/agendaWorker");
-            startAgendaWorker();
-            await scheduleMonthlyAgendaJob();
-            console.log("✅ Worker de Agenda inicializado");
-
-            // Inicializa worker de Webhooks
-            const { startWebhookWorker } = await import("./jobs/webhookWorker");
-            await startWebhookWorker();
-            console.log("✅ Worker de Webhooks inicializado");
-
-            // ✅ Inicializa worker de delayed jobs (zero polling)
-            const { startDelayedJobsWorker } = await import("./workers/delayedJobsWorker");
-            startDelayedJobsWorker();
-            console.log("✅ Worker de delayed jobs inicializado (zero polling)");
-
-            // ✅ Inicializa worker de jobs do banco de dados (BullMQ - zero polling)
-            const { startDatabaseJobsWorker } = await import("./workers/databaseJobsWorker");
-            startDatabaseJobsWorker();
-            console.log("✅ Worker de jobs do banco de dados inicializado (BullMQ - zero polling)");
-
-            console.log("✅ Todos os Workers BullMQ inicializados!");
-
+        // NÃO bloqueia a inicialização se Redis não estiver disponível
+        // Inicia os workers em background e permite que a API fique pronta
+        (async () => {
             try {
-                const { logAllQueuesStatus, logAllFailedJobs, cleanDelayedJobs } = await import("./utils/queueStatus");
-                await logAllQueuesStatus();
-                await logAllFailedJobs();
-                // Limpa jobs delayed antigos em todas as filas principais
-                const filas = [
-                    "agendaQueue",
-                    "webhookProcessor",
-                    "consultationQueue",
-                    "renovacao-controle-consulta",
-                    "pagamento-controle-consulta",
-                    "notificacao-controle-consulta",
-                    "emailQueue"
-                ];
-                for (const fila of filas) {
-                    await cleanDelayedJobs(fila, 24 * 60 * 60 * 1000); // 24h
+                console.log("🚦 Aguardando disponibilidade de Redis para iniciar workers BullMQ...");
+
+                await waitForRedisReady(); // garante que Redis está ok antes de iniciar workers
+
+                // Inicializa workers de Controle de Consulta (passa io para session worker)
+                const { startControleConsultaWorkers } = await import("./workers/controleConsultaWorkers");
+                // Socket.io é inicializado separadamente, então passa undefined aqui
+                await startControleConsultaWorkers(undefined);
+                console.log("✅ Workers de Controle de Consulta inicializados (com Session Worker)");
+
+                // Inicializa worker de Consultas
+                const { startConsultationWorker } = await import("./jobs/consultationJobs");
+                await startConsultationWorker();
+                console.log("✅ Worker de Consultas inicializado");
+
+                // Inicializa worker de Agenda
+                const { startAgendaWorker, scheduleMonthlyAgendaJob } = await import("./jobs/agendaWorker");
+                startAgendaWorker();
+                await scheduleMonthlyAgendaJob();
+                console.log("✅ Worker de Agenda inicializado");
+
+                // Inicializa worker de Webhooks
+                const { startWebhookWorker } = await import("./jobs/webhookWorker");
+                await startWebhookWorker();
+                console.log("✅ Worker de Webhooks inicializado");
+
+                // ✅ Inicializa worker de delayed jobs (zero polling)
+                const { startDelayedJobsWorker } = await import("./workers/delayedJobsWorker");
+                startDelayedJobsWorker();
+                console.log("✅ Worker de delayed jobs inicializado (zero polling)");
+
+                // ✅ Inicializa worker de jobs do banco de dados (BullMQ - zero polling)
+                const { startDatabaseJobsWorker } = await import("./workers/databaseJobsWorker");
+                startDatabaseJobsWorker();
+                console.log("✅ Worker de jobs do banco de dados inicializado (BullMQ - zero polling)");
+
+                console.log("✅ Todos os Workers BullMQ inicializados!");
+
+                try {
+                    const { logAllQueuesStatus, logAllFailedJobs, cleanDelayedJobs } = await import("./utils/queueStatus");
+                    await logAllQueuesStatus();
+                    await logAllFailedJobs();
+                    // Limpa jobs delayed antigos em todas as filas principais
+                    const filas = [
+                        "agendaQueue",
+                        "webhookProcessor",
+                        "consultationQueue",
+                        "renovacao-controle-consulta",
+                        "pagamento-controle-consulta",
+                        "notificacao-controle-consulta",
+                        "emailQueue"
+                    ];
+                    for (const fila of filas) {
+                        await cleanDelayedJobs(fila, 24 * 60 * 60 * 1000); // 24h
+                    }
+                } catch (err) {
+                    console.error("⚠️ Erro ao logar status das filas ou limpar delayed:", err);
                 }
             } catch (err) {
-                console.error("⚠️ Erro ao logar status das filas ou limpar delayed:", err);
+                console.error("❌ Erro ao iniciar workers BullMQ:", err);
+                // Em produção/staging/pre, registra erro mas NÃO bloqueia o servidor
+                // Redis conectará automaticamente quando ficar disponível
+                if (process.env.NODE_ENV === "production" || process.env.NODE_ENV === "staging" || process.env.NODE_ENV === "pre") {
+                    console.warn("⚠️  Servidor iniciado, mas workers BullMQ aguardam disponibilidade de Redis");
+                    console.warn("ℹ️  A conexão será estabelecida automaticamente quando Redis ficar disponível");
+                }
             }
-        } catch (err) {
-            console.error("❌ Erro ao iniciar workers BullMQ:", err);
-            // Em produção/staging/pre, falha se Redis não estiver disponível
-            if (process.env.NODE_ENV === "production" || process.env.NODE_ENV === "staging" || process.env.NODE_ENV === "pre") {
-                throw err;
-            }
-        }
+        })().catch((err) => {
+            console.error("🛑 Erro crítico ao iniciar workers:", err);
+        });
     } else {
         console.log(`⚠️ Ambiente ${process.env.NODE_ENV} — Workers BullMQ NÃO iniciados`);
     }

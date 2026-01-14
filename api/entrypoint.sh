@@ -154,43 +154,50 @@ start_api() {
   echo "   • SUPABASE_URL: ${SUPABASE_URL:-não definido}"
   echo "   • VINDI_API_URL: ${VINDI_API_URL:-não definido}"
 
+  # Configurar defaults para conexões
   PG_HOST="${PG_HOST:-pgbouncer}"
   PG_PORT="${PG_PORT:-6432}"
-  REDIS_HOST="${REDIS_HOST:-redis}"
+  REDIS_HOST="${REDIS_HOST:-redis}"  # Usa alias de rede do docker-stack.yml
   REDIS_PORT="${REDIS_PORT:-6379}"
+  REDIS_DB="${REDIS_DB:-1}"
   POSTGRES_DB="${POSTGRES_DB:-estacaoterapia}"
 
-  # Exportar variáveis do PostgreSQL
+  # Exportar variáveis do PostgreSQL e Redis ANTES de tentar conectar
   export PG_HOST
   export PG_PORT
   export POSTGRES_DB
+  export REDIS_HOST
+  export REDIS_PORT
+  export REDIS_DB
 
-  echo "📋 Conexões (finais):"
+  echo "📋 Variáveis de Conexão (padrões):"
   echo "   PostgreSQL → $PG_HOST:$PG_PORT"
-  echo "   Redis      → $REDIS_HOST:$REDIS_PORT (auth: ${REDIS_PASSWORD:+SIM}${REDIS_PASSWORD:-NÃO})"
+  echo "   Redis      → $REDIS_HOST:$REDIS_PORT (db: $REDIS_DB)"
 
   # Tentar resolver host de Redis com alternativas comuns no Swarm
-  echo "🔎 Checando Redis..."
-  REDIS_FOUND=false
-  for candidate in "$REDIS_HOST" "tasks.$REDIS_HOST" "redis" "tasks.redis" "estacaoterapia_redis" "tasks.estacaoterapia_redis"; do
+  # IMPORTANTE: Em Docker Swarm, os serviços podem ser acessados por:
+  # - <stack>_<service>: estacaoterapia_redis (nome do serviço)
+  # - alias de rede: redis (se configurado no docker-stack.yml)
+  echo "🔎 Resolvendo hostname do Redis..."
+  REDIS_CANDIDATES=(
+    "estacaoterapia_redis"
+    "tasks.estacaoterapia_redis"
+    "redis"
+    "tasks.redis"
+  )
+  
+  for candidate in "${REDIS_CANDIDATES[@]}"; do
     echo "   Tentando: $candidate"
-    if nc -z "$candidate" "$REDIS_PORT" >/dev/null 2>&1; then
+    # Usa timeout e nslookup para testar resolução DNS (mais confiável que nc)
+    if timeout 2 nslookup "$candidate" >/dev/null 2>&1 || timeout 2 getent hosts "$candidate" >/dev/null 2>&1; then
       REDIS_HOST="$candidate"
-      REDIS_FOUND=true
-      echo "✅ Redis acessível via: $REDIS_HOST"
+      echo "✅ Redis resolvido para: $REDIS_HOST"
       break
     fi
   done
   
-  if [ "$REDIS_FOUND" = false ]; then
-    echo "❌ Redis não encontrado em nenhuma das alternativas"
-    echo "   Tentativas: redis, tasks.redis, estacaoterapia_redis, tasks.estacaoterapia_redis"
-    echo "   Continuando mesmo assim - Redis pode estar disponível via VIP do Swarm"
-  fi
-  
-  # Exportar REDIS_HOST resolvido
+  echo "ℹ️  Usando REDIS_HOST: $REDIS_HOST (pode estar indisponível, Node.js reconectará automaticamente)"
   export REDIS_HOST
-  echo "✅ REDIS_HOST=$REDIS_HOST exportado"
 
   # Tentar resolver host de PgBouncer com alternativas (VIP e tasks)
   echo "🔎 Checando PgBouncer..."
