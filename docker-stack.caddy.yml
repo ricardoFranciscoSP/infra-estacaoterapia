@@ -1,80 +1,124 @@
 # ============================================
 # CADDY - REVERSE PROXY STACK
-# Para uso com Docker Swarm
+# Docker Swarm | Produção
 # ============================================
 
+
+# ============================================
+# NETWORKS
+# ============================================
 networks:
   estacao-network:
     external: true
     name: estacao-network
 
+# ============================================
+# VOLUMES
+# ============================================
 volumes:
   caddy_data:
     external: true
   caddy_config:
     external: true
- 
+
+# ============================================
+# SERVICES
+# ============================================
 services:
   caddy:
     image: caddy:2-alpine
+
+    # 🔑 Comando explícito (OBRIGATÓRIO no Swarm)
+    command:
+      - caddy
+      - run
+      - --config
+      - /etc/caddy/Caddyfile
+      - --adapter
+      - caddyfile
+
+    # 🌐 Portas públicas
     ports:
       - target: 80
         published: 80
         protocol: tcp
         mode: ingress
+
       - target: 443
         published: 443
         protocol: tcp
         mode: ingress
+
       - target: 443
         published: 443
         protocol: udp
         mode: ingress
+
+      # Admin API (Caddy v2)
       - target: 2019
         published: 2019
         protocol: tcp
         mode: ingress
-    
+
+    # 💾 Volumes
     volumes:
       - type: bind
         source: ./Caddyfile
         target: /etc/caddy/Caddyfile
         read_only: true
+
       - type: volume
         source: caddy_data
         target: /data
+
       - type: volume
         source: caddy_config
         target: /config
-    
+
+    # 🌐 Network
     networks:
       - estacao-network
-    
+
+    # ❤️ Healthcheck (Admin API)
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:2019/config/"]
-      interval: 10s
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:2019/config/"
+        ]
+      interval: 15s
       timeout: 5s
       retries: 3
-    
+      start_period: 20s
+
+    # 🚀 Deploy (Swarm)
     deploy:
       replicas: 1
+
       placement:
         constraints:
           - node.role == manager
+
       update_config:
         parallelism: 1
         delay: 10s
         order: start-first
         failure_action: rollback
+
       restart_policy:
         condition: on-failure
         delay: 5s
-        max_attempts: 3
+        max_attempts: 5
         window: 120s
+
       resources:
         limits:
-          cpus: '1'
+          cpus: "1.0"
           memory: 512M
         reservations:
-          cpus: '0.25'
+          cpus: "0.25"
           memory: 128M
