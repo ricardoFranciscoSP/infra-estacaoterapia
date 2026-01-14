@@ -60,22 +60,18 @@ services:
   redis:
     image: redis:7-alpine
     secrets:
-      - source: estacao_api_env
-        target: /run/secrets/redis.env
+      - redis_password
+    environment:
+      REDIS_PORT: '6379'
+      REDIS_MAXMEMORY: '512mb'
+      REDIS_MAXMEMORY_POLICY: 'allkeys-lru'
+      REDIS_APPENDONLY: 'yes'
     command:
       - /bin/sh
       - -c
       - |
-        # Carregar senha do secret (estacao_api.env contém todas as variáveis)
-        REDIS_PASS="REdnRHkZLnQpK1rcoKsseO3pX4GNIRR"
-        if [ -f /run/secrets/redis.env ]; then
-          # Extrair REDIS_PASSWORD do arquivo de secret
-          REDIS_PASS_LINE=$(grep -v '^#' /run/secrets/redis.env | grep "^REDIS_PASSWORD=" | head -1)
-          if [ -n "$REDIS_PASS_LINE" ]; then
-            REDIS_PASS="$${REDIS_PASS_LINE#REDIS_PASSWORD=}"
-            echo "✅ Senha Redis carregada do secret"
-          fi
-        fi
+        # Carregar senha do secret (similar ao PostgreSQL)
+        REDIS_PASS=$(cat /run/secrets/redis_password)
 
         # Iniciar Redis com senha
         exec redis-server \
@@ -93,14 +89,7 @@ services:
         - -c
         - |
           # Carregar senha do secret para healthcheck
-          REDIS_PASS="REdnRHkZLnQpK1rcoKsseO3pX4GNIRR"
-          if [ -f /run/secrets/redis.env ]; then
-            # Extrair REDIS_PASSWORD do arquivo de secret
-            REDIS_PASS_LINE=$(grep -v '^#' /run/secrets/redis.env | grep "^REDIS_PASSWORD=" | head -1)
-            if [ -n "$REDIS_PASS_LINE" ]; then
-              REDIS_PASS="$${REDIS_PASS_LINE#REDIS_PASSWORD=}"
-            fi
-          fi
+          REDIS_PASS=$(cat /run/secrets/redis_password)
           redis-cli -a "$REDIS_PASS" --raw incr ping > /dev/null
       interval: 10s
       timeout: 5s
@@ -263,6 +252,8 @@ secrets:
   postgres_password:
     external: true
   postgres_db:
+    external: true
+  redis_password:
     external: true
   pgbouncer.ini:
     external: true
