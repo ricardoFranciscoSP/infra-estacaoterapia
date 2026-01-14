@@ -42,8 +42,8 @@ services:
         - /bin/sh
         - -c
         - >
-          PGPASSWORD=$$(cat $$POSTGRES_PASSWORD_FILE)
-          psql -h localhost -U $$(cat $$POSTGRES_USER_FILE) -d $$(cat $$POSTGRES_DB_FILE) -c 'select 1' > /dev/null
+          PGPASSWORD=$$(cat $$POSTGRES_PASSWORD_FILE) &&
+          psql -h localhost -U estacaoterapia -d estacaoterapia -c 'select 1' > /dev/null
       interval: 10s
       timeout: 5s
       retries: 5
