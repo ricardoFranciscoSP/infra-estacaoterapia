@@ -39,10 +39,11 @@ services:
       - estacaoterapia_backend
     healthcheck:
       test:
-        [
-          'CMD-SHELL',
-          "PGPASSWORD=$POSTGRES_PASSWORD psql -h localhost -U $POSTGRES_USER -d $POSTGRES_DB -c 'select 1' > /dev/null",
-        ]
+        - /bin/sh
+        - -c
+        - >
+          PGPASSWORD=$$(cat $$POSTGRES_PASSWORD_FILE)
+          psql -h localhost -U $$(cat $$POSTGRES_USER_FILE) -d $$(cat $$POSTGRES_DB_FILE) -c 'select 1' > /dev/null
       interval: 10s
       timeout: 5s
       retries: 5
