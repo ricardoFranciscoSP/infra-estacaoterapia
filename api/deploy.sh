@@ -60,8 +60,6 @@ SECRETS_REQUIRED=(
     "postgres.env"
     "estacao_api.env"
     "estacao_socket.env"
-    "pgbouncer.ini"
-    "userlist.txt"
 )
 
 for secret_file in "${SECRETS_REQUIRED[@]}"; do
@@ -71,6 +69,18 @@ for secret_file in "${SECRETS_REQUIRED[@]}"; do
         exit 1
     fi
 done
+
+# Validar arquivos do PgBouncer
+if [ ! -f "/opt/secrets/pgbouncer/pgbouncer.ini" ]; then
+    echo "❌ Arquivo /opt/secrets/pgbouncer/pgbouncer.ini não encontrado!"
+    exit 1
+fi
+
+if [ ! -f "/opt/secrets/pgbouncer/userlist.txt" ]; then
+    echo "❌ Arquivo /opt/secrets/pgbouncer/userlist.txt não encontrado!"
+    exit 1
+fi
+
 echo "✅ Todos os arquivos de secrets encontrados"
 
 echo "✅ Pré-requisitos validados"
@@ -103,8 +113,8 @@ create_or_update_secret() {
 create_or_update_secret "postgres_env" "$SECRETS_DIR/postgres.env"
 create_or_update_secret "estacao_api_env" "$SECRETS_DIR/estacao_api.env"
 create_or_update_secret "estacao_socket_env" "$SECRETS_DIR/estacao_socket.env"
-create_or_update_secret "pgbouncer.ini" "$SECRETS_DIR/pgbouncer.ini"
-create_or_update_secret "userlist.txt" "$SECRETS_DIR/userlist.txt"
+create_or_update_secret "pgbouncer.ini" "/opt/secrets/pgbouncer/pgbouncer.ini"
+create_or_update_secret "userlist.txt" "/opt/secrets/pgbouncer/userlist.txt"
 
 # Extrair credenciais do postgres.env para criar secrets individuais
 echo ""
