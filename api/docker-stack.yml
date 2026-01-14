@@ -39,13 +39,11 @@ services:
       - estacaoterapia_backend
     healthcheck:
       test:
-        - /bin/sh
-        - -c
+        - CMD-SHELL
         - >
           PASS_LEN=$$(wc -c < $$POSTGRES_PASSWORD_FILE | tr -d ' ') &&
           echo "postgres healthcheck: password length=$$PASS_LEN" &&
-          PGPASSWORD=$$(cat $$POSTGRES_PASSWORD_FILE) &&
-          psql -U estacaoterapia -d estacaoterapia -h localhost -c 'SELECT 1;' >/dev/null 2>&1
+          PGPASSWORD=$$(cat $$POSTGRES_PASSWORD_FILE) psql -U estacaoterapia -d estacaoterapia -h localhost -c 'SELECT 1;' >/dev/null 2>&1
       interval: 10s
       timeout: 5s
       retries: 5
