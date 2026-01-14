@@ -8,7 +8,7 @@ networks:
   estacao-backend-network:
     external: true
     name: estacao-backend-network
-  
+
   estacao-network:
     external: false
     driver: overlay
@@ -24,37 +24,13 @@ services:
         target: /run/secrets/postgres.env
     environment:
       PGDATA: /var/lib/postgresql/data/pgdata
-    entrypoint: ['/bin/sh', '-c']
-    command:
-      - |
-        # Carregar variáveis do secret
-        if [ -f /run/secrets/postgres.env ]; then
-          export $(grep -v '^#' /run/secrets/postgres.env | xargs)
-        fi
-        # Iniciar postgres com configurações
-        exec docker-entrypoint.sh postgres \
-          -c max_connections=200 \
-          -c shared_buffers=256MB \
-          -c effective_cache_size=1GB \
-          -c maintenance_work_mem=64MB \
-          -c checkpoint_completion_target=0.9 \
-          -c wal_buffers=16MB \
-          -c default_statistics_target=100 \
-          -c random_page_cost=1.1 \
-          -c effective_io_concurrency=200 \
-          -c work_mem=4MB \
-          -c min_wal_size=1GB \
-          -c max_wal_size=4GB \
-          -c max_worker_processes=4 \
-          -c max_parallel_workers_per_gather=2 \
-          -c max_parallel_workers=4 \
-          -c max_parallel_maintenance_workers=2
+    entrypoint: ['/bin/sh', '/postgres-entrypoint.sh']
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - estacao-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-estacaoterapia} -d ${POSTGRES_DB:-estacaoterapia}"]
+      test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -65,9 +41,6 @@ services:
           - node.role == manager
       restart_policy:
         condition: on-failure
-        delay: 5s
-        max_attempts: 3
-        window: 120s
 
   # =====================================
   # REDIS
@@ -77,32 +50,13 @@ services:
     secrets:
       - source: estacao_api_env
         target: /run/secrets/redis.env
-    entrypoint: ['/bin/sh', '-c']
-    command:
-      - |
-        # Extrair REDIS_PASSWORD do secret
-        if [ -f /run/secrets/redis.env ]; then
-          REDIS_PASSWORD=$(grep '^REDIS_PASSWORD=' /run/secrets/redis.env | cut -d= -f2-)
-        fi
-        # Iniciar Redis com configurações
-        exec redis-server \
-          --requirepass "${REDIS_PASSWORD:-REdnRHkZLnQpK1rcoKsseO3pX4GNIRR}" \
-          --appendonly yes \
-          --appendfsync everysec \
-          --maxmemory 512mb \
-          --maxmemory-policy allkeys-lru \
-          --save "900 1" \
-          --save "300 10" \
-          --save "60 10000" \
-          --tcp-backlog 511 \
-          --timeout 300 \
-          --tcp-keepalive 300
+    command: ['redis-server', '--appendonly', 'yes', '--maxmemory', '512mb', '--maxmemory-policy', 'allkeys-lru', '--requirepass', 'REdnRHkZLnQpK1rcoKsseO3pX4GNIRR']
     volumes:
       - redis_data:/data
     networks:
       - estacao-network
     healthcheck:
-      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      test: ['CMD', 'redis-cli', '--raw', 'incr', 'ping']
       interval: 10s
       timeout: 3s
       retries: 5
@@ -136,8 +90,6 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: '6379'
       REDIS_DB: '1'
-      # REDIS_PASSWORD e REDIS_URL devem vir dos secrets (estacao_api_env)
-      # Não definir aqui para evitar exposição
 
     volumes:
       - type: bind
@@ -192,7 +144,6 @@ services:
         target: /etc/pgbouncer/userlist.txt
     deploy:
       replicas: 1
-      endpoint_mode: dnsrr
       restart_policy:
         condition: on-failure
     networks:
@@ -222,7 +173,6 @@ services:
       PG_HOST: pgbouncer
       PG_PORT: '6432'
       API_BASE_URL: 'http://api:3333'
-      # Credenciais devem vir dos secrets (estacao_socket_env)
 
     healthcheck:
       test: ['CMD', 'curl', '-f', 'http://localhost:3334/health']
