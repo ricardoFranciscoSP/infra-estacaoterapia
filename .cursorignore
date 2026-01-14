@@ -1,4 +1,0 @@
-# Arquivos que o Cursor deve ignorar no linting
-*.caddyfile
-*.sh
-!api/entrypoint*.sh

@@ -111,6 +111,32 @@ check_prerequisites() {
 }
 
 ###############################################################################
+# Diagnóstico de Rede Overlay
+###############################################################################
+
+diagnose_network() {
+    log_header "🔍 Diagnóstico de Rede Overlay Docker Swarm"
+    
+    if [ ! -f "$SCRIPT_DIR/diagnose-network-overlay.sh" ]; then
+        log_warning "Script de diagnóstico de rede não encontrado, pulando..."
+        return 0
+    fi
+    
+    log_info "Executando diagnóstico de rede overlay..."
+    
+    chmod +x "$SCRIPT_DIR/diagnose-network-overlay.sh" 2>/dev/null || true
+    
+    if "$SCRIPT_DIR/diagnose-network-overlay.sh" 2>&1 | tee -a "$LOG_FILE"; then
+        log_success "Diagnóstico de rede concluído sem problemas críticos"
+        return 0
+    else
+        log_warning "Diagnóstico de rede encontrou avisos ou erros - revisando..."
+        # Não bloqueia o deploy, apenas registra avisos
+        return 0
+    fi
+}
+
+###############################################################################
 # Funções de Git
 ###############################################################################
 ###############################################################################
@@ -342,6 +368,7 @@ main() {
     
     # Executar etapas
     check_prerequisites
+    diagnose_network
     update_code
     create_backup
     

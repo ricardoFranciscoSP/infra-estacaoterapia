@@ -13,10 +13,23 @@ networks:
     external: false
     driver: overlay
     name: estacaoterapia_backend
+    driver_opts:
+      # ✅ Ativar DNS VIP (Virtual IP) para melhor resolução
+      com.docker.network.driver.overlay.vxlanid: "4096"
+      # ✅ Permitir acesso aos serviços via localhost (para debugging)
+      # com.docker.network.driver.overlay.dvs: "true"
+    ipam:
+      config:
+        - subnet: 10.0.9.0/24
 
   estacao-network:
     external: false
     driver: overlay
+    driver_opts:
+      com.docker.network.driver.overlay.vxlanid: "4097"
+    ipam:
+      config:
+        - subnet: 10.0.8.0/24
 
 services:
   # =====================================
@@ -37,6 +50,7 @@ services:
       estacaoterapia_backend:
         aliases:
           - postgres
+          - postgres.estacaoterapia_backend
     healthcheck:
       test:
         - CMD-SHELL
@@ -71,6 +85,7 @@ services:
       estacaoterapia_backend:
         aliases:
           - redis
+          - redis.estacaoterapia_backend
     healthcheck:
       test:
         - CMD-SHELL
@@ -171,6 +186,7 @@ services:
       estacaoterapia_backend:
         aliases:
           - pgbouncer
+          - pgbouncer.estacaoterapia_backend
 
   # =====================================
   # SOCKET SERVER

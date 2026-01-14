@@ -188,6 +188,37 @@ start_api() {
   
   export REDIS_HOST
 
+  echo "📡 Diagnóstico de DNS para Redis:"
+  
+  # Tentar resolver DNS do Redis
+  if nslookup "$REDIS_HOST" >/dev/null 2>&1; then
+    REDIS_IP=$(nslookup "$REDIS_HOST" 2>/dev/null | grep -A1 "Name:" | tail -1 | awk '{print $NF}')
+    echo "✅ DNS resolvido: $REDIS_HOST → $REDIS_IP"
+  else
+    echo "⚠️  nslookup falhou para $REDIS_HOST (DNS pode não estar pronto)"
+    
+    # Tentar com getent (alternativa)
+    if command -v getent >/dev/null 2>&1; then
+      if getent hosts "$REDIS_HOST" >/dev/null 2>&1; then
+        REDIS_IP=$(getent hosts "$REDIS_HOST" | awk '{print $1}')
+        echo "✅ getent resolveu: $REDIS_HOST → $REDIS_IP"
+      else
+        echo "⚠️  getent também falhou - DNS pode estar indisponível"
+      fi
+    fi
+  fi
+  
+  # Log de diagnóstico adicional
+  echo "🔍 Informações de rede do container:"
+  echo "   • Hostname: $(hostname 2>/dev/null || echo 'não disponível')"
+  echo "   • Interface eth0: $(ifconfig eth0 2>/dev/null | grep "inet " | awk '{print $2}' || echo 'não disponível')"
+  
+  # Se /etc/resolv.conf existe, mostrar nameservers
+  if [ -f /etc/resolv.conf ]; then
+    echo "   • DNS servers:"
+    grep "^nameserver" /etc/resolv.conf | sed 's/^/     /'
+  fi
+
   # Tentar resolver host de PgBouncer com alternativas (VIP e tasks)
   echo "🔎 Checando PgBouncer..."
   for candidate in "$PG_HOST" "tasks.$PG_HOST" "estacaoterapia_pgbouncer" "tasks.estacaoterapia_pgbouncer"; do
@@ -283,12 +314,47 @@ start_socket() {
     echo "✅ Usando REDIS_HOST: redis (alias configurado no docker-stack.yml)"
   fi
   
-  echo "🔎 Checando Redis em $REDIS_HOST:$REDIS_PORT..."
-  # Tentar conectar ao Redis (pode falhar se ainda não estiver pronto, mas Node.js reconectará)
-  if retry nc -z "$REDIS_HOST" "$REDIS_PORT" >/dev/null 2>&1; then
-    echo "✅ Redis acessível via: $REDIS_HOST:$REDIS_PORT"
+  echo "📡 Diagnóstico de DNS para Redis (Socket):"
+  
+  # Tentar resolver DNS do Redis
+  if nslookup "$REDIS_HOST" >/dev/null 2>&1; then
+    REDIS_IP=$(nslookup "$REDIS_HOST" 2>/dev/null | grep -A1 "Name:" | tail -1 | awk '{print $NF}')
+    echo "✅ DNS resolvido: $REDIS_HOST → $REDIS_IP"
   else
-    echo "⚠️  Redis ainda não está acessível em $REDIS_HOST:$REDIS_PORT (Node.js tentará reconectar automaticamente)"
+    echo "⚠️  nslookup falhou para $REDIS_HOST (DNS pode não estar pronto)"
+    
+    # Tentar com getent (alternativa)
+    if command -v getent >/dev/null 2>&1; then
+      if getent hosts "$REDIS_HOST" >/dev/null 2>&1; then
+        REDIS_IP=$(getent hosts "$REDIS_HOST" | awk '{print $1}')
+        echo "✅ getent resolveu: $REDIS_HOST → $REDIS_IP"
+      else
+        echo "⚠️  getent também falhou - DNS pode estar indisponível"
+      fi
+    fi
+  fi
+  
+  # Log de diagnóstico adicional
+  echo "🔍 Informações de rede do container (Socket):"
+  echo "   • Hostname: $(hostname 2>/dev/null || echo 'não disponível')"
+  echo "   • Interface eth0: $(ifconfig eth0 2>/dev/null | grep "inet " | awk '{print $2}' || echo 'não disponível')"
+  
+  # Se /etc/resolv.conf existe, mostrar nameservers
+  if [ -f /etc/resolv.conf ]; then
+    echo "   • DNS servers:"
+    grep "^nameserver" /etc/resolv.conf | sed 's/^/     /'
+  fi
+  
+  # Tentar conectar ao Redis (pode falhar se ainda não estiver pronto, mas Node.js reconectará)
+  echo "🔎 Verificando acessibilidade de Redis em $REDIS_HOST:$REDIS_PORT..."
+  
+  # Timeout curto apenas para teste (não bloqueia inicialização)
+  if timeout 5 nc -z "$REDIS_HOST" "$REDIS_PORT" >/dev/null 2>&1; then
+    echo "✅ Redis está acessível via: $REDIS_HOST:$REDIS_PORT"
+  else
+    echo "⚠️  Redis NÃO está respondendo em $REDIS_HOST:$REDIS_PORT no momento"
+    echo "   ℹ️  Isso é OK - o Node.js tentará reconectar automaticamente quando Redis ficar disponível"
+    echo "   🔄 Continuando inicialização do container..."
   fi
   
   export REDIS_HOST

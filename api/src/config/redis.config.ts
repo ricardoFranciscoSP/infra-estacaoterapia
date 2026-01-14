@@ -78,8 +78,8 @@ if (shouldLogVerbose) {
     console.log(`   • REDIS_URL: ${process.env.REDIS_URL ? 'definido' : 'não definido'}`);
 }
 
-const MAX_RETRIES = 15;
-const RETRY_DELAY_MS = 2000; // Aumentado para 2 segundos
+const MAX_RETRIES = 20; // Aumentado para dar mais tempo em Swarm com problemas DNS
+const RETRY_DELAY_MS = 3000; // Aumentado para 3 segundos (DNS leva tempo em Swarm)
 
 // Verifica se estamos em ambiente que requer Redis
 const REQUIRES_REDIS = process.env.NODE_ENV === "production" ||
@@ -304,7 +304,8 @@ function createIORedisClient(): IORedis {
         db: configDb,
         password: configPassword,
         maxRetriesPerRequest: null,
-        connectTimeout: 30_000,
+        connectTimeout: 60_000, // Aumentado para 60s (DNS pode ser lento em Swarm)
+        commandTimeout: 30_000, // Timeout para comandos
         lazyConnect: true, // CRÍTICO: Não bloqueia inicialização da API se Redis não estiver disponível
         keepAlive: 30000,
         enableOfflineQueue: true,
@@ -314,6 +315,13 @@ function createIORedisClient(): IORedis {
         enableAutoPipelining: false,
         connectionName: 'estacao-api',
         showFriendlyErrorStack: true,
+        dns: {
+            // Usar DNS nativo do Node.js com mais tolerância
+            family: 0, // 0 = IPv4 e IPv6
+            hints: 0,
+        },
+        // Usar apenas IPv4 em Docker Swarm (mais confiável)
+        preferIPv4: true,
     };
 
     // Debug detalhado de TODOS os parâmetros de conexão
@@ -359,19 +367,44 @@ function createIORedisClient(): IORedis {
         ...redisConfig,
         retryStrategy: (times: number) => {
             if (times >= MAX_RETRIES) {
-                console.error("🛑 [IORedis] Redis indisponível após múltiplas tentativas");
-                return null;
+                console.error(`🛑 [IORedis] Redis indisponível após ${MAX_RETRIES} tentativas`);
+                console.error(`🛑 [IORedis] Host: ${configHost}, Port: ${configPort}, DB: ${configDb}`);
+                console.error(`🛑 [IORedis] Verificar se Redis está rodando e acessível`);
+                return null; // Stops retrying
             }
-            const delay = Math.min(times * 500, 5_000); // Delay progressivo até 5 segundos
-            if (times === 1 || times % 5 === 0) { // Log apenas a cada 5 tentativas para evitar spam
-                console.log(`⏳ [IORedis] Tentativa ${times}/${MAX_RETRIES} - reconectando em ${delay}ms`);
+
+            // Backoff exponencial: 500ms * times, máx 10 segundos
+            const delay = Math.min(times * 500, 10_000);
+
+            // Log detalhado a cada tentativa, com mais info das primeiras
+            if (times === 1) {
+                console.log(`⏳ [IORedis] Primeira tentativa de conexão em ${delay}ms...`);
+                console.log(`   Host: ${configHost}, Port: ${configPort}, DB: ${configDb}`);
+                console.log(`   Status esperado: "ready"`);
+            } else if (times % 3 === 0 || times <= 5) {
+                console.log(`⏳ [IORedis] Tentativa ${times}/${MAX_RETRIES} - próxima em ${delay}ms`);
+                if (times === 5) {
+                    console.warn(`⚠️  [IORedis] Ainda aguardando conexão (${times} tentativas)`);
+                }
+                if (times === 10) {
+                    console.warn(`⚠️⚠️  [IORedis] Múltiplas falhas (${times} tentativas) - verificar DNS/conectividade`);
+                }
             }
+
             return delay;
         },
         reconnectOnError: (err) => {
-            const targetError = 'READONLY';
-            if (err.message.includes(targetError)) {
-                // Apenas reconecta em erros específicos
+            // Tenta reconectar em mais tipos de erro
+            const shouldReconnect = err.message && (
+                err.message.includes('READONLY') ||
+                err.message.includes('ECONNREFUSED') ||
+                err.message.includes('ENOTFOUND') ||
+                err.message.includes('ETIMEDOUT') ||
+                err.message.includes('EHOSTUNREACH')
+            );
+
+            if (shouldReconnect) {
+                console.warn(`⚠️  [IORedis] Erro transiente detectado, reconectando: ${err.message}`);
                 return true;
             }
             return false;
@@ -380,36 +413,47 @@ function createIORedisClient(): IORedis {
 
     // Handlers de eventos - apenas uma vez por cliente
     ioredisClient.on("ready", () => {
-        console.log("✅ [IORedis] Conectado e pronto para uso");
+        console.log("✅ [IORedis] Status: READY - Conectado e pronto para uso");
+        console.log(`   Host: ${configHost}:${configPort}, DB: ${configDb}`);
         ioredisConnectionPromise = null; // Limpa a promise quando conecta
     });
 
     ioredisClient.on("connect", () => {
-        console.log("🔌 [IORedis] Conectando ao Redis...");
+        console.log(`🔌 [IORedis] Status: CONNECT - Conectando ao Redis (${configHost}:${configPort})`);
     });
 
     ioredisClient.on("error", (err) => {
-        // Ignora erros EPIPE comuns durante reconexão
-        if (err.message && (err.message.includes('EPIPE') || err.message.includes('ECONNRESET'))) {
-            console.warn("⚠️ [IORedis] Erro de conexão detectado (EPIPE/ECONNRESET) - reconectando automaticamente...");
-            return;
-        }
+        // Log detalhado de erros, especialmente DNS
+        const errorMsg = err?.message || String(err);
 
-        console.error("❌ [IORedis] Erro:", err.message);
+        // Erros de DNS/rede específicos
+        if (errorMsg.includes('ENOTFOUND')) {
+            console.error(`❌ [IORedis] Erro DNS: Não consegue resolver hostname "${configHost}"`);
+            console.error(`   Causa comum: Problema na rede overlay do Docker Swarm ou container sem DNS configurado`);
+            console.error(`   Solução: Verificar se redis está rodando e se a rede ${configHost} está acessível`);
+        } else if (errorMsg.includes('ECONNREFUSED')) {
+            console.error(`❌ [IORedis] Conexão recusada: Redis não está escutando em ${configHost}:${configPort}`);
+            console.error(`   Causa: Redis pode não estar rodando ou porta está bloqueada`);
+        } else if (errorMsg.includes('ETIMEDOUT')) {
+            console.error(`❌ [IORedis] Timeout: Conexão com Redis expirou`);
+            console.error(`   Causa: Latência alta ou firewall bloqueando`);
+        } else {
+            console.error(`❌ [IORedis] Erro: ${errorMsg}`);
+        }
         // Não mata o processo, apenas loga o erro
         // O retryStrategy cuida das reconexões
     });
 
     ioredisClient.on("close", () => {
-        console.warn("⚠️ [IORedis] Conexão fechada - tentando reconectar...");
+        console.warn("⚠️  [IORedis] Status: CLOSE - Conexão fechada, tentando reconectar...");
     });
 
     ioredisClient.on("reconnecting", (delay: number) => {
-        console.log(`🔄 [IORedis] Reconectando em ${delay}ms...`);
+        console.log(`🔄 [IORedis] Status: RECONNECTING - Próxima tentativa em ${delay}ms...`);
     });
 
     ioredisClient.on("end", () => {
-        console.warn("⚠️ [IORedis] Conexão encerrada");
+        console.warn("⚠️  [IORedis] Status: END - Conexão encerrada permanentemente");
         ioredisClient = null;
         ioredisConnectionPromise = null;
     });
