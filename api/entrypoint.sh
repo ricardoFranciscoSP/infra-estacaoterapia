@@ -179,14 +179,8 @@ start_api() {
   # - <stack>_<service>: estacaoterapia_redis (nome do serviço)
   # - alias de rede: redis (se configurado no docker-stack.yml)
   echo "🔎 Resolvendo hostname do Redis..."
-  REDIS_CANDIDATES=(
-    "estacaoterapia_redis"
-    "tasks.estacaoterapia_redis"
-    "redis"
-    "tasks.redis"
-  )
   
-  for candidate in "${REDIS_CANDIDATES[@]}"; do
+  for candidate in estacaoterapia_redis tasks.estacaoterapia_redis redis tasks.redis; do
     echo "   Tentando: $candidate"
     # Usa timeout e nslookup para testar resolução DNS (mais confiável que nc)
     if timeout 2 nslookup "$candidate" >/dev/null 2>&1 || timeout 2 getent hosts "$candidate" >/dev/null 2>&1; then
