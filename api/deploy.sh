@@ -199,7 +199,7 @@ docker service ps estacaoterapia_socket-server --no-trunc 2>/dev/null | head -5 
 # 9️⃣ Restaurar banco de dados
 # ==============================
 echo ""
-echo "💾 Restaurando banco de dados..."
+echo "💾 Verificando necessidade de restaurar banco de dados..."
 
 BACKUP_SQL="./backups/estacaoterapia_prd.sql"
 
@@ -231,32 +231,43 @@ else
             docker exec "$POSTGRES_CONTAINER" sh -c 'psql -U $POSTGRES_USER -c "CREATE DATABASE estacaoterapia;" 2>/dev/null' || {
                 echo "   ⚠️  Não foi possível criar banco (pode já existir)"
             }
-            echo "   ✓ Banco criado ou já existe"
+            echo "   ✓ Banco criado"
         else
             echo "   ✓ Banco 'estacaoterapia' já existe"
         fi
         
-        # Copiar arquivo SQL para o container
-        echo "   📤 Copiando backup para o container..."
-        docker cp "$BACKUP_SQL" "${POSTGRES_CONTAINER}:/tmp/restore.sql" || {
-            echo "   ❌ Falha ao copiar arquivo para o container!"
-            echo "   ⚠️  Continuando sem restaurar o banco..."
-        }
+        # Verificar se já existem tabelas no banco
+        echo "   🔍 Verificando se o banco já possui tabelas..."
+        TABLE_COUNT=$(docker exec "$POSTGRES_CONTAINER" sh -c "psql -U \$POSTGRES_USER -d estacaoterapia -t -c \"SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE';\"" 2>/dev/null | tr -d ' ' || echo "0")
         
-        if docker exec "$POSTGRES_CONTAINER" test -f /tmp/restore.sql 2>/dev/null; then
-            echo "   ✓ Arquivo copiado com sucesso"
-            
-            # Executar restore
-            echo "   🔄 Executando restore do banco de dados..."
-            docker exec "$POSTGRES_CONTAINER" sh -c 'psql -U $POSTGRES_USER -d estacaoterapia -f /tmp/restore.sql' 2>&1 | grep -E "(ERROR|CREATE|INSERT|restored|done)" || true
-            
-            echo "   ✓ Restore executado"
-            
-            # Limpar arquivo temporário
-            docker exec "$POSTGRES_CONTAINER" rm -f /tmp/restore.sql
-            echo "   ✅ Banco de dados restaurado com sucesso!"
+        if [ "$TABLE_COUNT" -gt 0 ]; then
+            echo "   ℹ️  Banco já possui $TABLE_COUNT tabela(s) criada(s)"
+            echo "   ⏭️  Pulando restore do backup (banco já populado)"
         else
-            echo "   ⚠️  Arquivo não foi copiado corretamente"
+            echo "   ✓ Banco vazio, prosseguindo com restore..."
+            
+            # Copiar arquivo SQL para o container
+            echo "   📤 Copiando backup para o container..."
+            docker cp "$BACKUP_SQL" "${POSTGRES_CONTAINER}:/tmp/restore.sql" || {
+                echo "   ❌ Falha ao copiar arquivo para o container!"
+                echo "   ⚠️  Continuando sem restaurar o banco..."
+            }
+            
+            if docker exec "$POSTGRES_CONTAINER" test -f /tmp/restore.sql 2>/dev/null; then
+                echo "   ✓ Arquivo copiado com sucesso"
+                
+                # Executar restore
+                echo "   🔄 Executando restore do banco de dados..."
+                docker exec "$POSTGRES_CONTAINER" sh -c 'psql -U $POSTGRES_USER -d estacaoterapia -f /tmp/restore.sql' 2>&1 | grep -E "(ERROR|CREATE|INSERT|restored|done)" || true
+                
+                echo "   ✓ Restore executado"
+                
+                # Limpar arquivo temporário
+                docker exec "$POSTGRES_CONTAINER" rm -f /tmp/restore.sql
+                echo "   ✅ Banco de dados restaurado com sucesso!"
+            else
+                echo "   ⚠️  Arquivo não foi copiado corretamente"
+            fi
         fi
     fi
 fi
