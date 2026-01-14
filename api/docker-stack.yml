@@ -23,9 +23,7 @@ services:
   # POSTGRESQL
   # =====================================
   postgres:
-    build:
-      context: .
-      dockerfile: Dockerfile.postgres
+    image: postgres:16-alpine
     secrets:
       - postgres_env
     environment:
@@ -56,9 +54,7 @@ services:
   # REDIS
   # =====================================
   redis:
-    build:
-      context: .
-      dockerfile: Dockerfile.redis
+    image: estacaoterapia-redis:prd-{{TAG}}
     secrets:
       - estacao_api_env
     volumes:

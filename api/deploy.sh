@@ -215,6 +215,26 @@ echo "✅ Backup salvo em: $BACKUP_FILE"
 echo ""
 echo "🔨 Construindo imagens Docker..."
 
+# ==============================
+# Build Redis com entrypoint
+# ==============================
+echo ""
+echo "   → estacaoterapia-redis:prd-$TAG"
+echo "   📁 Contexto: $(pwd)"
+echo "   📄 Dockerfile: ./Dockerfile.redis"
+docker build \
+    --no-cache \
+    --progress=plain \
+    -t "estacaoterapia-redis:prd-${TAG}" \
+    -f ./Dockerfile.redis \
+    . || {
+        echo ""
+        echo "❌ Falha ao construir imagem Redis!"
+        echo "📝 Verifique se redis-entrypoint.sh existe"
+        exit 1
+    }
+echo "✅ Redis compilado com sucesso"
+
 # Verificar arquivos de lock antes do build
 echo ""
 echo "📋 Verificando gerenciador de pacotes..."
@@ -517,10 +537,21 @@ echo ""
 echo "🧹 Limpando imagens antigas..."
 
 # Encontrar imagens do estacaoterapia que NÃO são a atual
+OLD_REDIS_IMAGES=$(docker images --filter "reference=estacaoterapia-redis:prd-*" --format "{{.Repository}}:{{.Tag}}" | grep -v "prd-${TAG}$" || true)
 OLD_API_IMAGES=$(docker images --filter "reference=estacaoterapia-api:prd-*" --format "{{.Repository}}:{{.Tag}}" | grep -v "prd-${TAG}$" || true)
 OLD_SOCKET_IMAGES=$(docker images --filter "reference=estacaoterapia-socket-server:prd-*" --format "{{.Repository}}:{{.Tag}}" | grep -v "prd-${TAG}$" || true)
 
 REMOVED_COUNT=0
+
+# Remover imagens antigas do Redis
+if [ -n "$OLD_REDIS_IMAGES" ]; then
+    echo "$OLD_REDIS_IMAGES" | while read -r old_image; do
+        if [ -n "$old_image" ]; then
+            echo "   🗑️  Removendo: $old_image"
+            docker rmi "$old_image" 2>/dev/null || echo "      ⚠️  Não foi possível remover (em uso)"
+        fi
+    done
+fi
 
 # Remover imagens antigas da API
 if [ -n "$OLD_API_IMAGES" ]; then
