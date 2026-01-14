@@ -37,7 +37,7 @@ services:
     healthcheck:
       test:
         - CMD-SHELL
-        - "PGPASSWORD=$(grep POSTGRES_PASSWORD /run/secrets/postgres_env | cut -d= -f2) psql -U $(grep POSTGRES_USER /run/secrets/postgres_env | cut -d= -f2) -d $(grep POSTGRES_DB /run/secrets/postgres_env | cut -d= -f2) -c 'SELECT 1;' >/dev/null 2>&1 || exit 1"
+        - "PGPASSWORD=$$(grep POSTGRES_PASSWORD /run/secrets/postgres_env | cut -d= -f2) psql -U $$(grep POSTGRES_USER /run/secrets/postgres_env | cut -d= -f2) -d $$(grep POSTGRES_DB /run/secrets/postgres_env | cut -d= -f2) -c 'SELECT 1;' >/dev/null 2>&1 || exit 1"
       interval: 10s
       timeout: 5s
       retries: 5
@@ -68,7 +68,7 @@ services:
     healthcheck:
       test:
         - CMD-SHELL
-        - 'REDIS_PASS=$(grep ''^REDIS_PASSWORD='' /run/secrets/estacao_api_env | cut -d= -f2) && redis-cli -a "$REDIS_PASS" --raw incr ping > /dev/null || exit 1'
+        - 'REDIS_PASS=$$(grep ''^REDIS_PASSWORD='' /run/secrets/estacao_api_env | cut -d= -f2) && redis-cli -a "$$REDIS_PASS" --raw incr ping > /dev/null || exit 1'
       interval: 10s
       timeout: 5s
       retries: 5
