@@ -108,6 +108,7 @@ check_prerequisites() {
     else
         log_success "Script de deploy do Caddy encontrado"
     fi
+}
 
 ###############################################################################
 # Funções de Git
@@ -395,4 +396,4 @@ main() {
 # Execução
 ###############################################################################
 
-main "$@"
+main "$@"main "$@"
