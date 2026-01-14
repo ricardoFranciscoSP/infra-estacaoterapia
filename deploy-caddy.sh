@@ -1,10 +1,6 @@
 #!/bin/bash
 set -e
 
-# ==============================
-# 🌐 Deploy Caddy - Docker Swarm
-# ==============================
-
 echo "======================================"
 echo "🌐 DEPLOY CADDY - $(date)"
 echo "======================================"
@@ -15,140 +11,102 @@ echo "======================================"
 echo ""
 echo "🔍 Validando pré-requisitos..."
 
-if ! command -v docker &> /dev/null; then
-    echo "❌ Docker não encontrado!"
-    exit 1
-fi
+command -v docker >/dev/null || {
+  echo "❌ Docker não encontrado!"
+  exit 1
+}
 
-if ! docker info | grep -q "Swarm: active"; then
-    echo "❌ Docker Swarm não está ativo!"
-    exit 1
-fi
+docker info | grep -q "Swarm: active" || {
+  echo "❌ Docker Swarm não está ativo!"
+  exit 1
+}
 
-if [ ! -f "docker-stack.caddy.yml" ]; then
-    echo "❌ docker-stack.caddy.yml não encontrado!"
-    exit 1
-fi
+[ -f docker-stack.caddy.yml ] || {
+  echo "❌ docker-stack.caddy.yml não encontrado!"
+  exit 1
+}
 
-if [ ! -f "Caddyfile" ]; then
-    echo "❌ Caddyfile não encontrado!"
-    exit 1
-fi
+[ -f Caddyfile ] || {
+  echo "❌ Caddyfile não encontrado!"
+  exit 1
+}
 
 echo "✅ Pré-requisitos validados"
 
 # ==============================
-# 2️⃣ Criar/Verificar rede necessária
+# 2️⃣ Validar Caddyfile
+# ==============================
+echo ""
+echo "🧪 Validando Caddyfile..."
+
+docker run --rm \
+  -v "$PWD/Caddyfile:/etc/caddy/Caddyfile" \
+  caddy:2-alpine \
+  caddy validate --config /etc/caddy/Caddyfile
+
+echo "✅ Caddyfile válido"
+
+# ==============================
+# 3️⃣ Criar/Verificar rede necessária
 # ==============================
 echo ""
 echo "🌐 Verificando rede Docker..."
 
 if ! docker network ls --format '{{.Name}}' | grep -q "^estacao-network$"; then
-    echo "   → Criando rede estacao-network..."
-    docker network create --driver overlay estacao-network || {
-        echo "❌ Falha ao criar rede!"
-        exit 1
-    }
-    echo "✅ Rede estacao-network criada"
+  echo "   → Criando rede estacao-network..."
+  docker network create --driver overlay estacao-network
+  echo "✅ Rede estacao-network criada"
 else
-    echo "✅ Rede estacao-network já existe"
-fi
-
-# Verificar se rede de ingresso existe
-echo ""
-echo "🌐 Verificando rede de ingresso..."
-if ! docker network ls --format '{{.Name}}' | grep -q "^ingress$"; then
-    echo "   ⚠️ Rede de ingresso não encontrada!"
-    echo "   → Criando rede de ingresso..."
-    docker network create --driver overlay --ingress --opt com.docker.network.driver.overlay.vxlanid=4096 ingress || {
-        echo "❌ Falha ao criar rede de ingresso!"
-        echo "   → Continuando com deploy..."
-    }
-    echo "✅ Rede de ingresso criada"
-else
-    echo "✅ Rede de ingresso já existe"
+  echo "✅ Rede estacao-network já existe"
 fi
 
 # ==============================
-# 3️⃣ Criar/Verificar volumes necessários
+# 4️⃣ Criar/Verificar volumes
 # ==============================
 echo ""
 echo "💾 Verificando volumes..."
 
 for volume in caddy_data caddy_config; do
-    if ! docker volume ls --format '{{.Name}}' | grep -q "^${volume}$"; then
-        echo "   → Criando volume ${volume}..."
-        docker volume create ${volume} || {
-            echo "❌ Falha ao criar volume ${volume}!"
-            exit 1
-        }
-        echo "✅ Volume ${volume} criado"
-    else
-        echo "✅ Volume ${volume} já existe"
-    fi
+  if ! docker volume ls --format '{{.Name}}' | grep -q "^${volume}$"; then
+    docker volume create "$volume"
+    echo "✅ Volume ${volume} criado"
+  else
+    echo "✅ Volume ${volume} já existe"
+  fi
 done
 
 # ==============================
-# 4️⃣ Deploy para Swarm
+# 5️⃣ Deploy
 # ==============================
 echo ""
-echo "🚀 Fazendo deploy do Caddy para Docker Swarm..."
+echo "🚀 Fazendo deploy do Caddy..."
 
-# Listar redes disponíveis para debug
-echo "   📡 Redes disponíveis:"
-docker network ls --format "   {{.Driver}}: {{.Name}}" | head -10
-
-docker stack deploy \
-    --compose-file docker-stack.caddy.yml \
-    caddy || {
-        echo "❌ Falha ao fazer deploy!"
-        echo ""
-        echo "🔧 Informações de diagnóstico:"
-        echo "   • Docker Swarm status: $(docker info | grep -A1 'Swarm:')"
-        echo "   • Redes overlay:"
-        docker network ls --filter driver=overlay --format "     {{.Driver}}: {{.Name}}"
-        echo "   • Rede de ingresso:"
-        docker network ls --filter name=ingress --format "     {{.Driver}}: {{.Name}}"
-        exit 1
-    }
+docker stack deploy -c docker-stack.caddy.yml caddy
 
 echo "✅ Stack deployado com sucesso"
 
 # ==============================
-# 5️⃣ Aguardar convergência
+# 6️⃣ Status
 # ==============================
-echo ""
-echo "⏳ Aguardando serviço convergir..."
 sleep 5
 
-# Verificar status do serviço
 echo ""
 echo "📊 Status do serviço:"
-docker service ls --filter "label=com.docker.stack.namespace=caddy"
+docker service ls --filter label=com.docker.stack.namespace=caddy
 
 echo ""
-echo "🔍 Replicas do Caddy:"
-docker service ps caddy_caddy --no-trunc 2>/dev/null | head -5 || echo "   (aguardando inicialização)"
+echo "🔍 Replicas:"
+docker service ps caddy_caddy --no-trunc | head -5
 
 # ==============================
-# 6️⃣ Resumo Final
+# 7️⃣ Resumo
 # ==============================
 echo ""
 echo "======================================"
-echo "✅ DEPLOY CADDY CONCLUÍDO!"
+echo "✅ DEPLOY CADDY CONCLUÍDO"
 echo "======================================"
 echo ""
-echo "📋 Resumo:"
-echo "   • Stack: caddy"
-echo "   • Deploy: $(date '+%d/%m/%Y %H:%M:%S')"
-echo ""
-echo "🔍 Próximos passos:"
-echo "   1. Monitorar logs: docker service logs caddy_caddy -f"
-echo "   2. Verificar saúde: docker service ls"
-echo "   3. Testar endpoint: curl http://localhost:2019/config/"
-echo ""
-echo "📡 Portas expostas:"
-echo "   • HTTP: 80"
-echo "   • HTTPS: 443"
-echo "   • Admin API: 2019"
+echo "Próximos passos:"
+echo " - docker service logs caddy_caddy -f"
+echo " - Testar HTTPS nos domínios"
 echo ""

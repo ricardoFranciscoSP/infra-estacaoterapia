@@ -1,38 +1,94 @@
+version: "3.8"
+
 services:
   caddy:
     image: caddy:2-alpine
-    command: ["caddy", "run", "--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile"]
+
+    # 🔑 Obrigatório no Swarm
+    command:
+      - caddy
+      - run
+      - --config
+      - /etc/caddy/Caddyfile
+      - --adapter
+      - caddyfile
+
+    # 🌐 Portas públicas (host mode = menor latência)
     ports:
       - target: 80
         published: 80
+        protocol: tcp
         mode: host
+
       - target: 443
         published: 443
+        protocol: tcp
         mode: host
+
       - target: 443
         published: 443
         protocol: udp
         mode: host
+
+      # Admin API (opcional, mas funcional)
       - target: 2019
         published: 2019
+        protocol: tcp
         mode: host
+
+    # 💾 Volumes persistentes
     volumes:
-      - caddy_data:/data
-      - caddy_config:/config
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - type: volume
+        source: caddy_data
+        target: /data
+
+      - type: volume
+        source: caddy_config
+        target: /config
+
+      - type: bind
+        source: ./Caddyfile
+        target: /etc/caddy/Caddyfile
+        read_only: true
+
+    # 🌐 Network
     networks:
       - estacao-network
+
     deploy:
       replicas: 1
+
       restart_policy:
         condition: on-failure
+        delay: 5s
+        max_attempts: 5
+        window: 120s
 
+      placement:
+        constraints:
+          - node.role == manager
+
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 128M
+
+# ============================================
+# NETWORKS
+# ============================================
 networks:
   estacao-network:
     external: true
 
+# ============================================
+# VOLUMES
+# ============================================
 volumes:
   caddy_data:
     external: true
+
   caddy_config:
     external: true
