@@ -108,7 +108,7 @@ start_api() {
 
   # Tentar resolver host de Redis com alternativas comuns no Swarm
   echo "🔎 Checando Redis..."
-  for candidate in "$REDIS_HOST" "tasks.$REDIS_HOST" "estacaoterapia_redis" "tasks.estacaoterapia_redis"; do
+  for candidate in "$REDIS_HOST" "tasks.$REDIS_HOST" "redis" "tasks.redis" "estacaoterapia_redis" "tasks.estacaoterapia_redis"; do
     if retry nc -z "$candidate" "$REDIS_PORT" >/dev/null 2>&1; then
       REDIS_HOST="$candidate"
       echo "✅ Redis acessível via: $REDIS_HOST"
@@ -191,7 +191,7 @@ start_socket() {
   echo "   API        → $API_BASE_URL"
 
   echo "🔎 Checando Redis..."
-  for candidate in "$REDIS_HOST" "tasks.$REDIS_HOST" "estacaoterapia_redis" "tasks.estacaoterapia_redis"; do
+  for candidate in "$REDIS_HOST" "tasks.$REDIS_HOST" "redis" "tasks.redis" "estacaoterapia_redis" "tasks.estacaoterapia_redis"; do
     if retry nc -z "$candidate" "$REDIS_PORT" >/dev/null 2>&1; then
       REDIS_HOST="$candidate"
       echo "✅ Redis acessível via: $REDIS_HOST"

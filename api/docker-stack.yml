@@ -183,6 +183,9 @@ services:
       SERVER_TYPE: socket
       PG_HOST: pgbouncer
       PG_PORT: '6432'
+      REDIS_HOST: redis
+      REDIS_PORT: '6379'
+      REDIS_DB: '1'
       API_BASE_URL: 'http://api:3333'
 
     healthcheck:
