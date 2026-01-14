@@ -33,7 +33,7 @@ services:
     networks:
       - estacao-network
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -h 127.0.0.1']
+      test: ['CMD-SHELL', 'pg_isready -U $$(cat /run/secrets/postgres_user) -h 127.0.0.1']
       interval: 10s
       timeout: 5s
       retries: 5
