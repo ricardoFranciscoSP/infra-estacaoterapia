@@ -1,60 +1,62 @@
-﻿#!/bin/sh
+#!/bin/sh
 set -e
 
 echo "======================================"
-echo "ðŸ” Carregando configuraÃ§Ã£o do Redis..."
+echo "🔐 Carregando configuração do Redis..."
 echo "======================================"
 
 # Ler senha do secret redis_password
 if [ -f /run/secrets/redis_password ]; then
-  REDIS_PASSWORD=$(cat /run/secrets/redis_password | tr -d '\n\r' | tr -d ' ')
-  echo "âœ… Secret redis_password encontrado"
-  echo "   ðŸ“ Tamanho da senha: $(echo -n "$REDIS_PASSWORD" | wc -c) caracteres"
+  REDIS_PASSWORD=$(cat /run/secrets/redis_password | tr -d '\n\r')
+  echo "✅ Secret redis_password encontrado"
+  echo "   🔍 Tamanho da senha: $(echo -n "$REDIS_PASSWORD" | wc -c) caracteres"
   if [ -z "$REDIS_PASSWORD" ]; then
-    echo "   âš ï¸  AVISO: Secret existe mas estÃ¡ vazio!"
+    echo "   ⚠️  AVISO: Secret existe mas está vazio!"
     REDIS_PASSWORD=""
   else
-    echo "   âœ… Senha carregada com sucesso"
+    echo "   ✅ Senha carregada com sucesso"
+    # Exportar para uso no healthcheck
+    export REDIS_PASSWORD
   fi
 else
-  echo "âš ï¸  AVISO: Secret redis_password NÃƒO encontrado em /run/secrets/redis_password"
-  echo "   ðŸ“‚ Verificando conteÃºdo de /run/secrets/..."
-  ls -la /run/secrets/ 2>/dev/null || echo "   âŒ DiretÃ³rio /run/secrets/ nÃ£o existe!"
+  echo "⚠️  AVISO: Secret redis_password NÃO encontrado em /run/secrets/redis_password"
+  echo "   📂 Verificando conteúdo de /run/secrets/..."
+  ls -la /run/secrets/ 2>/dev/null || echo "   ❌ Diretório /run/secrets/ não existe!"
   REDIS_PASSWORD=""
 fi
 
-# Configurar variÃ¡veis padrÃ£o
+# Configurar variáveis padrão
 REDIS_PORT="${REDIS_PORT:-6379}"
 REDIS_MAXMEMORY="${REDIS_MAXMEMORY:-512mb}"
 REDIS_MAXMEMORY_POLICY="${REDIS_MAXMEMORY_POLICY:-allkeys-lru}"
 
 echo ""
-echo "ðŸ“‹ ConfiguraÃ§Ã£o Redis verificada:"
-echo "   â€¢ Porta: $REDIS_PORT"
-echo "   â€¢ MaxMemory: $REDIS_MAXMEMORY"
-echo "   â€¢ PolÃ­tica: $REDIS_MAXMEMORY_POLICY"
+echo "📋 Configuração Redis verificada:"
+echo "   • Porta: $REDIS_PORT"
+echo "   • MaxMemory: $REDIS_MAXMEMORY"
+echo "   • Política: $REDIS_MAXMEMORY_POLICY"
 if [ -n "$REDIS_PASSWORD" ]; then
-  echo "   â€¢ Senha: âœ… definida ($(echo -n "$REDIS_PASSWORD" | wc -c) caracteres)"
+  echo "   • Senha: ✅ definida ($(echo -n "$REDIS_PASSWORD" | wc -c) caracteres)"
 else
-  echo "   â€¢ Senha: âŒ nÃ£o definida"
+  echo "   • Senha: ❌ não definida"
 fi
 echo ""
 
 # Tentar configurar vm.overcommit_memory (opcional)
 if [ -w /proc/sys/vm/overcommit_memory ]; then
   echo 1 > /proc/sys/vm/overcommit_memory 2>/dev/null || true
-  echo "âœ… vm.overcommit_memory configurado"
+  echo "✅ vm.overcommit_memory configurado"
 else
-  echo "âš ï¸  AVISO: NÃ£o foi possÃ­vel configurar vm.overcommit_memory (requer privilÃ©gios)"
+  echo "⚠️  AVISO: Não foi possível configurar vm.overcommit_memory (requer privilégios)"
 fi
 
 echo ""
-echo "ðŸš€ Iniciando Redis..."
+echo "🚀 Iniciando Redis..."
 echo ""
 
 # Construir comando Redis
 if [ -n "$REDIS_PASSWORD" ]; then
-  echo "ðŸ” Redis serÃ¡ iniciado COM autenticaÃ§Ã£o"
+  echo "🔐 Redis será iniciado COM autenticação"
   exec redis-server \
     --port "$REDIS_PORT" \
     --requirepass "$REDIS_PASSWORD" \
@@ -69,7 +71,7 @@ if [ -n "$REDIS_PASSWORD" ]; then
     --timeout 300 \
     --tcp-keepalive 300
 else
-  echo "âš ï¸  Redis serÃ¡ iniciado SEM autenticaÃ§Ã£o"
+  echo "⚠️  Redis será iniciado SEM autenticação"
   exec redis-server \
     --port "$REDIS_PORT" \
     --appendonly yes \

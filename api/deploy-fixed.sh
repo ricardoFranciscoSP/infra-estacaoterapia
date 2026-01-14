@@ -1,12 +1,12 @@
-﻿#!/bin/bash
+#!/bin/bash
 set -euo pipefail
 
-# Configurar UTF-8 corretamente
-export LC_ALL=en_US.UTF-8
-export LANG=en_US.UTF-8
+# Configurar UTF-8 para exibicao correta de caracteres
+export LC_ALL=pt_BR.UTF-8
+export LANG=pt_BR.UTF-8
 
 # ==============================
-# Deploy Docker Swarm Stack - FUNCIONAL 100%
+# DEPLOY DOCKER SWARM STACK - FUNCIONAL 100%
 # ==============================
 # Zero-downtime deployment com:
 # - Validacao completa de secrets e volumes
@@ -17,7 +17,7 @@ export LANG=en_US.UTF-8
 # - Monitoramento de saude dos servicos
 
 echo "======================================"
-echo "[INICIO] Deploy iniciado - $(date)"
+echo "[DEPLOY] INICIANDO DEPLOY - $(date)"
 echo "======================================"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -31,7 +31,7 @@ GIT_HASH=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 TAG="${TIMESTAMP}-${GIT_HASH}"
 
 echo ""
-echo "[CONFIG] Configuracoes do Deploy:"
+echo "[INFO] Informacoes do Deploy:"
 echo "   - Tag: prd-$TAG"
 echo "   - Data: $(date '+%d/%m/%Y %H:%M:%S')"
 echo "   - Git: $GIT_HASH"
@@ -40,7 +40,7 @@ echo "   - Git: $GIT_HASH"
 # 2. Validar pre-requisitos
 # ==============================
 echo ""
-echo "[VALIDACAO] Verificando pre-requisitos..."
+echo "[CHECK] Validando pre-requisitos..."
 
 if ! command -v docker &> /dev/null; then
     echo "[ERRO] Docker nao encontrado!"
@@ -68,7 +68,7 @@ fi
 
 # Validar arquivos de secrets
 echo ""
-echo "[SEGURANCA] Verificando secrets..."
+echo "[CHECK] Verificando secrets..."
 SECRETS_REQUIRED=(
     "postgres.env"
     "estacao_api.env"
@@ -78,7 +78,6 @@ SECRETS_REQUIRED=(
 for secret_file in "${SECRETS_REQUIRED[@]}"; do
     if [ ! -f "$SECRETS_DIR/$secret_file" ]; then
         echo "[ERRO] Arquivo $SECRETS_DIR/$secret_file nao encontrado!"
-
         echo "   Copie do exemplo: cp $SECRETS_DIR/${secret_file}.example $SECRETS_DIR/$secret_file"
         exit 1
     fi
@@ -103,22 +102,22 @@ echo "[OK] Pre-requisitos validados"
 # 3. Criar/Atualizar Secrets
 # ==============================
 echo ""
-echo "[SECRETS] Gerenciando secrets nao Docker Swarm..."
+echo "[INFO] Gerenciando secrets no Docker Swarm..."
 
 create_or_update_secret() {
     local secret_name=$1
     local secret_file=$2
     
     if docker secret inspect "$secret_name" >/dev/null 2>&1; then
-        echo "   [ATUALIZANDO] Secret: $secret_name"
+        echo "   [UPDATE] Atualizando secret: $secret_name"
         docker secret rm "$secret_name" 2>/dev/null || true
         docker secret create "$secret_name" "$secret_file" 2>/dev/null || {
-            echo "   [AVISO] [ERRO] ao atualizar (pode estar em uso)"
+            echo "   [WARN] Falha ao atualizar (pode estar em uso)"
         }
     else
-        echo "   [[CRIANDO]NDO] Secret: $secret_name"
+        echo "   [CREATE] Criando secret: $secret_name"
         docker secret create "$secret_name" "$secret_file" 2>/dev/null || {
-            echo "   [AVISO] Secret ja pode existir"
+            echo "   [WARN] Secret ja pode existir"
         }
     fi
 }
@@ -142,14 +141,15 @@ if [ -n "$REDIS_PASSWORD" ]; then
     rm -f "$TEMP_REDIS_PASSWORD"
     echo "   [OK] Secret redis_password criado/atualizado"
 else
-    echo "   [AVISO] REDIS_PASSWORD nao encontrado em estacao_api.env"
-    echo "   [AVISO] Redis sera iniciado sem senha"
+    echo "   [WARN] REDIS_PASSWORD nao encontrado em estacao_api.env"
+    echo "   [WARN] Redis sera iniciado sem senha"
 fi
+
 create_or_update_secret "userlist.txt" "/opt/secrets/pgbouncer/userlist.txt"
 
 # Extrair credenciais do postgres.env para validacao
 echo ""
-echo "   [INFO] Validando credenciais PostgreSQL..."
+echo "   [CHECK] Validando credenciais PostgreSQL..."
 
 # Validar se o arquivo possui as variaveis necessarias
 POSTGRES_USER=$(grep "^POSTGRES_USER=" "$SECRETS_DIR/postgres.env" | cut -d'=' -f2 | tr -d ' ')
@@ -169,7 +169,7 @@ echo "  - POSTGRES_PASSWORD: [***]"
 # Extrair senha Redis do estacao_api_env para validacao
 REDIS_PASSWORD=$(grep "^REDIS_PASSWORD=" "$SECRETS_DIR/estacao_api.env" | cut -d'=' -f2 | tr -d ' ' | head -1)
 if [ -z "$REDIS_PASSWORD" ]; then
-    echo "[AVISO] Redis password nao encontrado em estacao_api.env"
+    echo "[WARN] Redis password nao encontrado em estacao_api.env"
 else
     echo "  - REDIS_PASSWORD: [***]"
 fi
@@ -180,17 +180,17 @@ echo "[OK] Secrets configurados"
 # 4. Criar/Verificar volumes
 # ==============================
 echo ""
-echo "[VOLUMES] [INFO] Verificando volumes Docker..."
+echo "[INFO] Verificando volumes Docker..."
 
 create_volume_if_not_exists() {
     local volume_name=$1
     
     if docker volume inspect "$volume_name" >/dev/null 2>&1; then
-        echo "   [EXISTE] Volume: $volume_name"
+        echo "   [OK] Volume ja existe: $volume_name"
     else
-        echo "   [[CRIANDO]NDO] Volume: $volume_name"
+        echo "   [CREATE] Criando volume: $volume_name"
         docker volume create "$volume_name" || {
-            echo "   [AVISO] [ERRO] ao criar volume"
+            echo "   [WARN] Falha ao criar volume"
         }
     fi
 }
@@ -205,11 +205,11 @@ echo "[OK] Volumes verificados"
 # 5. Criar/Verificar redes necessarias
 # ==============================
 echo ""
-echo "[REDES] Verificando redes Docker..."
+echo "[INFO] Verificando redes Docker..."
 
 # Criar rede backend se nao existir
 if ! docker network ls --format '{{.Name}}' | grep -q "^estacao-backend-network$"; then
-    echo "   [CRIANDO] Rede estacao-backend-network..."
+    echo "   [CREATE] Criando rede estacao-backend-network..."
     docker network create --driver overlay estacao-backend-network || {
         echo "[ERRO] Falha ao criar rede backend!"
         exit 1
@@ -221,7 +221,7 @@ fi
 
 # Criar rede principal se nao existir
 if ! docker network ls --format '{{.Name}}' | grep -q "^estacao-network$"; then
-    echo "   [CRIANDO] Rede estacao-network..."
+    echo "   [CREATE] Criando rede estacao-network..."
     docker network create --driver overlay estacao-network || {
         echo "[ERRO] Falha ao criar rede principal!"
         exit 1
@@ -235,7 +235,7 @@ fi
 # 6. Backup da config atual
 # ==============================
 echo ""
-echo "[BACKUP] Fazendo backup da config..."
+echo "[INFO] Fazendo backup da config..."
 BACKUP_FILE="docker-stack.yml.backup-${TIMESTAMP}"
 cp docker-stack.yml "$BACKUP_FILE"
 echo "[OK] Backup salvo em: $BACKUP_FILE"
@@ -251,8 +251,8 @@ echo "[BUILD] Construindo imagens Docker..."
 # ==============================
 echo ""
 echo "   [BUILD] estacaoterapia-redis:prd-$TAG"
-echo "   [CONTEXTO] $(pwd)"
-echo "   [DOCKERFILE] ./Dockerfile.redis"
+echo "   [DIR] Contexto: $(pwd)"
+echo "   [FILE] Dockerfile: ./Dockerfile.redis"
 docker build \
     --no-cache \
     --progress=plain \
@@ -261,26 +261,26 @@ docker build \
     . || {
         echo ""
         echo "[ERRO] Falha ao construir imagem Redis!"
-        echo "[INFO] Verifique se redis-entrypoint.sh existe"
+        echo "[DEBUG] Verifique se redis-entrypoint.sh existe"
         exit 1
     }
 echo "[OK] Redis compilado com sucesso"
 
 # Verificar arquivos de lock antes do build
 echo ""
-echo "[INFO] Verificando gerenciador de pacotes..."
+echo "[CHECK] Verificando gerenciador de pacotes..."
 if [ -f "yarn.lock" ]; then
     echo "   [OK] yarn.lock encontrado - Usando Yarn"
 elif [ -f "package-lock.json" ]; then
     echo "   [OK] package-lock.json encontrado - Usando NPM"
 else
-    echo "   [AVISO] Nenhum lock file encontrado - Usando NPM padrao"
+    echo "   [WARN] Nenhum lock file encontrado - Usando NPM padrao"
 fi
 
 echo ""
 echo "   [BUILD] estacaoterapia-api:prd-$TAG"
-echo "   [CONTEXTO] $(pwd)"
-echo "   [DOCKERFILE] ./Dockerfile.api"
+echo "   [DIR] Contexto: $(pwd)"
+echo "   [FILE] Dockerfile: ./Dockerfile.api"
 docker build \
     --no-cache \
     --build-arg NODE_ENV=production \
@@ -290,9 +290,9 @@ docker build \
     . || {
         echo ""
         echo "[ERRO] Falha ao construir imagem API!"
-        echo "[INFO] Verifique os logs acima para detalhes"
-        echo "[DIRETORIO] $(pwd)"
-        echo "[ARQUIVOS] Disponiveis:"
+        echo "[DEBUG] Verifique os logs acima para detalhes"
+        echo "[DEBUG] Diretorio: $(pwd)"
+        echo "[CHECK] Arquivos disponiveis:"
         ls -la | grep -E "(package\.json|yarn\.lock|package-lock\.json)"
         exit 1
     }
@@ -300,8 +300,8 @@ echo "[OK] API compilada com sucesso"
 
 echo ""
 echo "   [BUILD] estacaoterapia-socket-server:prd-$TAG"
-echo "   [CONTEXTO] $(pwd)"
-echo "   [DOCKERFILE] ./Dockerfile.socket"
+echo "   [DIR] Contexto: $(pwd)"
+echo "   [FILE] Dockerfile: ./Dockerfile.socket"
 docker build \
     --no-cache \
     --build-arg NODE_ENV=production \
@@ -311,7 +311,7 @@ docker build \
     . || {
         echo ""
         echo "[ERRO] Falha ao construir imagem Socket!"
-        echo "[INFO] Verifique os logs acima para detalhes"
+        echo "[DEBUG] Verifique os logs acima para detalhes"
         exit 1
     }
 echo "[OK] Socket compilada com sucesso"
@@ -320,7 +320,7 @@ echo "[OK] Socket compilada com sucesso"
 # 8. Atualizar docker-stack.yml
 # ==============================
 echo ""
-echo "[CONFIG] Atualizando docker-stack.yml..."
+echo "[INFO] Atualizando docker-stack.yml..."
 DEPLOY_STACK_FILE="docker-stack.yml.deploy"
 cp docker-stack.yml "$DEPLOY_STACK_FILE"
 sed -i "s/{{TAG}}/${TAG}/g" "$DEPLOY_STACK_FILE"
@@ -332,14 +332,14 @@ echo "[OK] Stack configurado com nova tag: $TAG"
 # ==============================
 echo ""
 echo "[DEPLOY] Fazendo deploy para Docker Swarm..."
-echo "   [AGUARDANDO] rolling update..."
+echo "   [WAIT] Aguardando rolling update..."
 
 docker stack deploy \
     --compose-file "$DEPLOY_STACK_FILE" \
     --with-registry-auth \
     estacaoterapia || {
         echo "[ERRO] Falha ao fazer deploy!"
-        echo "[REVERT] Revertendo para backup: $BACKUP_FILE"
+        echo "[INFO] Revertendo para backup: $BACKUP_FILE"
         cp "$BACKUP_FILE" docker-stack.yml
         exit 1
     }
@@ -347,10 +347,10 @@ docker stack deploy \
 echo "[OK] Stack deployado com sucesso"
 
 # ==============================
-# 10. Aguardar convergencia e saude
+# AGUARDAR CONVERGENCIA E SAUDE
 # ==============================
 echo ""
-echo "[AGUARDANDO] Servicos convergindo..."
+echo "[WAIT] Aguardando servicos convergirem..."
 
 # Aguardar inicial
 sleep 10
@@ -360,7 +360,7 @@ ELAPSED=0
 WAIT_INTERVAL=10
 
 echo ""
-echo "[MONITORANDO] Saude dos servicos..."
+echo "[MONITOR] Monitorando saude dos servicos..."
 
 wait_for_service_health() {
     local service_name=$1
@@ -377,7 +377,7 @@ wait_for_service_health() {
             return 0
         fi
         
-        echo "   [AGUARDANDO] $service_name... ($elapsed/$max_wait segundos)"
+        echo "   [WAIT] Aguardando $service_name... ($elapsed/$max_wait segundos)"
         sleep $wait_interval
         elapsed=$((elapsed + wait_interval))
     done
@@ -389,42 +389,93 @@ wait_for_service_health() {
 check_service_status() {
     local service_name=$1
     echo ""
-    echo "[INFO] Verificando status detalhado de $service_name..."
+    echo "[CHECK] Verificando status detalhado de $service_name..."
     docker service ps "$service_name" --no-trunc 2>/dev/null || echo "   [ERRO] Servico nao encontrado"
     
     echo ""
     echo "[LOGS] Ultimos logs de $service_name:"
-    docker service logs "$service_name" --tail 20 2>/dev/null || echo "   [ERRO] Nao foi possivel obter logs"
+    docker service logs "$service_name" --tail 50 2>/dev/null || echo "   [ERRO] Nao foi possivel obter logs"
+}
+
+# Funcao para diagnosticar problemas do Redis
+check_redis_container() {
+    local service_name=$1
+    echo ""
+    echo "========================================"
+    echo "[DEBUG] DIAGNOSTICO REDIS"
+    echo "========================================"
+    
+    # Obter container ID
+    CONTAINER_ID=$(docker ps -aq --filter "label=com.docker.swarm.service.name=$service_name" 2>/dev/null | head -1)
+    
+    if [ -z "$CONTAINER_ID" ]; then
+        echo "[ERRO] Nenhum container encontrado para $service_name"
+        return 1
+    fi
+    
+    echo "[INFO] Container ID: $CONTAINER_ID"
+    echo ""
+    
+    # Verificar processo Redis
+    echo "[CHECK] Verificando processo Redis no container..."
+    docker exec "$CONTAINER_ID" ps aux 2>/dev/null | grep -E "redis|PID" || echo "   [ERRO] Processo nao encontrado"
+    
+    echo ""
+    echo "[CHECK] Verificando diretorio /data..."
+    docker exec "$CONTAINER_ID" ls -la /data 2>/dev/null || echo "   [ERRO] Erro ao acessar /data"
+    
+    echo ""
+    echo "[CHECK] Verificando permissoes de volume..."
+    docker exec "$CONTAINER_ID" stat /data 2>/dev/null | grep -E "Access|Uid|Gid" || echo "   [ERRO] Erro ao obter info"
+    
+    echo ""
+    echo "[CHECK] Verificando se porta 6379 esta escutando..."
+    docker exec "$CONTAINER_ID" netstat -tuln 2>/dev/null | grep 6379 || echo "   [WARN] Porta 6379 nao esta escutando"
+    
+    echo ""
+    echo "[CHECK] Testando conectividade Redis..."
+    docker exec "$CONTAINER_ID" redis-cli PING 2>/dev/null || echo "   [ERRO] Nao foi possivel conectar ao Redis"
+    
+    echo ""
+    echo "[LOGS] Logs completos do container..."
+    docker logs "$CONTAINER_ID" --tail 100 2>/dev/null | head -50 || echo "   [ERRO] Erro ao obter logs"
 }
 
 # Aguardar Redis primeiro (dependencia critica)
-echo "   [AGUARDANDO] Redis..."
+echo "   [INIT] Aguardando Redis..."
 if ! wait_for_service_health "estacaoterapia_redis" 120 "required"; then
     echo ""
-    echo " Redis NAO SUBIU no tempo limite (120s)!"
+    echo "[ERRO] Redis NAO SUBIU no tempo limite (120s)!"
     check_service_status "estacaoterapia_redis"
+    check_redis_container "estacaoterapia_redis"
     echo ""
-    echo "[CRITICO] Redis nao conseguiu inicializar"
+    echo "[ERRO CRITICO] Redis nao conseguiu inicializar"
     echo "   Possiveis causas:"
     echo "   - Problemas de volume docker (redis_data)"
     echo "   - Arquivo de configuracao invalido"
-    echo "   - Falta de permissoes"
+    echo "   - Falta de permissoes no volume"
     echo "   - Porta 6379 em uso"
+    echo "   - Problema com entrypoint (redis-entrypoint.sh)"
     echo ""
-    echo "   Debug: docker service logs estacaoterapia_redis"
+    echo "   Solucoes:"
+    echo "   1. Verificar volume: docker volume inspect redis_data"
+    echo "   2. Limpar volume: docker volume rm redis_data"
+    echo "   3. Reconstruir: docker build -t estacaoterapia-redis:prd-${TAG} -f ./Dockerfile.redis ."
+    echo "   4. Verificar logs: docker service logs estacaoterapia_redis"
+    echo ""
     exit 1
 else
     echo "   [OK] Redis iniciado com sucesso"
 fi
 
 # Aguardar PostgreSQL (apos Redis estar ok)
-echo "   [AGUARDANDO] PostgreSQL..."
+echo "   [INIT] Aguardando PostgreSQL..."
 if ! wait_for_service_health "estacaoterapia_postgres" 120 "required"; then
     echo ""
-    echo " PostgreSQL NAO SUBIU no tempo limite (120s)!"
+    echo "[ERRO] PostgreSQL NAO SUBIU no tempo limite (120s)!"
     check_service_status "estacaoterapia_postgres"
     echo ""
-    echo "[CRITICO] PostgreSQL nao conseguiu inicializar"
+    echo "[ERRO CRITICO] PostgreSQL nao conseguiu inicializar"
     echo "   Possiveis causas:"
     echo "   - Problemas de volume docker (postgres_data)"
     echo "   - Secrets do PostgreSQL invalidos"
@@ -438,50 +489,51 @@ else
 fi
 
 # Aguardar PgBouncer (apos PostgreSQL estar ok)
-echo "   [AGUARDANDO] PgBouncer..."
+echo "   [INIT] Aguardando PgBouncer..."
 if ! wait_for_service_health "estacaoterapia_pgbouncer" 60 "required"; then
     echo ""
-    echo "[AVISO] PgBouncer ainda nao respondeu, continuando..."
+    echo "[WARN] PgBouncer ainda nao respondeu, continuando..."
     check_service_status "estacaoterapia_pgbouncer"
 else
     echo "   [OK] PgBouncer iniciado com sucesso"
 fi
 
-# Verificar status dos servios
+# Verificar status dos servicos
 echo ""
-echo "[STATUS] Servicos:"
+echo "[STATUS] Status dos servicos:"
 docker service ls --filter "label=com.docker.stack.namespace=estacaoterapia"
 
 echo ""
-echo " Replicas da API:"
-docker service ps estacaoterapia_api --no-trunc 2>/dev/null | head -5 || echo "   (aguardando inicializao)"
+echo "[STATUS] Replicas da API:"
+docker service ps estacaoterapia_api --no-trunc 2>/dev/null | head -5 || echo "   (aguardando inicializacao)"
 
 echo ""
-echo " Replicas do Socket:"
-docker service ps estacaoterapia_socket-server --no-trunc 2>/dev/null | head -5 || echo "   (aguardando inicializao)"
+echo "[STATUS] Replicas do Socket:"
+docker service ps estacaoterapia_socket-server --no-trunc 2>/dev/null | head -5 || echo "   (aguardando inicializacao)"
 
 echo ""
-echo " Replicas do PostgreSQL:"
-docker service ps estacaoterapia_postgres --no-trunc 2>/dev/null | head -5 || echo "   (aguardando inicializao)"
+echo "[STATUS] Replicas do PostgreSQL:"
+docker service ps estacaoterapia_postgres --no-trunc 2>/dev/null | head -5 || echo "   (aguardando inicializacao)"
 
 echo ""
-echo " Replicas do Redis:"
-docker service ps estacaoterapia_redis --no-trunc 2>/dev/null | head -5 || echo "   (aguardando inicializao)"
+echo "[STATUS] Replicas do Redis:"
+docker service ps estacaoterapia_redis --no-trunc 2>/dev/null | head -5 || echo "   (aguardando inicializacao)"
+
 echo ""
-echo " [INFO] Verificando necessidade de restaurar banco de dados..."
+echo "[INFO] Verificando necessidade de restaurar banco de dados..."
 
 BACKUP_SQL="./backups/estacaoterapia_prd.sql"
 
 if [ ! -f "$BACKUP_SQL" ]; then
-    echo "  Arquivo de backup nao encontrado: $BACKUP_SQL"
+    echo "[WARN] Arquivo de backup nao encontrado: $BACKUP_SQL"
     echo "   Continuando sem restaurar o banco..."
-    return 0 2>/dev/null || true  # evita erro em scripts sourcing
+    exit 0 2>/dev/null || true
 fi
 
-echo "    Arquivo encontrado: $BACKUP_SQL"
+echo "   [INFO] Arquivo encontrado: $BACKUP_SQL"
 
 # Aguardar PostgreSQL ficar pronto
-echo "   [AGUARDANDO] PostgreSQL ficar pronto..."
+echo "   [WAIT] Aguardando PostgreSQL ficar pronto..."
 sleep 10
 
 # Pegar container ativo do Postgres
@@ -490,20 +542,20 @@ POSTGRES_CONTAINER=$(docker ps \
     --format "{{.ID}}" | head -1)
 
 if [ -z "$POSTGRES_CONTAINER" ]; then
-    echo "    Container do PostgreSQL nao encontrado!"
-    echo "     Continuando sem restaurar o banco..."
-    return 0 2>/dev/null || true
+    echo "   [ERRO] Container do PostgreSQL nao encontrado!"
+    echo "   [WARN] Continuando sem restaurar o banco..."
+    exit 0 2>/dev/null || true
 fi
 
-echo "    PostgreSQL encontrado: $POSTGRES_CONTAINER"
+echo "   [OK] PostgreSQL encontrado: $POSTGRES_CONTAINER"
 
-# Funcao para executar psql com usurio correto
+# Funcao para executar psql com usuario correto
 psql_exec() {
     docker exec "$POSTGRES_CONTAINER" sh -c "PGPASSWORD='$POSTGRES_PASSWORD' psql -U '$POSTGRES_USER' -d '$POSTGRES_DB' -t -c \"$1\" 2>/dev/null"
 }
 
 # Verificar se o banco existe
-echo "    [INFO] Verificando se o banco 'estacaoterapia' existe..."
+echo "   [CHECK] Verificando se o banco 'estacaoterapia' existe..."
 DB_EXISTS=$(docker exec "$POSTGRES_CONTAINER" sh -c "PGPASSWORD='$POSTGRES_PASSWORD' psql -U '$POSTGRES_USER' -lqt 2>/dev/null" | awk '{print $1}' | grep -w estacaoterapia | wc -l || echo "0")
 # Sanitize count to avoid "integer expression expected"
 DB_EXISTS=${DB_EXISTS:-0}
@@ -512,62 +564,61 @@ if ! [[ "$DB_EXISTS" =~ ^[0-9]+$ ]]; then
 fi
 
 if [ "$DB_EXISTS" -eq 0 ]; then
-    echo "    Banco 'estacaoterapia' nao existe. Criando..."
+    echo "   [CREATE] Banco 'estacaoterapia' nao existe. Criando..."
     docker exec "$POSTGRES_CONTAINER" sh -c "PGPASSWORD='$POSTGRES_PASSWORD' psql -U '$POSTGRES_USER' -c \"CREATE DATABASE estacaoterapia;\"" || {
-        echo "     nao foi possivel criar banco (pode j existir)"
+        echo "   [WARN] Nao foi possivel criar banco (pode ja existir)"
     }
-    echo "    Banco criado"
+    echo "   [OK] Banco criado"
 else
-    echo "    Banco 'estacaoterapia' ja existe"
+    echo "   [OK] Banco 'estacaoterapia' ja existe"
 fi
 
 # Verificar se ja existem tabelas
-echo "    [INFO] Verificando se o banco j possui tabelas..."
+echo "   [CHECK] Verificando se o banco ja possui tabelas..."
 TABLE_COUNT=$(psql_exec "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE';" | tr -d ' ' || echo "0")
 
-# Garantir que  nmero
+# Garantir que e numero
 TABLE_COUNT=${TABLE_COUNT:-0}
 if ! [[ "$TABLE_COUNT" =~ ^[0-9]+$ ]]; then
     TABLE_COUNT=0
 fi
 
 if [ "$TABLE_COUNT" -gt 0 ]; then
-    echo "     Banco j possui $TABLE_COUNT tabela(s) criada(s)"
-    echo "     Pulando restore do backup (banco j populado)"
+    echo "   [INFO] Banco ja possui $TABLE_COUNT tabela(s) criada(s)"
+    echo "   [SKIP] Pulando restore do backup (banco ja populado)"
 else
-    echo "    Banco vazio, prosseguindo com restore..."
+    echo "   [OK] Banco vazio, prosseguindo com restore..."
 
     # Copiar arquivo SQL para o container
-    echo "    Copiando backup para o container..."
+    echo "   [COPY] Copiando backup para o container..."
     docker cp "$BACKUP_SQL" "${POSTGRES_CONTAINER}:/tmp/restore.sql" || {
-        echo "    [ERRO] ao copiar arquivo para o container!"
-        echo "     Continuando sem restaurar o banco..."
-        return 0 2>/dev/null || true
+        echo "   [ERRO] Falha ao copiar arquivo para o container!"
+        echo "   [WARN] Continuando sem restaurar o banco..."
+        exit 0 2>/dev/null || true
     }
 
     # Executar restore
     if docker exec "$POSTGRES_CONTAINER" test -f /tmp/restore.sql 2>/dev/null; then
-        echo "    Arquivo copiado com sucesso"
-        echo "    Executando restore do banco de dados..."
+        echo "   [OK] Arquivo copiado com sucesso"
+        echo "   [RESTORE] Executando restore do banco de dados..."
         docker exec "$POSTGRES_CONTAINER" sh -c "PGPASSWORD='$POSTGRES_PASSWORD' psql -U '$POSTGRES_USER' -d estacaoterapia -f /tmp/restore.sql" 2>&1 | grep -E "(ERROR|CREATE|INSERT|restored|done)" || true
-        echo "    Restore executado"
+        echo "   [OK] Restore executado"
 
-        # Limpar arquivo temporrio
+        # Limpar arquivo temporario
         docker exec "$POSTGRES_CONTAINER" rm -f /tmp/restore.sql
-        echo "    Banco de dados restaurado com sucesso!"
+        echo "   [OK] Banco de dados restaurado com sucesso!"
     else
-        echo "     Arquivo nao foi copiado corretamente"
+        echo "   [WARN] Arquivo nao foi copiado corretamente"
     fi
 fi
 
-
 # ==============================
-#  Limpeza de imagens antigas
+# LIMPEZA DE IMAGENS ANTIGAS
 # ==============================
 echo ""
-echo " Limpando imagens antigas..."
+echo "[CLEANUP] Limpando imagens antigas..."
 
-# Encontrar imagens do estacaoterapia que nao so a atual
+# Encontrar imagens do estacaoterapia que NAO sao a atual
 OLD_REDIS_IMAGES=$(docker images --filter "reference=estacaoterapia-redis:prd-*" --format "{{.Repository}}:{{.Tag}}" | grep -v "prd-${TAG}$" || true)
 OLD_API_IMAGES=$(docker images --filter "reference=estacaoterapia-api:prd-*" --format "{{.Repository}}:{{.Tag}}" | grep -v "prd-${TAG}$" || true)
 OLD_SOCKET_IMAGES=$(docker images --filter "reference=estacaoterapia-socket-server:prd-*" --format "{{.Repository}}:{{.Tag}}" | grep -v "prd-${TAG}$" || true)
@@ -578,8 +629,8 @@ REMOVED_COUNT=0
 if [ -n "$OLD_REDIS_IMAGES" ]; then
     echo "$OLD_REDIS_IMAGES" | while read -r old_image; do
         if [ -n "$old_image" ]; then
-            echo "   [REMOVENDO] $old_image"
-            docker rmi "$old_image" 2>/dev/null || echo "      [AVISO] Nao foi possivel remover (em uso)"
+            echo "   [DELETE] Removendo: $old_image"
+            docker rmi "$old_image" 2>/dev/null || echo "      [WARN] Nao foi possivel remover (em uso)"
         fi
     done
 fi
@@ -588,8 +639,8 @@ fi
 if [ -n "$OLD_API_IMAGES" ]; then
     echo "$OLD_API_IMAGES" | while read -r old_image; do
         if [ -n "$old_image" ]; then
-            echo "   [REMOVENDO] $old_image"
-            docker rmi "$old_image" 2>/dev/null || echo "      [AVISO] Nao foi possivel remover (em uso)"
+            echo "   [DELETE] Removendo: $old_image"
+            docker rmi "$old_image" 2>/dev/null || echo "      [WARN] Nao foi possivel remover (em uso)"
         fi
     done
 fi
@@ -598,48 +649,48 @@ fi
 if [ -n "$OLD_SOCKET_IMAGES" ]; then
     echo "$OLD_SOCKET_IMAGES" | while read -r old_image; do
         if [ -n "$old_image" ]; then
-            echo "   [REMOVENDO] $old_image"
-            docker rmi "$old_image" 2>/dev/null || echo "      [AVISO] Nao foi possivel remover (em uso)"
+            echo "   [DELETE] Removendo: $old_image"
+            docker rmi "$old_image" 2>/dev/null || echo "      [WARN] Nao foi possivel remover (em uso)"
         fi
     done
 fi
 
 # Limpar dangling images
 echo ""
-echo "[LIMPEZA] Removendo imagens dangling..."
+echo "[CLEANUP] Removendo imagens dangling..."
 DANGLING_REMOVED=$(docker image prune -f --filter "until=1h" 2>/dev/null | grep -o "deleted" | wc -l)
 if [ "$DANGLING_REMOVED" -gt 0 ]; then
     echo "   [OK] $DANGLING_REMOVED imagens removidas"
 fi
 
 # ==============================
-# 10. Limpeza de arquivos temporarios
+# LIMPEZA DE ARQUIVOS TEMPORARIOS
 # ==============================
 echo ""
-echo "[LIMPEZA] Limpando arquivos temporarios..."
+echo "[CLEANUP] Limpando arquivos temporarios..."
 rm -f "$DEPLOY_STACK_FILE"
 echo "   [OK] Arquivos temporarios removidos"
 
 # ==============================
-# 11. Resumo Final
+# RESUMO FINAL
 # ==============================
 echo ""
 echo "======================================"
-echo "[SUCESSO] DEPLOY CONCLUIDO COM SUCESSO!"
+echo "[OK] DEPLOY CONCLUIDO COM SUCESSO!"
 echo "======================================"
 echo ""
-echo "[RESUMO] Informacoes:"
+echo "[SUMMARY] Resumo:"
 echo "   - Tag: prd-$TAG"
 echo "   - Stack: estacaoterapia"
 echo "   - Deploy: $(date '+%d/%m/%Y %H:%M:%S')"
 echo "   - Modo: Zero-Downtime (Rolling Update)"
 echo ""
-echo "[PROXIMOS] Passos:"
+echo "[NEXT] Proximos passos:"
 echo "   1. Monitorar logs: docker service logs estacaoterapia_api -f"
 echo "   2. Verificar saude: docker service ls"
 echo "   3. Testar endpoint: curl http://localhost:3333/health"
 echo ""
-echo "[REVERTENDO] Se precisar reverter:"
+echo "[REVERT] Se precisar reverter:"
 echo "   cp $BACKUP_FILE docker-stack.yml"
 echo "   docker stack deploy -c docker-stack.yml estacaoterapia"
 echo ""
