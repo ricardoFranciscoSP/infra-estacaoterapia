@@ -92,7 +92,7 @@ start_api() {
 
   PG_HOST="${PG_HOST:-pgbouncer}"
   PG_PORT="${PG_PORT:-6432}"
-  REDIS_HOST="${REDIS_HOST:-redis_prd}"
+  REDIS_HOST="${REDIS_HOST:-redis}"
   REDIS_PORT="${REDIS_PORT:-6379}"
   POSTGRES_DB="${POSTGRES_DB:-estacaoterapia}"
 
@@ -102,7 +102,7 @@ start_api() {
 
   # Tentar resolver host de Redis com alternativas comuns no Swarm
   echo "🔎 Checando Redis..."
-  for candidate in "$REDIS_HOST" "tasks.$REDIS_HOST" "estacao_terapia_redis_prd" "tasks.estacao_terapia_redis_prd"; do
+  for candidate in "$REDIS_HOST" "tasks.$REDIS_HOST" "estacaoterapia_redis" "tasks.estacaoterapia_redis"; do
     if retry nc -z "$candidate" "$REDIS_PORT" >/dev/null 2>&1; then
       REDIS_HOST="$candidate"
       echo "✅ Redis acessível via: $REDIS_HOST"
@@ -169,7 +169,7 @@ start_socket() {
 
   PG_HOST="${PG_HOST:-pgbouncer}"
   PG_PORT="${PG_PORT:-6432}"
-  REDIS_HOST="${REDIS_HOST:-redis_prd}"
+  REDIS_HOST="${REDIS_HOST:-redis}"
   REDIS_PORT="${REDIS_PORT:-6379}"
   API_BASE_URL="${API_BASE_URL:-http://api:3333}"
 
@@ -179,7 +179,7 @@ start_socket() {
   echo "   API        → $API_BASE_URL"
 
   echo "🔎 Checando Redis..."
-  for candidate in "$REDIS_HOST" "tasks.$REDIS_HOST" "estacao_terapia_redis_prd" "tasks.estacao_terapia_redis_prd"; do
+  for candidate in "$REDIS_HOST" "tasks.$REDIS_HOST" "estacaoterapia_redis" "tasks.estacaoterapia_redis"; do
     if retry nc -z "$candidate" "$REDIS_PORT" >/dev/null 2>&1; then
       REDIS_HOST="$candidate"
       echo "✅ Redis acessível via: $REDIS_HOST"
@@ -208,8 +208,22 @@ start_socket() {
   export REDIS_HOST
   export REDIS_PORT
   export REDIS_DB
+  
+  # Garantir que REDIS_PASSWORD está definida (pode estar vazia, mas deve estar exportada)
+  if [ -z "$REDIS_PASSWORD" ]; then
+    echo "⚠️  REDIS_PASSWORD não definida - Redis pode não estar configurado com senha"
+  else
+    echo "✅ REDIS_PASSWORD definida (${#REDIS_PASSWORD} caracteres)"
+  fi
   export REDIS_PASSWORD
+  
+  # Construir REDIS_URL se não estiver definida e tiver senha
+  if [ -z "$REDIS_URL" ] && [ -n "$REDIS_PASSWORD" ]; then
+    REDIS_URL="redis://:${REDIS_PASSWORD}@${REDIS_HOST}:${REDIS_PORT}/${REDIS_DB:-1}"
+    echo "✅ REDIS_URL construída automaticamente"
+  fi
   export REDIS_URL
+  
   echo "✅ Variáveis Redis exportadas para Node.js"
 
   exec "$@"

@@ -63,25 +63,47 @@ services:
       - source: estacao_api_env
         target: /run/secrets/redis.env
     command:
-      [
-        'redis-server',
-        '--appendonly',
-        'yes',
-        '--maxmemory',
-        '512mb',
-        '--maxmemory-policy',
-        'allkeys-lru',
-        '--requirepass',
-        'REdnRHkZLnQpK1rcoKsseO3pX4GNIRR',
-      ]
+      - /bin/sh
+      - -c
+      - |
+        # Carregar senha do secret (estacao_api.env contém todas as variáveis)
+        REDIS_PASS="REdnRHkZLnQpK1rcoKsseO3pX4GNIRR"
+        if [ -f /run/secrets/redis.env ]; then
+          # Extrair REDIS_PASSWORD do arquivo de secret
+          REDIS_PASS_LINE=$(grep -v '^#' /run/secrets/redis.env | grep "^REDIS_PASSWORD=" | head -1)
+          if [ -n "$$REDIS_PASS_LINE" ]; then
+            REDIS_PASS=$${REDIS_PASS_LINE#REDIS_PASSWORD=}
+            echo "✅ Senha Redis carregada do secret"
+          fi
+        fi
+        
+        # Iniciar Redis com senha
+        exec redis-server \
+          --appendonly yes \
+          --maxmemory 512mb \
+          --maxmemory-policy allkeys-lru \
+          --requirepass "$$REDIS_PASS"
     volumes:
       - redis_data:/data
     networks:
       - estacaoterapia_backend
     healthcheck:
-      test: ['CMD', 'redis-cli', '--raw', 'incr', 'ping']
+      test:
+        - /bin/sh
+        - -c
+        - |
+          # Carregar senha do secret para healthcheck
+          REDIS_PASS="REdnRHkZLnQpK1rcoKsseO3pX4GNIRR"
+          if [ -f /run/secrets/redis.env ]; then
+            # Extrair REDIS_PASSWORD do arquivo de secret
+            REDIS_PASS_LINE=$(grep -v '^#' /run/secrets/redis.env | grep "^REDIS_PASSWORD=" | head -1)
+            if [ -n "$$REDIS_PASS_LINE" ]; then
+              REDIS_PASS=$${REDIS_PASS_LINE#REDIS_PASSWORD=}
+            fi
+          fi
+          redis-cli -a "$$REDIS_PASS" --raw incr ping > /dev/null
       interval: 10s
-      timeout: 3s
+      timeout: 5s
       retries: 5
     deploy:
       replicas: 1

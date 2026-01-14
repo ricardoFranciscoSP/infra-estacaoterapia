@@ -114,8 +114,16 @@ export const getRedisClient = async (): Promise<RedisClientType> => {
     // Usa a senha do ambiente se definida
     const connectionPassword = SHOULD_AUTH ? REDIS_PASSWORD : undefined;
 
+    // Construir URL com senha se não estiver definida e tiver senha
+    let redisUrl = REDIS_URL;
+    if (!redisUrl && SHOULD_AUTH && REDIS_PASSWORD) {
+        redisUrl = `redis://:${REDIS_PASSWORD}@${REDIS_HOST}:${REDIS_PORT}/${REDIS_DB}`;
+    } else if (!redisUrl) {
+        redisUrl = `redis://${REDIS_HOST}:${REDIS_PORT}/${REDIS_DB}`;
+    }
+
     redisClient = createClient({
-        url: REDIS_URL || `redis://${REDIS_HOST}:${REDIS_PORT}/${REDIS_DB}`,
+        url: redisUrl,
         password: connectionPassword,
         socket: {
             connectTimeout: 10_000,
@@ -260,11 +268,16 @@ function createIORedisClient(): IORedis {
             configHost = url.hostname || REDIS_HOST;
             configPort = url.port ? Number(url.port) : REDIS_PORT;
             configDb = url.pathname && url.pathname !== '/' ? Number(url.pathname.slice(1)) : REDIS_DB;
-            configPassword = url.password || configPassword;
-            console.log(`✅ [IORedis] Credenciais extraídas de REDIS_URL: host=${configHost}, port=${configPort}, db=${configDb}`);
+            // Prioriza senha da URL, depois do REDIS_PASSWORD, depois undefined
+            configPassword = url.password || configPassword || undefined;
+            console.log(`✅ [IORedis] Credenciais extraídas de REDIS_URL: host=${configHost}, port=${configPort}, db=${configDb}, password=${configPassword ? 'definida' : 'não definida'}`);
         } catch (err) {
             console.warn(`⚠️ [IORedis] REDIS_URL inválida, usando variáveis individuais`);
         }
+    } else if (SHOULD_AUTH && REDIS_PASSWORD) {
+        // Se não tem REDIS_URL mas tem senha, garante que a senha será usada
+        configPassword = REDIS_PASSWORD;
+        console.log(`✅ [IORedis] Usando REDIS_PASSWORD do ambiente (${REDIS_PASSWORD.length} caracteres)`);
     }
 
     const redisConfig = {
