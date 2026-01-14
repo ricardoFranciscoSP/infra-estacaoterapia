@@ -256,6 +256,7 @@ deploy_caddy() {
         log_error "Falha no deploy do Caddy"
         return 1
     fi
+}
 
 ###############################################################################
 # Função de Validação Final
