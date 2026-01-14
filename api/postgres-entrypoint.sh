@@ -12,6 +12,10 @@ if [ -f /run/secrets/postgres.env ]; then
   done < /run/secrets/postgres.env
 fi
 
+# 🔎 DEBUG (não remove ainda)
+echo "📋 Variáveis carregadas:"
+env | grep -E 'POSTGRES_|PGDATA' || true
+
 echo "🚀 Iniciando Postgres"
 exec docker-entrypoint.sh postgres \
   -c max_connections=200 \

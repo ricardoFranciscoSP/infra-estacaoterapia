@@ -20,17 +20,20 @@ services:
   postgres:
     image: postgres:16-alpine
     secrets:
-      - source: postgres_env
-        target: /run/secrets/postgres.env
+      - postgres_user
+      - postgres_password
+      - postgres_db
     environment:
+      POSTGRES_USER_FILE: /run/secrets/postgres_user
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+      POSTGRES_DB_FILE: /run/secrets/postgres_db
       PGDATA: /var/lib/postgresql/data/pgdata
-    entrypoint: ['/bin/sh', '/postgres-entrypoint.sh']
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - estacao-network
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}']
+      test: ['CMD-SHELL', 'pg_isready -h 127.0.0.1']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -50,7 +53,18 @@ services:
     secrets:
       - source: estacao_api_env
         target: /run/secrets/redis.env
-    command: ['redis-server', '--appendonly', 'yes', '--maxmemory', '512mb', '--maxmemory-policy', 'allkeys-lru', '--requirepass', 'REdnRHkZLnQpK1rcoKsseO3pX4GNIRR']
+    command:
+      [
+        'redis-server',
+        '--appendonly',
+        'yes',
+        '--maxmemory',
+        '512mb',
+        '--maxmemory-policy',
+        'allkeys-lru',
+        '--requirepass',
+        'REdnRHkZLnQpK1rcoKsseO3pX4GNIRR',
+      ]
     volumes:
       - redis_data:/data
     networks:
