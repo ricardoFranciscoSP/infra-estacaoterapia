@@ -119,32 +119,27 @@ const PORT = Number(process.env.PORT) || 3000;
 const server = http.createServer(app);
 
 // ===============================
-// 🔹 Opcional: Verificar Redis antes de iniciar workers
+// 🔹 Verificar Redis (IORedis) antes de iniciar workers
 // ===============================
-async function waitForRedisReady(maxRetries = 15, delayMs = 3000) {
-    const { getRedisClient } = await import("./config/redis.config");
+async function waitForRedisReady(maxRetries = 15, delayMs = 3000): Promise<boolean> {
+    const { waitForIORedisReady } = await import("./config/redis.config");
+    const redisHost = process.env.REDIS_HOST || "redis";
+    const redisPort = process.env.REDIS_PORT || "6379";
+    const redisDb = process.env.REDIS_DB || "1";
     let retries = 0;
 
-    console.log(`⏳ [Redis] Aguardando Redis ficar disponível (max ${maxRetries} tentativas, ${delayMs}ms entre tentativas)...`);
+    console.log(`⏳ [Redis] Aguardando Redis ficar disponível (${redisHost}:${redisPort}, db ${redisDb})`);
+    console.log(`⏳ [Redis] Max tentativas: ${maxRetries} | Intervalo: ${delayMs}ms`);
 
     while (retries < maxRetries) {
         try {
-            // getRedisClient() agora já trata clientes fechados e recria se necessário
-            const redis = await getRedisClient();
-            if (!redis) throw new Error("Redis não inicializado");
-
-            // Verifica se o cliente está realmente aberto
-            if (!redis.isOpen) {
-                throw new Error("Cliente Redis não está aberto");
-            }
-
-            console.log(`[Redis] Tentando ping... tentativa ${retries + 1}/${maxRetries}`);
-            await redis.ping();
-            console.log("✅ Redis conectado e respondendo!");
-            return;
+            console.log(`🔍 [Redis] Validando conexão IORedis... tentativa ${retries + 1}/${maxRetries}`);
+            await waitForIORedisReady(15000);
+            console.log("✅ [Redis] IORedis conectado e validado com ping");
+            return true;
         } catch (err) {
             const errorMsg = (err as Error)?.message || String(err);
-            console.warn(`⏳ Redis retry ${retries + 1}/${maxRetries}: ${errorMsg}`);
+            console.warn(`⚠️ [Redis] Tentativa ${retries + 1}/${maxRetries} falhou: ${errorMsg}`);
             if (retries < maxRetries - 1) {
                 console.log(`⏳ Aguardando ${delayMs}ms antes da próxima tentativa...`);
                 await new Promise(r => setTimeout(r, delayMs));
@@ -154,7 +149,7 @@ async function waitForRedisReady(maxRetries = 15, delayMs = 3000) {
     }
 
     console.error("🚨 Redis indisponível após múltiplas tentativas");
-    throw new Error("Redis indisponível após múltiplas tentativas");
+    return false;
 }
 
 // ===============================
@@ -178,7 +173,11 @@ server.listen(PORT, "0.0.0.0", async () => {
             try {
                 console.log("🚦 Aguardando disponibilidade de Redis para iniciar workers BullMQ...");
 
-                await waitForRedisReady(); // garante que Redis está ok antes de iniciar workers
+                const redisReady = await waitForRedisReady(); // garante que Redis está ok antes de iniciar workers
+                if (!redisReady) {
+                    console.error("🛑 Workers BullMQ NÃO serão inicializados: Redis não conectado na API");
+                    return;
+                }
 
                 // Inicializa workers de Controle de Consulta (passa io para session worker)
                 const { startControleConsultaWorkers } = await import("./workers/controleConsultaWorkers");

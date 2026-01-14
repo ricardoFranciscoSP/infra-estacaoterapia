@@ -2,6 +2,7 @@ import { Worker, QueueEvents, Job } from "bullmq";
 import { notificationQueue } from "../queues/bullmqCentral";
 import { WebSocketNotificationService } from "../services/websocketNotification.service";
 import prisma from "../prisma/client";
+import { attachQueueEventsLogging } from "../utils/bullmqLogs";
 
 const wsService = new WebSocketNotificationService();
 
@@ -61,6 +62,7 @@ if (!notificationQueue) {
     );
 
     const events = new QueueEvents(notificationQueue.name, { connection: notificationQueue.opts.connection });
+    attachQueueEventsLogging(notificationQueue.name, events);
     events.on("failed", ({ jobId, failedReason }) => {
         console.error(`74c Notification job failed: ${jobId} - ${failedReason}`);
     });

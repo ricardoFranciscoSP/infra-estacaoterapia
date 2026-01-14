@@ -5,6 +5,7 @@ import { Queue, QueueEvents } from 'bullmq';
 import { getIORedisClient, waitForIORedisReady } from '../config/redis.config';
 import { RenovacaoJobData } from '../types/controleConsulta.types';
 import IORedis from 'ioredis';
+import { attachQueueEventsLogging } from '../utils/bullmqLogs';
 
 let redisConnection: IORedis | null = null;
 let connectionPromise: Promise<IORedis> | null = null;
@@ -101,6 +102,7 @@ export const getAgendaQueueEvents = async (): Promise<QueueEvents | null> => {
     try {
         const conn = await getRedisConnection();
         _agendaQueueEvents = new QueueEvents('agendaQueue', { connection: conn });
+        attachQueueEventsLogging('agendaQueue', _agendaQueueEvents);
         console.log('✅ [BullMQ] agendaQueueEvents criado');
         return _agendaQueueEvents;
     } catch (error) {
@@ -143,6 +145,7 @@ export const getWebhookQueueEvents = async (): Promise<QueueEvents | null> => {
     try {
         const conn = await getRedisConnection();
         _webhookQueueEvents = new QueueEvents('webhookProcessor', { connection: conn });
+        attachQueueEventsLogging('webhookProcessor', _webhookQueueEvents);
         console.log('✅ [BullMQ] webhookQueueEvents criado');
         return _webhookQueueEvents;
     } catch (error) {
@@ -185,6 +188,7 @@ export const getNotificationQueueEvents = async (): Promise<QueueEvents | null> 
     try {
         const conn = await getRedisConnection();
         _notificationQueueEvents = new QueueEvents('notificationQueue', { connection: conn });
+        attachQueueEventsLogging('notificationQueue', _notificationQueueEvents);
         console.log('✅ [BullMQ] notificationQueueEvents criado');
         return _notificationQueueEvents;
     } catch (error) {

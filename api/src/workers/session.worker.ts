@@ -3,6 +3,7 @@ import { webhookQueue } from "../queues/bullmqCentral";
 import { SessionMonitoringService } from "../services/sessionMonitoring.service";
 import { generateAgoraTokensForConsulta } from "../utils/scheduleAgoraToken";
 import { Server as SocketServer } from "socket.io";
+import { attachQueueEventsLogging } from "../utils/bullmqLogs";
 
 let started = false;
 let worker: Worker | null = null;
@@ -80,6 +81,7 @@ export async function startSessionWorker(socketServer?: SocketServer) {
     events = new QueueEvents(webhookQueue.name, {
         connection: webhookQueue.opts.connection,
     });
+    attachQueueEventsLogging(webhookQueue.name, events);
 
     events.on("failed", ({ jobId, failedReason }) =>
         console.error(`❌ [SessionWorker] Job failed: ${jobId} - ${failedReason}`)

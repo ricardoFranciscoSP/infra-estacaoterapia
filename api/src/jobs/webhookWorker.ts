@@ -2,6 +2,7 @@
 import { Worker, QueueEvents } from "bullmq";
 import type { Redis } from "ioredis";
 import { getIORedisClient } from "../config/redis.config"; // ← ajuste o caminho se necessário
+import { attachQueueEventsLogging } from "../utils/bullmqLogs";
 const WEBHOOK_QUEUE_NAME = "webhookProcessor";
 import { WebHookService } from "../services/webhook.service";
 import prisma from "../prisma/client";
@@ -267,6 +268,7 @@ export async function startWebhookWorker() {
     });
 
     events = new QueueEvents(WEBHOOK_QUEUE_NAME, { connection });
+    attachQueueEventsLogging(WEBHOOK_QUEUE_NAME, events);
 
     events.on("failed", ({ jobId, failedReason }) => {
         console.error(`💥 Webhook job failed: ${jobId} - ${failedReason}`);

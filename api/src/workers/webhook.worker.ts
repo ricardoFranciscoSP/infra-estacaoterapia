@@ -8,6 +8,7 @@ import utc from 'dayjs/plugin/utc';
 import type { VindiBill } from '../types/vindi.types';
 import type { Prisma } from '../generated/prisma/client';
 import { nowBrasiliaTimestamp, nowBrasiliaDate, toBrasiliaISO, BRASILIA_TIMEZONE } from '../utils/timezone.util';
+import { attachQueueEventsLogging } from '../utils/bullmqLogs';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -257,6 +258,7 @@ export async function startWebhookWorker() {
     );
 
     events = new QueueEvents(webhookQueue.name, { connection: webhookQueue.opts.connection });
+    attachQueueEventsLogging(webhookQueue.name, events);
 
     events.on("failed", ({ jobId, failedReason }) =>
         console.error(`💥 Webhook job failed: ${jobId} - ${failedReason}`)

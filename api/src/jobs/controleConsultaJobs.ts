@@ -4,6 +4,7 @@ import { notificacaoQueue } from '../queues/controleConsultaQueue';
 import { RenovacaoJobData, PagamentoJobData, NotificacaoJobData } from '../types/controleConsulta.types';
 import prisma from '../prisma/client';
 import { getIORedisClient } from '../config/redis.config';
+import { attachQueueEventsLogging } from '../utils/bullmqLogs';
 import { nowBrasiliaTimestamp, nowBrasiliaDate, toBrasilia } from '../utils/timezone.util';
 import dayjs from 'dayjs';
 import timezone from 'dayjs/plugin/timezone';
@@ -110,6 +111,7 @@ function startRenovacaoWorker() {
         console.error(`❌ [RenovacaoWorker] Job FALHOU: ${job?.id} (${job?.name})`, error);
     });
     renovacaoEvents = new QueueEvents('renovacao-controle-consulta', { connection: redisConnection });
+    attachQueueEventsLogging('renovacao-controle-consulta', renovacaoEvents);
     renovacaoEvents.on("waiting", ({ jobId }: { jobId: string }) => {
         console.log(`[RenovacaoWorker] Job WAITING: ${jobId}`);
     });
@@ -194,6 +196,7 @@ function startPagamentoWorker() {
         console.error(`❌ [PagamentoWorker] Job FALHOU: ${job?.id} (${job?.name})`, error);
     });
     pagamentoEvents = new QueueEvents('pagamento-controle-consulta', { connection: redisConnection });
+    attachQueueEventsLogging('pagamento-controle-consulta', pagamentoEvents);
     pagamentoEvents.on("waiting", ({ jobId }: { jobId: string }) => {
         console.log(`[PagamentoWorker] Job WAITING: ${jobId}`);
     });
@@ -246,6 +249,7 @@ function startNotificacaoWorker() {
         console.error(`❌ [NotificacaoWorker] Job FALHOU: ${job?.id} (${job?.name})`, error);
     });
     notificacaoEvents = new QueueEvents('notificacao-controle-consulta', { connection: redisConnection });
+    attachQueueEventsLogging('notificacao-controle-consulta', notificacaoEvents);
     notificacaoEvents.on("waiting", ({ jobId }: { jobId: string }) => {
         console.log(`[NotificacaoWorker] Job WAITING: ${jobId}`);
     });

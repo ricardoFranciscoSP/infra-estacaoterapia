@@ -3,6 +3,7 @@ import { consultationQueue } from "../queues/consultationQueue";
 import { Worker, QueueEvents } from "bullmq";
 import type { Redis } from "ioredis";
 import { getIORedisClient } from "../config/redis.config";
+import { attachQueueEventsLogging } from "../utils/bullmqLogs";
 import { WebSocketNotificationService } from "./../services/websocketNotification.service";
 import { getEventSyncService } from "./../services/eventSync.service";
 import { getRepassePercentForPsychologist } from "../utils/repasse.util";
@@ -1098,6 +1099,7 @@ export async function startConsultationWorker() {
         console.error(`❌ [ConsultationWorker] Job FALHOU: ${job?.id} (${job?.name})`, error);
     });
     events = new QueueEvents(consultationQueue.name, { connection });
+    attachQueueEventsLogging(consultationQueue.name, events);
 
     events.on("completed", ({ jobId }: { jobId: string }) => {
         console.log(`✅ [ConsultationWorker] Job ${jobId} concluído`);
