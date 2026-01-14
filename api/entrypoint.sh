@@ -49,6 +49,31 @@ retry() {
 }
 
 # =========================
+# Função: verificar se banco já foi restaurado
+# =========================
+check_database_restored() {
+  local pg_host="$1"
+  local pg_port="$2"
+  local db_name="$3"
+  local pg_user="$4"
+  local pg_pass="$5"
+
+  echo "🔍 Verificando se banco de dados já foi restaurado..."
+
+  # Verifica se existem tabelas no banco (indicando que já foi restaurado)
+  export PGPASSWORD="$pg_pass"
+  local table_count=$(psql -h "$pg_host" -p "$pg_port" -U "$pg_user" -d "$db_name" -t -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public';" 2>/dev/null | tr -d ' ')
+
+  if [ -n "$table_count" ] && [ "$table_count" -gt 0 ]; then
+    echo "✅ Banco de dados já foi restaurado ($table_count tabela(s) encontrada(s))"
+    return 0
+  else
+    echo "ℹ️  Banco de dados ainda não foi restaurado (nenhuma tabela encontrada)"
+    return 1
+  fi
+}
+
+# =========================
 # API
 # =========================
 start_api() {
@@ -101,6 +126,17 @@ start_api() {
     DATABASE_URL="${DATABASE_URL:-postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${PG_HOST}:${PG_PORT}/${POSTGRES_DB}?schema=public}"
     export DATABASE_URL
     echo "✅ DATABASE_URL configurada"
+
+    # Verificar se banco já foi restaurado antes de tentar restaurar
+    if [ -n "$RESTORE_DB" ] && [ "$RESTORE_DB" = "true" ]; then
+      if check_database_restored "$PG_HOST" "$PG_PORT" "$POSTGRES_DB" "$POSTGRES_USER" "$POSTGRES_PASSWORD"; then
+        echo "⏭️  Pulando restauração - banco já foi restaurado anteriormente"
+      else
+        echo "📦 Iniciando restauração do banco de dados..."
+        # Aqui você pode adicionar a lógica de restauração se necessário
+        # Exemplo: psql -h "$PG_HOST" -p "$PG_PORT" -U "$POSTGRES_USER" -d "$POSTGRES_DB" < /app/backups/estacaoterapia_prd.sql
+      fi
+    fi
   fi
 
   # CRÍTICO: Exportar as variáveis de Redis antes de iniciar Node.js

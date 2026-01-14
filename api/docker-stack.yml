@@ -9,6 +9,11 @@ networks:
     external: true
     name: estacao-backend-network
 
+  estacaoterapia_backend:
+    external: false
+    driver: overlay
+    name: estacaoterapia_backend
+
   estacao-network:
     external: false
     driver: overlay
@@ -31,9 +36,13 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
-      - estacao-network
+      - estacaoterapia_backend
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U $$(cat /run/secrets/postgres_user) -h 127.0.0.1']
+      test:
+        [
+          'CMD-SHELL',
+          "PGPASSWORD=$POSTGRES_PASSWORD psql -h localhost -U $POSTGRES_USER -d $POSTGRES_DB -c 'select 1' > /dev/null",
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -68,7 +77,7 @@ services:
     volumes:
       - redis_data:/data
     networks:
-      - estacao-network
+      - estacaoterapia_backend
     healthcheck:
       test: ['CMD', 'redis-cli', '--raw', 'incr', 'ping']
       interval: 10s
@@ -144,7 +153,7 @@ services:
 
     networks:
       - estacao-backend-network
-      - estacao-network
+      - estacaoterapia_backend
 
   # =====================================
   # PGBOUNCER
@@ -162,6 +171,9 @@ services:
         condition: on-failure
     networks:
       estacao-backend-network:
+        aliases:
+          - pgbouncer
+      estacaoterapia_backend:
         aliases:
           - pgbouncer
 
@@ -207,7 +219,7 @@ services:
 
     networks:
       - estacao-backend-network
-      - estacao-network
+      - estacaoterapia_backend
 
 volumes:
   postgres_data:

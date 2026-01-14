@@ -11,6 +11,9 @@
 # ============================================
 # API BACKEND
 # ============================================
+# NOTA: O nome do serviço segue o padrão: stack_name_service_name
+# Exemplo: se o stack for "estacaoterapia" e o serviço "api", use: estacaoterapia_api
+# Ajuste conforme o nome do stack usado no deploy: docker stack deploy -c docker-stack.yml <STACK_NAME>
 api-prd.estacaoterapia.com.br {
 	reverse_proxy estacaoterapia_api:3333 {
 		health_uri /health
@@ -45,6 +48,8 @@ api-prd.estacaoterapia.com.br {
 # ============================================
 # WEBSOCKET
 # ============================================
+# NOTA: O nome do serviço segue o padrão: stack_name_service_name
+# Exemplo: se o stack for "estacaoterapia" e o serviço "socket-server", use: estacaoterapia_socket-server
 ws.prd.estacaoterapia.com.br {
 	reverse_proxy estacaoterapia_socket-server:3334
 
@@ -67,6 +72,8 @@ ws.prd.estacaoterapia.com.br {
 # ============================================
 # FRONTEND (Next.js)
 # ============================================
+# NOTA: O nome do serviço segue o padrão: stack_name_service_name
+# Exemplo: se o stack for "estacao" e o serviço "estacao_next_prd", use: estacao_estacao_next_prd
 estacaoterapia.com.br, www.estacaoterapia.com.br {
 	reverse_proxy estacao_estacao_next_prd:3001 {
 		transport http {
