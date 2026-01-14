@@ -43,7 +43,7 @@ services:
         - -c
         - >
           PGPASSWORD=$$(cat $$POSTGRES_PASSWORD_FILE) &&
-          psql -h localhost -U estacaoterapia -d estacaoterapia -c 'select 1' > /dev/null
+          psql -U $(cat /run/secrets/postgres_user) -d $(cat /run/secrets/postgres_db) -h localhost -c "SELECT 1;" >/dev/null 2>&1
       interval: 10s
       timeout: 5s
       retries: 5
