@@ -62,6 +62,7 @@ services:
     secrets:
       - redis_password
     environment:
+      REDIS_PASSWORD_FILE: /run/secrets/redis_password
       REDIS_PORT: '6379'
       REDIS_MAXMEMORY: '512mb'
       REDIS_MAXMEMORY_POLICY: 'allkeys-lru'
@@ -69,16 +70,13 @@ services:
     command:
       - /bin/sh
       - -c
-      - |
-        # Carregar senha do secret (similar ao PostgreSQL)
-        REDIS_PASS=$(cat /run/secrets/redis_password)
-
-        # Iniciar Redis com senha
-        exec redis-server \
-          --appendonly yes \
-          --maxmemory 512mb \
-          --maxmemory-policy allkeys-lru \
-          --requirepass "$REDIS_PASS"
+      - >
+        REDIS_PASS=$$(cat $$REDIS_PASSWORD_FILE) &&
+        exec redis-server
+        --appendonly yes
+        --maxmemory 512mb
+        --maxmemory-policy allkeys-lru
+        --requirepass "$$REDIS_PASS"
     volumes:
       - redis_data:/data
     networks:
@@ -87,10 +85,9 @@ services:
       test:
         - /bin/sh
         - -c
-        - |
-          # Carregar senha do secret para healthcheck
-          REDIS_PASS=$(cat /run/secrets/redis_password)
-          redis-cli -a "$REDIS_PASS" --raw incr ping > /dev/null
+        - >
+          REDIS_PASS=$$(cat $$REDIS_PASSWORD_FILE) &&
+          redis-cli -a "$$REDIS_PASS" --raw incr ping > /dev/null
       interval: 10s
       timeout: 5s
       retries: 5
