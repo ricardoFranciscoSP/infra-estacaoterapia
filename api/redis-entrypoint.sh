@@ -44,8 +44,9 @@ echo ""
 
 # Tentar configurar vm.overcommit_memory (opcional)
 if [ -w /proc/sys/vm/overcommit_memory ]; then
-  echo 1 > /proc/sys/vm/overcommit_memory 2>/dev/null || true
-  echo "✅ vm.overcommit_memory configurado"
+  if echo 1 > /proc/sys/vm/overcommit_memory 2>/dev/null; then
+    echo "✅ vm.overcommit_memory configurado"
+  fi
 else
   echo "⚠️  AVISO: Não foi possível configurar vm.overcommit_memory (requer privilégios)"
 fi
