@@ -1,6 +1,10 @@
 ﻿#!/bin/bash
 set -euo pipefail
 
+# Configurar UTF-8 para exibiÃ§Ã£o correta de caracteres
+export LC_ALL=C.UTF-8
+export LANG=C.UTF-8
+
 # ==============================
 # ðŸš€ Deploy Docker Swarm Stack - FUNCIONAL 100%
 # ==============================
@@ -123,6 +127,23 @@ create_or_update_secret "postgres_env" "$SECRETS_DIR/postgres.env"
 create_or_update_secret "estacao_api_env" "$SECRETS_DIR/estacao_api.env"
 create_or_update_secret "estacao_socket_env" "$SECRETS_DIR/estacao_socket.env"
 create_or_update_secret "pgbouncer.ini" "/opt/secrets/pgbouncer/pgbouncer.ini"
+create_or_update_secret "userlist.txt" "/opt/secrets/pgbouncer/userlist.txt"
+
+# Criar secret redis_password a partir do estacao_api.env
+echo ""
+echo "   ðŸ“‹ Criando secret redis_password..."
+REDIS_PASSWORD=$(grep "^REDIS_PASSWORD=" "$SECRETS_DIR/estacao_api.env" | cut -d'=' -f2 | tr -d ' ' | head -1)
+if [ -n "$REDIS_PASSWORD" ]; then
+    # Criar arquivo temporÃ¡rio com a senha
+    TEMP_REDIS_PASSWORD=$(mktemp)
+    echo -n "$REDIS_PASSWORD" > "$TEMP_REDIS_PASSWORD"
+    create_or_update_secret "redis_password" "$TEMP_REDIS_PASSWORD"
+    rm -f "$TEMP_REDIS_PASSWORD"
+    echo "   âœ… Secret redis_password criado/atualizado"
+else
+    echo "   âš ï¸  REDIS_PASSWORD nÃ£o encontrado em estacao_api.env"
+    echo "   âš ï¸  Redis serÃ¡ iniciado sem senha"
+fi
 create_or_update_secret "userlist.txt" "/opt/secrets/pgbouncer/userlist.txt"
 
 # Extrair credenciais do postgres.env para validaÃ§Ã£o
