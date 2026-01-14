@@ -6,7 +6,8 @@ echo "🔐 Carregando configuração do Redis..."
 # Carrega variáveis do arquivo estacao_api_env (Docker Swarm secret)
 if [ -f /run/secrets/estacao_api_env ]; then
     echo "📄 Lendo /run/secrets/estacao_api_env..."
-    while IFS= read -r line || [ -n "$line" ]; do
+    set +e
+    while IFS= read -r line; do
         # Pular linhas vazias e comentários
         case "$line" in
             ''|\#*) continue ;;
@@ -14,6 +15,7 @@ if [ -f /run/secrets/estacao_api_env ]; then
         # Exportar variável
         export "$line"
     done < /run/secrets/estacao_api_env
+    set -e
     echo "✓ Variáveis carregadas do estacao_api_env"
 else
     echo "❌ ERRO: /run/secrets/estacao_api_env não encontrado!"
