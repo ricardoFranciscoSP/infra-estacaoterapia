@@ -28,7 +28,9 @@ fi
 # Configurar variáveis padrão
 REDIS_PORT="${REDIS_PORT:-6379}"
 REDIS_MAXMEMORY="${REDIS_MAXMEMORY:-512mb}"
-REDIS_MAXMEMORY_POLICY="${REDIS_MAXMEMORY_POLICY:-allkeys-lru}"
+# IMPORTANTE: BullMQ requer 'noeviction' para funcionar corretamente
+# 'allkeys-lru' pode causar perda de dados de jobs em filas
+REDIS_MAXMEMORY_POLICY="${REDIS_MAXMEMORY_POLICY:-noeviction}"
 
 echo ""
 echo "📋 Configuração Redis verificada:"

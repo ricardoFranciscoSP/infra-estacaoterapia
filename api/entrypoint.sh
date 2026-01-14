@@ -174,23 +174,18 @@ start_api() {
   echo "   PostgreSQL → $PG_HOST:$PG_PORT"
   echo "   Redis      → $REDIS_HOST:$REDIS_PORT (db: $REDIS_DB)"
 
-  # Tentar resolver host de Redis com alternativas comuns no Swarm
-  # IMPORTANTE: Em Docker Swarm, os serviços podem ser acessados por:
-  # - <stack>_<service>: estacaoterapia_redis (nome do serviço)
-  # - alias de rede: redis (se configurado no docker-stack.yml)
-  echo "🔎 Resolvendo hostname do Redis..."
+  # IMPORTANTE: Em Docker Swarm, o Redis está configurado com alias 'redis' no docker-stack.yml
+  # Não tentamos resolver outros hostnames para evitar erros ENOTFOUND
+  # O alias 'redis' é a forma correta e estável de acessar o serviço
+  if [ -z "$REDIS_HOST" ]; then
+    REDIS_HOST="redis"
+    echo "✅ Usando REDIS_HOST: redis (alias configurado no docker-stack.yml)"
+  elif [ "$REDIS_HOST" != "redis" ]; then
+    echo "ℹ️  Usando REDIS_HOST: $REDIS_HOST (definido via variável de ambiente)"
+  else
+    echo "✅ Usando REDIS_HOST: redis (alias configurado no docker-stack.yml)"
+  fi
   
-  for candidate in estacaoterapia_redis tasks.estacaoterapia_redis redis tasks.redis; do
-    echo "   Tentando: $candidate"
-    # Usa timeout e nslookup para testar resolução DNS (mais confiável que nc)
-    if timeout 2 nslookup "$candidate" >/dev/null 2>&1 || timeout 2 getent hosts "$candidate" >/dev/null 2>&1; then
-      REDIS_HOST="$candidate"
-      echo "✅ Redis resolvido para: $REDIS_HOST"
-      break
-    fi
-  done
-  
-  echo "ℹ️  Usando REDIS_HOST: $REDIS_HOST (pode estar indisponível, Node.js reconectará automaticamente)"
   export REDIS_HOST
 
   # Tentar resolver host de PgBouncer com alternativas (VIP e tasks)
@@ -277,15 +272,26 @@ start_socket() {
   echo "   Redis      → $REDIS_HOST:$REDIS_PORT (auth: ${REDIS_PASSWORD:+SIM}${REDIS_PASSWORD:-NÃO})"
   echo "   API        → $API_BASE_URL"
 
-  echo "🔎 Checando Redis..."
-  for candidate in "$REDIS_HOST" "tasks.$REDIS_HOST" "redis" "tasks.redis" "estacaoterapia_redis" "tasks.estacaoterapia_redis"; do
-    if retry nc -z "$candidate" "$REDIS_PORT" >/dev/null 2>&1; then
-      REDIS_HOST="$candidate"
-      echo "✅ Redis acessível via: $REDIS_HOST"
-      break
-    fi
-  done
-  retry nc -z "$REDIS_HOST" "$REDIS_PORT"
+  # IMPORTANTE: Usar sempre o alias 'redis' configurado no docker-stack.yml
+  # Não tentar resolver outros hostnames para evitar erros ENOTFOUND
+  if [ -z "$REDIS_HOST" ]; then
+    REDIS_HOST="redis"
+    echo "✅ Usando REDIS_HOST: redis (alias configurado no docker-stack.yml)"
+  elif [ "$REDIS_HOST" != "redis" ]; then
+    echo "⚠️  REDIS_HOST definido como '$REDIS_HOST', mas recomendado usar 'redis' (alias do docker-stack.yml)"
+  else
+    echo "✅ Usando REDIS_HOST: redis (alias configurado no docker-stack.yml)"
+  fi
+  
+  echo "🔎 Checando Redis em $REDIS_HOST:$REDIS_PORT..."
+  # Tentar conectar ao Redis (pode falhar se ainda não estiver pronto, mas Node.js reconectará)
+  if retry nc -z "$REDIS_HOST" "$REDIS_PORT" >/dev/null 2>&1; then
+    echo "✅ Redis acessível via: $REDIS_HOST:$REDIS_PORT"
+  else
+    echo "⚠️  Redis ainda não está acessível em $REDIS_HOST:$REDIS_PORT (Node.js tentará reconectar automaticamente)"
+  fi
+  
+  export REDIS_HOST
 
   echo "🔎 Checando PgBouncer..."
   for candidate in "$PG_HOST" "tasks.$PG_HOST" "estacaoterapia_pgbouncer" "tasks.estacaoterapia_pgbouncer"; do
