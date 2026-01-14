@@ -3,20 +3,21 @@ set -e
 
 echo "🔐 Carregando secrets do PostgreSQL..."
 
-# Carrega variáveis das secrets (Docker Swarm)
-if [ -f /run/secrets/postgres_user ]; then
-    export POSTGRES_USER=$(cat /run/secrets/postgres_user)
-    echo "✓ POSTGRES_USER carregado do secret"
-fi
-
-if [ -f /run/secrets/postgres_password ]; then
-    export POSTGRES_PASSWORD=$(cat /run/secrets/postgres_password)
-    echo "✓ POSTGRES_PASSWORD carregado do secret"
-fi
-
-if [ -f /run/secrets/postgres_db ]; then
-    export POSTGRES_DB=$(cat /run/secrets/postgres_db)
-    echo "✓ POSTGRES_DB carregado do secret"
+# Carrega variáveis do arquivo postgres_env (Docker Swarm secret)
+if [ -f /run/secrets/postgres_env ]; then
+    echo "📄 Lendo /run/secrets/postgres_env..."
+    while IFS= read -r line || [ -n "$line" ]; do
+        # Pular linhas vazias e comentários
+        case "$line" in
+            ''|\#*) continue ;;
+        esac
+        # Exportar variável
+        export "$line"
+    done < /run/secrets/postgres_env
+    echo "✓ Variáveis carregadas do postgres_env"
+else
+    echo "❌ ERRO: /run/secrets/postgres_env não encontrado!"
+    exit 1
 fi
 
 # Validar variáveis obrigatórias

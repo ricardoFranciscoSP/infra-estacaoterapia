@@ -1,0 +1,8 @@
+FROM redis:7-alpine
+
+# Copiar script de entrypoint customizado
+COPY redis-entrypoint.sh /usr/local/bin/redis-entrypoint.sh
+RUN chmod +x /usr/local/bin/redis-entrypoint.sh
+
+# Usar o entrypoint customizado
+ENTRYPOINT ["/usr/local/bin/redis-entrypoint.sh"]

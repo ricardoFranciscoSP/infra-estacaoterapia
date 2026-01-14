@@ -116,37 +116,32 @@ create_or_update_secret "estacao_socket_env" "$SECRETS_DIR/estacao_socket.env"
 create_or_update_secret "pgbouncer.ini" "/opt/secrets/pgbouncer/pgbouncer.ini"
 create_or_update_secret "userlist.txt" "/opt/secrets/pgbouncer/userlist.txt"
 
-# Extrair credenciais do postgres.env para criar secrets individuais
+# Extrair credenciais do postgres.env para validação
 echo ""
-echo "   📝 Processando credenciais PostgreSQL..."
+echo "   📝 Validando credenciais PostgreSQL..."
 
-# Usar valores fixos (estacaoterapia) conforme configurado
-POSTGRES_USER="estacaoterapia"
+# Validar se o arquivo possui as variáveis necessárias
+POSTGRES_USER=$(grep "^POSTGRES_USER=" "$SECRETS_DIR/postgres.env" | cut -d'=' -f2 | tr -d ' ')
 POSTGRES_PASSWORD=$(grep "^POSTGRES_PASSWORD=" "$SECRETS_DIR/postgres.env" | cut -d'=' -f2 | tr -d ' ')
-POSTGRES_DB="estacaoterapia"
+POSTGRES_DB=$(grep "^POSTGRES_DB=" "$SECRETS_DIR/postgres.env" | cut -d'=' -f2 | tr -d ' ')
 
-if [ -z "$POSTGRES_PASSWORD" ]; then
-    echo "❌ POSTGRES_PASSWORD não encontrado em $SECRETS_DIR/postgres.env"
+if [ -z "$POSTGRES_USER" ] || [ -z "$POSTGRES_PASSWORD" ] || [ -z "$POSTGRES_DB" ]; then
+    echo "❌ Credenciais PostgreSQL incompletas em $SECRETS_DIR/postgres.env"
     exit 1
 fi
 
-echo "✓ Credenciais extraídas:"
+echo "✓ Credenciais validadas:"
 echo "  • POSTGRES_USER: $POSTGRES_USER"
 echo "  • POSTGRES_DB: $POSTGRES_DB"
+echo "  • POSTGRES_PASSWORD: [***]"
 
-# Criar secrets individuais
-echo "$POSTGRES_USER" | docker secret create postgres_user - 2>/dev/null || docker secret rm postgres_user 2>/dev/null && echo "$POSTGRES_USER" | docker secret create postgres_user -
-echo "$POSTGRES_PASSWORD" | docker secret create postgres_password - 2>/dev/null || docker secret rm postgres_password 2>/dev/null && echo "$POSTGRES_PASSWORD" | docker secret create postgres_password -
-echo "$POSTGRES_DB" | docker secret create postgres_db - 2>/dev/null || docker secret rm postgres_db 2>/dev/null && echo "$POSTGRES_DB" | docker secret create postgres_db -
-
-# Extrair senha Redis
+# Extrair senha Redis do estacao_api_env para validação
 REDIS_PASSWORD=$(grep "^REDIS_PASSWORD=" "$SECRETS_DIR/estacao_api.env" | cut -d'=' -f2 | tr -d ' ' | head -1)
 if [ -z "$REDIS_PASSWORD" ]; then
-    echo "⚠️  Redis password não encontrado, usando padrão"
-    REDIS_PASSWORD="redis-default-password"
+    echo "⚠️  Redis password não encontrado em estacao_api.env"
+else
+    echo "  • REDIS_PASSWORD: [***]"
 fi
-
-echo "$REDIS_PASSWORD" | docker secret create redis_password - 2>/dev/null || docker secret rm redis_password 2>/dev/null && echo "$REDIS_PASSWORD" | docker secret create redis_password -
 
 echo "✅ Secrets configurados"
 

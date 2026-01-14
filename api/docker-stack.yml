@@ -27,13 +27,8 @@ services:
       context: .
       dockerfile: Dockerfile.postgres
     secrets:
-      - postgres_user
-      - postgres_password
-      - postgres_db
+      - postgres_env
     environment:
-      POSTGRES_USER: estacaoterapia
-      POSTGRES_PASSWORD: estacaoterapia
-      POSTGRES_DB: estacaoterapia
       PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -42,7 +37,7 @@ services:
     healthcheck:
       test:
         - CMD-SHELL
-        - "PGPASSWORD=estacaoterapia psql -U estacaoterapia -d estacaoterapia -c 'SELECT 1;' >/dev/null 2>&1 || exit 1"
+        - "PGPASSWORD=$(grep POSTGRES_PASSWORD /run/secrets/postgres_env | cut -d= -f2) psql -U $(grep POSTGRES_USER /run/secrets/postgres_env | cut -d= -f2) -d $(grep POSTGRES_DB /run/secrets/postgres_env | cut -d= -f2) -c 'SELECT 1;' >/dev/null 2>&1 || exit 1"
       interval: 10s
       timeout: 5s
       retries: 5
@@ -61,36 +56,19 @@ services:
   # REDIS
   # =====================================
   redis:
-    image: redis:7-alpine
+    build:
+      context: .
+      dockerfile: Dockerfile.redis
     secrets:
-      - redis_password
-    environment:
-      REDIS_PASSWORD_FILE: /run/secrets/redis_password
-      REDIS_PORT: '6379'
-      REDIS_MAXMEMORY: '512mb'
-      REDIS_MAXMEMORY_POLICY: 'allkeys-lru'
-      REDIS_APPENDONLY: 'yes'
-    command:
-      - /bin/sh
-      - -c
-      - >
-        REDIS_PASS=$$(cat $$REDIS_PASSWORD_FILE) &&
-        exec redis-server
-        --appendonly yes
-        --maxmemory 512mb
-        --maxmemory-policy allkeys-lru
-        --requirepass "$$REDIS_PASS"
+      - estacao_api_env
     volumes:
       - redis_data:/data
     networks:
       - estacaoterapia_backend
     healthcheck:
       test:
-        - /bin/sh
-        - -c
-        - >
-          REDIS_PASS=$$(cat $$REDIS_PASSWORD_FILE) &&
-          redis-cli -a "$$REDIS_PASS" --raw incr ping > /dev/null
+        - CMD-SHELL
+        - 'REDIS_PASS=$(grep ''^REDIS_PASSWORD='' /run/secrets/estacao_api_env | cut -d= -f2) && redis-cli -a "$REDIS_PASS" --raw incr ping > /dev/null || exit 1'
       interval: 10s
       timeout: 5s
       retries: 5
@@ -246,14 +224,6 @@ secrets:
   estacao_socket_env:
     external: true
   postgres_env:
-    external: true
-  postgres_user:
-    external: true
-  postgres_password:
-    external: true
-  postgres_db:
-    external: true
-  redis_password:
     external: true
   pgbouncer.ini:
     external: true
