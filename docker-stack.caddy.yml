@@ -26,3 +26,13 @@ services:
       replicas: 1
       restart_policy:
         condition: on-failure
+
+networks:
+  estacao-network:
+    external: true
+
+volumes:
+  caddy_data:
+    external: true
+  caddy_config:
+    external: true
