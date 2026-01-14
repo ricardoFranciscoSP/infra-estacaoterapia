@@ -6,8 +6,8 @@
 
 networks:
   estacao-network:
-    external: false
-    driver: overlay
+    external: true
+    name: estacao-network
 
 services:
   estacao_next_prd:
@@ -54,7 +54,9 @@ services:
       - ALL
 
     networks:
-      - estacao-network
+      estacao-network:
+        aliases:
+          - frontend
     
     stop_grace_period: 60s
     stop_signal: SIGTERM

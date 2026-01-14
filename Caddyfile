@@ -21,7 +21,7 @@
 # ============================================
 api-prd.estacaoterapia.com.br {
     # Reverse proxy para API
-    reverse_proxy api:3333 {
+    reverse_proxy estacaoterapia_api:3333 {
         # Health check
         health_uri /health
         health_interval 10s
@@ -88,7 +88,7 @@ api-prd.estacaoterapia.com.br {
 # ============================================
 ws.prd.estacaoterapia.com.br {
     # Reverse proxy para WebSocket
-    reverse_proxy socket-server:3334 {
+    reverse_proxy estacaoterapia_socket-server:3334 {
         # WebSocket support
         header_up Connection {>Connection}
         header_up Upgrade {>Upgrade}
@@ -153,7 +153,7 @@ ws.prd.estacaoterapia.com.br {
 # ============================================
 estacaoterapia.com.br, www.estacaoterapia.com.br {
     # Reverse proxy para Frontend
-    reverse_proxy frontend:3001 {
+    reverse_proxy estacao_estacao_next_prd:3001 {
         # Health check
         health_uri /
         health_interval 10s
