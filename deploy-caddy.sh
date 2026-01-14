@@ -76,7 +76,21 @@ for volume in caddy_data caddy_config; do
 done
 
 # ==============================
-# 5️⃣ Deploy
+# 5️⃣ Remover stack Caddy antigo (se existir)
+# ==============================
+echo ""
+if docker stack ls --format '{{.Name}}' | grep -q "^caddy$"; then
+  echo "🧹 Removendo stack Caddy antigo..."
+  docker stack rm caddy
+  echo "⏳ Aguardando remoção completa..."
+  sleep 10
+  echo "✅ Stack antigo removido"
+else
+  echo "ℹ️ Nenhum stack Caddy anterior encontrado"
+fi
+
+# ==============================
+# 6️⃣ Deploy
 # ==============================
 echo ""
 echo "🚀 Fazendo deploy do Caddy..."
@@ -86,7 +100,7 @@ docker stack deploy -c docker-stack.caddy.yml caddy
 echo "✅ Stack deployado com sucesso"
 
 # ==============================
-# 6️⃣ Status
+# 7️⃣ Status
 # ==============================
 sleep 5
 
@@ -99,7 +113,7 @@ echo "🔍 Replicas:"
 docker service ps caddy_caddy --no-trunc | head -5
 
 # ==============================
-# 7️⃣ Resumo
+# 8️⃣ Resumo
 # ==============================
 echo ""
 echo "======================================"
