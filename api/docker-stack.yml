@@ -20,19 +20,19 @@ services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-estacaoterapia}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB:-estacaoterapia}
+      POSTGRES_USER_FILE: /run/secrets/postgres_user
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+      POSTGRES_DB: estacaoterapia
       PGDATA: /var/lib/postgresql/data/pgdata
     secrets:
-      - source: postgres_password
-        target: POSTGRES_PASSWORD
+      - postgres_user
+      - postgres_password
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - estacao-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-estacaoterapia} -d ${POSTGRES_DB:-estacaoterapia}"]
+      test: ["CMD-SHELL", "pg_isready -U estacaoterapia -d estacaoterapia"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -111,8 +111,7 @@ services:
       - --tcp-keepalive
       - "300"
     secrets:
-      - source: redis_password
-        target: redis_password
+      - redis_password
     volumes:
       - redis_data:/data
     networks:
@@ -215,8 +214,6 @@ services:
       estacao-backend-network:
         aliases:
           - pgbouncer
-    depends_on:
-      - postgres
 
   # =====================================
   # SOCKET SERVER
@@ -262,11 +259,6 @@ services:
     networks:
       - estacao-backend-network
       - estacao-network
-    depends_on:
-      - postgres
-      - redis
-      - pgbouncer
-      - api
 
 volumes:
   postgres_data:
@@ -284,6 +276,8 @@ secrets:
   pgbouncer.ini:
     external: true
   userlist.txt:
+    external: true
+  postgres_user:
     external: true
   postgres_password:
     external: true
