@@ -224,6 +224,12 @@ secrets:
     external: true
   postgres_env:
     external: true
+  postgres_user:
+    external: true
+  postgres_password:
+    external: true
+  postgres_db:
+    external: true
   pgbouncer.ini:
     external: true
   userlist.txt:
