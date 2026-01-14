@@ -315,17 +315,19 @@ wait_for_service_health() {
     local service_name=$1
     local max_wait=$2
     local elapsed=0
+    local wait_interval=5
     
     while [ $elapsed -lt $max_wait ]; do
-        HEALTHY=$(docker service ps "$service_name" --format "{{.CurrentState}}" 2>/dev/null | grep -c "Running" || echo "0")
+        HEALTHY=$(docker service ps "$service_name" --format "{{.CurrentState}}" 2>/dev/null | grep -c "Running" 2>/dev/null || echo "0")
+        HEALTHY=$(echo "$HEALTHY" | tr -d '\n' | tr -d ' ')
         
-        if [ "$HEALTHY" -gt 0 ]; then
+        if [ "$HEALTHY" -gt 0 ] 2>/dev/null; then
             return 0
         fi
         
         echo "   ⏳ Aguardando $service_name... ($elapsed/$max_wait segundos)"
-        sleep $WAIT_INTERVAL
-        elapsed=$((elapsed + WAIT_INTERVAL))
+        sleep $wait_interval
+        elapsed=$((elapsed + wait_interval))
     done
     
     return 1
