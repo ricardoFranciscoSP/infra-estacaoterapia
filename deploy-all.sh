@@ -103,11 +103,12 @@ check_prerequisites() {
     fi
     log_success "Script de deploy do Frontend encontrado"
     
-    if [ ! -f "$SCRIPT_DIR/deploy.sh" ]; then
-        log_warning "Script de deploy do Caddy não encontrado: $SCRIPT_DIR/deploy.sh (Caddy não será deployado)"
+    if [ ! -f "$SCRIPT_DIR/deploy-caddy.sh" ]; then
+        log_warning "Script de deploy do Caddy não encontrado: $SCRIPT_DIR/deploy-caddy.sh (Caddy não será deployado)"
     else
         log_success "Script de deploy do Caddy encontrado"
     fi
+}
 }
 
 ###############################################################################
@@ -220,35 +221,24 @@ deploy_caddy() {
     
     cd "$SCRIPT_DIR"
     
+    # Verificar se script existe
+    if [ ! -f "./deploy-caddy.sh" ]; then
+        log_warning "Script de deploy do Caddy não encontrado, pulando..."
+        return 0
+    fi
+    
     log_info "Diretório: $SCRIPT_DIR"
     log_info "Iniciando deploy do Caddy..."
     
-    # Verificar se docker-stack.caddy.yml existe
-    if [ ! -f "./docker-stack.caddy.yml" ]; then
-        log_warning "Arquivo docker-stack.caddy.yml não encontrado, pulando Caddy..."
-        return 0
-    fi
+    # Garantir permissões de execução
+    chmod +x ./deploy-caddy.sh 2>/dev/null || true
     
-    # Verificar se Caddyfile existe
-    if [ ! -f "./Caddyfile" ]; then
-        log_warning "Arquivo Caddyfile não encontrado, pulando Caddy..."
-        return 0
-    fi
+    # Executar script de deploy do Caddy
+    log_info "Executando deploy-caddy.sh..."
     
-    # Deploy do Caddy via docker stack deploy
-    log_info "Deployando stack do Caddy..."
-    
-    if docker stack deploy -c docker-stack.caddy.yml caddy 2>&1 | tee -a "$LOG_FILE"; then
+    if ./deploy-caddy.sh 2>&1 | tee -a "$LOG_FILE"; then
         log_success "Deploy do Caddy concluído com sucesso"
         DEPLOY_CADDY_SUCCESS=1
-        
-        # Aguardar o serviço iniciar
-        log_info "Aguardando Caddy iniciar..."
-        sleep 5
-        
-        # Verificar status
-        docker service ls --filter "name=caddy_caddy" 2>&1 | tee -a "$LOG_FILE" || true
-        
         return 0
     else
         log_error "Falha no deploy do Caddy"
