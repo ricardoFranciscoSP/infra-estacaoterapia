@@ -1,100 +1,100 @@
 {
-  email contato@estacaoterapia.com.br
-  admin 0.0.0.0:2019
+	email contato@estacaoterapia.com.br
+	admin 0.0.0.0:2019
 
-  log {
-    output stdout
-    level INFO
-  }
+	log {
+		output stdout
+		level INFO
+	}
 }
 
 # ============================================
 # API BACKEND
 # ============================================
 api-prd.estacaoterapia.com.br {
-  reverse_proxy estacaoterapia_api:3333 {
-    health_uri /health
-    health_interval 10s
-    health_timeout 5s
+	reverse_proxy estacaoterapia_api:3333 {
+		health_uri /health
+		health_interval 10s
+		health_timeout 5s
 
-    transport http {
-      dial_timeout 10s
-      response_header_timeout 30s
-    }
-  }
+		transport http {
+			dial_timeout 10s
+			response_header_timeout 30s
+		}
+	}
 
-  header {
-    Access-Control-Allow-Origin "https://estacaoterapia.com.br https://www.estacaoterapia.com.br"
-    Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS, PATCH"
-    Access-Control-Allow-Credentials "true"
-    Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With, Accept, Origin"
+	header {
+		Access-Control-Allow-Origin "https://estacaoterapia.com.br https://www.estacaoterapia.com.br"
+		Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+		Access-Control-Allow-Credentials "true"
+		Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With, Accept, Origin"
 
-    Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
-    X-Content-Type-Options "nosniff"
-    X-Frame-Options "DENY"
-    Referrer-Policy "strict-origin-when-cross-origin"
-    Permissions-Policy "geolocation=(), microphone=(), camera=()"
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "geolocation=(), microphone=(), camera=()"
 
-    -Server
-    -X-Powered-By
-  }
+		-Server
+		-X-Powered-By
+	}
 
-  encode gzip zstd
+	encode gzip zstd
 }
 
 # ============================================
 # WEBSOCKET
 # ============================================
 ws.prd.estacaoterapia.com.br {
-  reverse_proxy estacaoterapia_socket-server:3334
+	reverse_proxy estacaoterapia_socket-server:3334
 
-  header {
-    Access-Control-Allow-Origin "https://estacaoterapia.com.br https://www.estacaoterapia.com.br"
-    Access-Control-Allow-Methods "GET, POST, OPTIONS"
-    Access-Control-Allow-Credentials "true"
-    Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With, Accept, Origin"
+	header {
+		Access-Control-Allow-Origin "https://estacaoterapia.com.br https://www.estacaoterapia.com.br"
+		Access-Control-Allow-Methods "GET, POST, OPTIONS"
+		Access-Control-Allow-Credentials "true"
+		Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With, Accept, Origin"
 
-    Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
-    X-Content-Type-Options "nosniff"
-    X-Frame-Options "DENY"
-    Referrer-Policy "strict-origin-when-cross-origin"
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
 
-    -Server
-    -X-Powered-By
-  }
+		-Server
+		-X-Powered-By
+	}
 }
 
 # ============================================
 # FRONTEND (Next.js)
 # ============================================
 estacaoterapia.com.br, www.estacaoterapia.com.br {
-  reverse_proxy estacao_estacao_next_prd:3001 {
-    transport http {
-      dial_timeout 10s
-      response_header_timeout 30s
-    }
-  }
+	reverse_proxy estacao_estacao_next_prd:3001 {
+		transport http {
+			dial_timeout 10s
+			response_header_timeout 30s
+		}
+	}
 
-  header {
-    Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
-    X-Content-Type-Options "nosniff"
-    X-Frame-Options "SAMEORIGIN"
-    Referrer-Policy "strict-origin-when-cross-origin"
-    Permissions-Policy "geolocation=(), microphone=(), camera=()"
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "SAMEORIGIN"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "geolocation=(), microphone=(), camera=()"
 
-    Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://api-prd.estacaoterapia.com.br https://ws.prd.estacaoterapia.com.br; frame-ancestors 'self';"
+		Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://api-prd.estacaoterapia.com.br https://ws.prd.estacaoterapia.com.br; frame-ancestors 'self';"
 
-    -Server
-    -X-Powered-By
-  }
+		-Server
+		-X-Powered-By
+	}
 
-  encode gzip zstd
+	encode gzip zstd
 
-  @static_assets {
-    path *.js *.css *.png *.jpg *.jpeg *.gif *.svg *.ico *.woff *.woff2 *.ttf *.eot
-  }
+	@static_assets {
+		path *.js *.css *.png *.jpg *.jpeg *.gif *.svg *.ico *.woff *.woff2 *.ttf *.eot
+	}
 
-  header @static_assets {
-    Cache-Control "public, max-age=31536000, immutable"
-  }
+	header @static_assets {
+		Cache-Control "public, max-age=31536000, immutable"
+	}
 }
