@@ -216,20 +216,29 @@ server.listen(PORT, "0.0.0.0", async () => {
 
                 try {
                     const { logAllQueuesStatus, logAllFailedJobs, cleanDelayedJobs } = await import("./utils/queueStatus");
-                    await logAllQueuesStatus();
-                    await logAllFailedJobs();
-                    // Limpa jobs delayed antigos em todas as filas principais
-                    const filas = [
-                        "agendaQueue",
-                        "webhookProcessor",
-                        "consultationQueue",
-                        "renovacao-controle-consulta",
-                        "pagamento-controle-consulta",
-                        "notificacao-controle-consulta",
-                        "emailQueue"
-                    ];
-                    for (const fila of filas) {
-                        await cleanDelayedJobs(fila, 24 * 60 * 60 * 1000); // 24h
+                    const shouldLogQueueStatus = process.env.QUEUE_STATUS_LOG === "true" ||
+                        process.env.NODE_ENV !== "production";
+                    const shouldCleanDelayedJobs = process.env.CLEAN_DELAYED_JOBS !== "false";
+
+                    if (shouldLogQueueStatus) {
+                        await logAllQueuesStatus();
+                        await logAllFailedJobs();
+                    }
+
+                    if (shouldCleanDelayedJobs) {
+                        // Limpa jobs delayed antigos em todas as filas principais
+                        const filas = [
+                            "agendaQueue",
+                            "webhookProcessor",
+                            "consultationQueue",
+                            "renovacao-controle-consulta",
+                            "pagamento-controle-consulta",
+                            "notificacao-controle-consulta",
+                            "emailQueue"
+                        ];
+                        for (const fila of filas) {
+                            await cleanDelayedJobs(fila, 24 * 60 * 60 * 1000); // 24h
+                        }
                     }
                 } catch (err) {
                     console.error("⚠️ Erro ao logar status das filas ou limpar delayed:", err);

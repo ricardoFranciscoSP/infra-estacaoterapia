@@ -58,22 +58,25 @@ const getRedisConfig = () => ({
     url: process.env.REDIS_URL
 });
 
-// Debug: Log da configuração inicial
+// Debug: Log da configuração inicial (reduzido em produção)
 const initialConfig = getRedisConfig();
-const authStatus = initialConfig.password ? `SIM (senha definida)` : `NÃO (sem senha)`;
-console.log(`🔍 [Redis Config] Configuração inicial: Host: ${initialConfig.host}, Port: ${initialConfig.port}, DB: ${initialConfig.db}, Autenticação: ${authStatus}`);
+const shouldLogVerbose = process.env.REDIS_DEBUG_LOGS === "true" || process.env.NODE_ENV !== "production";
+if (shouldLogVerbose) {
+    const authStatus = initialConfig.password ? `SIM (senha definida)` : `NÃO (sem senha)`;
+    console.log(`🔍 [Redis Config] Configuração inicial: Host: ${initialConfig.host}, Port: ${initialConfig.port}, DB: ${initialConfig.db}, Autenticação: ${authStatus}`);
 
-if (initialConfig.url) {
-    console.log(`🔍 [Redis Config] Usando REDIS_URL do ambiente`);
+    if (initialConfig.url) {
+        console.log(`🔍 [Redis Config] Usando REDIS_URL do ambiente`);
+    }
+
+    // Debug: Log detalhado das variáveis de ambiente
+    console.log(`🔍 [Redis Config] Variáveis de ambiente carregadas:`);
+    console.log(`   • REDIS_HOST: ${process.env.REDIS_HOST ? 'definido' : 'não definido'} → "${initialConfig.host}"`);
+    console.log(`   • REDIS_PORT: ${process.env.REDIS_PORT ? 'definido' : 'não definido'} → ${initialConfig.port}`);
+    console.log(`   • REDIS_DB: ${process.env.REDIS_DB ? 'definido' : 'não definido'} → ${initialConfig.db}`);
+    console.log(`   • REDIS_PASSWORD: ${process.env.REDIS_PASSWORD ? `definido (${process.env.REDIS_PASSWORD.length} chars)` : 'não definido'}`);
+    console.log(`   • REDIS_URL: ${process.env.REDIS_URL ? 'definido' : 'não definido'}`);
 }
-
-// Debug: Log detalhado das variáveis de ambiente
-console.log(`🔍 [Redis Config] Variáveis de ambiente carregadas:`);
-console.log(`   • REDIS_HOST: ${process.env.REDIS_HOST ? 'definido' : 'não definido'} → "${initialConfig.host}"`);
-console.log(`   • REDIS_PORT: ${process.env.REDIS_PORT ? 'definido' : 'não definido'} → ${initialConfig.port}`);
-console.log(`   • REDIS_DB: ${process.env.REDIS_DB ? 'definido' : 'não definido'} → ${initialConfig.db}`);
-console.log(`   • REDIS_PASSWORD: ${process.env.REDIS_PASSWORD ? `definido (${process.env.REDIS_PASSWORD.length} chars)` : 'não definido'}`);
-console.log(`   • REDIS_URL: ${process.env.REDIS_URL ? 'definido' : 'não definido'}`);
 
 const MAX_RETRIES = 15;
 const RETRY_DELAY_MS = 2000; // Aumentado para 2 segundos
@@ -309,23 +312,23 @@ function createIORedisClient(): IORedis {
         autoResubscribe: true,
         autoResendUnfulfilledCommands: true,
         enableAutoPipelining: false,
-        commandTimeout: 30000,
         connectionName: 'estacao-api',
         showFriendlyErrorStack: true,
     };
 
     // Debug detalhado de TODOS os parâmetros de conexão
-    console.log("📋 [IORedis] Parâmetros completos de conexão:");
-    console.log("   ┌─ Conexão");
-    console.log(`   │  • Host: ${redisConfig.host}`);
-    console.log(`   │  • Port: ${redisConfig.port}`);
-    console.log(`   │  • Database: ${redisConfig.db}`);
-    console.log(`   │  • Password: ${redisConfig.password === undefined ? 'undefined (sem auth)' : '***' + (redisConfig.password ? ` (${redisConfig.password.length} caracteres)` : '')}`);
-    console.log(`   │  • REDIS_URL: ${process.env.REDIS_URL ? 'definida' : 'não definida'}`);
+    if (shouldLogVerbose) {
+        console.log("📋 [IORedis] Parâmetros completos de conexão:");
+        console.log("   ┌─ Conexão");
+        console.log(`   │  • Host: ${redisConfig.host}`);
+        console.log(`   │  • Port: ${redisConfig.port}`);
+        console.log(`   │  • Database: ${redisConfig.db}`);
+        console.log(`   │  • Password: ${redisConfig.password === undefined ? 'undefined (sem auth)' : '***' + (redisConfig.password ? ` (${redisConfig.password.length} caracteres)` : '')}`);
+        console.log(`   │  • REDIS_URL: ${process.env.REDIS_URL ? 'definida' : 'não definida'}`);
+    }
     console.log(`   │  • Connection Name: ${redisConfig.connectionName}`);
     console.log("   ├─ Timeouts");
     console.log(`   │  • Connect Timeout: ${redisConfig.connectTimeout}ms (${redisConfig.connectTimeout / 1000}s)`);
-    console.log(`   │  • Command Timeout: ${redisConfig.commandTimeout}ms (${redisConfig.commandTimeout / 1000}s)`);
     console.log(`   │  • Max Retries: ${MAX_RETRIES} tentativas`);
     console.log("   ├─ Comportamento");
     console.log(`   │  • Lazy Connect: ${redisConfig.lazyConnect ? 'SIM (não bloqueia startup)' : 'NÃO (bloqueia até conectar)'}`);

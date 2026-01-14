@@ -31,7 +31,12 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
-      - estacaoterapia_backend
+      estacao-backend-network:
+        aliases:
+          - postgres
+      estacaoterapia_backend:
+        aliases:
+          - postgres
     healthcheck:
       test:
         - CMD-SHELL

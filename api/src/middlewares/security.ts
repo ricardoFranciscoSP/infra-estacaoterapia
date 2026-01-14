@@ -133,9 +133,15 @@ export const validateBodySize = (maxSize: number = 10 * 1024 * 1024) => {
  * Middleware para forçar HTTPS em produção
  */
 export const forceHttps = (req: Request, res: Response, next: NextFunction): void => {
+    if (req.path === "/health") {
+        next();
+        return;
+    }
+
     if (process.env.NODE_ENV === "production") {
         const forwardedProto = req.headers["x-forwarded-proto"];
-        if (forwardedProto !== "https") {
+        const proto = Array.isArray(forwardedProto) ? forwardedProto[0] : forwardedProto;
+        if (proto !== "https") {
             const host = req.headers.host || "";
             const url = req.url || "";
             res.redirect(301, `https://${host}${url}`);
