@@ -220,12 +220,6 @@ deploy_caddy() {
     
     cd "$SCRIPT_DIR"
     
-    # Verificar se script existe
-    if [ ! -f "./deploy.sh" ]; then
-        log_warning "Script de deploy do Caddy não encontrado, pulando..."
-        return 0
-    fi
-    
     log_info "Diretório: $SCRIPT_DIR"
     log_info "Iniciando deploy do Caddy..."
     
@@ -235,8 +229,11 @@ deploy_caddy() {
         return 0
     fi
     
-    # Garantir permissões de execução
-    chmod +x ./deploy.sh 2>/dev/null || true
+    # Verificar se Caddyfile existe
+    if [ ! -f "./Caddyfile" ]; then
+        log_warning "Arquivo Caddyfile não encontrado, pulando Caddy..."
+        return 0
+    fi
     
     # Deploy do Caddy via docker stack deploy
     log_info "Deployando stack do Caddy..."

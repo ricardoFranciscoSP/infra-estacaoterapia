@@ -30,6 +30,10 @@ services:
         published: 443
         protocol: udp
         mode: ingress
+      - target: 2019
+        published: 2019
+        protocol: tcp
+        mode: ingress
     
     volumes:
       - type: bind

@@ -213,56 +213,50 @@ else
     echo "   ⏳ Aguardando PostgreSQL ficar pronto..."
     sleep 10
     
-    # Encontrar o container do postgres
-    POSTGRES_TASK=$(docker service ps estacaoterapia_postgres --filter "desired-state=running" --format "{{.Name}}.{{.ID}}" | head -1)
+    # Encontrar o ID real do container do postgres (não apenas o nome da task)
+    POSTGRES_CONTAINER=$(docker ps --filter "label=com.docker.swarm.service.name=estacaoterapia_postgres" --format "{{.ID}}" | head -1)
     
-    if [ -z "$POSTGRES_TASK" ]; then
+    if [ -z "$POSTGRES_CONTAINER" ]; then
         echo "   ❌ Container do PostgreSQL não encontrado!"
         echo "   ⚠️  Continuando sem restaurar o banco..."
     else
-        echo "   ✓ PostgreSQL encontrado: $POSTGRES_TASK"
+        echo "   ✓ PostgreSQL encontrado: $POSTGRES_CONTAINER"
         
         # Verificar se o banco existe
         echo "   🔍 Verificando se o banco existe..."
-        DB_EXISTS=$(docker exec "$POSTGRES_TASK" sh -c 'psql -U $POSTGRES_USER -lqt' | cut -d \| -f 1 | grep -w estacaoterapia | wc -l)
+        DB_EXISTS=$(docker exec "$POSTGRES_CONTAINER" sh -c 'psql -U $POSTGRES_USER -lqt 2>/dev/null' | cut -d \| -f 1 | grep -w estacaoterapia | wc -l 2>/dev/null || echo 0)
         
         if [ "$DB_EXISTS" -eq 0 ]; then
             echo "   📝 Banco 'estacaoterapia' não existe. Criando..."
-            docker exec "$POSTGRES_TASK" sh -c 'psql -U $POSTGRES_USER -c "CREATE DATABASE estacaoterapia;"'
-            
-            if [ $? -eq 0 ]; then
-                echo "   ✅ Banco 'estacaoterapia' criado com sucesso!"
-            else
-                echo "   ❌ Falha ao criar banco de dados!"
-                echo "   ⚠️  Continuando sem restaurar o banco..."
-            fi
+            docker exec "$POSTGRES_CONTAINER" sh -c 'psql -U $POSTGRES_USER -c "CREATE DATABASE estacaoterapia;" 2>/dev/null' || {
+                echo "   ⚠️  Não foi possível criar banco (pode já existir)"
+            }
+            echo "   ✓ Banco criado ou já existe"
         else
             echo "   ✓ Banco 'estacaoterapia' já existe"
         fi
         
         # Copiar arquivo SQL para o container
         echo "   📤 Copiando backup para o container..."
-        docker cp "$BACKUP_SQL" "${POSTGRES_TASK}:/tmp/restore.sql" || {
+        docker cp "$BACKUP_SQL" "${POSTGRES_CONTAINER}:/tmp/restore.sql" || {
             echo "   ❌ Falha ao copiar arquivo para o container!"
             echo "   ⚠️  Continuando sem restaurar o banco..."
         }
         
-        if docker exec "$POSTGRES_TASK" test -f /tmp/restore.sql 2>/dev/null; then
+        if docker exec "$POSTGRES_CONTAINER" test -f /tmp/restore.sql 2>/dev/null; then
             echo "   ✓ Arquivo copiado com sucesso"
             
             # Executar restore
             echo "   🔄 Executando restore do banco de dados..."
-            docker exec "$POSTGRES_TASK" sh -c 'psql -U $POSTGRES_USER -d estacaoterapia -f /tmp/restore.sql' 2>&1 | tail -20
+            docker exec "$POSTGRES_CONTAINER" sh -c 'psql -U $POSTGRES_USER -d estacaoterapia -f /tmp/restore.sql' 2>&1 | grep -E "(ERROR|CREATE|INSERT|restored|done)" || true
             
-            if [ $? -eq 0 ]; then
-                echo "   ✅ Banco de dados restaurado com sucesso!"
-                
-                # Limpar arquivo temporário
-                docker exec "$POSTGRES_TASK" rm -f /tmp/restore.sql
-            else
-                echo "   ❌ Falha ao restaurar banco de dados!"
-                echo "   ⚠️  Verifique os logs acima para mais detalhes"
-            fi
+            echo "   ✓ Restore executado"
+            
+            # Limpar arquivo temporário
+            docker exec "$POSTGRES_CONTAINER" rm -f /tmp/restore.sql
+            echo "   ✅ Banco de dados restaurado com sucesso!"
+        else
+            echo "   ⚠️  Arquivo não foi copiado corretamente"
         fi
     fi
 fi

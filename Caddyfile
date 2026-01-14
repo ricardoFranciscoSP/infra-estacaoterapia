@@ -7,6 +7,8 @@
     # Configurações globais
     email contato@estacaoterapia.com.br
     admin localhost:2019
+    admin_port 2019
+    admin_ui
 }
 
 # ============================================
