@@ -120,14 +120,19 @@ create_or_update_secret "userlist.txt" "/opt/secrets/pgbouncer/userlist.txt"
 echo ""
 echo "   📝 Processando credenciais PostgreSQL..."
 
-POSTGRES_USER=$(grep "^POSTGRES_USER=" "$SECRETS_DIR/postgres.env" | cut -d'=' -f2 | tr -d ' ')
+# Usar valores fixos (estacaoterapia) conforme configurado
+POSTGRES_USER="estacaoterapia"
 POSTGRES_PASSWORD=$(grep "^POSTGRES_PASSWORD=" "$SECRETS_DIR/postgres.env" | cut -d'=' -f2 | tr -d ' ')
-POSTGRES_DB=$(grep "^POSTGRES_DB=" "$SECRETS_DIR/postgres.env" | cut -d'=' -f2 | tr -d ' ')
+POSTGRES_DB="estacaoterapia"
 
-if [ -z "$POSTGRES_USER" ] || [ -z "$POSTGRES_PASSWORD" ] || [ -z "$POSTGRES_DB" ]; then
-    echo "❌ Credenciais PostgreSQL incompletas em $SECRETS_DIR/postgres.env"
+if [ -z "$POSTGRES_PASSWORD" ]; then
+    echo "❌ POSTGRES_PASSWORD não encontrado em $SECRETS_DIR/postgres.env"
     exit 1
 fi
+
+echo "✓ Credenciais extraídas:"
+echo "  • POSTGRES_USER: $POSTGRES_USER"
+echo "  • POSTGRES_DB: $POSTGRES_DB"
 
 # Criar secrets individuais
 echo "$POSTGRES_USER" | docker secret create postgres_user - 2>/dev/null || docker secret rm postgres_user 2>/dev/null && echo "$POSTGRES_USER" | docker secret create postgres_user -
@@ -314,6 +319,7 @@ echo "📊 Monitorando saúde dos serviços..."
 wait_for_service_health() {
     local service_name=$1
     local max_wait=$2
+    local is_optional=$3  # "optional" ou "required"
     local elapsed=0
     local wait_interval=5
     
@@ -333,17 +339,67 @@ wait_for_service_health() {
     return 1
 }
 
-# Aguardar PostgreSQL
-echo "   → Aguardando PostgreSQL..."
-wait_for_service_health "estacaoterapia_postgres" 120 || echo "   ⚠️  PostgreSQL ainda iniciando..."
+# Função para verificar status detalhado do serviço
+check_service_status() {
+    local service_name=$1
+    echo ""
+    echo "🔍 Verificando status detalhado de $service_name..."
+    docker service ps "$service_name" --no-trunc 2>/dev/null || echo "   ❌ Serviço não encontrado"
+    
+    echo ""
+    echo "📋 Últimos logs de $service_name:"
+    docker service logs "$service_name" --tail 20 2>/dev/null || echo "   ❌ Não foi possível obter logs"
+}
 
-# Aguardar Redis
+# Aguardar Redis primeiro (dependência crítica)
 echo "   → Aguardando Redis..."
-wait_for_service_health "estacaoterapia_redis" 120 || echo "   ⚠️  Redis ainda iniciando..."
+if ! wait_for_service_health "estacaoterapia_redis" 120 "required"; then
+    echo ""
+    echo "❌ Redis NÃO SUBIU no tempo limite (120s)!"
+    check_service_status "estacaoterapia_redis"
+    echo ""
+    echo "⚠️  ERRO CRÍTICO: Redis não conseguiu inicializar"
+    echo "   Possíveis causas:"
+    echo "   - Problemas de volume docker (redis_data)"
+    echo "   - Arquivo de configuração inválido"
+    echo "   - Falta de permissões"
+    echo "   - Porta 6379 em uso"
+    echo ""
+    echo "   Debug: docker service logs estacaoterapia_redis"
+    exit 1
+else
+    echo "   ✅ Redis iniciado com sucesso"
+fi
 
-# Aguardar PgBouncer
+# Aguardar PostgreSQL (após Redis estar ok)
+echo "   → Aguardando PostgreSQL..."
+if ! wait_for_service_health "estacaoterapia_postgres" 120 "required"; then
+    echo ""
+    echo "❌ PostgreSQL NÃO SUBIU no tempo limite (120s)!"
+    check_service_status "estacaoterapia_postgres"
+    echo ""
+    echo "⚠️  ERRO CRÍTICO: PostgreSQL não conseguiu inicializar"
+    echo "   Possíveis causas:"
+    echo "   - Problemas de volume docker (postgres_data)"
+    echo "   - Secrets do PostgreSQL inválidos"
+    echo "   - Falta de permissões"
+    echo "   - Porta 5432 em uso"
+    echo ""
+    echo "   Debug: docker service logs estacaoterapia_postgres"
+    exit 1
+else
+    echo "   ✅ PostgreSQL iniciado com sucesso"
+fi
+
+# Aguardar PgBouncer (após PostgreSQL estar ok)
 echo "   → Aguardando PgBouncer..."
-wait_for_service_health "estacaoterapia_pgbouncer" 60
+if ! wait_for_service_health "estacaoterapia_pgbouncer" 60 "required"; then
+    echo ""
+    echo "⚠️  PgBouncer ainda não respondeu, continuando..."
+    check_service_status "estacaoterapia_pgbouncer"
+else
+    echo "   ✅ PgBouncer iniciado com sucesso"
+fi
 
 # Verificar status dos serviços
 echo ""
@@ -397,12 +453,12 @@ echo "   ✓ PostgreSQL encontrado: $POSTGRES_CONTAINER"
 
 # Função para executar psql com usuário correto
 psql_exec() {
-    docker exec "$POSTGRES_CONTAINER" sh -c "psql -U \$POSTGRES_USER -d \$POSTGRES_DB -t -c \"$1\" 2>/dev/null"
+    docker exec "$POSTGRES_CONTAINER" sh -c "PGPASSWORD='$POSTGRES_PASSWORD' psql -U '$POSTGRES_USER' -d '$POSTGRES_DB' -t -c \"$1\" 2>/dev/null"
 }
 
 # Verificar se o banco existe
 echo "   🔍 Verificando se o banco 'estacaoterapia' existe..."
-DB_EXISTS=$(docker exec "$POSTGRES_CONTAINER" sh -c "psql -U \$POSTGRES_USER -lqt 2>/dev/null" | awk '{print $1}' | grep -w estacaoterapia | wc -l || echo "0")
+DB_EXISTS=$(docker exec "$POSTGRES_CONTAINER" sh -c "PGPASSWORD='$POSTGRES_PASSWORD' psql -U '$POSTGRES_USER' -lqt 2>/dev/null" | awk '{print $1}' | grep -w estacaoterapia | wc -l || echo "0")
 # Sanitize count to avoid "integer expression expected"
 DB_EXISTS=${DB_EXISTS:-0}
 if ! [[ "$DB_EXISTS" =~ ^[0-9]+$ ]]; then
@@ -411,7 +467,7 @@ fi
 
 if [ "$DB_EXISTS" -eq 0 ]; then
     echo "   📝 Banco 'estacaoterapia' não existe. Criando..."
-    docker exec "$POSTGRES_CONTAINER" sh -c "psql -U \$POSTGRES_USER -c \"CREATE DATABASE estacaoterapia;\"" || {
+    docker exec "$POSTGRES_CONTAINER" sh -c "PGPASSWORD='$POSTGRES_PASSWORD' psql -U '$POSTGRES_USER' -c \"CREATE DATABASE estacaoterapia;\"" || {
         echo "   ⚠️  Não foi possível criar banco (pode já existir)"
     }
     echo "   ✓ Banco criado"
@@ -447,7 +503,7 @@ else
     if docker exec "$POSTGRES_CONTAINER" test -f /tmp/restore.sql 2>/dev/null; then
         echo "   ✓ Arquivo copiado com sucesso"
         echo "   🔄 Executando restore do banco de dados..."
-        docker exec "$POSTGRES_CONTAINER" sh -c "psql -U \$POSTGRES_USER -d estacaoterapia -f /tmp/restore.sql" 2>&1 | grep -E "(ERROR|CREATE|INSERT|restored|done)" || true
+        docker exec "$POSTGRES_CONTAINER" sh -c "PGPASSWORD='$POSTGRES_PASSWORD' psql -U '$POSTGRES_USER' -d estacaoterapia -f /tmp/restore.sql" 2>&1 | grep -E "(ERROR|CREATE|INSERT|restored|done)" || true
         echo "   ✓ Restore executado"
 
         # Limpar arquivo temporário

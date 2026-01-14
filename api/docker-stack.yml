@@ -23,15 +23,17 @@ services:
   # POSTGRESQL
   # =====================================
   postgres:
-    image: postgres:16-alpine
+    build:
+      context: .
+      dockerfile: Dockerfile.postgres
     secrets:
       - postgres_user
       - postgres_password
       - postgres_db
     environment:
-      POSTGRES_USER_FILE: /run/secrets/postgres_user
-      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
-      POSTGRES_DB_FILE: /run/secrets/postgres_db
+      POSTGRES_USER: estacaoterapia
+      POSTGRES_PASSWORD: estacaoterapia
+      POSTGRES_DB: estacaoterapia
       PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -40,10 +42,7 @@ services:
     healthcheck:
       test:
         - CMD-SHELL
-        - >
-          PASS_LEN=$$(wc -c < $$POSTGRES_PASSWORD_FILE | tr -d ' ') &&
-          echo "postgres healthcheck: password length=$$PASS_LEN" &&
-          PGPASSWORD=$$(cat $$POSTGRES_PASSWORD_FILE) psql -U estacaoterapia -d estacaoterapia -h localhost -c 'SELECT 1;' >/dev/null 2>&1
+        - "PGPASSWORD=estacaoterapia psql -U estacaoterapia -d estacaoterapia -c 'SELECT 1;' >/dev/null 2>&1 || exit 1"
       interval: 10s
       timeout: 5s
       retries: 5
@@ -54,6 +53,9 @@ services:
           - node.role == manager
       restart_policy:
         condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
 
   # =====================================
   # REDIS
