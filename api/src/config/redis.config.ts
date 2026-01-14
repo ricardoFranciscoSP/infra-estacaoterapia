@@ -42,29 +42,32 @@ let ioredisConnectionPromise: Promise<IORedis> | null = null;
 /**
  * Configuração centralizada
  * Redis é obrigatório em production, staging, pre e development para garantir funcionamento dos jobs
+ * 
+ * IMPORTANTE: As configurações são lidas dinamicamente de process.env para permitir
+ * que o entrypoint.sh resolva os hostnames antes do Node.js tentar conectar
  */
-const REDIS_HOST = process.env.REDIS_HOST || "estacao_redis_prd";
-const REDIS_PORT = Number(process.env.REDIS_PORT || 6379);
-const REDIS_DB = Number(process.env.REDIS_DB || 0);
-const REDIS_PASSWORD = process.env.REDIS_PASSWORD || ""; // Vazio se não definido
-const REDIS_URL = process.env.REDIS_URL; // Prioriza a URL completa do .env
+const getRedisConfig = () => ({
+    host: process.env.REDIS_HOST || "redis",
+    port: Number(process.env.REDIS_PORT || 6379),
+    db: Number(process.env.REDIS_DB || 0),
+    password: process.env.REDIS_PASSWORD || "",
+    url: process.env.REDIS_URL
+});
 
-// Define se devemos autenticar
-const SHOULD_AUTH = !!REDIS_PASSWORD; // Autentica se houver senha
+// Debug: Log da configuração inicial
+const initialConfig = getRedisConfig();
+const authStatus = initialConfig.password ? `SIM (senha definida)` : `NÃO (sem senha)`;
+console.log(`🔍 [Redis Config] Configuração inicial: Host: ${initialConfig.host}, Port: ${initialConfig.port}, DB: ${initialConfig.db}, Autenticação: ${authStatus}`);
 
-// Debug: Log da configuração
-const authStatus = SHOULD_AUTH ? `SIM (senha definida)` : `NÃO (sem senha)`;
-console.log(`🔍 [Redis Config] Host: ${REDIS_HOST}, Port: ${REDIS_PORT}, DB: ${REDIS_DB}, Autenticação: ${authStatus}`);
-
-if (REDIS_URL) {
+if (initialConfig.url) {
     console.log(`🔍 [Redis Config] Usando REDIS_URL do ambiente`);
 }
 
 // Debug: Log detalhado das variáveis de ambiente
 console.log(`🔍 [Redis Config] Variáveis de ambiente carregadas:`);
-console.log(`   • REDIS_HOST: ${process.env.REDIS_HOST ? 'definido' : 'não definido'} → "${REDIS_HOST}"`);
-console.log(`   • REDIS_PORT: ${process.env.REDIS_PORT ? 'definido' : 'não definido'} → ${REDIS_PORT}`);
-console.log(`   • REDIS_DB: ${process.env.REDIS_DB ? 'definido' : 'não definido'} → ${REDIS_DB}`);
+console.log(`   • REDIS_HOST: ${process.env.REDIS_HOST ? 'definido' : 'não definido'} → "${initialConfig.host}"`);
+console.log(`   • REDIS_PORT: ${process.env.REDIS_PORT ? 'definido' : 'não definido'} → ${initialConfig.port}`);
+console.log(`   • REDIS_DB: ${process.env.REDIS_DB ? 'definido' : 'não definido'} → ${initialConfig.db}`);
 console.log(`   • REDIS_PASSWORD: ${process.env.REDIS_PASSWORD ? `definido (${process.env.REDIS_PASSWORD.length} chars)` : 'não definido'}`);
 console.log(`   • REDIS_URL: ${process.env.REDIS_URL ? 'definido' : 'não definido'}`);
 
@@ -108,18 +111,22 @@ export const getRedisClient = async (): Promise<RedisClientType> => {
     }
 
     console.log("🔌 [Redis] Conectando...");
-    const authStatus = SHOULD_AUTH ? `SIM` : `NÃO`;
-    console.log(`🔍 [Redis] Configuração: host=${REDIS_HOST}, port=${REDIS_PORT}, db=${REDIS_DB}, autenticação: ${authStatus}`);
+
+    // Lê configuração dinamicamente
+    const config = getRedisConfig();
+    const SHOULD_AUTH = !!config.password;
+    const authStatusNow = SHOULD_AUTH ? `SIM` : `NÃO`;
+    console.log(`🔍 [Redis] Configuração: host=${config.host}, port=${config.port}, db=${config.db}, autenticação: ${authStatusNow}`);
 
     // Usa a senha do ambiente se definida
-    const connectionPassword = SHOULD_AUTH ? REDIS_PASSWORD : undefined;
+    const connectionPassword = SHOULD_AUTH ? config.password : undefined;
 
     // Construir URL com senha se não estiver definida e tiver senha
-    let redisUrl = REDIS_URL;
-    if (!redisUrl && SHOULD_AUTH && REDIS_PASSWORD) {
-        redisUrl = `redis://:${REDIS_PASSWORD}@${REDIS_HOST}:${REDIS_PORT}/${REDIS_DB}`;
+    let redisUrl = config.url;
+    if (!redisUrl && SHOULD_AUTH && config.password) {
+        redisUrl = `redis://:${config.password}@${config.host}:${config.port}/${config.db}`;
     } else if (!redisUrl) {
-        redisUrl = `redis://${REDIS_HOST}:${REDIS_PORT}/${REDIS_DB}`;
+        redisUrl = `redis://${config.host}:${config.port}/${config.db}`;
     }
 
     redisClient = createClient({
@@ -157,7 +164,7 @@ export const getRedisClient = async (): Promise<RedisClientType> => {
             if (attempt === MAX_RETRIES) {
                 if (REQUIRES_REDIS) {
                     console.error(`🛑 [Redis] Abortando inicialização (${process.env.NODE_ENV} exige Redis)`);
-                    console.error(`🛑 [Redis] Host: ${REDIS_HOST}, Port: ${REDIS_PORT}, DB: ${REDIS_DB}`);
+                    console.error(`🛑 [Redis] Host: ${config.host}, Port: ${config.port}, DB: ${config.db}`);
                     // Limpa o cliente falho
                     redisClient = null;
                     throw err;
@@ -241,8 +248,12 @@ function createIORedisClient(): IORedis {
     }
 
     console.log("🔌 [IORedis] Criando nova conexão singleton...");
-    const authStatus = SHOULD_AUTH ? `SIM (senha definida)` : `NÃO (sem senha)`;
-    console.log(`🔍 [IORedis] Configuração básica: host=${REDIS_HOST}, port=${REDIS_PORT}, db=${REDIS_DB}, autenticação: ${authStatus}`);
+
+    // Lê configuração dinamicamente
+    const config = getRedisConfig();
+    const SHOULD_AUTH = !!config.password;
+    const authStatusNow = SHOULD_AUTH ? `SIM (senha definida)` : `NÃO (sem senha)`;
+    console.log(`🔍 [IORedis] Configuração básica: host=${config.host}, port=${config.port}, db=${config.db}, autenticação: ${authStatusNow}`);
 
     // Log do modo de autenticação
     if (SHOULD_AUTH) {
@@ -252,32 +263,32 @@ function createIORedisClient(): IORedis {
     }
 
     // Usa a senha do ambiente se definida
-    const connectionPassword = SHOULD_AUTH ? REDIS_PASSWORD : undefined;
+    const connectionPassword = SHOULD_AUTH ? config.password : undefined;
 
     // Configurações que serão usadas na conexão
     // Se houver REDIS_URL, parse suas credenciais; caso contrário, usa as variáveis individuais
-    let configHost = REDIS_HOST;
-    let configPort = REDIS_PORT;
-    let configDb = REDIS_DB;
+    let configHost = config.host;
+    let configPort = config.port;
+    let configDb = config.db;
     let configPassword = connectionPassword;
 
     // Se REDIS_URL está definida, extrai host/port/db/password dela
-    if (REDIS_URL) {
+    if (config.url) {
         try {
-            const url = new URL(REDIS_URL);
-            configHost = url.hostname || REDIS_HOST;
-            configPort = url.port ? Number(url.port) : REDIS_PORT;
-            configDb = url.pathname && url.pathname !== '/' ? Number(url.pathname.slice(1)) : REDIS_DB;
+            const url = new URL(config.url);
+            configHost = url.hostname || config.host;
+            configPort = url.port ? Number(url.port) : config.port;
+            configDb = url.pathname && url.pathname !== '/' ? Number(url.pathname.slice(1)) : config.db;
             // Prioriza senha da URL, depois do REDIS_PASSWORD, depois undefined
             configPassword = url.password || configPassword || undefined;
             console.log(`✅ [IORedis] Credenciais extraídas de REDIS_URL: host=${configHost}, port=${configPort}, db=${configDb}, password=${configPassword ? 'definida' : 'não definida'}`);
         } catch (err) {
             console.warn(`⚠️ [IORedis] REDIS_URL inválida, usando variáveis individuais`);
         }
-    } else if (SHOULD_AUTH && REDIS_PASSWORD) {
+    } else if (SHOULD_AUTH && config.password) {
         // Se não tem REDIS_URL mas tem senha, garante que a senha será usada
-        configPassword = REDIS_PASSWORD;
-        console.log(`✅ [IORedis] Usando REDIS_PASSWORD do ambiente (${REDIS_PASSWORD.length} caracteres)`);
+        configPassword = config.password;
+        console.log(`✅ [IORedis] Usando REDIS_PASSWORD do ambiente (${config.password.length} caracteres)`);
     }
 
     const redisConfig = {
@@ -306,7 +317,7 @@ function createIORedisClient(): IORedis {
     console.log(`   │  • Port: ${redisConfig.port}`);
     console.log(`   │  • Database: ${redisConfig.db}`);
     console.log(`   │  • Password: ${redisConfig.password === undefined ? 'undefined (sem auth)' : '***' + (redisConfig.password ? ` (${redisConfig.password.length} caracteres)` : '')}`);
-    console.log(`   │  • REDIS_URL: ${REDIS_URL ? 'definida' : 'não definida'}`);
+    console.log(`   │  • REDIS_URL: ${process.env.REDIS_URL ? 'definida' : 'não definida'}`);
     console.log(`   │  • Connection Name: ${redisConfig.connectionName}`);
     console.log("   ├─ Timeouts");
     console.log(`   │  • Connect Timeout: ${redisConfig.connectTimeout}ms (${redisConfig.connectTimeout / 1000}s)`);

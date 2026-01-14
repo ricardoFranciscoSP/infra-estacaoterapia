@@ -171,14 +171,26 @@ start_api() {
 
   # Tentar resolver host de Redis com alternativas comuns no Swarm
   echo "🔎 Checando Redis..."
+  REDIS_FOUND=false
   for candidate in "$REDIS_HOST" "tasks.$REDIS_HOST" "redis" "tasks.redis" "estacaoterapia_redis" "tasks.estacaoterapia_redis"; do
-    if retry nc -z "$candidate" "$REDIS_PORT" >/dev/null 2>&1; then
+    echo "   Tentando: $candidate"
+    if nc -z "$candidate" "$REDIS_PORT" >/dev/null 2>&1; then
       REDIS_HOST="$candidate"
+      REDIS_FOUND=true
       echo "✅ Redis acessível via: $REDIS_HOST"
       break
     fi
   done
-  retry nc -z "$REDIS_HOST" "$REDIS_PORT"
+  
+  if [ "$REDIS_FOUND" = false ]; then
+    echo "❌ Redis não encontrado em nenhuma das alternativas"
+    echo "   Tentativas: redis, tasks.redis, estacaoterapia_redis, tasks.estacaoterapia_redis"
+    echo "   Continuando mesmo assim - Redis pode estar disponível via VIP do Swarm"
+  fi
+  
+  # Exportar REDIS_HOST resolvido
+  export REDIS_HOST
+  echo "✅ REDIS_HOST=$REDIS_HOST exportado"
 
   # Tentar resolver host de PgBouncer com alternativas (VIP e tasks)
   echo "🔎 Checando PgBouncer..."

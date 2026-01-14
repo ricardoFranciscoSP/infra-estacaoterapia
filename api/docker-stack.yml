@@ -60,7 +60,10 @@ services:
     volumes:
       - redis_data:/data
     networks:
-      - estacaoterapia_backend
+      estacaoterapia_backend:
+        aliases:
+          - redis
+          - estacao_redis_prd
     healthcheck:
       test:
         - CMD-SHELL
