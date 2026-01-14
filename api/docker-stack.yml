@@ -19,57 +19,45 @@ services:
   # =====================================
   postgres:
     image: postgres:16-alpine
-    environment:
-      POSTGRES_USER_FILE: /run/secrets/postgres_user
-      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
-      POSTGRES_DB: estacaoterapia
-      PGDATA: /var/lib/postgresql/data/pgdata
     secrets:
-      - postgres_user
-      - postgres_password
+      - source: postgres_env
+        target: /run/secrets/postgres.env
+    environment:
+      PGDATA: /var/lib/postgresql/data/pgdata
+    entrypoint: ['/bin/sh', '-c']
+    command:
+      - |
+        # Carregar variáveis do secret
+        if [ -f /run/secrets/postgres.env ]; then
+          export $(grep -v '^#' /run/secrets/postgres.env | xargs)
+        fi
+        # Iniciar postgres com configurações
+        exec docker-entrypoint.sh postgres \
+          -c max_connections=200 \
+          -c shared_buffers=256MB \
+          -c effective_cache_size=1GB \
+          -c maintenance_work_mem=64MB \
+          -c checkpoint_completion_target=0.9 \
+          -c wal_buffers=16MB \
+          -c default_statistics_target=100 \
+          -c random_page_cost=1.1 \
+          -c effective_io_concurrency=200 \
+          -c work_mem=4MB \
+          -c min_wal_size=1GB \
+          -c max_wal_size=4GB \
+          -c max_worker_processes=4 \
+          -c max_parallel_workers_per_gather=2 \
+          -c max_parallel_workers=4 \
+          -c max_parallel_maintenance_workers=2
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - estacao-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U estacaoterapia -d estacaoterapia"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-estacaoterapia} -d ${POSTGRES_DB:-estacaoterapia}"]
       interval: 10s
       timeout: 5s
       retries: 5
-    command:
-      - "postgres"
-      - "-c"
-      - "max_connections=200"
-      - "-c"
-      - "shared_buffers=256MB"
-      - "-c"
-      - "effective_cache_size=1GB"
-      - "-c"
-      - "maintenance_work_mem=64MB"
-      - "-c"
-      - "checkpoint_completion_target=0.9"
-      - "-c"
-      - "wal_buffers=16MB"
-      - "-c"
-      - "default_statistics_target=100"
-      - "-c"
-      - "random_page_cost=1.1"
-      - "-c"
-      - "effective_io_concurrency=200"
-      - "-c"
-      - "work_mem=4MB"
-      - "-c"
-      - "min_wal_size=1GB"
-      - "-c"
-      - "max_wal_size=4GB"
-      - "-c"
-      - "max_worker_processes=4"
-      - "-c"
-      - "max_parallel_workers_per_gather=2"
-      - "-c"
-      - "max_parallel_workers=4"
-      - "-c"
-      - "max_parallel_maintenance_workers=2"
     deploy:
       replicas: 1
       placement:
@@ -86,32 +74,29 @@ services:
   # =====================================
   redis:
     image: redis:7-alpine
-    command:
-      - redis-server
-      - --requirepass
-      - "$$(cat /run/secrets/redis_password)"
-      - --appendonly
-      - "yes"
-      - --appendfsync
-      - everysec
-      - --maxmemory
-      - 512mb
-      - --maxmemory-policy
-      - allkeys-lru
-      - --save
-      - "900 1"
-      - --save
-      - "300 10"
-      - --save
-      - "60 10000"
-      - --tcp-backlog
-      - "511"
-      - --timeout
-      - "300"
-      - --tcp-keepalive
-      - "300"
     secrets:
-      - redis_password
+      - source: estacao_api_env
+        target: /run/secrets/redis.env
+    entrypoint: ['/bin/sh', '-c']
+    command:
+      - |
+        # Extrair REDIS_PASSWORD do secret
+        if [ -f /run/secrets/redis.env ]; then
+          REDIS_PASSWORD=$(grep '^REDIS_PASSWORD=' /run/secrets/redis.env | cut -d= -f2-)
+        fi
+        # Iniciar Redis com configurações
+        exec redis-server \
+          --requirepass "${REDIS_PASSWORD:-REdnRHkZLnQpK1rcoKsseO3pX4GNIRR}" \
+          --appendonly yes \
+          --appendfsync everysec \
+          --maxmemory 512mb \
+          --maxmemory-policy allkeys-lru \
+          --save "900 1" \
+          --save "300 10" \
+          --save "60 10000" \
+          --tcp-backlog 511 \
+          --timeout 300 \
+          --tcp-keepalive 300
     volumes:
       - redis_data:/data
     networks:
@@ -273,13 +258,9 @@ secrets:
     external: true
   estacao_socket_env:
     external: true
+  postgres_env:
+    external: true
   pgbouncer.ini:
     external: true
   userlist.txt:
-    external: true
-  postgres_user:
-    external: true
-  postgres_password:
-    external: true
-  redis_password:
     external: true
