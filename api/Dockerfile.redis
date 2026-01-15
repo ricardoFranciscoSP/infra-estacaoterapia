@@ -8,8 +8,7 @@ LABEL maintainer="estacaoterapia@team" \
 RUN apk add --no-cache \
     bash \
     dos2unix \
-    netcat-openbsd \
-    && update-ca-certificates
+    netcat-openbsd
 
 # 🔧 Copy + fix line endings
 COPY redis-entrypoint.sh /usr/local/bin/redis-entrypoint.sh

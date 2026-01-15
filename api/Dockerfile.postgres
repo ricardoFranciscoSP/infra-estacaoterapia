@@ -10,7 +10,6 @@ RUN apk add --no-cache \
     curl \
     netcat-openbsd \
     postgresql-client \
-    && update-ca-certificates \
     && rm -rf /var/cache/apk/*
 
 # 🔧 Entrypoint custom
