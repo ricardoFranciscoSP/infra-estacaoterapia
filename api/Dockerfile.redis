@@ -10,9 +10,9 @@ RUN apk add --no-cache \
     dos2unix \
     netcat-openbsd
 
-# 🔧 Criar usuário/grupo dedicados
-RUN addgroup -g 1001 -S redis && \
-    adduser -u 1001 -S redis -G redis
+# 🔧 Criar usuário/grupo dedicados (se não existirem)
+RUN if ! getent group redis >/dev/null 2>&1; then addgroup -g 1001 -S redis; fi && \
+    if ! id -u redis >/dev/null 2>&1; then adduser -u 1001 -S redis -G redis; fi
 
 # 🔧 Copy + fix line endings
 COPY redis-entrypoint.sh /usr/local/bin/redis-entrypoint.sh
