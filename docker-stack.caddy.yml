@@ -51,10 +51,10 @@ services:
         target: /etc/caddy/Caddyfile
         read_only: true
 
-    # 🌐 Network - Isolado, mas conectado às redes necessárias para proxy reverso
+    # 🌐 Network - Conectado às redes necessárias para proxy reverso
     networks:
       - estacao-network          # Para acessar frontend
-      - estacao-backend-network   # Para acessar API e Socket
+      - estacaoterapia_backend    # Para acessar API e Socket
 
     deploy:
       replicas: 1
@@ -84,9 +84,9 @@ networks:
   estacao-network:
     external: true
     name: estacao-network
-  estacao-backend-network:
+  estacaoterapia_backend:
     external: true
-    name: estacao-backend-network
+    name: estacaoterapia_backend
 
 # ============================================
 # VOLUMES

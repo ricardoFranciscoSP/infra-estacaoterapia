@@ -378,9 +378,20 @@ start_socket() {
 
   API_HOST=$(echo "$API_BASE_URL" | sed 's|http://||;s|https://||' | cut -d: -f1)
   API_PORT=$(echo "$API_BASE_URL" | cut -d: -f3)
+  API_PORT="${API_PORT:-3333}"
+
+  # Se o secret estiver com host "api", tentar nomes válidos do Swarm
+  for candidate in "$API_HOST" "estacaoterapia_api" "tasks.estacaoterapia_api" "api" "tasks.api"; do
+    if timeout 2 nc -z "$candidate" "$API_PORT" >/dev/null 2>&1; then
+      API_HOST="$candidate"
+      API_BASE_URL="http://$API_HOST:$API_PORT"
+      echo "✅ API acessível via: $API_BASE_URL"
+      break
+    fi
+  done
 
   echo "🔎 Checando API..."
-  retry nc -z "$API_HOST" "${API_PORT:-3333}"
+  retry nc -z "$API_HOST" "$API_PORT"
 
   # CRÍTICO: Exportar as variáveis de Redis antes de iniciar Node.js
   export REDIS_HOST

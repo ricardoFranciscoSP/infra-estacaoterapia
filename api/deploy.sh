@@ -159,35 +159,28 @@ fi
 echo ""
 echo "[SECRETS] Gerenciando secrets nao Docker Swarm..."
 
-create_or_update_secret() {
+create_secret_if_missing() {
     local secret_name=$1
     local secret_file=$2
     
     if docker secret inspect "$secret_name" >/dev/null 2>&1; then
-        echo "   [ATUALIZANDO] Secret: $secret_name"
-        if ! docker secret rm "$secret_name" 2>/dev/null; then
-            echo "   [ERRO] Falha ao remover secret $secret_name"
-            exit 1
-        fi
-        if ! docker secret create "$secret_name" "$secret_file" 2>/dev/null; then
-            echo "   [ERRO] Falha ao atualizar secret $secret_name"
-            exit 1
-        fi
-    else
-        echo "   [CRIANDO] Secret: $secret_name"
-        if ! docker secret create "$secret_name" "$secret_file" 2>/dev/null; then
-            echo "   [ERRO] Falha ao criar secret $secret_name"
-            exit 1
-        fi
+        echo "   [OK] Secret ja existe: $secret_name (nao removendo)"
+        return 0
+    fi
+
+    echo "   [CRIANDO] Secret: $secret_name"
+    if ! docker secret create "$secret_name" "$secret_file" 2>/dev/null; then
+        echo "   [ERRO] Falha ao criar secret $secret_name"
+        exit 1
     fi
 }
 
 # Processar secrets
-create_or_update_secret "postgres_env" "$SECRETS_DIR/postgres.env"
-create_or_update_secret "estacao_api_env" "$SECRETS_DIR/estacao_api.env"
-create_or_update_secret "estacao_socket_env" "$SECRETS_DIR/estacao_socket.env"
-create_or_update_secret "pgbouncer.ini" "/opt/secrets/pgbouncer/pgbouncer.ini"
-create_or_update_secret "userlist.txt" "/opt/secrets/pgbouncer/userlist.txt"
+create_secret_if_missing "postgres_env" "$SECRETS_DIR/postgres.env"
+create_secret_if_missing "estacao_api_env" "$SECRETS_DIR/estacao_api.env"
+create_secret_if_missing "estacao_socket_env" "$SECRETS_DIR/estacao_socket.env"
+create_secret_if_missing "pgbouncer.ini" "/opt/secrets/pgbouncer/pgbouncer.ini"
+create_secret_if_missing "userlist.txt" "/opt/secrets/pgbouncer/userlist.txt"
 
 # Criar secret redis_password a partir do estacao_api.env
 echo ""
@@ -197,14 +190,14 @@ if [ -n "$REDIS_PASSWORD" ]; then
     # Criar arquivo temporario com a senha
     TEMP_REDIS_PASSWORD=$(mktemp)
     echo -n "$REDIS_PASSWORD" > "$TEMP_REDIS_PASSWORD"
-    create_or_update_secret "redis_password" "$TEMP_REDIS_PASSWORD"
+    create_secret_if_missing "redis_password" "$TEMP_REDIS_PASSWORD"
     rm -f "$TEMP_REDIS_PASSWORD"
     echo "   [OK] Secret redis_password criado/atualizado"
 else
     echo "   [AVISO] REDIS_PASSWORD nao encontrado em estacao_api.env"
     echo "   [AVISO] Redis sera iniciado sem senha"
 fi
-create_or_update_secret "userlist.txt" "/opt/secrets/pgbouncer/userlist.txt"
+create_secret_if_missing "userlist.txt" "/opt/secrets/pgbouncer/userlist.txt"
 
 # Extrair credenciais do postgres.env para validacao
 echo ""
