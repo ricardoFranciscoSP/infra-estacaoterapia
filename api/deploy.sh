@@ -57,6 +57,50 @@ done
 echo "✅ [OK] Pré-requisitos"
 
 # ==============================
+# 1.5 VALIDAÇÃO DE VARIÁVEIS DE SECRET
+# ==============================
+echo ""
+echo "════════════════════════════════════════════════════════"
+echo "🧾 ETAPA 1.5/8 - VALIDAÇÃO DE VARIÁVEIS OBRIGATÓRIAS"
+echo "════════════════════════════════════════════════════════"
+
+validate_required_vars() {
+  local name=$1 file=$2; shift 2
+  local missing=()
+
+  for var in "$@"; do
+    local value
+    value=$(grep -E "^${var}=" "$file" | sed 's/^[^=]*=//') || true
+
+    if [ -z "$value" ]; then
+      missing+=("${var}=<vazio>")
+      continue
+    fi
+
+    if printf '%s' "$value" | grep -qiE '^(your-|changeme|example)'; then
+      missing+=("${var}=<placeholder>")
+    fi
+  done
+
+  if [ ${#missing[@]} -gt 0 ]; then
+    echo "❌ $name com variáveis ausentes/placeholder: ${missing[*]}"
+    echo "   Atualize $file antes de continuar."
+    exit 1
+  fi
+
+  echo "✅ $name validado"
+}
+
+validate_required_vars "postgres.env" "$SECRETS_DIR/postgres.env" \
+  POSTGRES_USER POSTGRES_PASSWORD POSTGRES_DB
+
+validate_required_vars "estacao_api.env" "$SECRETS_DIR/estacao_api.env" \
+  POSTGRES_USER POSTGRES_PASSWORD POSTGRES_DB REDIS_PASSWORD JWT_SECRET
+
+validate_required_vars "estacao_socket.env" "$SECRETS_DIR/estacao_socket.env" \
+  POSTGRES_USER POSTGRES_PASSWORD POSTGRES_DB REDIS_PASSWORD JWT_SECRET
+
+# ==============================
 # 2. CLEAN (opcional)
 # ==============================
 echo ""
@@ -185,7 +229,7 @@ echo "════════════════════════�
 echo "⏳ Aguardando todos os serviços ficarem saudáveis..."
 echo ""
 
-services=(redis postgres pgbouncer api socket-server)
+services=(postgres pgbouncer redis api socket-server)
 
 for svc in "${services[@]}"; do
   echo "🔄 $svc..."
