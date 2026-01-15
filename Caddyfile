@@ -11,19 +11,27 @@
 # ============================================
 # API BACKEND
 # ============================================
-# NOTA: Usar o nome do serviço + rede overlay externa
-# Os serviços estão em: estacao-backend-network (rede externa compartilhada)
-# Docker Swarm resolve: <stack_name>_<service_name>.<network_name>
+# ✅ CORRETO: API está em estacao-backend-network (rede externa do Swarm)
+# Caddy (em docker-stack.caddy.yml) também está conectado nessa rede
+# Docker Swarm cria VIP automático resolvido pelo DNS interno
 api-prd.estacaoterapia.com.br {
 	reverse_proxy api:3333 {
+		# Testar saúde via /health endpoint
 		health_uri /health
-		health_interval 10s
-		health_timeout 5s
+		health_interval 15s
+		health_timeout 10s
+		health_status 200
 
 		transport http {
-			dial_timeout 10s
+			dial_timeout 15s
 			response_header_timeout 30s
+			read_timeout 30s
 		}
+
+		# Retry em caso de falha
+		policy random_selection
+		try_duration 10s
+		try_interval 250ms
 	}
 
 	header {
@@ -48,10 +56,30 @@ api-prd.estacaoterapia.com.br {
 # ============================================
 # WEBSOCKET
 # ============================================
-# NOTA: Usar o nome do serviço + rede overlay externa
-# Os serviços estão em: estacao-backend-network (rede externa compartilhada)
+# ✅ CORRETO: socket-server está em estacao-backend-network (rede externa do Swarm)
+# Caddy pode resolver 'socket-server' via DNS VIP do Docker Swarm
 ws.prd.estacaoterapia.com.br {
-	reverse_proxy socket-server:3334
+	reverse_proxy socket-server:3334 {
+		health_uri /health
+		health_interval 15s
+		health_timeout 10s
+		health_status 200
+
+		transport http {
+			dial_timeout 15s
+			response_header_timeout 30s
+			read_timeout 60s
+		}
+
+		# Importante para WebSockets
+		header_up Upgrade websocket
+		header_up Connection upgrade
+
+		# Retry
+		policy random_selection
+		try_duration 10s
+		try_interval 250ms
+	}
 
 	header {
 		Access-Control-Allow-Origin "https://estacaoterapia.com.br https://www.estacaoterapia.com.br"

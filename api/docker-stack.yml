@@ -15,7 +15,7 @@ networks:
     name: estacaoterapia_backend
     driver_opts:
       # ✅ Ativar DNS VIP (Virtual IP) para melhor resolução
-      com.docker.network.driver.overlay.vxlanid: "4096"
+      com.docker.network.driver.overlay.vxlanid: '4096'
       # ✅ Permitir acesso aos serviços via localhost (para debugging)
       # com.docker.network.driver.overlay.dvs: "true"
     ipam:
@@ -26,7 +26,7 @@ networks:
     external: false
     driver: overlay
     driver_opts:
-      com.docker.network.driver.overlay.vxlanid: "4097"
+      com.docker.network.driver.overlay.vxlanid: '4097'
     ipam:
       config:
         - subnet: 10.0.8.0/24
@@ -86,20 +86,37 @@ services:
         aliases:
           - redis
           - redis.estacaoterapia_backend
+
+    # Healthcheck corrigido com timeout maior
     healthcheck:
       test:
         - CMD-SHELL
-        - 'REDIS_PASS=$$(cat /run/secrets/redis_password) && if [ -n "$$REDIS_PASS" ]; then redis-cli -a "$$REDIS_PASS" --raw incr ping > /dev/null || exit 1; else redis-cli --raw incr ping > /dev/null || exit 1; fi'
+        - 'REDIS_PASS=$$(cat /run/secrets/redis_password 2>/dev/null || echo "") && if [ -n "$$REDIS_PASS" ]; then redis-cli -a "$$REDIS_PASS" ping > /dev/null 2>&1 || exit 1; else redis-cli ping > /dev/null 2>&1 || exit 1; fi'
       interval: 10s
-      timeout: 5s
-      retries: 5
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
     deploy:
       replicas: 1
       restart_policy:
         condition: on-failure
         delay: 5s
-        max_attempts: 3
+        max_attempts: 5
         window: 120s
+
+      # Garantir que Redis rode em nó manager com recursos suficientes
+      placement:
+        constraints:
+          - node.role == manager
+
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
 
   # =====================================
   # API NODE.JS – PRODUÇÃO
@@ -141,11 +158,13 @@ services:
       - /tmp
       - /app/data
 
+    # Healthcheck com timeout maior (Redis pode levar tempo para conectar)
     healthcheck:
       test: ['CMD', 'curl', '-f', 'http://localhost:3333/health']
-      interval: 10s
-      timeout: 5s
-      retries: 3
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
 
     deploy:
       replicas: 1
@@ -160,6 +179,10 @@ services:
         delay: 5s
         max_attempts: 3
         window: 120s
+
+      placement:
+        constraints:
+          - node.role == manager
 
     networks:
       - estacao-backend-network
@@ -212,13 +235,15 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: '6379'
       REDIS_DB: '1'
+      # ✅ Usar DNS do Swarm para resolver 'api' corretamente
       API_BASE_URL: 'http://api:3333'
 
     healthcheck:
       test: ['CMD', 'curl', '-f', 'http://localhost:3334/health']
-      interval: 10s
-      timeout: 5s
-      retries: 3
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
 
     deploy:
       replicas: 1
@@ -230,6 +255,13 @@ services:
         monitor: 5s
       restart_policy:
         condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+
+      placement:
+        constraints:
+          - node.role == manager
 
     networks:
       - estacao-backend-network
