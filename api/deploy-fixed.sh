@@ -35,6 +35,8 @@ echo "[INFO] Informacoes do Deploy:"
 echo "   - Tag: prd-$TAG"
 echo "   - Data: $(date '+%d/%m/%Y %H:%M:%S')"
 echo "   - Git: $GIT_HASH"
+echo "   - Clean deploy: ${CLEAN_DEPLOY:-false}"
+echo "   - Replace images: ${ALWAYS_REPLACE_IMAGE:-true}"
 
 # ==============================
 # 2. Validar pre-requisitos
@@ -97,6 +99,58 @@ fi
 echo "[OK] Todos os arquivos de secrets encontrados"
 
 echo "[OK] Pre-requisitos validados"
+
+# ==============================
+# 2.2 Capturar imagens atuais
+# ==============================
+get_current_image() {
+    local service_name="$1"
+    docker service inspect "$service_name" --format '{{.Spec.TaskTemplate.ContainerSpec.Image}}' 2>/dev/null | sed 's/@.*//' || true
+}
+
+OLD_API_IMAGE="$(get_current_image estacaoterapia_api)"
+OLD_SOCKET_IMAGE="$(get_current_image estacaoterapia_socket-server)"
+OLD_REDIS_IMAGE="$(get_current_image estacaoterapia_redis)"
+
+# ==============================
+# 2.1 Clean deploy (opcional)
+# ==============================
+if [ "${CLEAN_DEPLOY:-false}" = "true" ]; then
+    echo ""
+    echo "[CLEANUP] Clean deploy ativado - removendo stack atual..."
+
+    if docker stack ls --format '{{.Name}}' | grep -q "^estacaoterapia$"; then
+        docker stack rm estacaoterapia || true
+
+        # Aguarda remoção completa do stack
+        for i in $(seq 1 30); do
+            if ! docker stack ls --format '{{.Name}}' | grep -q "^estacaoterapia$"; then
+                echo "   [OK] Stack removido"
+                break
+            fi
+            echo "   [WAIT] Remoção do stack... ($i/30)"
+            sleep 2
+        done
+    else
+        echo "   [INFO] Stack estacaoterapia não encontrado"
+    fi
+
+    echo "[CLEANUP] Removendo imagens antigas (api/socket/redis)..."
+    for repo in estacaoterapia-api estacaoterapia-socket-server estacaoterapia-redis; do
+        IMAGES_TO_REMOVE=$(docker images "$repo" --format "{{.Repository}}:{{.Tag}}" 2>/dev/null || true)
+        if [ -n "$IMAGES_TO_REMOVE" ]; then
+            echo "$IMAGES_TO_REMOVE" | while read -r img; do
+                if [ -n "$img" ]; then
+                    echo "   [REMOVE] $img"
+                    docker rmi -f "$img" 2>/dev/null || echo "      [WARN] Nao foi possivel remover"
+                fi
+            done
+        fi
+    done
+
+    docker container prune -f >/dev/null 2>&1 || true
+    docker network prune -f >/dev/null 2>&1 || true
+fi
 
 # ==============================
 # 3. Criar/Atualizar Secrets
@@ -383,6 +437,29 @@ ensure_service_image "estacaoterapia_socket-server" "estacaoterapia-socket-serve
 ensure_service_image "estacaoterapia_redis" "estacaoterapia-redis:prd-${TAG}"
 
 # ==============================
+# 9.2 Remover imagens antigas (forcado)
+# ==============================
+if [ "${ALWAYS_REPLACE_IMAGE:-true}" = "true" ]; then
+    echo ""
+    echo "[INFO] Removendo imagens anteriores após update..."
+
+    if [ -n "$OLD_API_IMAGE" ] && [ "$OLD_API_IMAGE" != "estacaoterapia-api:prd-${TAG}" ]; then
+        echo "   [DELETE] $OLD_API_IMAGE"
+        docker rmi "$OLD_API_IMAGE" 2>/dev/null || echo "      [WARN] Nao foi possivel remover"
+    fi
+
+    if [ -n "$OLD_SOCKET_IMAGE" ] && [ "$OLD_SOCKET_IMAGE" != "estacaoterapia-socket-server:prd-${TAG}" ]; then
+        echo "   [DELETE] $OLD_SOCKET_IMAGE"
+        docker rmi "$OLD_SOCKET_IMAGE" 2>/dev/null || echo "      [WARN] Nao foi possivel remover"
+    fi
+
+    if [ -n "$OLD_REDIS_IMAGE" ] && [ "$OLD_REDIS_IMAGE" != "estacaoterapia-redis:prd-${TAG}" ]; then
+        echo "   [DELETE] $OLD_REDIS_IMAGE"
+        docker rmi "$OLD_REDIS_IMAGE" 2>/dev/null || echo "      [WARN] Nao foi possivel remover"
+    fi
+fi
+
+# ==============================
 # AGUARDAR CONVERGENCIA E SAUDE
 # ==============================
 echo ""
@@ -654,7 +731,10 @@ fi
 echo ""
 echo "[CLEANUP] Limpando imagens antigas..."
 
-# Encontrar imagens do estacaoterapia que NAO sao a atual
+# Imagens atualmente em uso pelos serviços do stack
+IN_USE_IMAGES=$(docker service ls --filter "label=com.docker.stack.namespace=estacaoterapia" --format "{{.Name}}" | xargs -r docker service inspect --format '{{.Spec.TaskTemplate.ContainerSpec.Image}}' 2>/dev/null | sed 's/@.*//' | sort -u || true)
+
+# Encontrar imagens antigas (exceto a tag atual e imagens em uso)
 OLD_REDIS_IMAGES=$(docker images --filter "reference=estacaoterapia-redis:prd-*" --format "{{.Repository}}:{{.Tag}}" | grep -v "prd-${TAG}$" || true)
 OLD_API_IMAGES=$(docker images --filter "reference=estacaoterapia-api:prd-*" --format "{{.Repository}}:{{.Tag}}" | grep -v "prd-${TAG}$" || true)
 OLD_SOCKET_IMAGES=$(docker images --filter "reference=estacaoterapia-socket-server:prd-*" --format "{{.Repository}}:{{.Tag}}" | grep -v "prd-${TAG}$" || true)
@@ -665,8 +745,12 @@ REMOVED_COUNT=0
 if [ -n "$OLD_REDIS_IMAGES" ]; then
     echo "$OLD_REDIS_IMAGES" | while read -r old_image; do
         if [ -n "$old_image" ]; then
-            echo "   [DELETE] Removendo: $old_image"
-            docker rmi "$old_image" 2>/dev/null || echo "      [WARN] Nao foi possivel remover (em uso)"
+            if echo "$IN_USE_IMAGES" | grep -q "^${old_image}$"; then
+                echo "   [SKIP] $old_image (em uso por serviço)"
+            else
+                echo "   [DELETE] Removendo: $old_image"
+                docker rmi "$old_image" 2>/dev/null || echo "      [WARN] Nao foi possivel remover (em uso)"
+            fi
         fi
     done
 fi
@@ -675,8 +759,12 @@ fi
 if [ -n "$OLD_API_IMAGES" ]; then
     echo "$OLD_API_IMAGES" | while read -r old_image; do
         if [ -n "$old_image" ]; then
-            echo "   [DELETE] Removendo: $old_image"
-            docker rmi "$old_image" 2>/dev/null || echo "      [WARN] Nao foi possivel remover (em uso)"
+            if echo "$IN_USE_IMAGES" | grep -q "^${old_image}$"; then
+                echo "   [SKIP] $old_image (em uso por serviço)"
+            else
+                echo "   [DELETE] Removendo: $old_image"
+                docker rmi "$old_image" 2>/dev/null || echo "      [WARN] Nao foi possivel remover (em uso)"
+            fi
         fi
     done
 fi
@@ -685,8 +773,12 @@ fi
 if [ -n "$OLD_SOCKET_IMAGES" ]; then
     echo "$OLD_SOCKET_IMAGES" | while read -r old_image; do
         if [ -n "$old_image" ]; then
-            echo "   [DELETE] Removendo: $old_image"
-            docker rmi "$old_image" 2>/dev/null || echo "      [WARN] Nao foi possivel remover (em uso)"
+            if echo "$IN_USE_IMAGES" | grep -q "^${old_image}$"; then
+                echo "   [SKIP] $old_image (em uso por serviço)"
+            else
+                echo "   [DELETE] Removendo: $old_image"
+                docker rmi "$old_image" 2>/dev/null || echo "      [WARN] Nao foi possivel remover (em uso)"
+            fi
         fi
     done
 fi
