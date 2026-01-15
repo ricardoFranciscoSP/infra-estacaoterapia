@@ -118,7 +118,7 @@ ws.prd.estacaoterapia.com.br {
 # FRONTEND (Next.js)
 # ============================================
 estacaoterapia.com.br, www.estacaoterapia.com.br {
-	reverse_proxy estacao_next_prd:3001 {
+	reverse_proxy estacao_estacao_next_prd:3001 {
 		transport http {
 			dial_timeout 10s
 			response_header_timeout 30s

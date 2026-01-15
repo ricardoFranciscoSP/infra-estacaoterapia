@@ -4,12 +4,7 @@
 # ============================================
 
 networks:
-  # Rede externa (usada pelo Caddy se estiver em outro stack ou no host)
-  estacao-backend-network:
-    external: true
-    name: estacao-backend-network
-
-  # Rede interna overlay para comunicação segura entre serviços
+  # Rede overlay única para comunicação entre serviços
   estacaoterapia_backend:
     external: false
     driver: overlay
@@ -19,16 +14,6 @@ networks:
     ipam:
       config:
         - subnet: 10.0.9.0/24
-
-  # Outra rede overlay (opcional, mantida conforme seu uso)
-  estacao-network:
-    external: false
-    driver: overlay
-    driver_opts:
-      com.docker.network.driver.overlay.vxlanid: '4097'
-    ipam:
-      config:
-        - subnet: 10.0.8.0/24
 
 services:
   # =====================================
@@ -43,9 +28,6 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
-      estacao-backend-network:
-        aliases:
-          - postgres
       estacaoterapia_backend:
         aliases:
           - postgres
@@ -78,9 +60,6 @@ services:
     volumes:
       - redis_data:/data
     networks:
-      estacao-backend-network:
-        aliases:
-          - redis
       estacaoterapia_backend:
         aliases:
           - redis
@@ -125,9 +104,9 @@ services:
     environment:
       NODE_ENV: production
       NODE_OPTIONS: '--max-old-space-size=2048'
-      PG_HOST: pgbouncer
+      PG_HOST: estacaoterapia_pgbouncer
       PG_PORT: '6432'
-      REDIS_HOST: redis
+      REDIS_HOST: estacaoterapia_redis
       REDIS_PORT: '6379'
       REDIS_DB: '1'
     volumes:
@@ -170,10 +149,6 @@ services:
         constraints:
           - node.role == manager
     networks:
-      estacao-backend-network:
-        aliases:
-          - estacaoterapia_api
-          - api
       estacaoterapia_backend:
         aliases:
           - estacaoterapia_api
@@ -194,9 +169,6 @@ services:
       restart_policy:
         condition: on-failure
     networks:
-      estacao-backend-network:
-        aliases:
-          - pgbouncer
       estacaoterapia_backend:
         aliases:
           - pgbouncer
@@ -218,13 +190,13 @@ services:
       PORT: '3334'
       SOCKET_SERVER: 'true'
       SERVER_TYPE: socket
-      PG_HOST: pgbouncer
+      PG_HOST: estacaoterapia_pgbouncer
       PG_PORT: '6432'
-      REDIS_HOST: redis
+      REDIS_HOST: estacaoterapia_redis
       REDIS_PORT: '6379'
       REDIS_DB: '1'
       # ✅ Usa o nome do serviço diretamente (resolvido via DNS interno do Swarm)
-      API_BASE_URL: 'http://api:3333'
+      API_BASE_URL: 'http://estacaoterapia_api:3333'
     healthcheck:
       test: ['CMD', 'curl', '-f', 'http://localhost:3334/health']
       interval: 15s
@@ -248,11 +220,6 @@ services:
         constraints:
           - node.role == manager
     networks:
-      estacao-backend-network:
-        aliases:
-          - socket-server
-          - estacaoterapia_socket-server
-          - ws
       estacaoterapia_backend:
         aliases:
           - socket-server
