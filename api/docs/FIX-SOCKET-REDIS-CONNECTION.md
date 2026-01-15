@@ -6,6 +6,7 @@
 ## 🔍 Diagnóstico
 
 ### Sintomas
+
 Os logs mostravam que o socket estava iniciando corretamente, carregando os secrets e exibindo as variáveis de ambiente, mas após a mensagem "🔎 Checando Redis..." o processo travava e não conseguia conectar.
 
 ```bash
@@ -14,14 +15,17 @@ estacaoterapia_socket-server.1.xxx | 🔎 Checando Redis...
 ```
 
 ### Causa Raiz
+
 O problema tinha **duas causas principais**:
 
 1. **Nome do host incorreto no secret `estacao_socket.env`:**
+
    - O secret continha `REDIS_HOST=estacao_terapia_redis_prd`
    - Mas o serviço Redis no `docker-stack.yml` se chama apenas **`redis`**
    - Logo, o DNS do Docker Swarm não conseguia resolver o host
 
 2. **Variável não sobrescrita no docker-stack.yml:**
+
    - O serviço `socket-server` não tinha `REDIS_HOST` nas variáveis de ambiente
    - Isso fazia com que o valor do secret (incorreto) fosse usado
    - A API funcionava porque tinha `REDIS_HOST: redis` explícito no yml
@@ -33,6 +37,7 @@ O problema tinha **duas causas principais**:
 ## ✅ Soluções Aplicadas
 
 ### 1. Adicionar REDIS_HOST no docker-stack.yml
+
 **Arquivo:** [`docker-stack.yml`](../docker-stack.yml)
 
 Adicionadas variáveis de ambiente para o serviço `socket-server`:
@@ -46,15 +51,16 @@ socket-server:
     SERVER_TYPE: socket
     PG_HOST: pgbouncer
     PG_PORT: '6432'
-    REDIS_HOST: redis          # ✅ ADICIONADO
-    REDIS_PORT: '6379'         # ✅ ADICIONADO
-    REDIS_DB: '1'              # ✅ ADICIONADO
-    API_BASE_URL: 'http://api:3333'
+    REDIS_HOST: redis # ✅ ADICIONADO
+    REDIS_PORT: '6379' # ✅ ADICIONADO
+    REDIS_DB: '1' # ✅ ADICIONADO
+    API_BASE_URL: 'http://estacaoterapia_api:3333'
 ```
 
 **Por quê?** Variáveis de ambiente definidas no `docker-stack.yml` têm prioridade sobre as carregadas do secret. Isso garante que o socket sempre use o host correto (`redis`), mesmo que o secret esteja desatualizado.
 
 ### 2. Corrigir exemplo estacao-socket.env.example
+
 **Arquivo:** [`estacao-socket.env.example`](../estacao-socket.env.example)
 
 Correções aplicadas:
@@ -71,12 +77,14 @@ REDIS_URL=redis://:SUA_SENHA_REDIS_AQUI@redis:6379/1     # ✅ Placeholder de se
 REDIS_PASSWORD=SUA_SENHA_REDIS_AQUI                      # ✅ Placeholder de senha
 ```
 
-**Por quê?** 
+**Por quê?**
+
 - Garante que novos deployments usem o host correto
 - Remove credenciais reais do exemplo (segurança)
 - Documenta qual é o nome correto do serviço
 
 ### 3. Adicionar candidatos corretos no entrypoint.sh
+
 **Arquivo:** [`entrypoint.sh`](../entrypoint.sh)
 
 Adicionados `redis` e `tasks.redis` na lista de hosts candidatos:
@@ -89,7 +97,8 @@ for candidate in "$REDIS_HOST" "tasks.$REDIS_HOST" "estacaoterapia_redis" "tasks
 for candidate in "$REDIS_HOST" "tasks.$REDIS_HOST" "redis" "tasks.redis" "estacaoterapia_redis" "tasks.estacaoterapia_redis"; do
 ```
 
-**Por quê?** 
+**Por quê?**
+
 - Mesmo que o secret tenha o host errado, o entrypoint.sh consegue encontrar o Redis tentando os nomes corretos
 - Adiciona uma camada extra de resiliência ao processo de descoberta de serviços
 - Funciona como fallback se algo der errado com as variáveis
@@ -153,11 +162,11 @@ docker exec -it $(docker ps -qf name=socket-server) sh -c 'netstat -an | grep 63
 
 ## 🎯 Resumo das Mudanças
 
-| Arquivo | Mudança | Motivo |
-|---------|---------|--------|
-| `docker-stack.yml` | Adicionado `REDIS_HOST: redis` no socket-server | Sobrescreve valor incorreto do secret |
-| `estacao-socket.env.example` | Corrigido host de `estacao_redis_prd` para `redis` | Documenta nome correto do serviço |
-| `entrypoint.sh` | Adicionados `redis` e `tasks.redis` nos candidatos | Fallback caso secret tenha host errado |
+| Arquivo                      | Mudança                                            | Motivo                                 |
+| ---------------------------- | -------------------------------------------------- | -------------------------------------- |
+| `docker-stack.yml`           | Adicionado `REDIS_HOST: redis` no socket-server    | Sobrescreve valor incorreto do secret  |
+| `estacao-socket.env.example` | Corrigido host de `estacao_redis_prd` para `redis` | Documenta nome correto do serviço      |
+| `entrypoint.sh`              | Adicionados `redis` e `tasks.redis` nos candidatos | Fallback caso secret tenha host errado |
 
 ## 🔐 Segurança
 

@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 # ============================================
 # ESTAÇÃO TERAPIA - STACK COMPLETA
@@ -30,7 +30,7 @@ services:
     image: postgres:16-alpine
     container_name: estacao-postgres
     restart: unless-stopped
-    
+
     env_file:
       - .env
     environment:
@@ -38,19 +38,23 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB:-estacaoterapia}
       PGDATA: /var/lib/postgresql/data/pgdata
-    
+
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    
+
     networks:
       - estacao-network
-    
+
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-estacaoterapia} -d ${POSTGRES_DB:-estacaoterapia}"]
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-estacaoterapia} -d ${POSTGRES_DB:-estacaoterapia}",
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
-    
+
     command:
       - "postgres"
       - "-c"
@@ -85,10 +89,10 @@ services:
       - "max_parallel_workers=4"
       - "-c"
       - "max_parallel_maintenance_workers=2"
-    
+
     security_opt:
       - no-new-privileges:true
-    
+
     read_only: false
     tmpfs:
       - /tmp
@@ -101,7 +105,7 @@ services:
     image: redis:7-alpine
     container_name: estacao-redis
     restart: unless-stopped
-    
+
     env_file:
       - .env
     command:
@@ -128,22 +132,22 @@ services:
       - "300"
       - --tcp-keepalive
       - "300"
-    
+
     volumes:
       - redis_data:/data
-    
+
     networks:
       - estacao-network
-    
+
     healthcheck:
       test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
       interval: 10s
       timeout: 3s
       retries: 5
-    
+
     security_opt:
       - no-new-privileges:true
-    
+
     read_only: false
     tmpfs:
       - /tmp
@@ -155,7 +159,7 @@ services:
     image: edoburu/pgbouncer:latest
     container_name: estacao-pgbouncer
     restart: unless-stopped
-    
+
     env_file:
       - .env
     environment:
@@ -174,20 +178,24 @@ services:
       PGBOUNCER_MAX_USER_CONNECTIONS: 0
       PGBOUNCER_STATS_USERS: stats
       PGBOUNCER_IGNORE_STARTUP_PARAMETERS: extra_float_digits
-    
+
     networks:
       - estacao-network
-    
+
     depends_on:
       postgres:
         condition: service_healthy
-    
+
     healthcheck:
-      test: ["CMD-SHELL", "psql -h localhost -U pgbouncer -d pgbouncer -c 'SELECT 1' || exit 1"]
+      test:
+        [
+          "CMD-SHELL",
+          "psql -h localhost -U pgbouncer -d pgbouncer -c 'SELECT 1' || exit 1",
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
-    
+
     security_opt:
       - no-new-privileges:true
 
@@ -198,31 +206,39 @@ services:
     image: caddy:2-alpine
     container_name: estacao-caddy
     restart: unless-stopped
-    
+
     ports:
       - "80:80"
       - "443:443"
       - "443:443/udp"
-    
+
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
-    
+
     networks:
       - estacao-network
-    
+
     depends_on:
       - api
       - socket-server
       - frontend
-    
+
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:2019/config/"]
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:2019/config/",
+        ]
       interval: 10s
       timeout: 5s
       retries: 3
-    
+
     security_opt:
       - no-new-privileges:true
 
@@ -235,38 +251,38 @@ services:
       dockerfile: Dockerfile.api
     container_name: estacao-api
     restart: unless-stopped
-    
+
     env_file:
       - .env
     environment:
       NODE_ENV: production
       NODE_OPTIONS: --max-old-space-size=2048
       PORT: 3333
-      
+
       # PostgreSQL via PgBouncer
       PG_HOST: ${PG_HOST:-pgbouncer}
       PG_PORT: ${PG_PORT:-6432}
       POSTGRES_USER: ${POSTGRES_USER:-estacaoterapia}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB:-estacaoterapia}
-      
+
       # Redis
       REDIS_HOST: ${REDIS_HOST:-redis}
       REDIS_PORT: ${REDIS_PORT:-6379}
       REDIS_DB: ${REDIS_DB:-1}
       REDIS_PASSWORD: ${REDIS_PASSWORD}
       REDIS_URL: ${REDIS_URL:-redis://:${REDIS_PASSWORD}@${REDIS_HOST:-redis}:${REDIS_PORT:-6379}/${REDIS_DB:-1}}
-    
+
     volumes:
       - documentos_data:/app/documentos
-    
+
     tmpfs:
       - /tmp
       - /app/data
-    
+
     networks:
       - estacao-network
-    
+
     depends_on:
       postgres:
         condition: service_healthy
@@ -274,17 +290,17 @@ services:
         condition: service_healthy
       pgbouncer:
         condition: service_healthy
-    
+
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3333/health"]
       interval: 10s
       timeout: 5s
       retries: 3
       start_period: 30s
-    
+
     security_opt:
       - no-new-privileges:true
-    
+
     read_only: true
     user: "997:1001"
 
@@ -297,7 +313,7 @@ services:
       dockerfile: Dockerfile.socket
     container_name: estacao-socket
     restart: unless-stopped
-    
+
     env_file:
       - .env
     environment:
@@ -305,30 +321,30 @@ services:
       PORT: 3334
       SOCKET_SERVER: "true"
       SERVER_TYPE: socket
-      
+
       # PostgreSQL via PgBouncer
       PG_HOST: ${PG_HOST:-pgbouncer}
       PG_PORT: ${PG_PORT:-6432}
       POSTGRES_USER: ${POSTGRES_USER:-estacaoterapia}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB:-estacaoterapia}
-      
+
       # Redis
       REDIS_HOST: ${REDIS_HOST:-redis}
       REDIS_PORT: ${REDIS_PORT:-6379}
       REDIS_DB: ${REDIS_DB:-1}
       REDIS_PASSWORD: ${REDIS_PASSWORD}
       REDIS_URL: ${REDIS_URL:-redis://:${REDIS_PASSWORD}@${REDIS_HOST:-redis}:${REDIS_PORT:-6379}/${REDIS_DB:-1}}
-      
+
       # API
-      API_BASE_URL: http://api:3333
-      
+      API_BASE_URL: http://estacaoterapia_api:3333
+
       # CORS
       CORS_ORIGIN: https://estacaoterapia.com.br,https://www.estacaoterapia.com.br
-    
+
     networks:
       - estacao-network
-    
+
     depends_on:
       postgres:
         condition: service_healthy
@@ -338,17 +354,17 @@ services:
         condition: service_healthy
       api:
         condition: service_healthy
-    
+
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3334/health"]
       interval: 10s
       timeout: 5s
       retries: 3
       start_period: 30s
-    
+
     security_opt:
       - no-new-privileges:true
-    
+
     read_only: true
     tmpfs:
       - /tmp
@@ -368,7 +384,7 @@ services:
         NEXT_PUBLIC_SOCKET_URL: https://ws.prd.estacaoterapia.com.br
     container_name: estacao-frontend
     restart: unless-stopped
-    
+
     environment:
       NODE_ENV: production
       PORT: 3001
@@ -377,24 +393,24 @@ services:
       NEXT_PUBLIC_API_URL: https://api-prd.estacaoterapia.com.br
       NEXT_PUBLIC_WEBSITE_URL: https://estacaoterapia.com.br
       NEXT_PUBLIC_SOCKET_URL: https://ws.prd.estacaoterapia.com.br
-    
+
     networks:
       - estacao-network
-    
+
     depends_on:
       - api
       - socket-server
-    
+
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:3001/"]
       interval: 10s
       timeout: 5s
       retries: 3
       start_period: 60s
-    
+
     security_opt:
       - no-new-privileges:true
-    
+
     read_only: true
     tmpfs:
       - /tmp
