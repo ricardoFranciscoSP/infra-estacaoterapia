@@ -1,65 +1,48 @@
-#!/bin/sh
-set -e
+#!/bin/bash
+set -euo pipefail
 
-echo "🔐 Carregando secrets do PostgreSQL..."
+echo "🐘 [PG] PostgreSQL Swarm EntryPoint"
 
-# Carrega variáveis do arquivo postgres_env (Docker Swarm secret)
+# 🔧 Carrega secrets
 if [ -f /run/secrets/postgres_env ]; then
-    echo "📄 Lendo /run/secrets/postgres_env..."
-    while IFS= read -r line || [ -n "$line" ]; do
-        # Pular linhas vazias e comentários
-        case "$line" in
-            ''|\#*) continue ;;
-        esac
-        # Exportar variável
-        export "$line"
-    done < /run/secrets/postgres_env
-    echo "✓ Variáveis carregadas do postgres_env"
+  echo "🔐 Lendo secrets..."
+  export $(xargs < /run/secrets/postgres_env)
 else
-    echo "❌ ERRO: /run/secrets/postgres_env não encontrado!"
-    exit 1
+  echo "❌ /run/secrets/postgres_env ausente"
+  exit 1
 fi
 
-# Validar variáveis obrigatórias
-if [ -z "$POSTGRES_USER" ]; then
-    echo "❌ ERRO: POSTGRES_USER não está definido!"
-    exit 1
-fi
+# 🔧 Valida vars
+: "${POSTGRES_USER:?POSTGRES_USER requerido}"
+: "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD requerido}"
+: "${POSTGRES_DB:?POSTGRES_DB requerido}"
 
-if [ -z "$POSTGRES_PASSWORD" ]; then
-    echo "❌ ERRO: POSTGRES_PASSWORD não está definido!"
-    exit 1
-fi
+echo "👤 $POSTGRES_USER | $POSTGRES_DB | PGDATA=${PGDATA:-/var/lib/postgresql/data/pgdata}"
 
-if [ -z "$POSTGRES_DB" ]; then
-    echo "❌ ERRO: POSTGRES_DB não está definido!"
-    exit 1
-fi
+# 🔧 Cria DB se não existe
+until PGPASSWORD="$POSTGRES_PASSWORD" createdb -U "$POSTGRES_USER" "$POSTGRES_DB" 2>/dev/null || true; do
+  echo "⏳ Aguardando PG inicial..."
+  sleep 2
+done
 
-echo ""
-echo "📋 Credenciais verificadas:"
-echo "   • Usuário: $POSTGRES_USER"
-echo "   • Banco: $POSTGRES_DB"
-echo "   • PGDATA: ${PGDATA:-/var/lib/postgresql/data/pgdata}"
-echo ""
-echo "🚀 Iniciando PostgreSQL..."
-echo ""
+echo "✅ DB '$POSTGRES_DB' pronto"
 
-# Executar comando original do postgres com argumentos de performance
+# 🔧 Performance VPS/Swarm (PgBouncer compatível)
 exec docker-entrypoint.sh postgres \
-  -c max_connections=200 \
-  -c shared_buffers=256MB \
-  -c effective_cache_size=1GB \
+  -c config_file=/etc/postgresql/postgresql.conf \
+  -c max_connections=150 \
+  -c shared_buffers=128MB \
+  -c effective_cache_size=512MB \
   -c maintenance_work_mem=64MB \
   -c checkpoint_completion_target=0.9 \
-  -c wal_buffers=16MB \
+  -c wal_buffers=-1 \
   -c default_statistics_target=100 \
   -c random_page_cost=1.1 \
-  -c effective_io_concurrency=200 \
-  -c work_mem=4MB \
-  -c min_wal_size=1GB \
-  -c max_wal_size=4GB \
-  -c max_worker_processes=4 \
-  -c max_parallel_workers_per_gather=2 \
-  -c max_parallel_workers=4 \
-  -c max_parallel_maintenance_workers=2 
+  -c work_mem=2MB \
+  -c min_wal_size=512MB \
+  -c max_wal_size=2GB \
+  -c max_worker_processes=3 \
+  -c max_parallel_workers=3 \
+  -c log_min_duration_statement=1000 \
+  -c log_statement=all \
+  -c log_destination=stderr

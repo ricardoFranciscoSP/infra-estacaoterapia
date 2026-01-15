@@ -1,23 +1,32 @@
-FROM alpine:3.20
+FROM edoburu/pgbouncer:latest
 
-# Instalar PgBouncer e dependências
+# 🔧 Labels + security
+LABEL maintainer="estacaoterapia@team" \
+    org.opencontainers.image.description="PgBouncer Swarm proxy para PostgreSQL"
+
+# 🔧 Tools para healthcheck + debug
+USER root
 RUN apk add --no-cache \
-    pgbouncer \
-    postgresql-client \
+    bash \
     netcat-openbsd \
     curl \
-    ca-certificates \
-    bash
+    postgresql-client \
+    && update-ca-certificates \
+    && rm -rf /var/cache/apk/*
 
-# Criar diretório de configuração
-RUN mkdir -p /etc/pgbouncer && \
-    chmod 755 /etc/pgbouncer
+# 🔧 Config dir + perms
+RUN mkdir -p /etc/pgbouncer /run/pgbouncer \
+    && chmod 755 /etc/pgbouncer /run/pgbouncer
 
-# Health check
-HEALTHCHECK --interval=10s --timeout=5s --retries=3 \
-    CMD nc -z localhost 6432 || exit 1
+# 🔧 Secrets mount (stack.yml)
+VOLUME ["/etc/pgbouncer"]
+
+# 🔧 Healthcheck robusto (conecta PG real)
+HEALTHCHECK --interval=10s --timeout=5s --start-period=20s --retries=5 \
+    CMD pg_isready -h localhost -p 6432 -U postgres || exit 1
 
 EXPOSE 6432
+USER pgbouncer
 
 ENTRYPOINT ["pgbouncer"]
 CMD ["/etc/pgbouncer/pgbouncer.ini"]

@@ -5,26 +5,21 @@ FROM node:22-alpine AS deps
 
 WORKDIR /app
 
+# 🔧 DNS Swarm + tools mínimos
 ENV NODE_OPTIONS=--dns-result-order=ipv4first
+RUN apk add --no-cache openssl bash
 
-# Dependências de build
-RUN apk add --no-cache openssl
-
-# Copia apenas arquivos necessários para cache
+# Cache deps + Prisma
 COPY package.json yarn.lock* package-lock.json* ./
-COPY prisma ./prisma
+COPY prisma ./prisma/
 COPY prisma.config.ts ./
 
-# Instala TODAS as deps (build precisa das dev)
-RUN echo "[BUILD SOCKET] Detectando gerenciador de pacotes..." && \
+RUN echo "[SOCKET] Deps..." && \
     if [ -f yarn.lock ]; then \
-    echo "[BUILD SOCKET] Usando Yarn (yarn.lock encontrado)" && \
     yarn install --frozen-lockfile --non-interactive; \
     elif [ -f package-lock.json ]; then \
-    echo "[BUILD SOCKET] Usando NPM (package-lock.json encontrado)" && \
     npm ci --prefer-offline --no-audit; \
     else \
-    echo "[BUILD SOCKET] Nenhum lock file encontrado, usando npm install" && \
     npm install --prefer-offline --no-audit; \
     fi
 
@@ -34,37 +29,24 @@ RUN echo "[BUILD SOCKET] Detectando gerenciador de pacotes..." && \
 FROM node:22-alpine AS builder
 
 WORKDIR /app
-
 ENV NODE_OPTIONS=--dns-result-order=ipv4first
 
 COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/package.json ./
-COPY --from=deps /app/yarn.lock* ./
-COPY --from=deps /app/package-lock.json* ./
 COPY --from=deps /app/prisma ./prisma
 COPY --from=deps /app/prisma.config.ts ./
 
-# Copia código-fonte
+# Código fonte mínimo
 COPY tsconfig.json ./
 COPY scripts ./scripts
 COPY src ./src
+COPY package.json ./
 
-# Gera Prisma Client
-RUN npx prisma generate
+RUN npx prisma generate \
+    && (yarn tsc || npm run build || npx tsc)
 
-# Build do projeto
-RUN echo "[BUILD SOCKET] Compilando TypeScript..." && \
-    if [ -f yarn.lock ]; then \
-    yarn tsc; \
-    else \
-    npm run build || npx tsc; \
-    fi
-
-# Copia templates manualmente
-RUN mkdir -p /app/dist/templates && \
-    if [ -d /app/src/templates ]; then \
-    cp -r /app/src/templates/. /app/dist/templates/; \
-    fi
+# Templates
+RUN mkdir -p /app/dist/templates \
+    && cp -r /app/src/templates/. /app/dist/templates/ 2>/dev/null || true
 
 # ===============================
 # ETAPA 3 — PROD DEPS
@@ -72,64 +54,62 @@ RUN mkdir -p /app/dist/templates && \
 FROM node:22-alpine AS prod-deps
 
 WORKDIR /app
-
 ENV NODE_OPTIONS=--dns-result-order=ipv4first
 
-RUN apk add --no-cache openssl
-
 COPY package.json yarn.lock* package-lock.json* ./
-COPY prisma ./prisma
+COPY prisma ./prisma/
 COPY prisma.config.ts ./
 
-# Apenas dependências de produção
-RUN echo "[BUILD SOCKET] Instalando dependências de produção..." && \
+RUN echo "[SOCKET] Prod deps..." && \
     if [ -f yarn.lock ]; then \
-    echo "[BUILD SOCKET] Usando Yarn" && \
-    yarn install --production --frozen-lockfile --non-interactive && \
-    yarn prisma generate; \
+    yarn install --production --frozen-lockfile --non-interactive \
+    && yarn prisma generate; \
     elif [ -f package-lock.json ]; then \
-    echo "[BUILD SOCKET] Usando NPM" && \
-    npm ci --only=production --prefer-offline --no-audit && \
-    npx prisma generate; \
+    npm ci --only=production --prefer-offline --no-audit \
+    && npx prisma generate; \
     else \
-    echo "[BUILD SOCKET] Usando npm install" && \
-    npm install --only=production --prefer-offline --no-audit && \
-    npx prisma generate; \
+    npm install --only=production --prefer-offline --no-audit \
+    && npx prisma generate; \
     fi
 
 # ===============================
-# ETAPA 4 — RUNNER PRD
+# ETAPA 4 — RUNNER PRD (Swarm)
 # ===============================
 FROM node:22-alpine AS runner
 
 WORKDIR /app
 
-ENV NODE_ENV=production
-ENV NODE_OPTIONS=--dns-result-order=ipv4first
+# 🔧 Prod + Swarm networking
+ENV NODE_ENV=production \
+    NODE_OPTIONS="--dns-result-order=ipv4first"
 
-# Pacotes mínimos de runtime
+# 🔧 Tools para nc API/Redis + healthcheck
 RUN apk add --no-cache \
     bash \
     ca-certificates \
     curl \
     netcat-openbsd \
-    && update-ca-certificates
+    postgresql-client \
+    && update-ca-certificates \
+    && rm -rf /var/cache/apk/*
 
-# Criar /tmp com permissão 1777 (necessário para read_only: true + tmpfs)
-RUN mkdir -p /tmp && chmod 1777 /tmp
+# 🔧 tmpfs + secrets
+RUN mkdir -p /tmp /run && chmod 1777 /tmp /run
 
-# Copia entrypoint
+# Entrypoint
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
-# Copia artefatos do builder e deps
-COPY --from=builder /app/dist ./dist
-COPY --from=prod-deps /app/node_modules ./node_modules
-COPY --from=builder /app/prisma ./prisma
-COPY package.json ./
-COPY prisma.config.ts ./
+# 🔧 Copy seguro (chown para stack.yml user)
+COPY --from=builder --chown=997:1001 /app/dist ./dist
+COPY --from=prod-deps --chown=997:1001 /app/node_modules ./node_modules
+COPY --from=builder --chown=997:1001 /app/prisma ./prisma
+COPY --chown=997:1001 package.json prisma.config.ts ./
 
-# Não definir USER - será definido no docker-stack.yml via user: '997:1001'
+# 🔧 Socket server ports
+EXPOSE 3334
+HEALTHCHECK --interval=20s --timeout=10s --start-period=90s --retries=3 \
+    CMD curl -f http://localhost:3334/health || exit 1
 
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["node", "dist/socket/server.js"]

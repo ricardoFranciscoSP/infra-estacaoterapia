@@ -1,15 +1,30 @@
 FROM redis:7-alpine
 
-# Instalar dos2unix para garantir line endings corretos
-RUN apk add --no-cache dos2unix
+# 🔧 Labels + healthcheck metadata
+LABEL maintainer="estacaoterapia@team" \
+    org.opencontainers.image.description="Redis Swarm com auth secrets"
 
-# Copiar script de entrypoint customizado
+# 🔧 Tools mínimos (bash para secrets, nc para healthcheck)
+RUN apk add --no-cache \
+    bash \
+    dos2unix \
+    netcat-openbsd \
+    && update-ca-certificates
+
+# 🔧 Copy + fix line endings
 COPY redis-entrypoint.sh /usr/local/bin/redis-entrypoint.sh
+RUN dos2unix /usr/local/bin/redis-entrypoint.sh \
+    && chmod +x /usr/local/bin/redis-entrypoint.sh
 
-# Garantir line endings Unix e permissões corretas
-RUN dos2unix /usr/local/bin/redis-entrypoint.sh && \
-    chmod +x /usr/local/bin/redis-entrypoint.sh && \
-    apk del dos2unix
+# 🔧 Cleanup (image ~25MB)
+RUN apk del dos2unix \
+    && rm -rf /var/cache/apk/*
 
-# Usar o entrypoint customizado
+# 🔧 Expose + Healthcheck Swarm-ready
+EXPOSE 6379
+HEALTHCHECK --interval=10s --timeout=5s --start-period=20s --retries=5 \
+    CMD bash -c "REDIS_PASS=$$(cat /run/secrets/redis_password 2>/dev/null || echo '') && \
+    [ -n '$$REDIS_PASS' ] && redis-cli -a '$$REDIS_PASS' ping || redis-cli ping" || exit 1
+
 ENTRYPOINT ["/usr/local/bin/redis-entrypoint.sh"]
+CMD ["redis-server", "--protected-mode", "no"]

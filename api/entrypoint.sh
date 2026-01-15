@@ -30,22 +30,23 @@ load_secrets() {
 }
 
 # =========================
-# Função retry
+# Função retry com timeout
 # =========================
 retry() {
   local n=0
-  local max="${RETRY_MAX_ATTEMPTS:-30}"
-  local delay="${RETRY_DELAY:-2}"
+  local max="${RETRY_MAX_ATTEMPTS:-10}"
+  local delay="${RETRY_DELAY:-1}"
+  local timeout_cmd="${RETRY_TIMEOUT:-5}"
 
-  until "$@"; do
+  until timeout "$timeout_cmd" "$@" >/dev/null 2>&1; do
     n=$((n + 1))
     if [ "$n" -ge "$max" ]; then
-      echo "❌ Falha após $max tentativas"
-      return 1
+      echo "⚠️  Comando não respondeu após $max tentativas"
+      return 0  # Não bloqueia - app faz retry interno
     fi
-    echo "⏳ Retry $n/$max em ${delay}s..."
     sleep "$delay"
   done
+  return 0
 }
 
 # =========================
@@ -157,7 +158,8 @@ start_api() {
   # Configurar defaults para conexões
   PG_HOST="${PG_HOST:-pgbouncer}"
   PG_PORT="${PG_PORT:-6432}"
-  REDIS_HOST="${REDIS_HOST:-redis}"  # Usa alias de rede do docker-stack.yml
+  # Usar full service name do Swarm: estacaoterapia_redis
+  REDIS_HOST="${REDIS_HOST:-estacaoterapia_redis}"
   REDIS_PORT="${REDIS_PORT:-6379}"
   REDIS_DB="${REDIS_DB:-1}"
   POSTGRES_DB="${POSTGRES_DB:-estacaoterapia}"
@@ -170,97 +172,77 @@ start_api() {
   export REDIS_PORT
   export REDIS_DB
 
-  echo "📋 Variáveis de Conexão (padrões):"
+  echo "📋 Variáveis de Conexão:"
   echo "   PostgreSQL → $PG_HOST:$PG_PORT"
   echo "   Redis      → $REDIS_HOST:$REDIS_PORT (db: $REDIS_DB)"
 
-  # IMPORTANTE: Em Docker Swarm, o Redis está configurado com alias 'redis' no docker-stack.yml
-  # Não tentamos resolver outros hostnames para evitar erros ENOTFOUND
-  # O alias 'redis' é a forma correta e estável de acessar o serviço
-  if [ -z "$REDIS_HOST" ]; then
-    REDIS_HOST="redis"
-    echo "✅ Usando REDIS_HOST: redis (alias configurado no docker-stack.yml)"
-  elif [ "$REDIS_HOST" != "redis" ]; then
-    echo "ℹ️  Usando REDIS_HOST: $REDIS_HOST (definido via variável de ambiente)"
-  else
-    echo "✅ Usando REDIS_HOST: redis (alias configurado no docker-stack.yml)"
-  fi
+  # Diagnóstico rápido e não bloqueante
+  echo "📡 Diagnóstico de rede (não bloqueante):"
   
-  export REDIS_HOST
-
-  echo "📡 Diagnóstico de DNS para Redis:"
-  
-  # Tentar resolver DNS do Redis
-  if nslookup "$REDIS_HOST" >/dev/null 2>&1; then
-    REDIS_IP=$(nslookup "$REDIS_HOST" 2>/dev/null | grep -A1 "Name:" | tail -1 | awk '{print $NF}')
-    echo "✅ DNS resolvido: $REDIS_HOST → $REDIS_IP"
-  else
-    echo "⚠️  nslookup falhou para $REDIS_HOST (DNS pode não estar pronto)"
-    
-    # Tentar com getent (alternativa)
-    if command -v getent >/dev/null 2>&1; then
-      if getent hosts "$REDIS_HOST" >/dev/null 2>&1; then
-        REDIS_IP=$(getent hosts "$REDIS_HOST" | awk '{print $1}')
-        echo "✅ getent resolveu: $REDIS_HOST → $REDIS_IP"
-      else
-        echo "⚠️  getent também falhou - DNS pode estar indisponível"
-      fi
+  # Tentar resolver Redis via DNS Swarm direto @127.0.0.11
+  if command -v dig >/dev/null 2>&1; then
+    REDIS_IP=$(dig +short @127.0.0.11 "$REDIS_HOST" A 2>/dev/null | head -1)
+    if [ -n "$REDIS_IP" ]; then
+      echo "✅ DNS Swarm: $REDIS_HOST → $REDIS_IP"
+    else
+      echo "ℹ️  DNS Swarm: $REDIS_HOST (ainda não resolvido, app fará retry)"
     fi
   fi
   
-  # Log de diagnóstico adicional
-  echo "🔍 Informações de rede do container:"
-  echo "   • Hostname: $(hostname 2>/dev/null || echo 'não disponível')"
-  echo "   • Interface eth0: $(ifconfig eth0 2>/dev/null | grep "inet " | awk '{print $2}' || echo 'não disponível')"
-  
-  # Se /etc/resolv.conf existe, mostrar nameservers
+  # Mostrar nameservers se disponível
   if [ -f /etc/resolv.conf ]; then
-    echo "   • DNS servers:"
-    grep "^nameserver" /etc/resolv.conf | sed 's/^/     /'
+    echo "   • DNS Servers: $(grep '^nameserver' /etc/resolv.conf | awk '{print $2}' | tr '\n' ',' | sed 's/,$//')"
   fi
 
-  # Tentar resolver host de PgBouncer com alternativas (VIP e tasks)
-  echo "🔎 Checando PgBouncer..."
-  for candidate in "$PG_HOST" "tasks.$PG_HOST" "estacaoterapia_pgbouncer" "tasks.estacaoterapia_pgbouncer"; do
-    if retry nc -z "$candidate" "$PG_PORT" >/dev/null 2>&1; then
-      PG_HOST="$candidate"
-      echo "✅ PgBouncer acessível via: $PG_HOST"
-      break
-    fi
-  done
-  retry nc -z "$PG_HOST" "$PG_PORT"
+  # Check não bloqueante: tenta conectar mas não bloqueia
+  echo "🔎 Verificando conectividade (timeout 2s):"
+  if timeout 2 nc -z "$REDIS_HOST" "$REDIS_PORT" 2>/dev/null; then
+    echo "✅ Redis acessível: $REDIS_HOST:$REDIS_PORT"
+  else
+    echo "⚠️  Redis não respondeu (será reconectado pelo app automaticamente)"
+  fi
+
+  # Check PgBouncer não bloqueante
+  if timeout 2 nc -z "$PG_HOST" "$PG_PORT" 2>/dev/null; then
+    echo "✅ PgBouncer acessível: $PG_HOST:$PG_PORT"
+  else
+    echo "⚠️  PgBouncer não respondeu (será reconectado pelo app automaticamente)"
+  fi
 
   # Exportar PG_HOST novamente após resolução
   export PG_HOST
   echo "✅ PG_HOST=$PG_HOST exportado"
 
+  # Configurar DATABASE_URL
   if [ -n "$POSTGRES_USER" ] && [ -n "$POSTGRES_PASSWORD" ]; then
     DATABASE_URL="${DATABASE_URL:-postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${PG_HOST}:${PG_PORT}/${POSTGRES_DB}?schema=public}"
     export DATABASE_URL
-    echo "✅ DATABASE_URL configurada e exportada"
-    echo "   Host: $PG_HOST:$PG_PORT"
-    echo "   Database: $POSTGRES_DB"
-    echo "   User: $POSTGRES_USER"
+    echo "✅ DATABASE_URL: postgresql://$POSTGRES_USER@$PG_HOST:$PG_PORT/$POSTGRES_DB"
 
-    # Verificar se banco já foi restaurado antes de tentar restaurar
+    # Verificar se banco já foi restaurado (não bloqueante)
     if [ -n "$RESTORE_DB" ] && [ "$RESTORE_DB" = "true" ]; then
-      if check_database_restored "$PG_HOST" "$PG_PORT" "$POSTGRES_DB" "$POSTGRES_USER" "$POSTGRES_PASSWORD"; then
-        echo "⏭️  Pulando restauração - banco já foi restaurado anteriormente"
+      if timeout 5 check_database_restored "$PG_HOST" "$PG_PORT" "$POSTGRES_DB" "$POSTGRES_USER" "$POSTGRES_PASSWORD" 2>/dev/null; then
+        echo "⏭️  Banco de dados já restaurado"
       else
-        echo "📦 Iniciando restauração do banco de dados..."
-        # Aqui você pode adicionar a lógica de restauração se necessário
-        # Exemplo: psql -h "$PG_HOST" -p "$PG_PORT" -U "$POSTGRES_USER" -d "$POSTGRES_DB" < /app/backups/estacaoterapia_prd.sql
+        echo "ℹ️  Restauração não necessária ou pendente"
       fi
     fi
   fi
 
-  # CRÍTICO: Exportar as variáveis de Redis antes de iniciar Node.js
+  # Exportar as variáveis de Redis (crítico para Node.js)
   export REDIS_HOST
   export REDIS_PORT
   export REDIS_DB
   export REDIS_PASSWORD
-  export REDIS_URL
+  
+  # Construir REDIS_URL se não existir
+  if [ -z "$REDIS_URL" ] && [ -n "$REDIS_PASSWORD" ]; then
+    REDIS_URL="redis://:${REDIS_PASSWORD}@${REDIS_HOST}:${REDIS_PORT}/${REDIS_DB:-1}"
+  fi
+  [ -n "$REDIS_URL" ] && export REDIS_URL
+  
   echo "✅ Variáveis Redis exportadas para Node.js"
+  echo "🚀 Iniciando aplicação Node.js (app fará retry interno em caso de indisponibilidade)"
 
   exec "$@"
 }
@@ -290,7 +272,8 @@ start_socket() {
 
   PG_HOST="${PG_HOST:-pgbouncer}"
   PG_PORT="${PG_PORT:-6432}"
-  REDIS_HOST="${REDIS_HOST:-redis}"
+  # Usar full service name do Swarm: estacaoterapia_redis
+  REDIS_HOST="${REDIS_HOST:-estacaoterapia_redis}"
   REDIS_PORT="${REDIS_PORT:-6379}"
   if [ -n "${API_BASE_URL_OVERRIDE:-}" ]; then
     API_BASE_URL="$API_BASE_URL_OVERRIDE"
@@ -306,114 +289,67 @@ start_socket() {
   echo "   Redis      → $REDIS_HOST:$REDIS_PORT (auth: ${REDIS_PASSWORD:+SIM}${REDIS_PASSWORD:-NÃO})"
   echo "   API        → $API_BASE_URL"
 
-  # IMPORTANTE: Usar sempre o alias 'redis' configurado no docker-stack.yml
-  # Não tentar resolver outros hostnames para evitar erros ENOTFOUND
-  if [ -z "$REDIS_HOST" ]; then
-    REDIS_HOST="redis"
-    echo "✅ Usando REDIS_HOST: redis (alias configurado no docker-stack.yml)"
-  elif [ "$REDIS_HOST" != "redis" ]; then
-    echo "⚠️  REDIS_HOST definido como '$REDIS_HOST', mas recomendado usar 'redis' (alias do docker-stack.yml)"
-  else
-    echo "✅ Usando REDIS_HOST: redis (alias configurado no docker-stack.yml)"
-  fi
+  # Diagnóstico rápido e não bloqueante
+  echo "📡 Diagnóstico de rede (não bloqueante):"
   
-  echo "📡 Diagnóstico de DNS para Redis (Socket):"
-  
-  # Tentar resolver DNS do Redis
-  if nslookup "$REDIS_HOST" >/dev/null 2>&1; then
-    REDIS_IP=$(nslookup "$REDIS_HOST" 2>/dev/null | grep -A1 "Name:" | tail -1 | awk '{print $NF}')
-    echo "✅ DNS resolvido: $REDIS_HOST → $REDIS_IP"
-  else
-    echo "⚠️  nslookup falhou para $REDIS_HOST (DNS pode não estar pronto)"
-    
-    # Tentar com getent (alternativa)
-    if command -v getent >/dev/null 2>&1; then
-      if getent hosts "$REDIS_HOST" >/dev/null 2>&1; then
-        REDIS_IP=$(getent hosts "$REDIS_HOST" | awk '{print $1}')
-        echo "✅ getent resolveu: $REDIS_HOST → $REDIS_IP"
-      else
-        echo "⚠️  getent também falhou - DNS pode estar indisponível"
-      fi
+  # Tentar resolver Redis via DNS Swarm direto @127.0.0.11
+  if command -v dig >/dev/null 2>&1; then
+    REDIS_IP=$(dig +short @127.0.0.11 "$REDIS_HOST" A 2>/dev/null | head -1)
+    if [ -n "$REDIS_IP" ]; then
+      echo "✅ DNS Swarm: $REDIS_HOST → $REDIS_IP"
+    else
+      echo "ℹ️  DNS Swarm: $REDIS_HOST (ainda não resolvido, app fará retry)"
     fi
   fi
   
-  # Log de diagnóstico adicional
-  echo "🔍 Informações de rede do container (Socket):"
-  echo "   • Hostname: $(hostname 2>/dev/null || echo 'não disponível')"
-  echo "   • Interface eth0: $(ifconfig eth0 2>/dev/null | grep "inet " | awk '{print $2}' || echo 'não disponível')"
-  
-  # Se /etc/resolv.conf existe, mostrar nameservers
+  # Mostrar nameservers se disponível
   if [ -f /etc/resolv.conf ]; then
-    echo "   • DNS servers:"
-    grep "^nameserver" /etc/resolv.conf | sed 's/^/     /'
+    echo "   • DNS Servers: $(grep '^nameserver' /etc/resolv.conf | awk '{print $2}' | tr '\n' ',' | sed 's/,$//')"
   fi
+
+  # Checks não bloqueantes (timeout 2s)
+  echo "🔎 Verificando conectividade (timeout 2s):"
   
-  # Tentar conectar ao Redis (pode falhar se ainda não estiver pronto, mas Node.js reconectará)
-  echo "🔎 Verificando acessibilidade de Redis em $REDIS_HOST:$REDIS_PORT..."
-  
-  # Timeout curto apenas para teste (não bloqueia inicialização)
-  if timeout 5 nc -z "$REDIS_HOST" "$REDIS_PORT" >/dev/null 2>&1; then
-    echo "✅ Redis está acessível via: $REDIS_HOST:$REDIS_PORT"
+  if timeout 2 nc -z "$REDIS_HOST" "$REDIS_PORT" 2>/dev/null; then
+    echo "✅ Redis acessível: $REDIS_HOST:$REDIS_PORT"
   else
-    echo "⚠️  Redis NÃO está respondendo em $REDIS_HOST:$REDIS_PORT no momento"
-    echo "   ℹ️  Isso é OK - o Node.js tentará reconectar automaticamente quando Redis ficar disponível"
-    echo "   🔄 Continuando inicialização do container..."
+    echo "⚠️  Redis não respondeu (será reconectado pelo app automaticamente)"
   fi
-  
-  export REDIS_HOST
 
-  echo "🔎 Checando PgBouncer..."
-  for candidate in "$PG_HOST" "tasks.$PG_HOST" "estacaoterapia_pgbouncer" "tasks.estacaoterapia_pgbouncer"; do
-    if retry nc -z "$candidate" "$PG_PORT" >/dev/null 2>&1; then
-      PG_HOST="$candidate"
-      echo "✅ PgBouncer acessível via: $PG_HOST"
-      break
-    fi
-  done
-  retry nc -z "$PG_HOST" "$PG_PORT"
+  if timeout 2 nc -z "$PG_HOST" "$PG_PORT" 2>/dev/null; then
+    echo "✅ PgBouncer acessível: $PG_HOST:$PG_PORT"
+  else
+    echo "⚠️  PgBouncer não respondeu (será reconectado pelo app automaticamente)"
+  fi
 
-  # Exportar PG_HOST novamente após resolução
-  export PG_HOST
-  echo "✅ PG_HOST=$PG_HOST exportado"
-
+  # Extrair host e porta da API_BASE_URL
   API_HOST=$(echo "$API_BASE_URL" | sed 's|http://||;s|https://||' | cut -d: -f1)
   API_PORT=$(echo "$API_BASE_URL" | cut -d: -f3)
   API_PORT="${API_PORT:-3333}"
 
-  # Se o secret estiver com host "api", tentar nomes válidos do Swarm
-  for candidate in "$API_HOST" "estacaoterapia_api" "tasks.estacaoterapia_api" "api" "tasks.api"; do
-    if timeout 2 nc -z "$candidate" "$API_PORT" >/dev/null 2>&1; then
-      API_HOST="$candidate"
-      API_BASE_URL="http://$API_HOST:$API_PORT"
-      echo "✅ API acessível via: $API_BASE_URL"
-      break
-    fi
-  done
+  if timeout 2 nc -z "$API_HOST" "$API_PORT" 2>/dev/null; then
+    echo "✅ API acessível: $API_BASE_URL"
+  else
+    echo "⚠️  API não respondeu (será reconectada pelo app automaticamente)"
+  fi
 
-  echo "🔎 Checando API..."
-  retry nc -z "$API_HOST" "$API_PORT"
-
-  # CRÍTICO: Exportar as variáveis de Redis antes de iniciar Node.js
+  # Exportar as variáveis de Redis (crítico para Node.js)
   export REDIS_HOST
   export REDIS_PORT
   export REDIS_DB
-  
-  # Garantir que REDIS_PASSWORD está definida (pode estar vazia, mas deve estar exportada)
-  if [ -z "$REDIS_PASSWORD" ]; then
-    echo "⚠️  REDIS_PASSWORD não definida - Redis pode não estar configurado com senha"
-  else
-    echo "✅ REDIS_PASSWORD definida (${#REDIS_PASSWORD} caracteres)"
-  fi
   export REDIS_PASSWORD
   
-  # Construir REDIS_URL se não estiver definida e tiver senha
+  # Construir REDIS_URL se não existir
   if [ -z "$REDIS_URL" ] && [ -n "$REDIS_PASSWORD" ]; then
     REDIS_URL="redis://:${REDIS_PASSWORD}@${REDIS_HOST}:${REDIS_PORT}/${REDIS_DB:-1}"
-    echo "✅ REDIS_URL construída automaticamente"
   fi
-  export REDIS_URL
+  [ -n "$REDIS_URL" ] && export REDIS_URL
   
-  echo "✅ Variáveis Redis exportadas para Node.js"
+  # Exportar API_BASE_URL
+  export API_BASE_URL
+  
+  echo "✅ Variáveis exportadas para Node.js"
+  echo "🚀 Iniciando Socket Server (app fará retry interno em caso de indisponibilidade)"
 
   exec "$@"
 }

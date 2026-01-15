@@ -1,9 +1,30 @@
 FROM postgres:16-alpine
 
-# Copiar script de entrypoint customizado
+# 🔧 Labels + security
+LABEL maintainer="estacaoterapia@team" \
+    org.opencontainers.image.description="PostgreSQL 16 Swarm + secrets"
+
+# 🔧 Tools para entrypoint/healthcheck
+RUN apk add --no-cache \
+    bash \
+    curl \
+    netcat-openbsd \
+    postgresql-client \
+    && update-ca-certificates \
+    && rm -rf /var/cache/apk/*
+
+# 🔧 Entrypoint custom
 COPY postgres-entrypoint.sh /usr/local/bin/postgres-entrypoint.sh
 RUN chmod +x /usr/local/bin/postgres-entrypoint.sh
 
-# Usar o entrypoint customizado
+# 🔧 PGDATA correto + perf
+VOLUME /var/lib/postgresql/data
+ENV PGDATA=/var/lib/postgresql/data/pgdata
+
+# 🔧 Healthcheck PgBouncer-ready
+HEALTHCHECK --interval=10s --timeout=5s --start-period=30s --retries=5 \
+    CMD pg_isready -U postgres -d postgres || exit 1
+
+EXPOSE 5432
 ENTRYPOINT ["/usr/local/bin/postgres-entrypoint.sh"]
-CMD ["postgres"]
+CMD ["postgres", "-c", "config_file=/etc/postgresql/postgresql.conf"]
