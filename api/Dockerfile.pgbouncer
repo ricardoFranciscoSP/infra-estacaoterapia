@@ -22,7 +22,7 @@ VOLUME ["/etc/pgbouncer"]
 
 # 🔧 Healthcheck robusto (conecta PG real)
 HEALTHCHECK --interval=10s --timeout=5s --start-period=20s --retries=5 \
-    CMD pg_isready -h localhost -p 6432 -U postgres || exit 1
+    CMD pg_isready -h localhost -p 6432 -q || exit 1
 
 EXPOSE 6432
 USER pgbouncer

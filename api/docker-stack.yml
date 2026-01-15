@@ -87,7 +87,7 @@ services:
   # PGBOUNCER (3º - após PG)
   # =====================================
   pgbouncer:
-    image: edoburu/pgbouncer:latest
+    image: estacaoterapia-pgbouncer:prd-{{TAG}}
     secrets:
       - source: pgbouncer.ini
         target: /etc/pgbouncer/pgbouncer.ini
@@ -99,18 +99,15 @@ services:
           - pgbouncer
           - estacaoterapia_pgbouncer # 🔧 Full nome
           - pgbouncer.estacaoterapia_backend
-    healthcheck: # 🔧 Adicionado
-      test: ['CMD', 'nc', '-z', 'localhost', '6432']
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 20s
+    # Healthcheck definido na imagem (pg_isready)
     deploy:
       replicas: 1
       restart_policy:
         condition: on-failure
         delay: 10s
         max_attempts: 5
+      placement:
+        constraints: [node.role == manager]
 
   # =====================================
   # API (4º - após Redis/PG)
@@ -132,17 +129,9 @@ services:
       REDIS_PORT: '6379'
       REDIS_DB: '1'
     volumes:
-      - type: bind
-        source: ./entrypoint.sh
-        target: /entrypoint.sh
-        read_only: true
       - type: volume
         source: documentos_data
         target: /app/documentos
-      - type: bind
-        source: ./backups
-        target: /app/backups
-        read_only: true
     tmpfs: ['/tmp', '/app/data']
     expose: ['3333']
     healthcheck:

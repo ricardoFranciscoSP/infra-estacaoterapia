@@ -93,7 +93,7 @@ create_secret() {
 
 create_secret postgres_env "$SECRETS_DIR/postgres.env"
 create_secret estacao_api_env "$SECRETS_DIR/estacao_api.env"
-create_secret estacao_socket_env "$SECRETS_DIR/estacao_socket_env"
+create_secret estacao_socket_env "$SECRETS_DIR/estacao_socket.env"
 
 # redis_password do api.env
 REDIS_PASS=$(grep '^REDIS_PASSWORD=' "$SECRETS_DIR/estacao_api.env" | cut -d= -f2-)
@@ -151,6 +151,7 @@ build_image() {
 build_image redis redis
 build_image api api
 build_image socket socket
+build_image pgbouncer pgbouncer
 
 echo ""
 echo "✅ Todas as imagens compiladas com sucesso!"
