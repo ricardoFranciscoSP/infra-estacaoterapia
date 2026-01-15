@@ -172,8 +172,8 @@ services:
         parallelism: 1
         delay: 10s
         order: start-first
-        failure_action: rollback
-        monitor: 5s
+        failure_action: pause
+        monitor: 30s
       restart_policy:
         condition: on-failure
         delay: 5s
@@ -258,8 +258,8 @@ services:
         parallelism: 1
         delay: 10s
         order: start-first
-        failure_action: rollback
-        monitor: 5s
+        failure_action: pause
+        monitor: 30s
       restart_policy:
         condition: on-failure
         delay: 5s
