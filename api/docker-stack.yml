@@ -85,9 +85,14 @@ services:
     image: estacaoterapia-pgbouncer:prd-{{TAG}}
     secrets:
       - source: pgbouncer.ini
-        target: /etc/pgbouncer/pgbouncer.ini
+        target: /run/secrets/pgbouncer.ini
       - source: userlist.txt
-        target: /etc/pgbouncer/userlist.txt
+        target: /run/secrets/userlist.txt
+    environment:
+      PG_HOST: postgres
+      PG_PORT: '5432'
+      PG_DB: estacaoterapia
+      PGBOUNCER_PORT: '6432'
     networks:
       estacaoterapia_backend:
         aliases:

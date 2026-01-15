@@ -11,14 +11,66 @@ RUN apk add --no-cache \
     netcat-openbsd \
     curl \
     postgresql-client \
+    gettext \
     && rm -rf /var/cache/apk/*
 
 # 🔧 Config dir + perms
-RUN mkdir -p /etc/pgbouncer /run/pgbouncer \
-    && chmod 755 /etc/pgbouncer /run/pgbouncer
+RUN mkdir -p /etc/pgbouncer /run/pgbouncer /etc/pgbouncer/templates \
+    && chmod 755 /etc/pgbouncer /run/pgbouncer /etc/pgbouncer/templates
 
-# 🔧 Secrets mount (stack.yml)
-VOLUME ["/etc/pgbouncer"]
+# 🔧 Copy configuration templates to image
+COPY secrets/pgbouncer.ini.production /etc/pgbouncer/templates/pgbouncer.ini.template
+COPY secrets/userlist.txt.example /etc/pgbouncer/templates/userlist.txt.template
+
+# 🔧 Create entrypoint script for dynamic configuration
+RUN cat > /usr/local/bin/pgbouncer-entrypoint.sh <<'EOF'
+#!/bin/bash
+set -e
+
+# 🔧 Variables with defaults
+PG_HOST=${PG_HOST:-postgres}
+PG_PORT=${PG_PORT:-5432}
+PG_DB=${PG_DB:-estacaoterapia}
+PGBOUNCER_PORT=${PGBOUNCER_PORT:-6432}
+
+echo "🔧 PgBouncer starting with:"
+echo "   PostgreSQL Host: $PG_HOST"
+echo "   PostgreSQL Port: $PG_PORT"
+echo "   Database: $PG_DB"
+echo "   PgBouncer Port: $PGBOUNCER_PORT"
+
+# 🔧 Process pgbouncer.ini from secret or template
+if [ -f /run/secrets/pgbouncer.ini ]; then
+    echo "📦 Using pgbouncer.ini from secret"
+    cp /run/secrets/pgbouncer.ini /etc/pgbouncer/pgbouncer.ini.base
+else
+    echo "📦 Using pgbouncer.ini from template"
+    cp /etc/pgbouncer/templates/pgbouncer.ini.template /etc/pgbouncer/pgbouncer.ini.base
+fi
+
+# 🔧 Replace database connection with service name
+sed "s|host=[^ ]* port=[^ ]*|host=$PG_HOST port=$PG_PORT|g" /etc/pgbouncer/pgbouncer.ini.base > /etc/pgbouncer/pgbouncer.ini
+
+# 🔧 Process userlist.txt from secret or template
+if [ -f /run/secrets/userlist.txt ]; then
+    echo "📦 Using userlist.txt from secret"
+    cp /run/secrets/userlist.txt /etc/pgbouncer/userlist.txt
+else
+    echo "📦 Using userlist.txt from template"
+    cp /etc/pgbouncer/templates/userlist.txt.template /etc/pgbouncer/userlist.txt
+fi
+
+echo "✅ Configuration ready:"
+cat /etc/pgbouncer/pgbouncer.ini | grep -A 1 "\[databases\]"
+
+# 🔧 Fix permissions
+chmod 644 /etc/pgbouncer/pgbouncer.ini /etc/pgbouncer/userlist.txt
+
+# 🔧 Start pgbouncer
+exec pgbouncer /etc/pgbouncer/pgbouncer.ini
+EOF
+
+RUN chmod +x /usr/local/bin/pgbouncer-entrypoint.sh
 
 # 🔧 Healthcheck robusto (conecta PG real)
 HEALTHCHECK --interval=10s --timeout=5s --start-period=20s --retries=5 \
@@ -27,5 +79,5 @@ HEALTHCHECK --interval=10s --timeout=5s --start-period=20s --retries=5 \
 EXPOSE 6432
 USER pgbouncer
 
-ENTRYPOINT ["pgbouncer"]
-CMD ["/etc/pgbouncer/pgbouncer.ini"]
+ENTRYPOINT ["/usr/local/bin/pgbouncer-entrypoint.sh"]
+CMD []
