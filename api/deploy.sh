@@ -69,9 +69,14 @@ echo "🔐 [SECRETS] Atualizando..."
 
 create_secret() {
   local name=$1 file=$2
-  docker secret rm "$name" 2>/dev/null || true
-  docker secret create "$name" "$file"
-  echo "✅ $name"
+  
+  # Verifica se o secret já existe
+  if docker secret inspect "$name" &>/dev/null; then
+    echo "ℹ️  $name já existe (mantendo)"
+  else
+    docker secret create "$name" "$file"
+    echo "✅ $name criado"
+  fi
 }
 
 create_secret postgres_env "$SECRETS_DIR/postgres.env"
@@ -81,8 +86,12 @@ create_secret estacao_socket_env "$SECRETS_DIR/estacao_socket_env"
 # redis_password do api.env
 REDIS_PASS=$(grep '^REDIS_PASSWORD=' "$SECRETS_DIR/estacao_api.env" | cut -d= -f2-)
 [ -n "$REDIS_PASS" ] && {
-  printf '%s' "$REDIS_PASS" | docker secret create redis_password -
-  echo "✅ redis_password"
+  if docker secret inspect redis_password &>/dev/null; then
+    echo "ℹ️  redis_password já existe (mantendo)"
+  else
+    printf '%s' "$REDIS_PASS" | docker secret create redis_password -
+    echo "✅ redis_password criado"
+  fi
 }
 
 create_secret pgbouncer.ini "/opt/secrets/pgbouncer/pgbouncer.ini"
