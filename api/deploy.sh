@@ -23,7 +23,11 @@ echo "📦 Tag: prd-$TAG | Git: $GIT_HASH | Clean: ${CLEAN_DEPLOY:-false}"
 # ==============================
 # 1. PREREQUISITOS
 # ==============================
-echo "🔍 [VALIDAÇÃO] Pre-requisitos..."
+echo ""
+echo "════════════════════════════════════════════════════════"
+echo "📋 ETAPA 1/8 - VALIDAÇÃO DE PRÉ-REQUISITOS"
+echo "════════════════════════════════════════════════════════"
+echo "🔍 Verificando Docker, Swarm e arquivos necessários..."
 
 command -v docker >/dev/null || { echo "❌ Docker não encontrado"; exit 1; }
 
@@ -55,8 +59,12 @@ echo "✅ [OK] Pré-requisitos"
 # ==============================
 # 2. CLEAN (opcional)
 # ==============================
+echo ""
+echo "════════════════════════════════════════════════════════"
+echo "🧹 ETAPA 2/8 - LIMPEZA (${CLEAN_DEPLOY:-false})"
+echo "════════════════════════════════════════════════════════"
 if [ "${CLEAN_DEPLOY:-false}" = true ]; then
-  echo "🧹 [CLEAN] Removendo stack..."
+  echo "🧹 Removendo stack e imagens antigas..."
   docker stack rm "$STACK_NAME" || true
   sleep 5
   docker system prune -af --volumes || true
@@ -65,7 +73,11 @@ fi
 # ==============================
 # 3. SECRETS
 # ==============================
-echo "🔐 [SECRETS] Atualizando..."
+echo ""
+echo "════════════════════════════════════════════════════════"
+echo "🔐 ETAPA 3/8 - CONFIGURAÇÃO DE SECRETS"
+echo "════════════════════════════════════════════════════════"
+echo "🔐 Criando/verificando secrets do Docker Swarm..."
 
 create_secret() {
   local name=$1 file=$2
@@ -100,18 +112,33 @@ create_secret userlist.txt "/opt/secrets/pgbouncer/userlist.txt"
 # ==============================
 # 4. VOLUMES/REDES
 # ==============================
+echo ""
+echo "════════════════════════════════════════════════════════"
+echo "💾 ETAPA 4/8 - VOLUMES E REDES"
+echo "════════════════════════════════════════════════════════"
+echo "💾 Criando volumes persistentes e rede overlay..."
 for vol in postgres_data redis_data documentos_data; do
   docker volume create "$vol" 2>/dev/null || true
 done
 
 docker network create --driver overlay estacaoterapia_backend 2>/dev/null || true
 
+echo "✅ Volumes e rede configurados"
+
 # ==============================
 # 5. BUILD IMAGENS
 # ==============================
+echo ""
+echo "════════════════════════════════════════════════════════"
+echo "🐳 ETAPA 5/8 - BUILD DE IMAGENS DOCKER"
+echo "════════════════════════════════════════════════════════"
+echo "🐳 Compilando imagens para tag: prd-$TAG"
+echo ""
+
 build_image() {
   local name=$1 dockerfile=$2
-  echo "🐳 [$name] prd-$TAG"
+  echo "───────────────────────────────────────────────────────"
+  echo "📦 Buildando [$name] prd-$TAG..."
   docker build \
     --no-cache \
     --platform linux/amd64 \
@@ -123,13 +150,19 @@ build_image() {
 
 build_image redis redis
 build_image api api
-build_image socket-server socket-server
+build_image socket socket
 
-echo "✅ Builds concluídos"
+echo ""
+echo "✅ Todas as imagens compiladas com sucesso!"
 
 # ==============================
 # 6. DEPLOY
 # ==============================
+echo ""
+echo "════════════════════════════════════════════════════════"
+echo "📡 ETAPA 6/8 - DEPLOY NO SWARM"
+echo "════════════════════════════════════════════════════════"
+echo "📡 Preparando docker-stack.yml e fazendo deploy..."
 cp docker-stack.yml "docker-stack-$TAG.yml"
 sed -i "s/{{TAG}}/$TAG/g" "docker-stack-$TAG.yml"
 
@@ -139,10 +172,17 @@ docker stack deploy \
   --resolve-image always \
   "$STACK_NAME"
 
+echo "✅ Stack deployed!"
+
 # ==============================
 # 7. MONITOR HEALTH
 # ==============================
-echo "⏳ [HEALTH] Aguardando convergência..."
+echo ""
+echo "════════════════════════════════════════════════════════"
+echo "⏳ ETAPA 7/8 - MONITORAMENTO DE SAÚDE"
+echo "════════════════════════════════════════════════════════"
+echo "⏳ Aguardando todos os serviços ficarem saudáveis..."
+echo ""
 
 services=(redis postgres pgbouncer api socket-server)
 
@@ -158,9 +198,17 @@ for svc in "${services[@]}"; do
   done
 done
 
+echo ""
+echo "✅ Todos os serviços estão rodando!"
+
 # ==============================
 # 8. CLEANUP
 # ==============================
+echo ""
+echo "════════════════════════════════════════════════════════"
+echo "🧹 ETAPA 8/8 - LIMPEZA FINAL"
+echo "════════════════════════════════════════════════════════"
+echo "🧹 Removendo arquivos temporários e imagens antigas..."
 rm "docker-stack-$TAG.yml"
 docker image prune -f
 docker system prune -f
