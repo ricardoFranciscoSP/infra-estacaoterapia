@@ -1,18 +1,14 @@
 import { Queue, Worker, Job } from "bullmq";
-import { getIORedisClient } from "../config/redis.config";
+import { getBullMQConnectionOptions } from "../config/redis.config";
 import { GerarAgendaService } from "../services/gerarAgenda.service";
 import { prismaAgendaRepository } from "../repositories/prismaAgenda.repository";
 import { prismaUserRepository } from "../repositories/prismaUser.repository";
 
 export const AGENDA_QUEUE_NAME = "agendaQueue";
 
-const redisConnection = getIORedisClient();
+const redisConnection = getBullMQConnectionOptions();
 export let agendaQueue: Queue | null = null;
-if (redisConnection) {
-    agendaQueue = new Queue(AGENDA_QUEUE_NAME, { connection: redisConnection });
-} else {
-    console.log('[BullMQ] agendaQueue não inicializada: Redis indisponível (ambiente de desenvolvimento).');
-}
+agendaQueue = new Queue(AGENDA_QUEUE_NAME, { connection: redisConnection });
 
 let agendaWorkerStarted = false;
 export let agendaWorker: Worker | null = null;
@@ -55,8 +51,8 @@ export function startAgendaWorker() {
         return;
     }
 
-    if (!agendaQueue || !redisConnection) {
-        console.log('[BullMQ] AgendaWorker não inicializado: agendaQueue ou Redis não disponível.');
+    if (!agendaQueue) {
+        console.log('[BullMQ] AgendaWorker não inicializado: agendaQueue não disponível.');
         return;
     }
 

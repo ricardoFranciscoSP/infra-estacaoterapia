@@ -58,6 +58,33 @@ const getRedisConfig = () => ({
     url: process.env.REDIS_URL
 });
 
+export const getBullMQConnectionOptions = () => {
+    const config = getRedisConfig();
+    let host = config.host;
+    let port = config.port;
+    let db = config.db;
+    let password = config.password || undefined;
+
+    if (config.url) {
+        try {
+            const url = new URL(config.url);
+            host = url.hostname || host;
+            port = url.port ? Number(url.port) : port;
+            db = url.pathname && url.pathname !== '/' ? Number(url.pathname.slice(1)) : db;
+            password = url.password || password || undefined;
+        } catch (err) {
+            console.warn(`⚠️ [BullMQ] REDIS_URL inválida, usando variáveis individuais`);
+        }
+    }
+
+    return {
+        host,
+        port,
+        db,
+        password,
+    };
+};
+
 // Debug: Log da configuração inicial (reduzido em produção)
 const initialConfig = getRedisConfig();
 const shouldLogVerbose = process.env.REDIS_DEBUG_LOGS === "true" || process.env.NODE_ENV !== "production";

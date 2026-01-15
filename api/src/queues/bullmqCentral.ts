@@ -2,7 +2,7 @@
 // Centraliza a criação das filas BullMQ, garantindo uso do singleton do Redis
 
 import { Queue, QueueEvents } from 'bullmq';
-import { getIORedisClient, waitForIORedisReady } from '../config/redis.config';
+import { getBullMQConnectionOptions, getIORedisClient, waitForIORedisReady } from '../config/redis.config';
 import { RenovacaoJobData } from '../types/controleConsulta.types';
 import IORedis from 'ioredis';
 import { attachQueueEventsLogging } from '../utils/bullmqLogs';
@@ -71,9 +71,9 @@ let _renovacaoQueue: Queue<RenovacaoJobData> | null = null;
 export const getAgendaQueue = async (): Promise<Queue | null> => {
     if (_agendaQueue) return _agendaQueue;
     try {
-        const conn = await getRedisConnection();
+        await getRedisConnection();
         _agendaQueue = new Queue('agendaQueue', {
-            connection: conn,
+            connection: getBullMQConnectionOptions(),
             defaultJobOptions: {
                 removeOnComplete: {
                     age: 3600, // mantém por 1 hora
@@ -100,8 +100,8 @@ export const getAgendaQueue = async (): Promise<Queue | null> => {
 export const getAgendaQueueEvents = async (): Promise<QueueEvents | null> => {
     if (_agendaQueueEvents) return _agendaQueueEvents;
     try {
-        const conn = await getRedisConnection();
-        _agendaQueueEvents = new QueueEvents('agendaQueue', { connection: conn });
+        await getRedisConnection();
+        _agendaQueueEvents = new QueueEvents('agendaQueue', { connection: getBullMQConnectionOptions() });
         attachQueueEventsLogging('agendaQueue', _agendaQueueEvents);
         console.log('✅ [BullMQ] agendaQueueEvents criado');
         return _agendaQueueEvents;
@@ -114,9 +114,9 @@ export const getAgendaQueueEvents = async (): Promise<QueueEvents | null> => {
 export const getWebhookQueue = async (): Promise<Queue | null> => {
     if (_webhookQueue) return _webhookQueue;
     try {
-        const conn = await getRedisConnection();
+        await getRedisConnection();
         _webhookQueue = new Queue('webhookProcessor', {
-            connection: conn,
+            connection: getBullMQConnectionOptions(),
             defaultJobOptions: {
                 removeOnComplete: {
                     age: 3600,
@@ -143,8 +143,8 @@ export const getWebhookQueue = async (): Promise<Queue | null> => {
 export const getWebhookQueueEvents = async (): Promise<QueueEvents | null> => {
     if (_webhookQueueEvents) return _webhookQueueEvents;
     try {
-        const conn = await getRedisConnection();
-        _webhookQueueEvents = new QueueEvents('webhookProcessor', { connection: conn });
+        await getRedisConnection();
+        _webhookQueueEvents = new QueueEvents('webhookProcessor', { connection: getBullMQConnectionOptions() });
         attachQueueEventsLogging('webhookProcessor', _webhookQueueEvents);
         console.log('✅ [BullMQ] webhookQueueEvents criado');
         return _webhookQueueEvents;
@@ -157,9 +157,9 @@ export const getWebhookQueueEvents = async (): Promise<QueueEvents | null> => {
 export const getNotificationQueue = async (): Promise<Queue | null> => {
     if (_notificationQueue) return _notificationQueue;
     try {
-        const conn = await getRedisConnection();
+        await getRedisConnection();
         _notificationQueue = new Queue('notificationQueue', {
-            connection: conn,
+            connection: getBullMQConnectionOptions(),
             defaultJobOptions: {
                 removeOnComplete: {
                     age: 3600,
@@ -186,8 +186,8 @@ export const getNotificationQueue = async (): Promise<Queue | null> => {
 export const getNotificationQueueEvents = async (): Promise<QueueEvents | null> => {
     if (_notificationQueueEvents) return _notificationQueueEvents;
     try {
-        const conn = await getRedisConnection();
-        _notificationQueueEvents = new QueueEvents('notificationQueue', { connection: conn });
+        await getRedisConnection();
+        _notificationQueueEvents = new QueueEvents('notificationQueue', { connection: getBullMQConnectionOptions() });
         attachQueueEventsLogging('notificationQueue', _notificationQueueEvents);
         console.log('✅ [BullMQ] notificationQueueEvents criado');
         return _notificationQueueEvents;
@@ -200,9 +200,9 @@ export const getNotificationQueueEvents = async (): Promise<QueueEvents | null> 
 export const getRenovacaoQueue = async (): Promise<Queue<RenovacaoJobData> | null> => {
     if (_renovacaoQueue) return _renovacaoQueue;
     try {
-        const conn = await getRedisConnection();
+        await getRedisConnection();
         _renovacaoQueue = new Queue<RenovacaoJobData>('renovacao-controle-consulta', {
-            connection: conn,
+            connection: getBullMQConnectionOptions(),
             defaultJobOptions: {
                 removeOnComplete: {
                     age: 3600,
