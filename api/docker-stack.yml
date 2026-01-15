@@ -114,7 +114,7 @@ services:
   # =====================================
   api:
     image: estacaoterapia-api:prd-{{TAG}}
-    user: '997:1001'
+    user: '1001:1001'
     entrypoint: ['/bin/sh', '/entrypoint.sh']
     command: ['node', 'dist/server.js']
     secrets:
@@ -166,7 +166,7 @@ services:
   # =====================================
   socket-server:
     image: estacaoterapia-socket:prd-{{TAG}}
-    user: '997:1001'
+    user: '1001:1001'
     entrypoint: ['/bin/sh', '/entrypoint.sh']
     command: ['node', 'dist/socket/server.js']
     secrets:

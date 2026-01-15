@@ -89,6 +89,10 @@ RUN apk add --no-cache \
     && update-ca-certificates \
     && rm -rf /var/cache/apk/*
 
+# 🔧 Criar usuário/grupo dedicados
+RUN addgroup -g 1001 -S app && \
+    adduser -u 1001 -S app -G app
+
 # 🔧 /tmp correto para tmpfs
 RUN mkdir -p /tmp && chmod 1777 /tmp /run
 
@@ -97,10 +101,10 @@ COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
 # 🔧 Copy minimal (security + size)
-COPY --from=builder --chown=997:1001 /app/dist ./dist
-COPY --from=prod-deps --chown=997:1001 /app/node_modules ./node_modules
-COPY --from=builder --chown=997:1001 /app/prisma ./prisma
-COPY --chown=997:1001 package.json prisma.config.ts ./
+COPY --from=builder --chown=1001:1001 /app/dist ./dist
+COPY --from=prod-deps --chown=1001:1001 /app/node_modules ./node_modules
+COPY --from=builder --chown=1001:1001 /app/prisma ./prisma
+COPY --chown=1001:1001 package.json prisma.config.ts ./
 
 # 🔧 USER no build (override via docker-stack.yml)
 # Security: non-root via user: '997:1001'
@@ -108,6 +112,9 @@ COPY --chown=997:1001 package.json prisma.config.ts ./
 EXPOSE 3333
 HEALTHCHECK --interval=20s --timeout=10s --start-period=60s --retries=3 \
     CMD curl -f http://localhost:3333/health || exit 1
+
+# 🔧 Rodar como usuário não-root
+USER app
 
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["node", "dist/server.js"]

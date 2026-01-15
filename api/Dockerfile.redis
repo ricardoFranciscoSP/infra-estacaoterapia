@@ -10,6 +10,10 @@ RUN apk add --no-cache \
     dos2unix \
     netcat-openbsd
 
+# 🔧 Criar usuário/grupo dedicados
+RUN addgroup -g 1001 -S redis && \
+    adduser -u 1001 -S redis -G redis
+
 # 🔧 Copy + fix line endings
 COPY redis-entrypoint.sh /usr/local/bin/redis-entrypoint.sh
 RUN dos2unix /usr/local/bin/redis-entrypoint.sh \
@@ -27,3 +31,6 @@ HEALTHCHECK --interval=10s --timeout=5s --start-period=20s --retries=5 \
 
 ENTRYPOINT ["/usr/local/bin/redis-entrypoint.sh"]
 CMD ["redis-server", "--protected-mode", "no"]
+
+# 🔧 Rodar como usuário não-root
+USER redis

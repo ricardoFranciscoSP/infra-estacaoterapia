@@ -93,6 +93,10 @@ RUN apk add --no-cache \
     && update-ca-certificates \
     && rm -rf /var/cache/apk/*
 
+# 🔧 Criar usuário/grupo dedicados
+RUN addgroup -g 1001 -S app && \
+    adduser -u 1001 -S app -G app
+
 # 🔧 tmpfs + secrets
 RUN mkdir -p /tmp /run && chmod 1777 /tmp /run
 
@@ -101,15 +105,18 @@ COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
 # 🔧 Copy seguro (chown para stack.yml user)
-COPY --from=builder --chown=997:1001 /app/dist ./dist
-COPY --from=prod-deps --chown=997:1001 /app/node_modules ./node_modules
-COPY --from=builder --chown=997:1001 /app/prisma ./prisma
-COPY --chown=997:1001 package.json prisma.config.ts ./
+COPY --from=builder --chown=1001:1001 /app/dist ./dist
+COPY --from=prod-deps --chown=1001:1001 /app/node_modules ./node_modules
+COPY --from=builder --chown=1001:1001 /app/prisma ./prisma
+COPY --chown=1001:1001 package.json prisma.config.ts ./
 
 # 🔧 Socket server ports
 EXPOSE 3334
 HEALTHCHECK --interval=20s --timeout=10s --start-period=90s --retries=3 \
     CMD curl -f http://localhost:3334/health || exit 1
+
+# 🔧 Rodar como usuário não-root
+USER app
 
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["node", "dist/socket/server.js"]

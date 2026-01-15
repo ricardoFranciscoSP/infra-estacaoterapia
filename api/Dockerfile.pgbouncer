@@ -14,6 +14,10 @@ RUN apk add --no-cache \
     gettext \
     && rm -rf /var/cache/apk/*
 
+# 🔧 Criar usuário/grupo dedicados
+RUN addgroup -g 1001 -S pgbouncer && \
+    adduser -u 1001 -S pgbouncer -G pgbouncer
+
 # 🔧 Config dir + perms
 RUN mkdir -p /etc/pgbouncer /run/pgbouncer /etc/pgbouncer/templates \
     && chmod 755 /etc/pgbouncer /run/pgbouncer /etc/pgbouncer/templates
