@@ -1,34 +1,32 @@
 # ===============================
 # ETAPA 1 — DEPENDÊNCIAS
 # ===============================
-FROM node:22-alpine AS deps
+FROM node:20-alpine AS deps
 
 WORKDIR /app
-
-# 🔧 DNS Swarm + build tools
 ENV NODE_OPTIONS=--dns-result-order=ipv4first
+
 RUN apk add --no-cache bash openssl curl
 
-# Cache deps
 COPY package.json yarn.lock* package-lock.json* ./
+
 RUN if [ -f yarn.lock ]; then \
-    yarn config set networkConcurrency 4 \
-    && yarn config set networkTimeout 600000 \
-    && yarn install --frozen-lockfile --non-interactive; \
+    yarn config set networkConcurrency 4 && \
+    yarn config set networkTimeout 600000 && \
+    yarn install --frozen-lockfile --non-interactive; \
     elif [ -f package-lock.json ]; then \
     npm ci --prefer-offline --no-audit; \
     else \
     npm install --prefer-offline --no-audit; \
     fi
 
-# Prisma cache
 COPY prisma ./prisma/
 COPY prisma.config.ts ./
 
 # ===============================
 # ETAPA 2 — BUILD
 # ===============================
-FROM node:22-alpine AS builder
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 ENV NODE_OPTIONS=--dns-result-order=ipv4first
@@ -37,18 +35,20 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/prisma ./prisma
 COPY --from=deps /app/prisma.config.ts ./
 
-COPY . .
-RUN npx prisma generate \
-    && (yarn build || npm run build)
+COPY tsconfig.json ./
+COPY src ./src
+COPY scripts ./scripts
+COPY package.json ./
 
-# Templates
+RUN yarn build || npm run build
+
 RUN mkdir -p /app/dist/templates \
     && cp -r /app/src/templates/. /app/dist/templates/ 2>/dev/null || true
 
 # ===============================
-# ETAPA 3 — PROD DEPS (otimizado)
+# ETAPA 3 — PROD DEPS
 # ===============================
-FROM node:22-alpine AS prod-deps
+FROM node:20-alpine AS prod-deps
 
 WORKDIR /app
 ENV NODE_OPTIONS=--dns-result-order=ipv4first
@@ -57,8 +57,7 @@ COPY package.json yarn.lock* package-lock.json* ./
 COPY prisma ./prisma/
 COPY prisma.config.ts ./
 
-# 🔧 Prod deps + Prisma (único generate)
-RUN echo "[BUILD] Prod deps..." && \
+RUN echo "[API] Prod deps..." && \
     if [ -f yarn.lock ]; then \
     yarn install --production --frozen-lockfile --non-interactive; \
     elif [ -f package-lock.json ]; then \
@@ -69,17 +68,15 @@ RUN echo "[BUILD] Prod deps..." && \
     && npx prisma generate
 
 # ===============================
-# ETAPA 4 — RUNNER PRD (Swarm ready)
+# ETAPA 4 — RUNNER (PRODUÇÃO)
 # ===============================
-FROM node:22-alpine AS runner
+FROM node:20-alpine AS runner
 
 WORKDIR /app
 
-# 🔧 Runtime para Swarm + healthcheck
 ENV NODE_ENV=production \
     NODE_OPTIONS="--dns-result-order=ipv4first --max-old-space-size=2048"
 
-# Tools essenciais (nc, psql, curl)
 RUN apk add --no-cache \
     bash \
     ca-certificates \
@@ -89,31 +86,24 @@ RUN apk add --no-cache \
     && update-ca-certificates \
     && rm -rf /var/cache/apk/*
 
-# 🔧 Criar usuário/grupo dedicados
 RUN addgroup -g 1001 -S app && \
     adduser -u 1001 -S app -G app
 
-# 🔧 /tmp correto para tmpfs
-RUN mkdir -p /tmp && chmod 1777 /tmp /run
+RUN mkdir -p /tmp /run && chmod 1777 /tmp /run
 
-# Entrypoint
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
-# 🔧 Copy minimal (security + size)
 COPY --from=builder --chown=1001:1001 /app/dist ./dist
 COPY --from=prod-deps --chown=1001:1001 /app/node_modules ./node_modules
-COPY --from=builder --chown=1001:1001 /app/prisma ./prisma
+COPY --from=prod-deps --chown=1001:1001 /app/prisma ./prisma
 COPY --chown=1001:1001 package.json prisma.config.ts ./
 
-# 🔧 USER no build (override via docker-stack.yml)
-# Security: non-root via user: '997:1001'
-
 EXPOSE 3333
-HEALTHCHECK --interval=20s --timeout=10s --start-period=60s --retries=3 \
+
+HEALTHCHECK --interval=20s --timeout=10s --start-period=120s --retries=5 \
     CMD curl -f http://localhost:3333/health || exit 1
 
-# 🔧 Rodar como usuário não-root
 USER app
 
 ENTRYPOINT ["/entrypoint.sh"]

@@ -1,11 +1,10 @@
-FROM edoburu/pgbouncer:latest
+FROM edoburu/pgbouncer:1.22.1
 
-# 🔧 Labels + security
 LABEL maintainer="estacaoterapia@team" \
     org.opencontainers.image.description="PgBouncer Swarm proxy para PostgreSQL"
 
-# 🔧 Tools para healthcheck + debug
 USER root
+
 RUN apk add --no-cache \
     bash \
     netcat-openbsd \
@@ -14,18 +13,16 @@ RUN apk add --no-cache \
     gettext \
     && rm -rf /var/cache/apk/*
 
-# 🔧 Criar usuário/grupo dedicados
 RUN addgroup -g 1001 -S pgbouncer && \
     adduser -u 1001 -S pgbouncer -G pgbouncer
 
-# 🔧 Config dir + perms
 RUN mkdir -p /etc/pgbouncer /run/pgbouncer /etc/pgbouncer/templates \
+    && chown -R pgbouncer:pgbouncer /etc/pgbouncer /run/pgbouncer \
     && chmod 755 /etc/pgbouncer /run/pgbouncer /etc/pgbouncer/templates
 
-# 🔧 Create default pgbouncer.ini template
 RUN cat > /etc/pgbouncer/templates/pgbouncer.ini.template <<'EOF'
 [databases]
-estacaoterapia = host=postgres port=5432 dbname=estacaoterapia connect_query='SELECT 1'
+estacaoterapia = host=postgres port=5432 dbname=estacaoterapia
 
 [pgbouncer]
 listen_addr = 0.0.0.0
@@ -34,24 +31,21 @@ auth_type = md5
 auth_file = /etc/pgbouncer/userlist.txt
 admin_users = admin
 pool_mode = transaction
-max_client_conn = 1000
-default_pool_size = 25
-min_pool_size = 5
-reserve_pool_size = 10
+max_client_conn = 2000
+default_pool_size = 50
+min_pool_size = 10
+reserve_pool_size = 20
 reserve_pool_timeout = 5
-max_db_connections = 100
-max_user_connections = 100
+max_db_connections = 200
+max_user_connections = 200
 server_lifetime = 7200
 server_idle_timeout = 300
 server_connect_timeout = 30
 server_login_retry = 30
-query_timeout = 0
 query_wait_timeout = 60
 client_idle_timeout = 300
 client_login_timeout = 30
-autodb_idle_timeout = 3600
 dns_max_ttl = 15
-dns_zone_check_period = 0
 log_connections = 1
 log_disconnections = 1
 log_pooler_errors = 1
@@ -62,107 +56,54 @@ tcp_keepintvl = 10
 tcp_keepcnt = 5
 EOF
 
-# 🔧 Create default userlist.txt template (will be replaced by secret)
 RUN cat > /etc/pgbouncer/templates/userlist.txt.template <<'EOF'
 "estacaoterapia" "md5changeme"
 "admin" "md5changeme"
 EOF
 
-# 🔧 Create entrypoint script for dynamic configuration
 RUN cat > /usr/local/bin/pgbouncer-entrypoint.sh <<'EOF'
 #!/bin/bash
 set -e
 
-# =========================
-# Função: carregar secrets
-# =========================
 load_secrets() {
-    local secret_file="$1"
-    [ -z "$secret_file" ] && return 0
-    [ ! -f "$secret_file" ] && return 0
-
-    echo "🔐 Carregando secrets: $secret_file"
-
+    [ -f "$1" ] || return 0
     while IFS= read -r line || [ -n "$line" ]; do
-        case "$line" in
-            ""|\#*) continue ;;
-        esac
-
-        key="${line%%=*}"
-        value="${line#*=}"
-
-        case "$key" in
-            ''|*[!A-Za-z0-9_]*|[0-9]*) continue ;;
-        esac
-
-        export "$key=$value"
-    done < "$secret_file"
+        case "$line" in ""|\#*) continue ;; esac
+        export "$line"
+    done < "$1"
 }
 
-# 🔧 Carregar secrets em formato .env (se existir)
 load_secrets /run/secrets/pgbouncer_env
 load_secrets /run/secrets/postgres_env
 
-# 🔧 Variables with defaults
 PG_HOST=${PG_HOST:-postgres}
 PG_PORT=${PG_PORT:-5432}
-PG_DB=${PG_DB:-estacaoterapia}
-PGBOUNCER_PORT=${PGBOUNCER_PORT:-6432}
 
-echo "🔧 PgBouncer starting with:"
-echo "   PostgreSQL Host: $PG_HOST"
-echo "   PostgreSQL Port: $PG_PORT"
-echo "   Database: $PG_DB"
-echo "   PgBouncer Port: $PGBOUNCER_PORT"
-
-# 🔧 Exportar variáveis para o runtime
-export PG_HOST
-export PG_PORT
-export PG_DB
-export PGBOUNCER_PORT
-export POSTGRES_USER
-export POSTGRES_PASSWORD
-export POSTGRES_DB
-
-# 🔧 Process pgbouncer.ini from secret or template
 if [ -f /run/secrets/pgbouncer.ini ]; then
-    echo "📦 Using pgbouncer.ini from secret"
     cp /run/secrets/pgbouncer.ini /etc/pgbouncer/pgbouncer.ini.base
 else
-    echo "📦 Using pgbouncer.ini from template"
     cp /etc/pgbouncer/templates/pgbouncer.ini.template /etc/pgbouncer/pgbouncer.ini.base
 fi
 
-# 🔧 Replace database connection with service name
-sed "s|host=[^ ]* port=[^ ]*|host=$PG_HOST port=$PG_PORT|g" /etc/pgbouncer/pgbouncer.ini.base > /etc/pgbouncer/pgbouncer.ini
+sed "s|host=[^ ]* port=[^ ]*|host=$PG_HOST port=$PG_PORT|g" \
+    /etc/pgbouncer/pgbouncer.ini.base > /etc/pgbouncer/pgbouncer.ini
 
-# 🔧 Process userlist.txt from secret or template
 if [ -f /run/secrets/userlist.txt ]; then
-    echo "📦 Using userlist.txt from secret"
     cp /run/secrets/userlist.txt /etc/pgbouncer/userlist.txt
 else
-    echo "📦 Using userlist.txt from template"
     cp /etc/pgbouncer/templates/userlist.txt.template /etc/pgbouncer/userlist.txt
 fi
 
-echo "✅ Configuration ready:"
-cat /etc/pgbouncer/pgbouncer.ini | grep -A 1 "\[databases\]"
+chown pgbouncer:pgbouncer /etc/pgbouncer/*
+chmod 600 /etc/pgbouncer/userlist.txt
+chmod 644 /etc/pgbouncer/pgbouncer.ini
 
-# 🔧 Fix permissions
-chmod 644 /etc/pgbouncer/pgbouncer.ini /etc/pgbouncer/userlist.txt
-
-# 🔧 Start pgbouncer
 exec pgbouncer /etc/pgbouncer/pgbouncer.ini
 EOF
 
 RUN chmod +x /usr/local/bin/pgbouncer-entrypoint.sh
 
-# 🔧 Healthcheck simples (porta local do PgBouncer)
-HEALTHCHECK --interval=10s --timeout=5s --start-period=20s --retries=5 \
-    CMD nc -z localhost 6432 || exit 1
-
 EXPOSE 6432
 USER pgbouncer
-
 ENTRYPOINT ["/usr/local/bin/pgbouncer-entrypoint.sh"]
 CMD []

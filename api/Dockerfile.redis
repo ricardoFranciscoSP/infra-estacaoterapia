@@ -1,36 +1,42 @@
-FROM redis:7-alpine
+FROM redis:7.2-alpine
 
-# 🔧 Labels + healthcheck metadata
 LABEL maintainer="estacaoterapia@team" \
-    org.opencontainers.image.description="Redis Swarm com auth secrets"
+    org.opencontainers.image.description="Redis para Docker Swarm com auth via secrets"
 
-# 🔧 Tools mínimos (bash para secrets, nc para healthcheck)
+USER root
+
 RUN apk add --no-cache \
     bash \
-    dos2unix \
-    netcat-openbsd
+    netcat-openbsd \
+    && rm -rf /var/cache/apk/*
 
-# 🔧 Criar usuário/grupo dedicados (se não existirem)
+# Criar usuário redis se não existir
 RUN if ! getent group redis >/dev/null 2>&1; then addgroup -g 1001 -S redis; fi && \
     if ! id -u redis >/dev/null 2>&1; then adduser -u 1001 -S redis -G redis; fi
 
-# 🔧 Copy + fix line endings
+# Entrypoint
 COPY redis-entrypoint.sh /usr/local/bin/redis-entrypoint.sh
-RUN dos2unix /usr/local/bin/redis-entrypoint.sh \
-    && chmod +x /usr/local/bin/redis-entrypoint.sh
+RUN chmod +x /usr/local/bin/redis-entrypoint.sh
 
-# 🔧 Cleanup (image ~25MB)
-RUN apk del dos2unix \
-    && rm -rf /var/cache/apk/*
+# Garantir permissão no volume
+RUN mkdir -p /data && chown -R redis:redis /data
 
-# 🔧 Expose + Healthcheck Swarm-ready
 EXPOSE 6379
+
+# Healthcheck (funciona em docker run, stack define o seu)
 HEALTHCHECK --interval=10s --timeout=5s --start-period=20s --retries=5 \
-    CMD bash -c "REDIS_PASS=$$(cat /run/secrets/redis_password 2>/dev/null || echo '') && \
-    [ -n '$$REDIS_PASS' ] && redis-cli -a '$$REDIS_PASS' ping || redis-cli ping" || exit 1
+    CMD bash -c 'REDIS_PASS=$(cat /run/secrets/redis_password 2>/dev/null || true); \
+    if [ -n "$REDIS_PASS" ]; then redis-cli -a "$REDIS_PASS" ping | grep -q PONG; \
+    else redis-cli ping | grep -q PONG; fi'
 
 ENTRYPOINT ["/usr/local/bin/redis-entrypoint.sh"]
-CMD ["redis-server", "--protected-mode", "no"]
 
-# 🔧 Rodar como usuário não-root
+# Configuração explícita de produção
+CMD ["redis-server", \
+    "--appendonly", "yes", \
+    "--save", "900", "1", \
+    "--save", "300", "10", \
+    "--save", "60", "10000", \
+    "--protected-mode", "no"]
+
 USER redis

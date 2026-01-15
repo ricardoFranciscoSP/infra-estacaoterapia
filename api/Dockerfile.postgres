@@ -1,29 +1,57 @@
 FROM postgres:16-alpine
 
-# 🔧 Labels + security
+# ===============================
+# METADATA
+# ===============================
 LABEL maintainer="estacaoterapia@team" \
-    org.opencontainers.image.description="PostgreSQL 16 Swarm + secrets"
+    org.opencontainers.image.description="PostgreSQL 16 Alpine - Produção Swarm"
 
-# 🔧 Tools para entrypoint/healthcheck
+# ===============================
+# TOOLS MÍNIMOS
+# ===============================
 RUN apk add --no-cache \
     bash \
-    curl \
     netcat-openbsd \
     postgresql-client \
+    ca-certificates \
     && rm -rf /var/cache/apk/*
 
-# 🔧 Entrypoint custom
+# ===============================
+# ENTRYPOINT
+# ===============================
 COPY postgres-entrypoint.sh /usr/local/bin/postgres-entrypoint.sh
 RUN chmod +x /usr/local/bin/postgres-entrypoint.sh
 
-# 🔧 PGDATA correto + perf
-VOLUME /var/lib/postgresql/data
+# ===============================
+# DATA
+# ===============================
 ENV PGDATA=/var/lib/postgresql/data/pgdata
+VOLUME /var/lib/postgresql/data
 
-# 🔧 Healthcheck PgBouncer-ready
-HEALTHCHECK --interval=10s --timeout=5s --start-period=30s --retries=5 \
-    CMD pg_isready -U postgres -d postgres || exit 1
+# ===============================
+# GRACEFUL SHUTDOWN (CRÍTICO)
+# ===============================
+STOPSIGNAL SIGTERM
 
+# ===============================
+# HEALTHCHECK (INDEPENDENTE DO USER)
+# Usa socket local → não precisa senha
+# ===============================
+HEALTHCHECK --interval=15s --timeout=5s --start-period=90s --retries=5 \
+    CMD pg_isready -q -h /var/run/postgresql || exit 1
+
+# ===============================
+# NETWORK
+# ===============================
 EXPOSE 5432
+
+# ===============================
+# SECURITY
+# ===============================
+USER postgres
+
+# ===============================
+# START
+# ===============================
 ENTRYPOINT ["/usr/local/bin/postgres-entrypoint.sh"]
-CMD ["postgres", "-c", "config_file=/etc/postgresql/postgresql.conf"]
+CMD ["postgres"]

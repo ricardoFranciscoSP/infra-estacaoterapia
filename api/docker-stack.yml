@@ -1,10 +1,9 @@
 # ============================================
-# API BACKEND - DOCKER SWARM STACK
+# API BACKEND - DOCKER SWARM STACK (PRODUÇÃO)
 # Para uso com Docker Swarm + Caddy
 # ============================================
 
 networks:
-  # Rede overlay única (externa, criada pelo deploy)
   estacaoterapia_backend:
     external: true
     name: estacaoterapia_backend
@@ -15,18 +14,22 @@ services:
   # =====================================
   postgres:
     image: postgres:16-alpine
-    secrets: [postgres_env]
+    secrets:
+      - postgres_env
     environment:
       PGDATA: /var/lib/postgresql/data/pgdata
-    volumes: [postgres_data:/var/lib/postgresql/data]
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
     networks:
       estacaoterapia_backend:
-        aliases: [postgres, postgres.estacaoterapia_backend]
+        aliases:
+          - postgres
+          - postgres.estacaoterapia_backend
     healthcheck:
       test:
         [
           'CMD-SHELL',
-          "PGPASSWORD=$$(grep POSTGRES_PASSWORD /run/secrets/postgres_env | cut -d= -f2) psql -U $$(grep POSTGRES_USER /run/secrets/postgres_env | cut -d= -f2) -d $$(grep POSTGRES_DB /run/secrets/postgres_env | cut -d= -f2) -c 'SELECT 1;' >/dev/null 2>&1 || exit 1",
+          "PGPASSWORD=$(grep POSTGRES_PASSWORD /run/secrets/postgres_env | cut -d= -f2) psql -U $(grep POSTGRES_USER /run/secrets/postgres_env | cut -d= -f2) -d $(grep POSTGRES_DB /run/secrets/postgres_env | cut -d= -f2) -c 'SELECT 1;' >/dev/null 2>&1",
         ]
       interval: 10s
       timeout: 5s
@@ -35,7 +38,8 @@ services:
     deploy:
       replicas: 1
       placement:
-        constraints: [node.role == manager]
+        constraints:
+          - node.role == manager
       restart_policy:
         condition: on-failure
         delay: 10s
@@ -43,43 +47,50 @@ services:
         window: 120s
 
   # =====================================
-  # REDIS (2º - após PG)
+  # REDIS (2º)
   # =====================================
   redis:
     image: estacaoterapia-redis:prd-{{TAG}}
-    secrets: [redis_password]
-    volumes: [redis_data:/data]
+    secrets:
+      - redis_password
+    volumes:
+      - redis_data:/data
     networks:
       estacaoterapia_backend:
         aliases:
           - redis
-          - estacaoterapia_redis # 🔧 Full stack.service
+          - estacaoterapia_redis
           - redis.estacaoterapia_backend
     healthcheck:
       test:
         [
           'CMD-SHELL',
-          "REDIS_PASS=$$(cat /run/secrets/redis_password 2>/dev/null || echo '') && [ -n '$$REDIS_PASS' ] && redis-cli -a '$$REDIS_PASS' ping || redis-cli ping >/dev/null 2>&1",
+          'REDIS_PASS=$(cat /run/secrets/redis_password 2>/dev/null || true); if [ -n "$REDIS_PASS" ]; then redis-cli -a "$REDIS_PASS" ping | grep -q PONG; else redis-cli ping | grep -q PONG; fi',
         ]
       interval: 10s
       timeout: 5s
       retries: 10
-      start_period: 40s # 🔧 Aumentado
+      start_period: 40s
     deploy:
       replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
       restart_policy:
         condition: on-failure
         delay: 10s
         max_attempts: 5
         window: 120s
-      placement:
-        constraints: [node.role == manager]
       resources:
-        limits: { cpus: '1.0', memory: 512M }
-        reservations: { cpus: '0.5', memory: 256M }
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
 
   # =====================================
-  # PGBOUNCER (3º - após PG)
+  # PGBOUNCER (3º)
   # =====================================
   pgbouncer:
     image: estacaoterapia-pgbouncer:prd-{{TAG}}
@@ -97,20 +108,26 @@ services:
       estacaoterapia_backend:
         aliases:
           - pgbouncer
-          - estacaoterapia_pgbouncer # 🔧 Full nome
+          - estacaoterapia_pgbouncer
           - pgbouncer.estacaoterapia_backend
-    # Healthcheck definido na imagem (pg_isready)
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -h localhost -p 6432']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
     deploy:
       replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
       restart_policy:
         condition: on-failure
         delay: 10s
         max_attempts: 5
-      placement:
-        constraints: [node.role == manager]
 
   # =====================================
-  # API (4º - após Redis/PG)
+  # API (4º)
   # =====================================
   api:
     image: estacaoterapia-api:prd-{{TAG}}
@@ -123,28 +140,32 @@ services:
     environment:
       NODE_ENV: production
       NODE_OPTIONS: '--max-old-space-size=2048'
-      PG_HOST: estacaoterapia_pgbouncer # 🔧 Full nome
+      PG_HOST: estacaoterapia_pgbouncer
       PG_PORT: '6432'
-      REDIS_HOST: estacaoterapia_redis # 🔧 Full nome (combina entrypoint)
+      REDIS_HOST: estacaoterapia_redis
       REDIS_PORT: '6379'
       REDIS_DB: '1'
     volumes:
-      - type: volume
-        source: documentos_data
-        target: /app/documentos
-    tmpfs: ['/tmp', '/app/data']
-    expose: ['3333']
+      - documentos_data:/app/documentos
+    tmpfs:
+      - /tmp
+      - /app/data
+    expose:
+      - '3333'
     healthcheck:
       test: ['CMD', 'curl', '-f', 'http://localhost:3333/health']
       interval: 20s
       timeout: 10s
       retries: 5
-      start_period: 120s # 🔧 Aumentado para Redis retries
+      start_period: 120s
     deploy:
       replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
       update_config:
         parallelism: 1
-        delay: 30s # 🔧 Mais delay
+        delay: 30s
         order: start-first
         failure_action: pause
         monitor: 60s
@@ -153,16 +174,14 @@ services:
         delay: 15s
         max_attempts: 5
         window: 180s
-      placement:
-        constraints: [node.role == manager]
     networks:
       estacaoterapia_backend:
         aliases:
-          - estacaoterapia_api # 🔧 Principal
+          - estacaoterapia_api
           - api
 
   # =====================================
-  # SOCKET SERVER (5º - após API)
+  # SOCKET SERVER (5º)
   # =====================================
   socket-server:
     image: estacaoterapia-socket:prd-{{TAG}}
@@ -182,15 +201,18 @@ services:
       REDIS_HOST: estacaoterapia_redis
       REDIS_PORT: '6379'
       REDIS_DB: '1'
-      API_BASE_URL: 'http://estacaoterapia_api:3333' # 🔧 Apenas principal
+      API_BASE_URL: 'http://estacaoterapia_api:3333'
     healthcheck:
       test: ['CMD', 'curl', '-f', 'http://localhost:3334/health']
       interval: 20s
       timeout: 10s
       retries: 5
-      start_period: 150s # 🔧 Após API
+      start_period: 150s
     deploy:
       replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
       update_config:
         parallelism: 1
         delay: 30s
@@ -202,8 +224,6 @@ services:
         delay: 15s
         max_attempts: 5
         window: 180s
-      placement:
-        constraints: [node.role == manager]
     networks:
       estacaoterapia_backend:
         aliases:
@@ -212,14 +232,23 @@ services:
           - ws
 
 volumes:
-  postgres_data: { external: true }
-  redis_data: { external: true }
-  documentos_data: { external: true }
+  postgres_data:
+    external: true
+  redis_data:
+    external: true
+  documentos_data:
+    external: true
 
 secrets:
-  estacao_api_env: { external: true }
-  estacao_socket_env: { external: true }
-  postgres_env: { external: true }
-  pgbouncer.ini: { external: true }
-  userlist.txt: { external: true }
-  redis_password: { external: true }
+  estacao_api_env:
+    external: true
+  estacao_socket_env:
+    external: true
+  postgres_env:
+    external: true
+  pgbouncer.ini:
+    external: true
+  userlist.txt:
+    external: true
+  redis_password:
+    external: true

@@ -1,15 +1,13 @@
 # ===============================
 # ETAPA 1 — DEPENDÊNCIAS
 # ===============================
-FROM node:22-alpine AS deps
+FROM node:20-alpine AS deps
 
 WORKDIR /app
-
-# 🔧 DNS Swarm + tools mínimos
 ENV NODE_OPTIONS=--dns-result-order=ipv4first
-RUN apk add --no-cache openssl bash
 
-# Cache deps + Prisma
+RUN apk add --no-cache bash openssl
+
 COPY package.json yarn.lock* package-lock.json* ./
 COPY prisma ./prisma/
 COPY prisma.config.ts ./
@@ -26,7 +24,7 @@ RUN echo "[SOCKET] Deps..." && \
 # ===============================
 # ETAPA 2 — BUILD
 # ===============================
-FROM node:22-alpine AS builder
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 ENV NODE_OPTIONS=--dns-result-order=ipv4first
@@ -35,23 +33,20 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/prisma ./prisma
 COPY --from=deps /app/prisma.config.ts ./
 
-# Código fonte mínimo
 COPY tsconfig.json ./
 COPY scripts ./scripts
 COPY src ./src
 COPY package.json ./
 
-RUN npx prisma generate \
-    && (yarn tsc || npm run build || npx tsc)
+RUN yarn tsc || npm run build || npx tsc
 
-# Templates
 RUN mkdir -p /app/dist/templates \
     && cp -r /app/src/templates/. /app/dist/templates/ 2>/dev/null || true
 
 # ===============================
 # ETAPA 3 — PROD DEPS
 # ===============================
-FROM node:22-alpine AS prod-deps
+FROM node:20-alpine AS prod-deps
 
 WORKDIR /app
 ENV NODE_OPTIONS=--dns-result-order=ipv4first
@@ -62,28 +57,23 @@ COPY prisma.config.ts ./
 
 RUN echo "[SOCKET] Prod deps..." && \
     if [ -f yarn.lock ]; then \
-    yarn install --production --frozen-lockfile --non-interactive \
-    && yarn prisma generate; \
+    yarn install --production --frozen-lockfile --non-interactive && yarn prisma generate; \
     elif [ -f package-lock.json ]; then \
-    npm ci --only=production --prefer-offline --no-audit \
-    && npx prisma generate; \
+    npm ci --only=production --prefer-offline --no-audit && npx prisma generate; \
     else \
-    npm install --only=production --prefer-offline --no-audit \
-    && npx prisma generate; \
+    npm install --only=production --prefer-offline --no-audit && npx prisma generate; \
     fi
 
 # ===============================
-# ETAPA 4 — RUNNER PRD (Swarm)
+# ETAPA 4 — RUNNER (PRODUÇÃO)
 # ===============================
-FROM node:22-alpine AS runner
+FROM node:20-alpine AS runner
 
 WORKDIR /app
 
-# 🔧 Prod + Swarm networking
 ENV NODE_ENV=production \
     NODE_OPTIONS="--dns-result-order=ipv4first"
 
-# 🔧 Tools para nc API/Redis + healthcheck
 RUN apk add --no-cache \
     bash \
     ca-certificates \
@@ -93,29 +83,24 @@ RUN apk add --no-cache \
     && update-ca-certificates \
     && rm -rf /var/cache/apk/*
 
-# 🔧 Criar usuário/grupo dedicados
 RUN addgroup -g 1001 -S app && \
     adduser -u 1001 -S app -G app
 
-# 🔧 tmpfs + secrets
 RUN mkdir -p /tmp /run && chmod 1777 /tmp /run
 
-# Entrypoint
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
-# 🔧 Copy seguro (chown para stack.yml user)
 COPY --from=builder --chown=1001:1001 /app/dist ./dist
 COPY --from=prod-deps --chown=1001:1001 /app/node_modules ./node_modules
-COPY --from=builder --chown=1001:1001 /app/prisma ./prisma
+COPY --from=prod-deps --chown=1001:1001 /app/prisma ./prisma
 COPY --chown=1001:1001 package.json prisma.config.ts ./
 
-# 🔧 Socket server ports
 EXPOSE 3334
-HEALTHCHECK --interval=20s --timeout=10s --start-period=90s --retries=3 \
+
+HEALTHCHECK --interval=20s --timeout=10s --start-period=150s --retries=5 \
     CMD curl -f http://localhost:3334/health || exit 1
 
-# 🔧 Rodar como usuário não-root
 USER app
 
 ENTRYPOINT ["/entrypoint.sh"]
