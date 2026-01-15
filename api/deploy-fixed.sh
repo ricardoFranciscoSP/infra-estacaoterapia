@@ -663,6 +663,17 @@ if [ "$DANGLING_REMOVED" -gt 0 ]; then
     echo "   [OK] $DANGLING_REMOVED imagens removidas"
 fi
 
+# Limpeza pós-deploy (disco)
+echo ""
+echo "[CLEANUP] Executando cleanup pós-deploy..."
+CLEANUP_SCRIPT="$SCRIPT_DIR/../cleanup-deploy.sh"
+if [ -f "$CLEANUP_SCRIPT" ]; then
+    chmod +x "$CLEANUP_SCRIPT" 2>/dev/null || true
+    "$CLEANUP_SCRIPT" || echo "   [WARN] Falha na limpeza pós-deploy"
+else
+    echo "   [WARN] Script de limpeza não encontrado: $CLEANUP_SCRIPT"
+fi
+
 # ==============================
 # LIMPEZA DE ARQUIVOS TEMPORARIOS
 # ==============================

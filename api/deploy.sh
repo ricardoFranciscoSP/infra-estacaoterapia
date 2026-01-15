@@ -1,4 +1,4 @@
-﻿#!/bin/bash
+#!/bin/bash
 set -euo pipefail
 
 # Configurar UTF-8 corretamente
@@ -610,6 +610,17 @@ echo "[LIMPEZA] Removendo imagens dangling..."
 DANGLING_REMOVED=$(docker image prune -f --filter "until=1h" 2>/dev/null | grep -o "deleted" | wc -l)
 if [ "$DANGLING_REMOVED" -gt 0 ]; then
     echo "   [OK] $DANGLING_REMOVED imagens removidas"
+fi
+
+# Limpeza pós-deploy (disco)
+echo ""
+echo "[LIMPEZA] Executando cleanup pós-deploy..."
+CLEANUP_SCRIPT="$SCRIPT_DIR/../cleanup-deploy.sh"
+if [ -f "$CLEANUP_SCRIPT" ]; then
+    chmod +x "$CLEANUP_SCRIPT" 2>/dev/null || true
+    "$CLEANUP_SCRIPT" || echo "   [AVISO] Falha na limpeza pós-deploy"
+else
+    echo "   [AVISO] Script de limpeza não encontrado: $CLEANUP_SCRIPT"
 fi
 
 # ==============================

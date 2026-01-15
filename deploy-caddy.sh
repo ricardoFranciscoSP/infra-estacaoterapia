@@ -5,6 +5,9 @@ echo "======================================"
 echo "🌐 DEPLOY CADDY - $(date)"
 echo "======================================"
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CLEANUP_SCRIPT="$SCRIPT_DIR/cleanup-deploy.sh"
+
 # ==============================
 # 1️⃣ Validar pré-requisitos
 # ==============================
@@ -124,3 +127,13 @@ echo "Próximos passos:"
 echo " - docker service logs caddy_caddy -f"
 echo " - Testar HTTPS nos domínios"
 echo ""
+
+# ==============================
+# 9️⃣ Limpeza Pós-Deploy
+# ==============================
+if [ -f "$CLEANUP_SCRIPT" ]; then
+  chmod +x "$CLEANUP_SCRIPT" 2>/dev/null || true
+  "$CLEANUP_SCRIPT" || echo "⚠️  Falha na limpeza pós-deploy"
+else
+  echo "⚠️  Script de limpeza não encontrado: $CLEANUP_SCRIPT"
+fi

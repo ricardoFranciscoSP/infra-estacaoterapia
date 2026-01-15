@@ -34,6 +34,7 @@ fi
 # Lista de scripts que devem ser executáveis
 declare -A SCRIPTS=(
     ["deploy-all.sh"]="."
+    ["cleanup-deploy.sh"]="."
     ["start.sh"]="."
     ["prepare-deploy.sh"]="."
     ["api/deploy.sh"]="$API_PATH"
@@ -57,7 +58,7 @@ echo "📋 Verificando e ajustando permissões..."
 echo ""
 
 # Scripts na raiz
-for script in deploy-all.sh start.sh prepare-deploy.sh; do
+for script in deploy-all.sh cleanup-deploy.sh start.sh prepare-deploy.sh; do
     TOTAL=$((TOTAL + 1))
     if [ -f "$script" ]; then
         chmod +x "$script" 2>/dev/null && {

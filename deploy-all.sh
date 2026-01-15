@@ -54,6 +54,23 @@ log_header() {
     echo -e "${CYAN}======================================${NC}\n" | tee -a "$LOG_FILE"
 }
 
+run_cleanup() {
+    local cleanup_script="$SCRIPT_DIR/cleanup-deploy.sh"
+
+    log_header "🧹 Limpeza Pós-Deploy"
+
+    if [ -f "$cleanup_script" ]; then
+        chmod +x "$cleanup_script" 2>/dev/null || true
+        if "$cleanup_script" 2>&1 | tee -a "$LOG_FILE"; then
+            log_success "Limpeza pós-deploy concluída"
+        else
+            log_warning "Limpeza pós-deploy falhou (continuando)"
+        fi
+    else
+        log_warning "Script de limpeza não encontrado: $cleanup_script"
+    fi
+}
+
 ###############################################################################
 # Funções de Validação
 ###############################################################################
@@ -400,6 +417,9 @@ main() {
     print_summary
     
     exit_code=$?
+
+    # Limpeza pós-deploy
+    run_cleanup || true
     
     log_info "Finalizado em: $(date '+%d/%m/%Y %H:%M:%S')"
     

@@ -348,6 +348,20 @@ cleanup_old_images() {
   fi
 }
 
+run_cleanup() {
+  local root_dir
+  root_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+  local cleanup_script="${root_dir}/cleanup-deploy.sh"
+
+  log_info "Executando limpeza pós-deploy..."
+  if [ -f "$cleanup_script" ]; then
+    chmod +x "$cleanup_script" 2>/dev/null || true
+    "$cleanup_script" || log_warning "Falha na limpeza pós-deploy"
+  else
+    log_warning "Script de limpeza não encontrado: $cleanup_script"
+  fi
+}
+
 # =========================
 # ROLLBACK
 # =========================
@@ -394,6 +408,7 @@ main() {
     
     # Limpar imagens antigas após deploy bem-sucedido
     cleanup_old_images
+    run_cleanup
   else
     log_error "DEPLOY FALHOU"
     rollback_stack

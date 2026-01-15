@@ -185,8 +185,14 @@ services:
           - node.role == manager
 
     networks:
-      - estacao-backend-network
-      - estacaoterapia_backend
+      estacao-backend-network:
+        aliases:
+          - estacaoterapia_api
+          - api
+      estacaoterapia_backend:
+        aliases:
+          - estacaoterapia_api
+          - api
 
   # =====================================
   # PGBOUNCER
@@ -236,7 +242,7 @@ services:
       REDIS_PORT: '6379'
       REDIS_DB: '1'
       # ✅ Usar DNS do Swarm para resolver 'api' corretamente
-      API_BASE_URL: 'http://estacaoterapia_api:3333'
+      API_BASE_URL: 'http://api:3333'
 
     healthcheck:
       test: ['CMD', 'curl', '-f', 'http://localhost:3334/health']
