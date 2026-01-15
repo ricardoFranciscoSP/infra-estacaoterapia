@@ -116,7 +116,7 @@ create_or_update_secret() {
             echo "   [AVISO] [ERRO] ao atualizar (pode estar em uso)"
         }
     else
-        echo "   [CRIANDO] Secret: $secret_name"
+        echo "   [[CRIANDO]NDO] Secret: $secret_name"
         docker secret create "$secret_name" "$secret_file" 2>/dev/null || {
             echo "   [AVISO] Secret ja pode existir"
         }
@@ -180,7 +180,7 @@ echo "[OK] Secrets configurados"
 # 4. Criar/Verificar volumes
 # ==============================
 echo ""
-echo "[VOLUMES] Verificando volumes Docker..."
+echo "[VOLUMES] [INFO] Verificando volumes Docker..."
 
 create_volume_if_not_exists() {
     local volume_name=$1
@@ -188,7 +188,7 @@ create_volume_if_not_exists() {
     if docker volume inspect "$volume_name" >/dev/null 2>&1; then
         echo "   [EXISTE] Volume: $volume_name"
     else
-        echo "   [CRIANDO] Volume: $volume_name"
+        echo "   [[CRIANDO]NDO] Volume: $volume_name"
         docker volume create "$volume_name" || {
             echo "   [AVISO] [ERRO] ao criar volume"
         }

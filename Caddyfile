@@ -27,11 +27,6 @@ api-prd.estacaoterapia.com.br {
 			response_header_timeout 30s
 			read_timeout 30s
 		}
-
-		# Retry em caso de falha
-		policy random_selection
-		try_duration 10s
-		try_interval 250ms
 	}
 
 	header {
@@ -74,11 +69,6 @@ ws.prd.estacaoterapia.com.br {
 		# Importante para WebSockets
 		header_up Upgrade websocket
 		header_up Connection upgrade
-
-		# Retry
-		policy random_selection
-		try_duration 10s
-		try_interval 250ms
 	}
 
 	header {
