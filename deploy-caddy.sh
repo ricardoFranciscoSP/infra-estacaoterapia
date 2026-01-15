@@ -98,7 +98,7 @@ fi
 echo ""
 echo "🚀 Fazendo deploy do Caddy..."
 
-docker stack deploy -c docker-stack.caddy.yml caddy
+docker stack deploy -c docker-stack.caddy.yml --resolve-image always caddy
 
 echo "✅ Stack deployado com sucesso"
 

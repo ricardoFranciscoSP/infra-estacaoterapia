@@ -336,6 +336,7 @@ echo "   [AGUARDANDO] rolling update..."
 
 docker stack deploy \
     --compose-file "$DEPLOY_STACK_FILE" \
+    --resolve-image always \
     --with-registry-auth \
     estacaoterapia || {
         echo "[ERRO] Falha ao fazer deploy!"

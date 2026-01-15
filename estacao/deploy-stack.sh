@@ -280,6 +280,7 @@ deploy_stack() {
 
   docker stack deploy \
     -c "$DOCKER_STACK_FILE" \
+    --resolve-image always \
     --with-registry-auth \
     "$STACK_NAME"
 
