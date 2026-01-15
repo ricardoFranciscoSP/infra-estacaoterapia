@@ -15,7 +15,7 @@
 # Caddy (em docker-stack.caddy.yml) também está conectado nessa rede
 # Docker Swarm cria VIP automático resolvido pelo DNS interno
 api-prd.estacaoterapia.com.br {
-	reverse_proxy api:3333 {
+	reverse_proxy estacaoterapia_api:3333 {
 		# Testar saúde via /health endpoint
 		health_uri /health
 		health_interval 15s
@@ -54,7 +54,7 @@ api-prd.estacaoterapia.com.br {
 # ✅ CORRETO: socket-server está em estacao-backend-network (rede externa do Swarm)
 # Caddy pode resolver 'socket-server' via DNS VIP do Docker Swarm
 ws.prd.estacaoterapia.com.br {
-	reverse_proxy socket-server:3334 {
+	reverse_proxy estacaoterapia_socket-server:3334 {
 		health_uri /health
 		health_interval 15s
 		health_timeout 10s
