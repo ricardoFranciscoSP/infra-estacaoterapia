@@ -138,9 +138,9 @@ if [ "${CLEAN_DEPLOY:-false}" = "true" ]; then
 
     echo "[LIMPEZA] Removendo imagens antigas (api/socket/redis)..."
     for repo in estacaoterapia-api estacaoterapia-socket-server estacaoterapia-redis; do
-        IMAGES_TO_REMOVE=$(docker images "$repo" --format "{{.Repository}}:{{.Tag}}" 2>/dev/null || true)
-        if [ -n "$IMAGES_TO_REMOVE" ]; then
-            echo "$IMAGES_TO_REMOVE" | while read -r img; do
+        mapfile -t images_to_remove < <(docker images "$repo" --format "{{.Repository}}:{{.Tag}}" 2>/dev/null || true)
+        if [ "${#images_to_remove[@]}" -gt 0 ]; then
+            for img in "${images_to_remove[@]}"; do
                 if [ -n "$img" ]; then
                     echo "   [REMOVENDO] $img"
                     docker rmi -f "$img" 2>/dev/null || echo "      [AVISO] Nao foi possivel remover"
@@ -165,15 +165,20 @@ create_or_update_secret() {
     
     if docker secret inspect "$secret_name" >/dev/null 2>&1; then
         echo "   [ATUALIZANDO] Secret: $secret_name"
-        docker secret rm "$secret_name" 2>/dev/null || true
-        docker secret create "$secret_name" "$secret_file" 2>/dev/null || {
-            echo "   [AVISO] [ERRO] ao atualizar (pode estar em uso)"
-        }
+        if ! docker secret rm "$secret_name" 2>/dev/null; then
+            echo "   [ERRO] Falha ao remover secret $secret_name"
+            exit 1
+        fi
+        if ! docker secret create "$secret_name" "$secret_file" 2>/dev/null; then
+            echo "   [ERRO] Falha ao atualizar secret $secret_name"
+            exit 1
+        fi
     else
         echo "   [CRIANDO] Secret: $secret_name"
-        docker secret create "$secret_name" "$secret_file" 2>/dev/null || {
-            echo "   [AVISO] Secret ja pode existir"
-        }
+        if ! docker secret create "$secret_name" "$secret_file" 2>/dev/null; then
+            echo "   [ERRO] Falha ao criar secret $secret_name"
+            exit 1
+        fi
     fi
 }
 
@@ -391,7 +396,6 @@ echo "   [AGUARDANDO] rolling update..."
 docker stack deploy \
     --compose-file "$DEPLOY_STACK_FILE" \
     --resolve-image always \
-    --with-registry-auth \
     estacaoterapia || {
         echo "[ERRO] Falha ao fazer deploy!"
         echo "[REVERT] Revertendo para backup: $BACKUP_FILE"
@@ -475,27 +479,32 @@ WAIT_INTERVAL=10
 echo ""
 echo "[MONITORANDO] Saude dos servicos..."
 
-wait_for_service_health() {
+wait_for_service() {
     local service_name=$1
     local max_wait=$2
-    local is_optional=$3  # "optional" ou "required"
-    local elapsed=0
+    local start_time=$SECONDS
     local wait_interval=5
-    
-    while [ $elapsed -lt $max_wait ]; do
-        HEALTHY=$(docker service ps "$service_name" --format "{{.CurrentState}}" 2>/dev/null | grep -c "Running" 2>/dev/null || echo "0")
-        HEALTHY=$(echo "$HEALTHY" | tr -d '\n' | tr -d ' ')
-        
-        if [ "$HEALTHY" -gt 0 ] 2>/dev/null; then
+
+    while true; do
+        local states
+        local running_count
+        local elapsed
+        states=$(docker service ps "$service_name" --format "{{.CurrentState}}" 2>/dev/null || true)
+        running_count=$(echo "$states" | grep -c "Running" 2>/dev/null || echo "0")
+        running_count=$(echo "$running_count" | tr -d '\n' | tr -d ' ')
+
+        if [ "${running_count:-0}" -gt 0 ] 2>/dev/null; then
             return 0
         fi
-        
+
+        elapsed=$((SECONDS - start_time))
+        if [ "$elapsed" -ge "$max_wait" ]; then
+            return 1
+        fi
+
         echo "   [AGUARDANDO] $service_name... ($elapsed/$max_wait segundos)"
-        sleep $wait_interval
-        elapsed=$((elapsed + wait_interval))
+        sleep "$wait_interval"
     done
-    
-    return 1
 }
 
 # Funcao para verificar status detalhado do servico
@@ -512,7 +521,7 @@ check_service_status() {
 
 # Aguardar Redis primeiro (dependencia critica)
 echo "   [AGUARDANDO] Redis..."
-if ! wait_for_service_health "estacaoterapia_redis" 120 "required"; then
+if ! wait_for_service "estacaoterapia_redis" 120; then
     echo ""
     echo " Redis NAO SUBIU no tempo limite (120s)!"
     check_service_status "estacaoterapia_redis"
@@ -532,7 +541,7 @@ fi
 
 # Aguardar PostgreSQL (apos Redis estar ok)
 echo "   [AGUARDANDO] PostgreSQL..."
-if ! wait_for_service_health "estacaoterapia_postgres" 120 "required"; then
+if ! wait_for_service "estacaoterapia_postgres" 120; then
     echo ""
     echo " PostgreSQL NAO SUBIU no tempo limite (120s)!"
     check_service_status "estacaoterapia_postgres"
@@ -552,7 +561,7 @@ fi
 
 # Aguardar PgBouncer (apos PostgreSQL estar ok)
 echo "   [AGUARDANDO] PgBouncer..."
-if ! wait_for_service_health "estacaoterapia_pgbouncer" 60 "required"; then
+if ! wait_for_service "estacaoterapia_pgbouncer" 60; then
     echo ""
     echo "[AVISO] PgBouncer ainda nao respondeu, continuando..."
     check_service_status "estacaoterapia_pgbouncer"
@@ -584,92 +593,96 @@ echo ""
 echo " [INFO] Verificando necessidade de restaurar banco de dados..."
 
 BACKUP_SQL="./backups/estacaoterapia_prd.sql"
+RESTORE_BACKUP=true
 
 if [ ! -f "$BACKUP_SQL" ]; then
     echo "  Arquivo de backup nao encontrado: $BACKUP_SQL"
     echo "   Continuando sem restaurar o banco..."
-    return 0 2>/dev/null || true  # evita erro em scripts sourcing
+    RESTORE_BACKUP=false
 fi
 
-echo "    Arquivo encontrado: $BACKUP_SQL"
+if [ "$RESTORE_BACKUP" = "true" ]; then
+    echo "    Arquivo encontrado: $BACKUP_SQL"
 
-# Aguardar PostgreSQL ficar pronto
-echo "   [AGUARDANDO] PostgreSQL ficar pronto..."
-sleep 10
+    # Aguardar PostgreSQL ficar pronto
+    echo "   [AGUARDANDO] PostgreSQL ficar pronto..."
+    sleep 10
 
-# Pegar container ativo do Postgres
-POSTGRES_CONTAINER=$(docker ps \
-    --filter "label=com.docker.swarm.service.name=estacaoterapia_postgres" \
-    --format "{{.ID}}" | head -1)
+    # Pegar container ativo do Postgres
+    POSTGRES_CONTAINER=$(docker ps \
+        --filter "label=com.docker.swarm.service.name=estacaoterapia_postgres" \
+        --format "{{.ID}}" | head -1)
 
-if [ -z "$POSTGRES_CONTAINER" ]; then
-    echo "    Container do PostgreSQL nao encontrado!"
-    echo "     Continuando sem restaurar o banco..."
-    return 0 2>/dev/null || true
+    if [ -z "$POSTGRES_CONTAINER" ]; then
+        echo "    Container do PostgreSQL nao encontrado!"
+        echo "     Continuando sem restaurar o banco..."
+        RESTORE_BACKUP=false
+    else
+        echo "    PostgreSQL encontrado: $POSTGRES_CONTAINER"
+    fi
 fi
-
-echo "    PostgreSQL encontrado: $POSTGRES_CONTAINER"
 
 # Funcao para executar psql com usurio correto
 psql_exec() {
     docker exec "$POSTGRES_CONTAINER" sh -c "PGPASSWORD='$POSTGRES_PASSWORD' psql -U '$POSTGRES_USER' -d '$POSTGRES_DB' -t -c \"$1\" 2>/dev/null"
 }
 
-# Verificar se o banco existe
-echo "    [INFO] Verificando se o banco 'estacaoterapia' existe..."
-DB_EXISTS=$(docker exec "$POSTGRES_CONTAINER" sh -c "PGPASSWORD='$POSTGRES_PASSWORD' psql -U '$POSTGRES_USER' -lqt 2>/dev/null" | awk '{print $1}' | grep -w estacaoterapia | wc -l || echo "0")
-# Sanitize count to avoid "integer expression expected"
-DB_EXISTS=${DB_EXISTS:-0}
-if ! [[ "$DB_EXISTS" =~ ^[0-9]+$ ]]; then
-    DB_EXISTS=0
-fi
+if [ "$RESTORE_BACKUP" = "true" ]; then
+    # Verificar se o banco existe
+    echo "    [INFO] Verificando se o banco 'estacaoterapia' existe..."
+    DB_EXISTS=$(docker exec "$POSTGRES_CONTAINER" sh -c "PGPASSWORD='$POSTGRES_PASSWORD' psql -U '$POSTGRES_USER' -lqt 2>/dev/null" | awk '{print $1}' | grep -w estacaoterapia | wc -l || echo "0")
+    # Sanitize count to avoid "integer expression expected"
+    DB_EXISTS=${DB_EXISTS:-0}
+    if ! [[ "$DB_EXISTS" =~ ^[0-9]+$ ]]; then
+        DB_EXISTS=0
+    fi
 
-if [ "$DB_EXISTS" -eq 0 ]; then
-    echo "    Banco 'estacaoterapia' nao existe. Criando..."
-    docker exec "$POSTGRES_CONTAINER" sh -c "PGPASSWORD='$POSTGRES_PASSWORD' psql -U '$POSTGRES_USER' -c \"CREATE DATABASE estacaoterapia;\"" || {
-        echo "     nao foi possivel criar banco (pode j existir)"
-    }
-    echo "    Banco criado"
-else
-    echo "    Banco 'estacaoterapia' ja existe"
-fi
-
-# Verificar se ja existem tabelas
-echo "    [INFO] Verificando se o banco j possui tabelas..."
-TABLE_COUNT=$(psql_exec "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE';" | tr -d ' ' || echo "0")
-
-# Garantir que  nmero
-TABLE_COUNT=${TABLE_COUNT:-0}
-if ! [[ "$TABLE_COUNT" =~ ^[0-9]+$ ]]; then
-    TABLE_COUNT=0
-fi
-
-if [ "$TABLE_COUNT" -gt 0 ]; then
-    echo "     Banco j possui $TABLE_COUNT tabela(s) criada(s)"
-    echo "     Pulando restore do backup (banco j populado)"
-else
-    echo "    Banco vazio, prosseguindo com restore..."
-
-    # Copiar arquivo SQL para o container
-    echo "    Copiando backup para o container..."
-    docker cp "$BACKUP_SQL" "${POSTGRES_CONTAINER}:/tmp/restore.sql" || {
-        echo "    [ERRO] ao copiar arquivo para o container!"
-        echo "     Continuando sem restaurar o banco..."
-        return 0 2>/dev/null || true
-    }
-
-    # Executar restore
-    if docker exec "$POSTGRES_CONTAINER" test -f /tmp/restore.sql 2>/dev/null; then
-        echo "    Arquivo copiado com sucesso"
-        echo "    Executando restore do banco de dados..."
-        docker exec "$POSTGRES_CONTAINER" sh -c "PGPASSWORD='$POSTGRES_PASSWORD' psql -U '$POSTGRES_USER' -d estacaoterapia -f /tmp/restore.sql" 2>&1 | grep -E "(ERROR|CREATE|INSERT|restored|done)" || true
-        echo "    Restore executado"
-
-        # Limpar arquivo temporrio
-        docker exec "$POSTGRES_CONTAINER" rm -f /tmp/restore.sql
-        echo "    Banco de dados restaurado com sucesso!"
+    if [ "$DB_EXISTS" -eq 0 ]; then
+        echo "    Banco 'estacaoterapia' nao existe. Criando..."
+        docker exec "$POSTGRES_CONTAINER" sh -c "PGPASSWORD='$POSTGRES_PASSWORD' psql -U '$POSTGRES_USER' -c \"CREATE DATABASE estacaoterapia;\"" || {
+            echo "     nao foi possivel criar banco (pode j existir)"
+        }
+        echo "    Banco criado"
     else
-        echo "     Arquivo nao foi copiado corretamente"
+        echo "    Banco 'estacaoterapia' ja existe"
+    fi
+
+    # Verificar se ja existem tabelas
+    echo "    [INFO] Verificando se o banco j possui tabelas..."
+    TABLE_COUNT=$(psql_exec "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE';" | tr -d ' ' || echo "0")
+
+    # Garantir que  nmero
+    TABLE_COUNT=${TABLE_COUNT:-0}
+    if ! [[ "$TABLE_COUNT" =~ ^[0-9]+$ ]]; then
+        TABLE_COUNT=0
+    fi
+
+    if [ "$TABLE_COUNT" -gt 0 ]; then
+        echo "     Banco j possui $TABLE_COUNT tabela(s) criada(s)"
+        echo "     Pulando restore do backup (banco j populado)"
+    else
+        echo "    Banco vazio, prosseguindo com restore..."
+
+        # Copiar arquivo SQL para o container
+        echo "    Copiando backup para o container..."
+        if docker cp "$BACKUP_SQL" "${POSTGRES_CONTAINER}:/tmp/restore.sql"; then
+            # Executar restore
+            if docker exec "$POSTGRES_CONTAINER" test -f /tmp/restore.sql 2>/dev/null; then
+                echo "    Arquivo copiado com sucesso"
+                echo "    Executando restore do banco de dados..."
+                docker exec "$POSTGRES_CONTAINER" sh -c "PGPASSWORD='$POSTGRES_PASSWORD' psql -U '$POSTGRES_USER' -d estacaoterapia -f /tmp/restore.sql" 2>&1 | grep -E "(ERROR|CREATE|INSERT|restored|done)" || true
+                echo "    Restore executado"
+
+                # Limpar arquivo temporrio
+                docker exec "$POSTGRES_CONTAINER" rm -f /tmp/restore.sql
+                echo "    Banco de dados restaurado com sucesso!"
+            else
+                echo "     Arquivo nao foi copiado corretamente"
+            fi
+        else
+            echo "    [ERRO] ao copiar arquivo para o container!"
+            echo "     Continuando sem restaurar o banco..."
+        fi
     fi
 fi
 
@@ -684,15 +697,15 @@ echo " Limpando imagens antigas..."
 IN_USE_IMAGES=$(docker service ls --filter "label=com.docker.stack.namespace=estacaoterapia" --format "{{.Name}}" | xargs -r docker service inspect --format '{{.Spec.TaskTemplate.ContainerSpec.Image}}' 2>/dev/null | sed 's/@.*//' | sort -u || true)
 
 # Encontrar imagens antigas (exceto a tag atual e imagens em uso)
-OLD_REDIS_IMAGES=$(docker images --filter "reference=estacaoterapia-redis:prd-*" --format "{{.Repository}}:{{.Tag}}" | grep -v "prd-${TAG}$" || true)
-OLD_API_IMAGES=$(docker images --filter "reference=estacaoterapia-api:prd-*" --format "{{.Repository}}:{{.Tag}}" | grep -v "prd-${TAG}$" || true)
-OLD_SOCKET_IMAGES=$(docker images --filter "reference=estacaoterapia-socket-server:prd-*" --format "{{.Repository}}:{{.Tag}}" | grep -v "prd-${TAG}$" || true)
+mapfile -t old_redis_images < <(docker images --filter "reference=estacaoterapia-redis:prd-*" --format "{{.Repository}}:{{.Tag}}" | grep -v "prd-${TAG}$" || true)
+mapfile -t old_api_images < <(docker images --filter "reference=estacaoterapia-api:prd-*" --format "{{.Repository}}:{{.Tag}}" | grep -v "prd-${TAG}$" || true)
+mapfile -t old_socket_images < <(docker images --filter "reference=estacaoterapia-socket-server:prd-*" --format "{{.Repository}}:{{.Tag}}" | grep -v "prd-${TAG}$" || true)
 
 REMOVED_COUNT=0
 
 # Remover imagens antigas do Redis
-if [ -n "$OLD_REDIS_IMAGES" ]; then
-    echo "$OLD_REDIS_IMAGES" | while read -r old_image; do
+if [ "${#old_redis_images[@]}" -gt 0 ]; then
+    for old_image in "${old_redis_images[@]}"; do
         if [ -n "$old_image" ]; then
             if echo "$IN_USE_IMAGES" | grep -q "^${old_image}$"; then
                 echo "   [PULANDO] $old_image (em uso por serviço)"
@@ -705,8 +718,8 @@ if [ -n "$OLD_REDIS_IMAGES" ]; then
 fi
 
 # Remover imagens antigas da API
-if [ -n "$OLD_API_IMAGES" ]; then
-    echo "$OLD_API_IMAGES" | while read -r old_image; do
+if [ "${#old_api_images[@]}" -gt 0 ]; then
+    for old_image in "${old_api_images[@]}"; do
         if [ -n "$old_image" ]; then
             if echo "$IN_USE_IMAGES" | grep -q "^${old_image}$"; then
                 echo "   [PULANDO] $old_image (em uso por serviço)"
@@ -719,8 +732,8 @@ if [ -n "$OLD_API_IMAGES" ]; then
 fi
 
 # Remover imagens antigas do Socket
-if [ -n "$OLD_SOCKET_IMAGES" ]; then
-    echo "$OLD_SOCKET_IMAGES" | while read -r old_image; do
+if [ "${#old_socket_images[@]}" -gt 0 ]; then
+    for old_image in "${old_socket_images[@]}"; do
         if [ -n "$old_image" ]; then
             if echo "$IN_USE_IMAGES" | grep -q "^${old_image}$"; then
                 echo "   [PULANDO] $old_image (em uso por serviço)"

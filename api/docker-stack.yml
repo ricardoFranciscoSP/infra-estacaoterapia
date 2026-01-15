@@ -1,27 +1,26 @@
 # ============================================
 # API BACKEND - DOCKER SWARM STACK
-# Para uso com Docker Swarm
-# Use docker-compose.yml na raiz para Docker Compose
+# Para uso com Docker Swarm + Caddy (externo ou interno)
 # ============================================
 
 networks:
+  # Rede externa (usada pelo Caddy se estiver em outro stack ou no host)
   estacao-backend-network:
     external: true
     name: estacao-backend-network
 
+  # Rede interna overlay para comunicação segura entre serviços
   estacaoterapia_backend:
     external: false
     driver: overlay
     name: estacaoterapia_backend
     driver_opts:
-      # ✅ Ativar DNS VIP (Virtual IP) para melhor resolução
       com.docker.network.driver.overlay.vxlanid: '4096'
-      # ✅ Permitir acesso aos serviços via localhost (para debugging)
-      # com.docker.network.driver.overlay.dvs: "true"
     ipam:
       config:
         - subnet: 10.0.9.0/24
 
+  # Outra rede overlay (opcional, mantida conforme seu uso)
   estacao-network:
     external: false
     driver: overlay
@@ -86,8 +85,6 @@ services:
         aliases:
           - redis
           - redis.estacaoterapia_backend
-
-    # Healthcheck corrigido com timeout maior
     healthcheck:
       test:
         - CMD-SHELL
@@ -96,7 +93,6 @@ services:
       timeout: 10s
       retries: 10
       start_period: 30s
-
     deploy:
       replicas: 1
       restart_policy:
@@ -104,12 +100,9 @@ services:
         delay: 5s
         max_attempts: 5
         window: 120s
-
-      # Garantir que Redis rode em nó manager com recursos suficientes
       placement:
         constraints:
           - node.role == manager
-
       resources:
         limits:
           cpus: '1.0'
@@ -124,14 +117,11 @@ services:
   api:
     image: estacaoterapia-api:prd-{{TAG}}
     user: '997:1001'
-
     entrypoint: ['/bin/sh', '/entrypoint.sh']
     command: ['node', 'dist/server.js']
-
     secrets:
       - source: estacao_api_env
         target: estacao_api.env
-
     environment:
       NODE_ENV: production
       NODE_OPTIONS: '--max-old-space-size=2048'
@@ -140,7 +130,6 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: '6379'
       REDIS_DB: '1'
-
     volumes:
       - type: bind
         source: ./entrypoint.sh
@@ -153,19 +142,17 @@ services:
         source: ./backups
         target: /app/backups
         read_only: true
-
     tmpfs:
       - /tmp
       - /app/data
-
-    # Healthcheck com timeout maior (Redis pode levar tempo para conectar)
+    expose:                 # 🔑 EXPOSIÇÃO INTERNA DA PORTA 3333
+      - "3333"
     healthcheck:
       test: ['CMD', 'curl', '-f', 'http://localhost:3333/health']
       interval: 15s
       timeout: 10s
       retries: 5
       start_period: 60s
-
     deploy:
       replicas: 1
       update_config:
@@ -179,11 +166,9 @@ services:
         delay: 5s
         max_attempts: 3
         window: 120s
-
       placement:
         constraints:
           - node.role == manager
-
     networks:
       estacao-backend-network:
         aliases:
@@ -223,14 +208,11 @@ services:
   socket-server:
     image: estacaoterapia-socket-server:prd-{{TAG}}
     user: '997:1001'
-
     entrypoint: ['/bin/sh', '/entrypoint.sh']
     command: ['node', 'dist/socket/server.js']
-
     secrets:
       - source: estacao_socket_env
         target: estacao_socket.env
-
     environment:
       NODE_ENV: production
       PORT: '3334'
@@ -241,17 +223,14 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: '6379'
       REDIS_DB: '1'
-      API_BASE_URL_OVERRIDE: 'http://estacaoterapia_api:3333'
-      # ✅ Usar DNS do Swarm para resolver a API corretamente
-      API_BASE_URL: 'http://estacaoterapia_api:3333'
-
+      # ✅ Usa o nome do serviço diretamente (resolvido via DNS interno do Swarm)
+      API_BASE_URL: 'http://api:3333'
     healthcheck:
       test: ['CMD', 'curl', '-f', 'http://localhost:3334/health']
       interval: 15s
       timeout: 10s
       retries: 5
       start_period: 60s
-
     deploy:
       replicas: 1
       update_config:
@@ -265,11 +244,9 @@ services:
         delay: 5s
         max_attempts: 3
         window: 120s
-
       placement:
         constraints:
           - node.role == manager
-
     networks:
       estacao-backend-network:
         aliases:

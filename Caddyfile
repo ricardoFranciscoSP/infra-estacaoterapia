@@ -1,6 +1,7 @@
 {
 	email contato@estacaoterapia.com.br
-	admin 0.0.0.0:2019
+	# 🔒 Restringir admin à localhost (ou remova se não usar)
+	admin 127.0.0.1:2019
 
 	log {
 		output stdout
@@ -11,12 +12,21 @@
 # ============================================
 # API BACKEND
 # ============================================
-# ✅ CORRETO: API está em estacao-backend-network (rede externa do Swarm)
-# Caddy (em docker-stack.caddy.yml) também está conectado nessa rede
-# Docker Swarm cria VIP automático resolvido pelo DNS interno
 api-prd.estacaoterapia.com.br {
+	# Tratar preflight CORS
+	@options method OPTIONS
+	handle @options {
+		header {
+			Access-Control-Allow-Origin "{http.request.header.Origin}"
+			Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+			Access-Control-Allow-Credentials "true"
+			Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With, Accept, Origin"
+			Access-Control-Max-Age "86400"
+		}
+		respond 204
+	}
+
 	reverse_proxy estacaoterapia_api:3333 {
-		# Testar saúde via /health endpoint
 		health_uri /health
 		health_interval 15s
 		health_timeout 10s
@@ -29,10 +39,15 @@ api-prd.estacaoterapia.com.br {
 		}
 	}
 
+	# Respostas normais (não-OPTIONS)
 	header {
-		Access-Control-Allow-Origin "https://estacaoterapia.com.br https://www.estacaoterapia.com.br"
-		Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+		# Dinâmico: reflete o Origin válido
+		@allowed_origin {
+			header_regexp Origin ^https://(www\.)?estacaoterapia\.com\.br$
+		}
+		header @allowed_origin Access-Control-Allow-Origin "{http.request.header.Origin}"
 		Access-Control-Allow-Credentials "true"
+		Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS, PATCH"
 		Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With, Accept, Origin"
 
 		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
@@ -51,9 +66,19 @@ api-prd.estacaoterapia.com.br {
 # ============================================
 # WEBSOCKET
 # ============================================
-# ✅ CORRETO: socket-server está em estacao-backend-network (rede externa do Swarm)
-# Caddy pode resolver 'socket-server' via DNS VIP do Docker Swarm
 ws.prd.estacaoterapia.com.br {
+	@options method OPTIONS
+	handle @options {
+		header {
+			Access-Control-Allow-Origin "{http.request.header.Origin}"
+			Access-Control-Allow-Methods "GET, POST, OPTIONS"
+			Access-Control-Allow-Credentials "true"
+			Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With, Accept, Origin"
+			Access-Control-Max-Age "86400"
+		}
+		respond 204
+	}
+
 	reverse_proxy estacaoterapia_socket-server:3334 {
 		health_uri /health
 		health_interval 15s
@@ -66,15 +91,17 @@ ws.prd.estacaoterapia.com.br {
 			read_timeout 60s
 		}
 
-		# Importante para WebSockets
 		header_up Upgrade websocket
 		header_up Connection upgrade
 	}
 
 	header {
-		Access-Control-Allow-Origin "https://estacaoterapia.com.br https://www.estacaoterapia.com.br"
-		Access-Control-Allow-Methods "GET, POST, OPTIONS"
+		@allowed_origin {
+			header_regexp Origin ^https://(www\.)?estacaoterapia\.com\.br$
+		}
+		header @allowed_origin Access-Control-Allow-Origin "{http.request.header.Origin}"
 		Access-Control-Allow-Credentials "true"
+		Access-Control-Allow-Methods "GET, POST, OPTIONS"
 		Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With, Accept, Origin"
 
 		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
@@ -90,8 +117,6 @@ ws.prd.estacaoterapia.com.br {
 # ============================================
 # FRONTEND (Next.js)
 # ============================================
-# NOTA: Usar o nome do serviço + rede overlay externa
-# O serviço está em: estacao-network (rede externa compartilhada)
 estacaoterapia.com.br, www.estacaoterapia.com.br {
 	reverse_proxy estacao_next_prd:3001 {
 		transport http {
@@ -107,6 +132,7 @@ estacaoterapia.com.br, www.estacaoterapia.com.br {
 		Referrer-Policy "strict-origin-when-cross-origin"
 		Permissions-Policy "geolocation=(), microphone=(), camera=()"
 
+		# CSP corrigido (sem espaços extras)
 		Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://api-prd.estacaoterapia.com.br https://ws.prd.estacaoterapia.com.br; frame-ancestors 'self';"
 
 		-Server
