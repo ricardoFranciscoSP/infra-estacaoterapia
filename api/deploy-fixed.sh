@@ -348,6 +348,41 @@ docker stack deploy \
 echo "[OK] Stack deployado com sucesso"
 
 # ==============================
+# 9.1 Garantir uso das imagens novas
+# ==============================
+echo ""
+echo "[INFO] Validando imagens em uso pelos serviços..."
+
+ensure_service_image() {
+    local service_name="$1"
+    local expected_image="$2"
+    local current_image
+    current_image=$(docker service inspect "$service_name" --format '{{.Spec.TaskTemplate.ContainerSpec.Image}}' 2>/dev/null || echo "")
+
+    if [ -z "$current_image" ]; then
+        echo "   [WARN] Não foi possível inspecionar $service_name"
+        return 0
+    fi
+
+    if echo "$current_image" | grep -q "$expected_image"; then
+        echo "   [OK] $service_name usando $expected_image"
+        return 0
+    fi
+
+    echo "   [WARN] $service_name usando $current_image (esperado: $expected_image)"
+    echo "   [UPDATE] Atualizando imagem de $service_name..."
+    docker service update --force --image "$expected_image" "$service_name" >/dev/null 2>&1 || {
+        echo "   [WARN] Falha ao atualizar $service_name"
+        return 0
+    }
+    echo "   [OK] $service_name atualizado para $expected_image"
+}
+
+ensure_service_image "estacaoterapia_api" "estacaoterapia-api:prd-${TAG}"
+ensure_service_image "estacaoterapia_socket-server" "estacaoterapia-socket-server:prd-${TAG}"
+ensure_service_image "estacaoterapia_redis" "estacaoterapia-redis:prd-${TAG}"
+
+# ==============================
 # AGUARDAR CONVERGENCIA E SAUDE
 # ==============================
 echo ""

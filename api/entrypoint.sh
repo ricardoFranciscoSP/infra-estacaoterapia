@@ -292,6 +292,9 @@ start_socket() {
   PG_PORT="${PG_PORT:-6432}"
   REDIS_HOST="${REDIS_HOST:-redis}"
   REDIS_PORT="${REDIS_PORT:-6379}"
+  if [ -n "${API_BASE_URL_OVERRIDE:-}" ]; then
+    API_BASE_URL="$API_BASE_URL_OVERRIDE"
+  fi
   API_BASE_URL="${API_BASE_URL:-http://estacaoterapia_api:3333}"
 
   # Exportar variáveis do PostgreSQL
