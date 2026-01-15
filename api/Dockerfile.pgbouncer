@@ -69,6 +69,36 @@ RUN cat > /usr/local/bin/pgbouncer-entrypoint.sh <<'EOF'
 #!/bin/bash
 set -e
 
+# =========================
+# Função: carregar secrets
+# =========================
+load_secrets() {
+    local secret_file="$1"
+    [ -z "$secret_file" ] && return 0
+    [ ! -f "$secret_file" ] && return 0
+
+    echo "🔐 Carregando secrets: $secret_file"
+
+    while IFS= read -r line || [ -n "$line" ]; do
+        case "$line" in
+            ""|\#*) continue ;;
+        esac
+
+        key="${line%%=*}"
+        value="${line#*=}"
+
+        case "$key" in
+            ''|*[!A-Za-z0-9_]*|[0-9]*) continue ;;
+        esac
+
+        export "$key=$value"
+    done < "$secret_file"
+}
+
+# 🔧 Carregar secrets em formato .env (se existir)
+load_secrets /run/secrets/pgbouncer_env
+load_secrets /run/secrets/postgres_env
+
 # 🔧 Variables with defaults
 PG_HOST=${PG_HOST:-postgres}
 PG_PORT=${PG_PORT:-5432}
@@ -80,6 +110,15 @@ echo "   PostgreSQL Host: $PG_HOST"
 echo "   PostgreSQL Port: $PG_PORT"
 echo "   Database: $PG_DB"
 echo "   PgBouncer Port: $PGBOUNCER_PORT"
+
+# 🔧 Exportar variáveis para o runtime
+export PG_HOST
+export PG_PORT
+export PG_DB
+export PGBOUNCER_PORT
+export POSTGRES_USER
+export POSTGRES_PASSWORD
+export POSTGRES_DB
 
 # 🔧 Process pgbouncer.ini from secret or template
 if [ -f /run/secrets/pgbouncer.ini ]; then
@@ -114,9 +153,9 @@ EOF
 
 RUN chmod +x /usr/local/bin/pgbouncer-entrypoint.sh
 
-# 🔧 Healthcheck robusto (conecta PG real)
+# 🔧 Healthcheck simples (porta local do PgBouncer)
 HEALTHCHECK --interval=10s --timeout=5s --start-period=20s --retries=5 \
-    CMD pg_isready -h localhost -p 6432 -q || exit 1
+    CMD nc -z localhost 6432 || exit 1
 
 EXPOSE 6432
 USER pgbouncer

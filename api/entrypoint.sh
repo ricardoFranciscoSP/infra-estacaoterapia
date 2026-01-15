@@ -277,8 +277,11 @@ start_socket() {
   echo "   • REDIS_PASSWORD: ${REDIS_PASSWORD:+definido ($(echo -n "$REDIS_PASSWORD" | wc -c) chars)}"
   echo "   • REDIS_URL: ${REDIS_URL:-não definido}"
 
+  # Garantir defaults do PostgreSQL
   PG_HOST="${PG_HOST:-pgbouncer}"
   PG_PORT="${PG_PORT:-6432}"
+  POSTGRES_USER="${POSTGRES_USER:-estacaoterapia}"
+  POSTGRES_DB="${POSTGRES_DB:-estacaoterapia}"
   # Usar full service name do Swarm: estacaoterapia_redis
   REDIS_HOST="${REDIS_HOST:-estacaoterapia_redis}"
   REDIS_PORT="${REDIS_PORT:-6379}"
@@ -290,6 +293,9 @@ start_socket() {
   # Exportar variáveis do PostgreSQL
   export PG_HOST
   export PG_PORT
+  export POSTGRES_USER
+  export POSTGRES_PASSWORD
+  export POSTGRES_DB
 
   echo "📋 Conexões (finais):"
   echo "   PostgreSQL → $PG_HOST:$PG_PORT"
@@ -339,6 +345,12 @@ start_socket() {
   else
     echo "⚠️  API não respondeu (será reconectada pelo app automaticamente)"
   fi
+
+  # Configurar DATABASE_URL se não existir
+  if [ -z "$DATABASE_URL" ] && [ -n "$POSTGRES_USER" ] && [ -n "$POSTGRES_PASSWORD" ]; then
+    DATABASE_URL="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${PG_HOST}:${PG_PORT}/${POSTGRES_DB}?schema=public"
+  fi
+  [ -n "$DATABASE_URL" ] && export DATABASE_URL
 
   # Exportar as variáveis de Redis (crítico para Node.js)
   export REDIS_HOST
