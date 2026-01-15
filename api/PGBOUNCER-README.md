@@ -22,6 +22,8 @@ cd api
 docker build -f Dockerfile.pgbouncer -t estacaoterapia-pgbouncer:prd-v1 .
 ```
 
+**Nota**: Templates de configuração estão embarcados na imagem. Build funciona sem arquivos `secrets/` locais.
+
 ### 2. Criar Secrets
 
 ```bash

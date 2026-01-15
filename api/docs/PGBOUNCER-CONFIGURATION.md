@@ -9,18 +9,20 @@ O PgBouncer agora está configurado para conectar dinamicamente ao serviço Post
 ### 1. **Dockerfile.pgbouncer**
 
 #### ✅ O que foi adicionado:
+
 - **Ferramentas**: Adicionado `gettext` para processamento de templates
 - **Diretórios de templates**: `/etc/pgbouncer/templates/` para armazenar configurações base
-- **Cópia de configurações**: `pgbouncer.ini.production` e `userlist.txt.example` copiados para a imagem
+- **Templates embarcados**: `pgbouncer.ini` e `userlist.txt` criados durante o build da imagem
 - **Entrypoint script**: Script bash que processa configurações dinamicamente
 
 #### 🔄 Como funciona:
+
 ```bash
 # O entrypoint faz o seguinte:
 1. Carrega variáveis de ambiente (PG_HOST, PG_PORT, etc.)
 2. Verifica se existe secret montado em /run/secrets/
 3. Se existe secret: usa ele como base
-4. Se não existe: usa template da imagem
+4. Se não existe: usa template embarcado na imagem
 5. Substitui o host/port pelo nome do serviço do Swarm
 6. Inicia o pgbouncer
 ```
@@ -28,19 +30,21 @@ O PgBouncer agora está configurado para conectar dinamicamente ao serviço Post
 ### 2. **docker-stack.yml**
 
 #### ✅ Variáveis de Ambiente Adicionadas:
+
 ```yaml
 environment:
-  PG_HOST: postgres          # Nome do serviço PostgreSQL
-  PG_PORT: '5432'            # Porta do PostgreSQL
-  PG_DB: estacaoterapia      # Nome do banco
-  PGBOUNCER_PORT: '6432'     # Porta do PgBouncer
+  PG_HOST: postgres # Nome do serviço PostgreSQL
+  PG_PORT: '5432' # Porta do PostgreSQL
+  PG_DB: estacaoterapia # Nome do banco
+  PGBOUNCER_PORT: '6432' # Porta do PgBouncer
 ```
 
 #### 🔐 Secrets Atualizados:
+
 ```yaml
 secrets:
   - source: pgbouncer.ini
-    target: /run/secrets/pgbouncer.ini  # Movido para /run/secrets/
+    target: /run/secrets/pgbouncer.ini # Movido para /run/secrets/
   - source: userlist.txt
     target: /run/secrets/userlist.txt
 ```
@@ -48,6 +52,7 @@ secrets:
 ### 3. **pgbouncer.ini.production**
 
 #### ✅ Conexão Atualizada:
+
 ```ini
 # ANTES (IP fixo):
 estacaoterapia = host=10.0.1.10 port=5432 ...
@@ -61,12 +66,14 @@ O entrypoint substituirá `postgres` pelo valor da variável `$PG_HOST`.
 ## 🚀 Como Usar
 
 ### 1. **Build da Imagem**
+
 ```bash
 cd api
 docker build -f Dockerfile.pgbouncer -t estacaoterapia-pgbouncer:prd-v1 .
 ```
 
 ### 2. **Criar Secrets (se ainda não existem)**
+
 ```bash
 # PgBouncer.ini
 docker secret create pgbouncer.ini secrets/pgbouncer.ini.production
@@ -76,6 +83,7 @@ docker secret create userlist.txt secrets/userlist.txt
 ```
 
 #### 📝 Como gerar hash MD5 para userlist.txt:
+
 ```bash
 # Formato: "username" "md5" + md5(password + username)
 # Exemplo para user "estacaoterapia" com senha "mypassword":
@@ -87,6 +95,7 @@ echo -n "mypasswordestacaoterapia" | md5sum
 ```
 
 ### 3. **Deploy do Stack**
+
 ```bash
 docker stack deploy -c docker-stack.yml estacaoterapia
 ```
@@ -94,11 +103,13 @@ docker stack deploy -c docker-stack.yml estacaoterapia
 ## 🔍 Verificação
 
 ### 1. **Verificar logs do PgBouncer**
+
 ```bash
 docker service logs estacaoterapia_pgbouncer -f
 ```
 
 Você deve ver:
+
 ```
 🔧 PgBouncer starting with:
    PostgreSQL Host: postgres
@@ -112,6 +123,7 @@ estacaoterapia = host=postgres port=5432 dbname=estacaoterapia connect_query='SE
 ```
 
 ### 2. **Testar conexão via PgBouncer**
+
 ```bash
 # Entrar no container do PgBouncer
 docker exec -it $(docker ps -q -f name=pgbouncer) bash
@@ -121,6 +133,7 @@ psql -h localhost -p 6432 -U estacaoterapia -d estacaoterapia -c "SELECT version
 ```
 
 ### 3. **Verificar healthcheck**
+
 ```bash
 docker service ps estacaoterapia_pgbouncer
 ```
@@ -136,9 +149,9 @@ Você pode sobrescrever as variáveis no `docker-stack.yml`:
 ```yaml
 pgbouncer:
   environment:
-    PG_HOST: postgres-primary      # Usar outro host
-    PG_PORT: '5433'                # Porta customizada
-    PG_DB: my_database             # Outro banco
+    PG_HOST: postgres-primary # Usar outro host
+    PG_PORT: '5433' # Porta customizada
+    PG_DB: my_database # Outro banco
     PGBOUNCER_PORT: '6432'
 ```
 
@@ -173,6 +186,7 @@ SHOW CLIENTS;      # Clientes conectados
 ### Problema: PgBouncer não conecta ao PostgreSQL
 
 **Verificar:**
+
 ```bash
 # 1. Service postgres está rodando?
 docker service ps estacaoterapia_postgres
@@ -187,6 +201,7 @@ docker exec -it $(docker ps -q -f name=pgbouncer) nslookup postgres
 ### Problema: Senha incorreta
 
 **Verificar:**
+
 ```bash
 # 1. Userlist.txt está correto?
 docker exec -it $(docker ps -q -f name=pgbouncer) cat /etc/pgbouncer/userlist.txt
@@ -198,6 +213,7 @@ echo -n "senha_aqui$usuario" | md5sum
 ### Problema: Configuração não atualiza
 
 **Solução:**
+
 ```bash
 # Forçar recreate do serviço
 docker service update --force estacaoterapia_pgbouncer

@@ -129,7 +129,7 @@ Remover **todos os IPs fixos** das configurações e substituí-los por **nomes 
 ```bash
 cd api
 
-# PgBouncer (com novo entrypoint)
+# PgBouncer (com templates embarcados e entrypoint dinâmico)
 docker build -f Dockerfile.pgbouncer -t estacaoterapia-pgbouncer:prd-v2 .
 
 # API e Socket (se necessário)
