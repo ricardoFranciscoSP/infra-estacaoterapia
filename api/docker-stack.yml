@@ -72,7 +72,6 @@ services:
       start_period: 40s # 🔧 Aumentado
     deploy:
       replicas: 1
-      dependencies: [postgres] # 🔧 Inicia após PG
       restart_policy:
         condition: on-failure
         delay: 10s
@@ -108,7 +107,6 @@ services:
       start_period: 20s
     deploy:
       replicas: 1
-      dependencies: [postgres] # 🔧 Após PG
       restart_policy:
         condition: on-failure
         delay: 10s
@@ -155,7 +153,6 @@ services:
       start_period: 120s # 🔧 Aumentado para Redis retries
     deploy:
       replicas: 1
-      dependencies: [redis, pgbouncer] # 🔧 Inicia após deps
       update_config:
         parallelism: 1
         delay: 30s # 🔧 Mais delay
@@ -179,7 +176,7 @@ services:
   # SOCKET SERVER (5º - após API)
   # =====================================
   socket-server:
-    image: estacaoterapia-socket-server:prd-{{TAG}}
+    image: estacaoterapia-socket:prd-{{TAG}}
     user: '997:1001'
     entrypoint: ['/bin/sh', '/entrypoint.sh']
     command: ['node', 'dist/socket/server.js']
@@ -205,7 +202,6 @@ services:
       start_period: 150s # 🔧 Após API
     deploy:
       replicas: 1
-      dependencies: [api] # 🔧 Após API
       update_config:
         parallelism: 1
         delay: 30s

@@ -155,14 +155,23 @@ start_api() {
   echo "   • SUPABASE_URL: ${SUPABASE_URL:-não definido}"
   echo "   • VINDI_API_URL: ${VINDI_API_URL:-não definido}"
 
-  # Configurar defaults para conexões
-  PG_HOST="${PG_HOST:-pgbouncer}"
-  PG_PORT="${PG_PORT:-6432}"
-  # Usar full service name do Swarm: estacaoterapia_redis
-  REDIS_HOST="${REDIS_HOST:-estacaoterapia_redis}"
-  REDIS_PORT="${REDIS_PORT:-6379}"
-  REDIS_DB="${REDIS_DB:-1}"
-  POSTGRES_DB="${POSTGRES_DB:-estacaoterapia}"
+  # ⚠️ IMPORTANTE: Forçar uso das variáveis de ambiente do docker-stack.yml
+  # Sobrescrever valores do secret com os do Swarm (se definidos)
+  [ -n "$PG_HOST" ] || PG_HOST="pgbouncer"
+  [ -n "$PG_PORT" ] || PG_PORT="6432"
+  [ -n "$REDIS_HOST" ] || REDIS_HOST="estacaoterapia_redis"
+  [ -n "$REDIS_PORT" ] || REDIS_PORT="6379"
+  [ -n "$REDIS_DB" ] || REDIS_DB="1"
+  [ -n "$POSTGRES_DB" ] || POSTGRES_DB="estacaoterapia"
+
+  # Garantir que REDIS_HOST use o valor do docker-stack.yml (não do secret)
+  # O docker-stack.yml define REDIS_HOST=estacaoterapia_redis
+  echo "🔧 Validando REDIS_HOST do Swarm..."
+  if [ "$REDIS_HOST" = "redis" ] || [ "$REDIS_HOST" = "localhost" ]; then
+    echo "⚠️  REDIS_HOST=$REDIS_HOST detectado no secret - sobrescrevendo com nome Swarm"
+    REDIS_HOST="estacaoterapia_redis"
+  fi
+  echo "✅ Usando REDIS_HOST: $REDIS_HOST"
 
   # Exportar variáveis do PostgreSQL e Redis ANTES de tentar conectar
   export PG_HOST
@@ -179,14 +188,12 @@ start_api() {
   # Diagnóstico rápido e não bloqueante
   echo "📡 Diagnóstico de rede (não bloqueante):"
   
-  # Tentar resolver Redis via DNS Swarm direto @127.0.0.11
-  if command -v dig >/dev/null 2>&1; then
-    REDIS_IP=$(dig +short @127.0.0.11 "$REDIS_HOST" A 2>/dev/null | head -1)
-    if [ -n "$REDIS_IP" ]; then
-      echo "✅ DNS Swarm: $REDIS_HOST → $REDIS_IP"
-    else
-      echo "ℹ️  DNS Swarm: $REDIS_HOST (ainda não resolvido, app fará retry)"
-    fi
+  # Tentar resolver Redis via getent (mais simples e confiável)
+  REDIS_IP=$(getent hosts "$REDIS_HOST" 2>/dev/null | awk '{print $1}' | head -1)
+  if [ -n "$REDIS_IP" ]; then
+    echo "✅ DNS resolvido: $REDIS_HOST → $REDIS_IP"
+  else
+    echo "ℹ️  DNS: $REDIS_HOST (ainda não resolvido, app fará retry)"
   fi
   
   # Mostrar nameservers se disponível
@@ -195,15 +202,15 @@ start_api() {
   fi
 
   # Check não bloqueante: tenta conectar mas não bloqueia
-  echo "🔎 Verificando conectividade (timeout 2s):"
-  if timeout 2 nc -z "$REDIS_HOST" "$REDIS_PORT" 2>/dev/null; then
+  echo "🔎 Verificando conectividade (timeout 3s):"
+  if timeout 3 nc -z "$REDIS_HOST" "$REDIS_PORT" 2>/dev/null; then
     echo "✅ Redis acessível: $REDIS_HOST:$REDIS_PORT"
   else
     echo "⚠️  Redis não respondeu (será reconectado pelo app automaticamente)"
   fi
 
   # Check PgBouncer não bloqueante
-  if timeout 2 nc -z "$PG_HOST" "$PG_PORT" 2>/dev/null; then
+  if timeout 3 nc -z "$PG_HOST" "$PG_PORT" 2>/dev/null; then
     echo "✅ PgBouncer acessível: $PG_HOST:$PG_PORT"
   else
     echo "⚠️  PgBouncer não respondeu (será reconectado pelo app automaticamente)"
