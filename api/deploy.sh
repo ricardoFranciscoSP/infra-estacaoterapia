@@ -27,11 +27,13 @@ echo "🔍 [VALIDAÇÃO] Pre-requisitos..."
 
 command -v docker >/dev/null || { echo "❌ Docker não encontrado"; exit 1; }
 
-# Swarm check
-if ! docker info 2>/dev/null | grep -qi "swarm: active"; then
-  echo "❌ Swarm inativo. Execute: docker swarm init"
+# Swarm check - melhorada para detectar corretamente
+SWARM_STATUS=$(docker info --format '{{.Swarm.LocalNodeState}}' 2>/dev/null || echo "inactive")
+if [ "$SWARM_STATUS" != "active" ]; then
+  echo "❌ Swarm inativo (Status: $SWARM_STATUS). Execute: docker swarm init"
   exit 1
 fi
+echo "✅ Swarm ativo"
 
 [ -f "docker-stack.yml" ] || { echo "❌ docker-stack.yml não encontrado"; exit 1; }
 
