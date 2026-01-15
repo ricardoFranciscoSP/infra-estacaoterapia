@@ -1,5 +1,5 @@
 import { Queue } from "bullmq";
-import { waitForIORedisReady } from "../config/redis.config";
+import { getBullMQConnectionOptions, waitForIORedisReady } from "../config/redis.config";
 
 export const EMAIL_QUEUE_NAME = "emailQueue";
 
@@ -22,7 +22,7 @@ const createEmailQueue = async (): Promise<Queue<EmailJobData> | null> => {
         await conn.ping();
 
         const queue = new Queue(EMAIL_QUEUE_NAME, {
-            connection: conn,
+            connection: getBullMQConnectionOptions(),
             defaultJobOptions: {
                 attempts: 3,
                 backoff: {

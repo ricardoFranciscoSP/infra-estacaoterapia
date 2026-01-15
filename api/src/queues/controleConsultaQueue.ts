@@ -1,20 +1,13 @@
 import { Queue } from 'bullmq';
 import { RenovacaoJobData, PagamentoJobData, NotificacaoJobData } from '../types/controleConsulta.types';
-import { getIORedisClient } from "../config/redis.config";
-const redisConfig = getIORedisClient();
+import { getBullMQConnectionOptions } from "../config/redis.config";
+const redisConfig = getBullMQConnectionOptions();
 
-export const renovacaoQueue = redisConfig
-    ? new Queue<RenovacaoJobData>('renovacao-controle-consulta', { connection: redisConfig })
-    : null;
+export const renovacaoQueue = new Queue<RenovacaoJobData>('renovacao-controle-consulta', { connection: redisConfig });
 
-export const pagamentoQueue = redisConfig
-    ? new Queue<PagamentoJobData>('pagamento-controle-consulta', { connection: redisConfig })
-    : null;
+export const pagamentoQueue = new Queue<PagamentoJobData>('pagamento-controle-consulta', { connection: redisConfig });
 
-export const notificacaoQueue = redisConfig
-    ? new Queue<NotificacaoJobData>('notificacao-controle-consulta', { connection: redisConfig })
-    : null;
-
-if (!redisConfig) {
-    console.log('[BullMQ] controleConsultaQueue não inicializada: Redis indisponível (ambiente de desenvolvimento).');
-}
+export const notificacaoQueue = new Queue<NotificacaoJobData, void, "notificacao">(
+    'notificacao-controle-consulta',
+    { connection: redisConfig }
+);

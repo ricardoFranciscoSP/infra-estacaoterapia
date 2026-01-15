@@ -4,7 +4,7 @@
  */
 
 import { Queue } from "bullmq";
-import { waitForIORedisReady } from "../config/redis.config";
+import { getBullMQConnectionOptions, waitForIORedisReady } from "../config/redis.config";
 
 export const DELAYED_JOBS_QUEUE_NAME = "delayedJobs";
 
@@ -17,7 +17,7 @@ const createDelayedJobsQueue = async (): Promise<Queue | null> => {
         await conn.ping();
 
         const queue = new Queue(DELAYED_JOBS_QUEUE_NAME, {
-            connection: conn,
+            connection: getBullMQConnectionOptions(),
             defaultJobOptions: {
                 attempts: 3,
                 backoff: {

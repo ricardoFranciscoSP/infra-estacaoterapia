@@ -1,13 +1,12 @@
 // src/utils/queueStatus.ts
 import { Queue, Job } from 'bullmq';
-import { getIORedisClient } from '../config/redis.config';
+import { getBullMQConnectionOptions } from '../config/redis.config';
 
 /**
  * Limpa jobs delayed antigos de uma fila BullMQ
  */
 export async function cleanDelayedJobs(queueName: string, olderThanMs = 24 * 60 * 60 * 1000) {
-    const redisConnection = getIORedisClient();
-    if (!redisConnection) return;
+    const redisConnection = getBullMQConnectionOptions();
     const queue = new Queue(queueName, { connection: redisConnection });
     const delayedJobs = await queue.getJobs(['delayed']);
     const now = Date.now();
@@ -27,10 +26,7 @@ export async function cleanDelayedJobs(queueName: string, olderThanMs = 24 * 60 
  * @returns Número de jobs removidos
  */
 export async function cleanFailedJobs(queueName: string, olderThanMs?: number): Promise<number> {
-    const redisConnection = getIORedisClient();
-    if (!redisConnection) {
-        throw new Error('Redis não disponível');
-    }
+    const redisConnection = getBullMQConnectionOptions();
 
     let queue: Queue | null = null;
     let removedCount = 0;
@@ -120,10 +116,7 @@ export interface WorkerStatus {
  * Lista o status de todas as filas BullMQ
  */
 export async function getAllQueuesStatus(): Promise<QueueStatus[]> {
-    const redisConnection = getIORedisClient();
-    if (!redisConnection) {
-        return [];
-    }
+    const redisConnection = getBullMQConnectionOptions();
 
     const queueNames = [
         'agendaQueue',
@@ -207,10 +200,7 @@ export interface FailedJobInfo {
  * Lista todos os jobs falhados de uma fila específica
  */
 export async function getFailedJobs(queueName: string, limit = 100): Promise<FailedJobInfo[]> {
-    const redisConnection = getIORedisClient();
-    if (!redisConnection) {
-        return [];
-    }
+    const redisConnection = getBullMQConnectionOptions();
 
     try {
         const queue = new Queue(queueName, { connection: redisConnection });
@@ -240,10 +230,7 @@ export async function getFailedJobs(queueName: string, limit = 100): Promise<Fai
  * Lista todos os jobs falhados de todas as filas
  */
 export async function getAllFailedJobs(limit = 100): Promise<FailedJobInfo[]> {
-    const redisConnection = getIORedisClient();
-    if (!redisConnection) {
-        return [];
-    }
+    const redisConnection = getBullMQConnectionOptions();
 
     const queueNames = [
         'agendaQueue',
@@ -336,11 +323,7 @@ export async function getJobsByStatus(
     status: 'waiting' | 'active' | 'completed' | 'failed' | 'delayed',
     limit = 100
 ): Promise<JobInfo[]> {
-    const redisConnection = getIORedisClient();
-    if (!redisConnection) {
-        console.warn(`⚠️ Redis não disponível para buscar jobs da fila ${queueName}`);
-        return [];
-    }
+    const redisConnection = getBullMQConnectionOptions();
 
     let queue: Queue | null = null;
     try {
@@ -388,11 +371,7 @@ export async function getAllJobsByStatus(
     limit = 100
 ): Promise<JobInfo[]> {
     try {
-        const redisConnection = getIORedisClient();
-        if (!redisConnection) {
-            console.warn('⚠️ Redis não disponível para buscar jobs');
-            return [];
-        }
+        const redisConnection = getBullMQConnectionOptions();
 
         const queueNames = [
             'agendaQueue',

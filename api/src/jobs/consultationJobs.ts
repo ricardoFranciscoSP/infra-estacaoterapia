@@ -1,8 +1,7 @@
 import prisma from "../prisma/client";
 import { consultationQueue } from "../queues/consultationQueue";
 import { Worker, QueueEvents } from "bullmq";
-import type { Redis } from "ioredis";
-import { getIORedisClient } from "../config/redis.config";
+import { getBullMQConnectionOptions } from "../config/redis.config";
 import { attachQueueEventsLogging } from "../utils/bullmqLogs";
 import { WebSocketNotificationService } from "./../services/websocketNotification.service";
 import { getEventSyncService } from "./../services/eventSync.service";
@@ -29,19 +28,8 @@ export let worker: Worker | null = null;
 export let events: QueueEvents | null = null;
 
 // Função centralizada para obter conexão compatível com BullMQ
-export function getQueueConnection(): Redis {
-    const client = getIORedisClient();
-    if (!client) {
-        console.log('[BullMQ] consultationJobs não inicializado: Redis indisponível (ambiente de desenvolvimento).');
-        // Retorna um objeto mock tipado para evitar uso de any
-        // Só será usado em dev, nunca em produção
-        return {
-            get: () => { throw new Error('Redis não disponível em desenvolvimento'); },
-            set: () => { throw new Error('Redis não disponível em desenvolvimento'); },
-            del: () => { throw new Error('Redis não disponível em desenvolvimento'); },
-        } as unknown as Redis;
-    }
-    return client;
+export function getQueueConnection() {
+    return getBullMQConnectionOptions();
 }
 
 const wsNotify = new WebSocketNotificationService();
@@ -275,10 +263,6 @@ export async function startConsultationWorker() {
     started = true;
 
     const connection = getQueueConnection();
-    if (!connection) {
-        console.log('[BullMQ] ConsultationWorker não inicializado: Redis indisponível (ambiente de desenvolvimento).');
-        return;
-    }
     // Otimizado: reduzido de 5 para 3 para economizar CPU
     const concurrency = Number(process.env.CONSULTATION_WORKER_CONCURRENCY ?? "3");
 

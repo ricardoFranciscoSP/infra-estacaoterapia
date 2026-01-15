@@ -1,7 +1,6 @@
 // src/workers/webhook.worker.ts (ou onde estiver)
 import { Worker, QueueEvents } from "bullmq";
-import type { Redis } from "ioredis";
-import { getIORedisClient } from "../config/redis.config"; // ← ajuste o caminho se necessário
+import { getBullMQConnectionOptions } from "../config/redis.config"; // ← ajuste o caminho se necessário
 import { attachQueueEventsLogging } from "../utils/bullmqLogs";
 const WEBHOOK_QUEUE_NAME = "webhookProcessor";
 import { WebHookService } from "../services/webhook.service";
@@ -14,12 +13,8 @@ export let worker: Worker | null = null;
 export let events: QueueEvents | null = null;
 
 // Função centralizada para obter conexão compatível com BullMQ
-export function getQueueConnection(): Redis {
-    const client = getIORedisClient();
-    if (!client) {
-        throw new Error("Redis client is not initialized");
-    }
-    return client;
+export function getQueueConnection() {
+    return getBullMQConnectionOptions();
 }
 
 export async function startWebhookWorker() {
@@ -38,15 +33,8 @@ export async function startWebhookWorker() {
     started = true;
 
     console.log("🔌 [WebhookWorker] Obtendo conexão Redis...");
-    let connection: Redis;
-    try {
-        connection = getQueueConnection();
-        console.log("✅ [WebhookWorker] Conexão Redis obtida com sucesso");
-    } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        console.error("❌ [WebhookWorker] Erro ao obter conexão Redis:", errorMessage);
-        throw error;
-    }
+    const connection = getQueueConnection();
+    console.log("✅ [WebhookWorker] Conexão Redis obtida com sucesso");
     
     const concurrency = Number(process.env.WEBHOOK_WORKER_CONCURRENCY ?? "5");
     console.log("🔌 [WebhookWorker] Concorrência configurada:", concurrency);

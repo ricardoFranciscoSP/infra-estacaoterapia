@@ -3,7 +3,7 @@ import { Worker, Job, QueueEvents } from 'bullmq';
 import { notificacaoQueue } from '../queues/controleConsultaQueue';
 import { RenovacaoJobData, PagamentoJobData, NotificacaoJobData } from '../types/controleConsulta.types';
 import prisma from '../prisma/client';
-import { getIORedisClient } from '../config/redis.config';
+import { getBullMQConnectionOptions } from '../config/redis.config';
 import { attachQueueEventsLogging } from '../utils/bullmqLogs';
 import { nowBrasiliaTimestamp, nowBrasiliaDate, toBrasilia } from '../utils/timezone.util';
 import dayjs from 'dayjs';
@@ -13,7 +13,7 @@ import utc from 'dayjs/plugin/utc';
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
-const redisConnection = getIORedisClient();
+const redisConnection = getBullMQConnectionOptions();
 
 // Workers de ControleConsultaMensal
 // Workers: Renovação automática após 30 dias
@@ -36,11 +36,6 @@ let notificacaoWorkerStarted = false;
  * Garante que sejam iniciados apenas uma vez
  */
 export function initializeControleConsultaWorkers() {
-    if (!redisConnection) {
-        console.log('[BullMQ] controleConsultaJobs não inicializado: Redis indisponível (ambiente de desenvolvimento).');
-        return;
-    }
-
     startRenovacaoWorker();
     startPagamentoWorker();
     startNotificacaoWorker();
@@ -49,11 +44,6 @@ export function initializeControleConsultaWorkers() {
 function startRenovacaoWorker() {
     if (renovacaoWorkerStarted) {
         console.log("⚠️ [RenovacaoWorker] Worker já está rodando");
-        return;
-    }
-
-    if (!redisConnection) {
-        console.log('[BullMQ] RenovacaoWorker não inicializado: Redis indisponível.');
         return;
     }
 
@@ -128,11 +118,6 @@ function startRenovacaoWorker() {
 function startPagamentoWorker() {
     if (pagamentoWorkerStarted) {
         console.log("⚠️ [PagamentoWorker] Worker já está rodando");
-        return;
-    }
-
-    if (!redisConnection) {
-        console.log('[BullMQ] PagamentoWorker não inicializado: Redis indisponível.');
         return;
     }
 
@@ -212,11 +197,6 @@ function startPagamentoWorker() {
 function startNotificacaoWorker() {
     if (notificacaoWorkerStarted) {
         console.log("⚠️ [NotificacaoWorker] Worker já está rodando");
-        return;
-    }
-
-    if (!redisConnection) {
-        console.log('[BullMQ] NotificacaoWorker não inicializado: Redis indisponível.');
         return;
     }
 

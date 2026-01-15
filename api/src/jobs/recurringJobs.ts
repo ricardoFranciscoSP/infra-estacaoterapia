@@ -9,8 +9,7 @@
  */
 
 import { Queue, Worker } from "bullmq";
-import type { Redis } from "ioredis";
-import { getIORedisClient } from "../config/redis.config";
+import { getBullMQConnectionOptions } from "../config/redis.config";
 
 const BRASILIA_TIMEZONE = 'America/Sao_Paulo';
 const RECURRING_JOBS_QUEUE = "recurringJobs";
@@ -18,12 +17,8 @@ const RECURRING_JOBS_QUEUE = "recurringJobs";
 let queue: Queue | null = null;
 let worker: Worker | null = null;
 
-function getQueueConnection(): Redis {
-    const client = getIORedisClient();
-    if (!client) {
-        throw new Error("Redis client is not initialized");
-    }
-    return client;
+function getQueueConnection() {
+    return getBullMQConnectionOptions();
 }
 
 export function getRecurringJobsQueue(): Queue {

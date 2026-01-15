@@ -1,13 +1,12 @@
 // src/queues/webhookQueue.ts
 import { Queue } from "bullmq";
-import type { Redis } from "ioredis";
-let connection: Redis | null = null;
+import { getBullMQConnectionOptions } from "../config/redis.config";
+let connection: ReturnType<typeof getBullMQConnectionOptions> | null = null;
 let queue: Queue | null = null;
 
 async function ensureConnection() {
     if (!connection) {
-        const { getIORedisClient } = await import('../config/redis.config');
-        connection = getIORedisClient();
+        connection = getBullMQConnectionOptions();
         console.log("🔌 [Queue] Conexão Redis pronta (lazy).");
     }
     return connection;
@@ -15,10 +14,6 @@ async function ensureConnection() {
 
 export async function getWebhookQueue() {
     const conn = await ensureConnection();
-    if (!conn) {
-        console.log('[BullMQ] webhookQueue não inicializada: Redis indisponível (ambiente de desenvolvimento).');
-        return null;
-    }
     if (!queue) {
         console.log("🔍 [QUEUE] Inicializando fila webhookProcessor (lazy)...");
         queue = new Queue("webhookProcessor", { connection: conn });

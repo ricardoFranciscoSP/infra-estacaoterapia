@@ -4,7 +4,7 @@
  */
 
 import { Queue } from "bullmq";
-import { waitForIORedisReady } from "../config/redis.config";
+import { getBullMQConnectionOptions, waitForIORedisReady } from "../config/redis.config";
 
 export const DATABASE_JOBS_QUEUE_NAME = "databaseJobs";
 
@@ -17,7 +17,7 @@ const createDatabaseJobsQueue = async (): Promise<Queue | null> => {
         await conn.ping();
 
         const queue = new Queue(DATABASE_JOBS_QUEUE_NAME, {
-            connection: conn,
+            connection: getBullMQConnectionOptions(),
             defaultJobOptions: {
                 attempts: 3,
                 backoff: {
