@@ -4,15 +4,10 @@
 # ============================================
 
 networks:
-  # Rede overlay única
+  # Rede overlay única (externa, criada pelo deploy)
   estacaoterapia_backend:
-    driver: overlay
+    external: true
     name: estacaoterapia_backend
-    driver_opts:
-      com.docker.network.driver.overlay.vxlanid: '4096'
-    ipam:
-      config:
-        - subnet: 10.0.9.0/24
 
 services:
   # =====================================

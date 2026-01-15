@@ -160,12 +160,44 @@ echo ""
 echo "════════════════════════════════════════════════════════"
 echo "💾 ETAPA 4/8 - VOLUMES E REDES"
 echo "════════════════════════════════════════════════════════"
-echo "💾 Criando volumes persistentes e rede overlay..."
+echo "💾 Criando/validando volumes persistentes e rede overlay..."
 for vol in postgres_data redis_data documentos_data; do
   docker volume create "$vol" 2>/dev/null || true
 done
 
-docker network create --driver overlay estacaoterapia_backend 2>/dev/null || true
+ensure_overlay_network() {
+  local name=$1 subnet=$2 vxlanid=$3
+
+  if docker network inspect "$name" >/dev/null 2>&1; then
+    local driver
+    driver=$(docker network inspect -f '{{.Driver}}' "$name" 2>/dev/null || echo "")
+    local current_subnet
+    current_subnet=$(docker network inspect -f '{{range .IPAM.Config}}{{.Subnet}}{{end}}' "$name" 2>/dev/null || echo "")
+
+    if [ "$driver" != "overlay" ]; then
+      echo "❌ Rede $name existe mas não é overlay (driver=$driver). Ajuste ou remova e rode novamente."
+      exit 1
+    fi
+
+    if [ -n "$subnet" ] && [ "$current_subnet" != "$subnet" ]; then
+      echo "❌ Rede $name existe com subnet diferente ($current_subnet, esperado $subnet). Ajuste ou remova e rode novamente."
+      exit 1
+    fi
+
+    echo "✅ Rede $name já existe e está ok"
+    return 0
+  fi
+
+  echo "🌐 Criando rede overlay $name (subnet $subnet, vxlanid $vxlanid)"
+  docker network create \
+    --driver overlay \
+    --attachable \
+    --subnet "$subnet" \
+    --opt com.docker.network.driver.overlay.vxlanid="$vxlanid" \
+    "$name"
+}
+
+ensure_overlay_network estacaoterapia_backend 10.0.9.0/24 4096
 
 echo "✅ Volumes e rede configurados"
 
