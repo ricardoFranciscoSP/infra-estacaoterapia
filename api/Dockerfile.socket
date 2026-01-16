@@ -92,10 +92,10 @@ RUN apk add --no-cache \
 
 # Criar usuário deploy se não existir (compatível com VPS)
 RUN if ! id deploy >/dev/null 2>&1; then \
-    addgroup -g 1000 -S deploy && \
-    adduser -u 1000 -S deploy -G deploy; \
-    else \
-    echo "✓ Usuário deploy já existe"; \
+    if ! getent group deploy >/dev/null 2>&1; then \
+    addgroup -S deploy; \
+    fi && \
+    adduser -S deploy -G deploy; \
     fi
 
 RUN mkdir -p /tmp /run && chmod 1777 /tmp /run
