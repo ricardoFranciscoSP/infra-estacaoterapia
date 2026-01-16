@@ -139,9 +139,10 @@ services:
     environment:
       NODE_ENV: production
       NODE_OPTIONS: '--max-old-space-size=2048'
-      PG_HOST: estacaoterapia_pgbouncer
+      PG_HOST: tasks.pgbouncer
       PG_PORT: '6432'
-      REDIS_HOST: estacaoterapia_redis
+      REDIS_HOST: tasks.redis
+      REDIS_HOST_FALLBACK: 'estacaoterapia_redis,redis'
       REDIS_PORT: '6379'
       REDIS_DB: '1'
       REDIS_PASSWORD: 'REdnRHkZLnQpK1rcoKsseO3pX4GNIRR'
@@ -196,9 +197,10 @@ services:
       PORT: '3334'
       SOCKET_SERVER: 'true'
       SERVER_TYPE: socket
-      PG_HOST: estacaoterapia_pgbouncer
+      PG_HOST: tasks.pgbouncer
       PG_PORT: '6432'
-      REDIS_HOST: estacaoterapia_redis
+      REDIS_HOST: tasks.redis
+      REDIS_HOST_FALLBACK: 'estacaoterapia_redis,redis'
       REDIS_PORT: '6379'
       REDIS_DB: '1'
       REDIS_PASSWORD: 'REdnRHkZLnQpK1rcoKsseO3pX4GNIRR'
