@@ -187,7 +187,17 @@ async function startServer() {
         const redisClient = await waitForRedis(REDIS_HOST, REDIS_PORT);
         console.log("✅ Redis client obtido e validado para Socket.io");
 
-        await initRedisAdapter(io, { host: REDIS_HOST, port: REDIS_PORT, db: REDIS_DB });
+        // Aguarda um pouco antes de inicializar o adapter para garantir que a conexão está totalmente estável
+        console.log("🔹 Aguardando estabilização da conexão Redis antes de inicializar Adapter...");
+        await new Promise(resolve => setTimeout(resolve, 2000));
+
+        try {
+            await initRedisAdapter(io, { host: REDIS_HOST, port: REDIS_PORT, db: REDIS_DB });
+        } catch (adapterErr) {
+            console.error("❌ Erro ao inicializar Redis Adapter:", adapterErr);
+            // Continua sem adapter em lugar de falhar completamente
+            console.warn("⚠️ Socket.IO rodará SEM Redis Adapter (não funcionará em múltiplas instâncias)");
+        }
 
         // Inicializa sincronização de eventos entre API e Socket.io
         try {

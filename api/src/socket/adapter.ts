@@ -1,13 +1,16 @@
 import { Server } from "socket.io";
 import { createAdapter } from "@socket.io/redis-adapter";
-import { getIORedisClient } from "../config/redis.config";
+import { getIORedisClient, getBullMQConnectionOptions } from "../config/redis.config";
 import IORedis from "ioredis";
 
 let adapterInitialized = false;
 
 /**
  * Inicializa Redis Adapter para Socket.IO
- * Usa IORedis que suporta .duplicate() para criar clientes separados para pub/sub
+ * Usa IORedis com dois clientes separados: um para pub e outro para sub
+ * 
+ * IMPORTANTE: Ao invés de usar .duplicate(), criamos um novo cliente com as
+ * mesmas credenciais para evitar problemas de autenticação/conexão no subClient
  */
 export async function initRedisAdapter(
     io: Server,
@@ -22,7 +25,7 @@ export async function initRedisAdapter(
     console.log(`🔹 Conectando Redis Adapter em ${host}:${port}, DB=${db}...`);
 
     try {
-        // Usa a conexão singleton existente do IORedis
+        // Usa a conexão singleton existente do IORedis para o publisher
         let pubClient = getIORedisClient();
         if (!pubClient) {
             console.error('❌ [Socket.IO] Redis Adapter não inicializado: IORedis indisponível.');
@@ -47,10 +50,51 @@ export async function initRedisAdapter(
             console.warn(`⚠️ [Socket.IO] Redis pubClient não está pronto. Status: ${pubClient.status}`);
         }
 
-        // Cria cliente separado para subscribe usando duplicate
-        const subClient = pubClient.duplicate();
+        // Cria novo cliente separado para subscribe com as mesmas credenciais
+        // Isso é mais confiável que usar .duplicate() que pode herdar problemas
+        console.log(`🔹 Criando subClient separado para Redis Adapter...`);
 
-        // Adiciona handlers de erro ao subClient (duplicate() não herda listeners)
+        const redisConfig = getBullMQConnectionOptions();
+        const redisPassword = process.env.REDIS_PASSWORD || undefined;
+
+        // IMPORTANTE: Socket.IO Redis Adapter REQUER 2 clientes separados (pub e sub)
+        // - pubClient: para publicar mensagens entre instâncias
+        // - subClient: para subscrever e receber mensagens de outras instâncias
+        // Isso não pode ser otimizado - é o design do adapter
+        const subClient = new IORedis({
+            host: redisConfig.host,
+            port: redisConfig.port,
+            db: redisConfig.db,
+            password: redisPassword,
+            maxRetriesPerRequest: null,
+            connectTimeout: 60_000,
+            commandTimeout: 30_000,
+            lazyConnect: true,
+            keepAlive: 30000,
+            enableOfflineQueue: true,
+            enableReadyCheck: true,
+            autoResubscribe: true,
+            autoResendUnfulfilledCommands: true,
+            connectionName: 'estacao-socket-sub',
+            showFriendlyErrorStack: true,
+            retryStrategy: (times: number) => {
+                const delay = Math.min(times * 50, 2000);
+                console.log(`🔄 [subClient] Tentativa ${times}, aguardando ${delay}ms...`);
+                return delay;
+            },
+        });
+
+        // Conecta o subClient explicitamente
+        console.log(`🔹 Conectando subClient...`);
+        try {
+            await subClient.connect();
+            console.log(`✅ [Socket.IO] subClient conectado`);
+        } catch (err) {
+            console.error(`❌ [Socket.IO] Falha ao conectar subClient: ${(err as Error)?.message}`);
+            throw err;
+        }
+
+        // Adiciona handlers de erro ao subClient
         subClient.on('error', (err) => {
             console.error('❌ [Socket.IO Redis Adapter] Erro no subClient:', err.message);
         });
