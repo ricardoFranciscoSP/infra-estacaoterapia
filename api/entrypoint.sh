@@ -42,6 +42,70 @@ check_port() {
 }
 
 # =========================
+# Resolução DNS com fallback
+# =========================
+can_resolve() {
+  host="$1"
+  if command -v getent >/dev/null 2>&1; then
+    getent hosts "$host" >/dev/null 2>&1
+    return $?
+  fi
+  if command -v nslookup >/dev/null 2>&1; then
+    nslookup "$host" >/dev/null 2>&1
+    return $?
+  fi
+  if command -v ping >/dev/null 2>&1; then
+    ping -c 1 -W 1 "$host" >/dev/null 2>&1
+    return $?
+  fi
+  return 1
+}
+
+resolve_host_with_fallback() {
+  var_name="$1"
+  primary="$2"
+  fallback_env="$3"
+  defaults="$4"
+  label="$5"
+  retries="${DNS_RETRIES:-8}"
+  delay="${DNS_RETRY_DELAY:-2}"
+
+  candidates="$primary"
+  [ -n "$fallback_env" ] && candidates="$candidates $fallback_env"
+  [ -n "$defaults" ] && candidates="$candidates $defaults"
+
+  for attempt in $(seq 1 "$retries"); do
+    for host in $candidates; do
+      if can_resolve "$host"; then
+        export "$var_name=$host"
+        echo "✅ DNS $label resolvido: $host (tentativa $attempt/$retries)"
+        return 0
+      fi
+    done
+    echo "⏳ DNS $label não resolveu (tentativa $attempt/$retries). Aguardando ${delay}s..."
+    sleep "$delay"
+  done
+
+  echo "⚠️  DNS $label não resolveu após ${retries} tentativas. Usando: $primary"
+  export "$var_name=$primary"
+  return 1
+}
+
+rewrite_url_host_port() {
+  url="$1"
+  new_host="$2"
+  new_port="$3"
+
+  if [ -z "$url" ]; then
+    echo ""
+    return 0
+  fi
+
+  # Substitui host e porta no padrão protocol://user:pass@host:port/...
+  echo "$url" | sed -E "s#(@)[^:/]+#\\1${new_host}#; s#:([0-9]+)/#:${new_port}/#"
+}
+
+# =========================
 # Utilitários (compatíveis com /bin/sh)
 # =========================
 mask_secret() {
@@ -71,6 +135,8 @@ start_api() {
   REDIS_HOST="${REDIS_HOST:-estacaoterapia_redis}"
   REDIS_PORT="${REDIS_PORT:-6379}"
   REDIS_DB="${REDIS_DB:-1}"
+  PG_HOST_FALLBACK="${PG_HOST_FALLBACK:-}"
+  REDIS_HOST_FALLBACK="${REDIS_HOST_FALLBACK:-}"
 
   # Prioridade de senha Redis:
   # 1. REDIS_PASSWORD do environment (docker-stack.yml)
@@ -92,6 +158,10 @@ start_api() {
     echo "🔐 Senha Redis definida via environment variable (${#REDIS_PASSWORD} chars)"
   fi
 
+  # Resolver DNS com fallback (evita ENOTFOUND no Swarm)
+  resolve_host_with_fallback "PG_HOST" "$PG_HOST" "$PG_HOST_FALLBACK" "tasks.pgbouncer pgbouncer estacaoterapia_pgbouncer" "PgBouncer"
+  resolve_host_with_fallback "REDIS_HOST" "$REDIS_HOST" "$REDIS_HOST_FALLBACK" "tasks.redis estacaoterapia_redis redis" "Redis"
+
   export NODE_ENV PORT \
     PG_HOST PG_PORT POSTGRES_DB \
     POSTGRES_USER POSTGRES_PASSWORD \
@@ -99,10 +169,14 @@ start_api() {
     JWT_SECRET CORS_ORIGIN
 
   if [ -n "$POSTGRES_USER" ] && [ -n "$POSTGRES_PASSWORD" ]; then
-    export DATABASE_URL="${DATABASE_URL:-postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${PG_HOST}:${PG_PORT}/${POSTGRES_DB}?schema=public}"
+    export DATABASE_URL="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${PG_HOST}:${PG_PORT}/${POSTGRES_DB}?schema=public"
+  elif [ -n "$DATABASE_URL" ]; then
+    export DATABASE_URL="$(rewrite_url_host_port "$DATABASE_URL" "$PG_HOST" "$PG_PORT")"
   fi
 
-  if [ -z "$REDIS_URL" ] && [ -n "$REDIS_PASSWORD" ]; then
+  if [ -n "$REDIS_URL" ]; then
+    export REDIS_URL="$(rewrite_url_host_port "$REDIS_URL" "$REDIS_HOST" "$REDIS_PORT")"
+  elif [ -n "$REDIS_PASSWORD" ]; then
     export REDIS_URL="redis://:${REDIS_PASSWORD}@${REDIS_HOST}:${REDIS_PORT}/${REDIS_DB}"
   fi
 
@@ -138,6 +212,8 @@ start_socket() {
   REDIS_PORT="${REDIS_PORT:-6379}"
   REDIS_DB="${REDIS_DB:-1}"
   API_BASE_URL="${API_BASE_URL:-http://estacaoterapia_api:3333}"
+  PG_HOST_FALLBACK="${PG_HOST_FALLBACK:-}"
+  REDIS_HOST_FALLBACK="${REDIS_HOST_FALLBACK:-}"
 
   # Prioridade de senha Redis:
   # 1. REDIS_PASSWORD do environment (docker-stack.yml)
@@ -159,6 +235,10 @@ start_socket() {
     echo "🔐 Senha Redis definida via environment variable (${#REDIS_PASSWORD} chars)"
   fi
 
+  # Resolver DNS com fallback (evita ENOTFOUND no Swarm)
+  resolve_host_with_fallback "PG_HOST" "$PG_HOST" "$PG_HOST_FALLBACK" "tasks.pgbouncer pgbouncer estacaoterapia_pgbouncer" "PgBouncer"
+  resolve_host_with_fallback "REDIS_HOST" "$REDIS_HOST" "$REDIS_HOST_FALLBACK" "tasks.redis estacaoterapia_redis redis" "Redis"
+
   # Exportar todas as variáveis necessárias
   export NODE_ENV PORT \
     PG_HOST PG_PORT POSTGRES_DB \
@@ -167,11 +247,15 @@ start_socket() {
     JWT_SECRET CORS_ORIGIN \
     API_BASE_URL
 
-  if [ -z "$DATABASE_URL" ] && [ -n "$POSTGRES_USER" ] && [ -n "$POSTGRES_PASSWORD" ]; then
+  if [ -n "$POSTGRES_USER" ] && [ -n "$POSTGRES_PASSWORD" ]; then
     export DATABASE_URL="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${PG_HOST}:${PG_PORT}/${POSTGRES_DB}?schema=public"
+  elif [ -n "$DATABASE_URL" ]; then
+    export DATABASE_URL="$(rewrite_url_host_port "$DATABASE_URL" "$PG_HOST" "$PG_PORT")"
   fi
 
-  if [ -z "$REDIS_URL" ] && [ -n "$REDIS_PASSWORD" ]; then
+  if [ -n "$REDIS_URL" ]; then
+    export REDIS_URL="$(rewrite_url_host_port "$REDIS_URL" "$REDIS_HOST" "$REDIS_PORT")"
+  elif [ -n "$REDIS_PASSWORD" ]; then
     export REDIS_URL="redis://:${REDIS_PASSWORD}@${REDIS_HOST}:${REDIS_PORT}/${REDIS_DB}"
   fi
 
