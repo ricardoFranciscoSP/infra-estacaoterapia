@@ -31,15 +31,14 @@ export async function startControleConsultaWorkers(io?: any) {
                 console.error('❌ Falha ao importar session worker:', err);
             }
             try {
-                const { startAgendaWorker, scheduleMonthlyAgendaJob } = await import('../jobs/agendaWorker');
+                const { startAgendaWorker } = await import('../jobs/agendaWorker');
                 const { agendaQueue } = await import('../queues/bullmqCentral');
                 console.log('🔹 Inicializando agenda worker (fila: agendaQueue)...');
                 startAgendaWorker();
-                scheduleMonthlyAgendaJob().catch(err => console.error('❌ Falha ao agendar job mensal:', err));
                 if (agendaQueue) {
-                    console.log('✅ Agenda worker inicialização disparada e job mensal agendamento disparado');
+                    console.log('✅ Agenda worker inicialização disparada (sem agendamento imediato do job mensal)');
                 } else {
-                    console.log('⚠️ agendaQueue não inicializada, job não agendado');
+                    console.log('⚠️ agendaQueue não inicializada');
                 }
             } catch (err) {
                 console.error('❌ Falha ao importar agenda worker:', err);

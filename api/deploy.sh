@@ -13,8 +13,12 @@ SECRETS_DIR="/opt/secrets"
 STACK_NAME="estacaoterapia"
 KEEP_VERSIONS=1  # Manter última versão + 1 anterior (rollback)
 
+echo ""
+echo "==============================="
 echo "🚀 [DEPLOY] Estação Terapia Swarm - $(date)"
-echo "======================================"
+echo "==============================="
+
+echo "[ETAPA 1/8] PRÉ-REQUISITOS"
 
 # ==============================
 # TAG VERSIONADO

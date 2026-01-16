@@ -28,7 +28,7 @@ export class GerarAgendaService implements IGerarAgendaService {
         }
 
         const hojeBr = dayjs().tz('America/Sao_Paulo').startOf('day');
-        
+
         // Gera horários de 06:00 até 23:00, incluindo explicitamente 23:00
         const horariosPorDia = Array.from({ length: 18 }, (_, i) => `${(i + 6).toString().padStart(2, '0')}:00`);
         if (!horariosPorDia.includes('23:00')) {
@@ -51,10 +51,14 @@ export class GerarAgendaService implements IGerarAgendaService {
         const chunks = chunkArray(psicologosAtivos, CONCURRENCY);
 
         for (const chunk of chunks) {
-            // processa cada chunk em paralelo
-            const promises = chunk.map(async (psicologo) => {
+            // processa cada chunk em paralelo, mas aguarda intervalo entre chunks
+            const promises = chunk.map(async (psicologo, idx) => {
                 try {
-                    // Determina data inicial: hoje ou data de aprovação se for posterior
+                    // Adiciona delay entre cada job do chunk
+                    if (idx > 0) {
+                        await new Promise(resolve => setTimeout(resolve, 500)); // 500ms entre jobs
+                    }
+                    // ...existing code...
                     let dataInicial = hojeBr;
                     if (psicologo.DataAprovacao) {
                         const dataAprovacao = dayjs(psicologo.DataAprovacao).tz('America/Sao_Paulo').startOf('day');
@@ -75,26 +79,21 @@ export class GerarAgendaService implements IGerarAgendaService {
                         take: 1
                     });
 
-                    // Se já existe agenda futura, verifica até quando está gerada
                     let dataInicioGeracao = dataInicial;
                     if (ultimaAgenda && ultimaAgenda.length > 0) {
                         const ultimaDataAgenda = dayjs(ultimaAgenda[0].Data).tz('America/Sao_Paulo').startOf('day');
-                        // Se a última agenda está a menos de 60 dias, gera a partir do dia seguinte
                         if (ultimaDataAgenda.isBefore(dataFinal)) {
                             dataInicioGeracao = ultimaDataAgenda.add(1, 'day');
                         } else {
-                            // Já tem 60 dias gerados
                             console.log(`[GerarAgendaService] ⚠️ Psicólogo ${psicologo.Id} já tem agenda até ${ultimaDataAgenda.format('YYYY-MM-DD')}`);
                             resultados.push({ psicologoId: psicologo.Id, criados: 0 });
                             return;
                         }
                     }
 
-                    // Calcula intervalo de datas para buscar agendas existentes (em Brasília)
                     const startDateBr = dataInicioGeracao.startOf('day');
                     const endDateBr = dataFinal.endOf('day');
 
-                    // Busca todas as agendas existentes deste psicólogo no intervalo (uma única chamada)
                     const existentes = await this.agendaRepository.findMany({
                         where: {
                             AND: [
@@ -104,16 +103,13 @@ export class GerarAgendaService implements IGerarAgendaService {
                         }
                     });
 
-                    // Cria um Set de chaves "YYYY-MM-DD|HH:mm" para lookup rápido
                     const existenteSet = new Set<string>();
                     for (const ag of existentes || []) {
-                        // Normaliza Data (em fuso de Brasília) e Horario
                         const dataBr = dayjs(ag.Data).tz('America/Sao_Paulo').startOf('day').format('YYYY-MM-DD');
                         const horario = ag.Horario || '00:00';
                         existenteSet.add(`${dataBr}|${horario}`);
                     }
 
-                    // Garante que nunca será criada agenda retroativa
                     const nowBr = dayjs().tz('America/Sao_Paulo');
                     const agendasParaCriar = (await this._gerarAgendasParaPeriodo(
                         psicologo.Id,
@@ -122,7 +118,6 @@ export class GerarAgendaService implements IGerarAgendaService {
                         horariosPorDia,
                         existenteSet
                     )).filter(agenda => {
-                        // agenda.Data é Date, converte para dayjs e compara com agora
                         const agendaDataHora = dayjs(agenda.Data).tz('America/Sao_Paulo').hour(Number(agenda.Horario.split(':')[0]));
                         return agendaDataHora.isAfter(nowBr) || agendaDataHora.isSame(nowBr);
                     });
@@ -130,7 +125,6 @@ export class GerarAgendaService implements IGerarAgendaService {
                     if (agendasParaCriar.length) {
                         console.log(`[GerarAgendaService] 📝 Criando ${agendasParaCriar.length} agendas para psicólogo ${psicologo.Id}...`);
                         const criados = await this.agendaRepository.createMany(agendasParaCriar);
-                        // Prisma createMany retorna { count: number }
                         const count = typeof criados === 'number' ? criados : (criados as { count?: number })?.count ?? agendasParaCriar.length;
                         console.log(`[GerarAgendaService] ✅ ${count} agendas criadas para psicólogo ${psicologo.Id}`);
                         resultados.push({ psicologoId: psicologo.Id, criados: count });
@@ -145,6 +139,8 @@ export class GerarAgendaService implements IGerarAgendaService {
             });
 
             await Promise.all(promises);
+            // Adiciona delay entre chunks para evitar sobrecarga
+            await new Promise(resolve => setTimeout(resolve, 1000)); // 1s entre chunks
         }
 
         // Envia e-mail de notificação após geração
@@ -190,10 +186,10 @@ export class GerarAgendaService implements IGerarAgendaService {
     ) {
         const agendasParaCriar = [];
         const nowBr = dayjs().tz('America/Sao_Paulo');
-        
+
         // Itera dia a dia desde a data inicial até a data final
         let dataAtual = dataInicial.startOf('day');
-        
+
         while (dataAtual.isBefore(dataFinal) || dataAtual.isSame(dataFinal, 'day')) {
             const dataDate = dataAtual.utc().toDate();
             const dataKey = dataAtual.format('YYYY-MM-DD');
@@ -216,11 +212,11 @@ export class GerarAgendaService implements IGerarAgendaService {
                     PacienteId: null,
                 });
             }
-            
+
             // Avança para o próximo dia
             dataAtual = dataAtual.add(1, 'day');
         }
-        
+
         return agendasParaCriar;
     }
 
@@ -262,7 +258,7 @@ export class GerarAgendaService implements IGerarAgendaService {
         try {
             // Busca o psicólogo
             const psicologo = await this.userRepository.findById(psicologoId);
-            
+
             if (!psicologo) {
                 return { error: 'Psicólogo não encontrado.' };
             }
@@ -272,7 +268,7 @@ export class GerarAgendaService implements IGerarAgendaService {
             }
 
             const hojeBr = dayjs().tz('America/Sao_Paulo').startOf('day');
-            
+
             // Gera horários de 06:00 até 23:00, incluindo explicitamente 23:00
             const horariosPorDia = Array.from({ length: 18 }, (_, i) => `${(i + 6).toString().padStart(2, '0')}:00`);
             if (!horariosPorDia.includes('23:00')) {
