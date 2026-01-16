@@ -69,7 +69,7 @@ client = await waitForIORedisReady(60000);
 **Linha 13-16**: Default host do Redis
 ```diff
 - const REDIS_HOST = process.env.REDIS_HOST || "estacao_redis_prd";
-+ const REDIS_HOST = process.env.REDIS_HOST || "redis";
++ const REDIS_HOST = process.env.REDIS_HOST || "estacaoterapia_redis";
 ```
 
 **Linhas 144-159**: Função `waitForRedis()`
@@ -85,6 +85,12 @@ client = await waitForIORedisReady(60000);
 ```
 
 ### Arquivo 2: `api/src/config/redis.config.ts`
+
+**Linhas 53-62**: Default host
+```diff
+- host: process.env.REDIS_HOST || "redis",
++ host: process.env.REDIS_HOST || "estacaoterapia_redis",
+```
 
 **Linhas 540-549**: Default timeout
 ```diff
@@ -103,19 +109,22 @@ services:
     networks:
       estacaoterapia_backend:
         aliases:
-          - redis                      # ✅ Alias curto (recomendado)
-          - estacaoterapia_redis       # ✅ Nome completo do serviço
+          - redis                      # ⚠️  Alias pode falhar
+          - estacaoterapia_redis       # ✅ Nome completo do serviço (USAR ESTE)
           - redis.estacaoterapia_backend # ✅ FQDN interno
 ```
 
 ### entrypoint.sh
 ```bash
-REDIS_HOST="${REDIS_HOST:-estacaoterapia_redis}"  # Default do Swarm
+REDIS_HOST="${REDIS_HOST:-estacaoterapia_redis}"  # Nome completo do serviço
 ```
 
 ### Prioridade de Resolução:
-1. `process.env.REDIS_HOST` (do docker-stack.yml)
-2. `"redis"` (alias de rede curto - mais rápido em Swarm)
+1. `process.env.REDIS_HOST` (do docker-stack.yml environment)
+2. `"estacaoterapia_redis"` (nome do serviço - MAIS CONFIÁVEL)
+
+**IMPORTANTE**: Em Docker Swarm, sempre use o nome completo do serviço (`estacaoterapia_redis`) 
+ao invés de aliases (`redis`) para evitar problemas de resolução DNS.
 
 ---
 

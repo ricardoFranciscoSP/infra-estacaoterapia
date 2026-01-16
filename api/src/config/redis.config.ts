@@ -47,11 +47,11 @@ let ioredisConnectionPromise: Promise<IORedis> | null = null;
  * que o entrypoint.sh resolva os hostnames antes do Node.js tentar conectar
  * 
  * Em Docker Swarm, o Redis pode ser acessado por:
- * - estacaoterapia_redis: nome do serviço completo
- * - redis: alias configurado no docker-stack.yml
+ * - estacaoterapia_redis: nome do serviço completo (RECOMENDADO)
+ * - redis: alias configurado no docker-stack.yml (pode falhar em alguns casos)
  */
 const getRedisConfig = () => ({
-    host: process.env.REDIS_HOST || "redis", // Usa alias de rede
+    host: process.env.REDIS_HOST || "estacaoterapia_redis", // Nome do serviço no Swarm
     port: Number(process.env.REDIS_PORT || 6379),
     db: Number(process.env.REDIS_DB || 0),
     password: process.env.REDIS_PASSWORD || "",

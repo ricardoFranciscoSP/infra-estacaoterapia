@@ -12,7 +12,7 @@ const app = express();
 app.use(express.json());
 
 const PORT = Number(process.env.PORT || 3001);
-const REDIS_HOST = process.env.REDIS_HOST || "redis"; // Alias de rede do Swarm
+const REDIS_HOST = process.env.REDIS_HOST || "estacaoterapia_redis"; // Nome do serviço no Swarm
 const REDIS_PORT = Number(process.env.REDIS_PORT || 6379);
 const REDIS_DB = Number(process.env.REDIS_DB || 1);
 
