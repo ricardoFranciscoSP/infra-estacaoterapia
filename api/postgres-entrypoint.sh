@@ -27,6 +27,26 @@ done
 
 echo "✅ DB '$POSTGRES_DB' pronto"
 
+# 🔁 Restauração automática se o banco estiver vazio
+BACKUP_FILE="/backups/estacaoterapia_prd.sql"
+if [ -f "$BACKUP_FILE" ]; then
+  echo "🔎 Verificando conteúdo do banco '$POSTGRES_DB'..."
+  TABLE_COUNT=$(PGPASSWORD="$POSTGRES_PASSWORD" psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc "SELECT count(*) FROM pg_tables WHERE schemaname NOT IN ('pg_catalog','information_schema');" 2>/dev/null || echo 0)
+
+  if [ "${TABLE_COUNT:-0}" -eq 0 ]; then
+    echo "♻️  Banco está vazio. Restaurando backup inicial..."
+    if PGPASSWORD="$POSTGRES_PASSWORD" psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -f "$BACKUP_FILE"; then
+      echo "✅ Restauração concluída a partir de $BACKUP_FILE"
+    else
+      echo "❌ Falha ao restaurar backup ($BACKUP_FILE)"; exit 1;
+    fi
+  else
+    echo "✅ Banco já possui tabelas (${TABLE_COUNT}); nenhuma restauração necessária"
+  fi
+else
+  echo "⚠️  Backup não encontrado em $BACKUP_FILE (pulei restauração)"
+fi
+
 # 🔧 Performance VPS/Swarm (PgBouncer compatível)
 exec docker-entrypoint.sh postgres \
   -c config_file=/etc/postgresql/postgresql.conf \

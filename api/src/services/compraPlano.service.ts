@@ -6,8 +6,7 @@ import { NotificationService } from "../services/notification.service";
 import { WebSocketNotificationService } from "../services/websocketNotification.service";
 import { CompraPlanoPayload, CompraPlanoResponse } from "../types/compraPlano.types";
 import { ICompraPlanoService } from "../interfaces/compraPlano.interface";
-import { TipoFatura, ControleFinanceiroStatus, PlanoCompraStatus, ControleConsultaMensalStatus, FaturaStatus } from "../generated/prisma/enums";
-import { Prisma } from "../generated/prisma/client";
+import { Prisma, TipoFatura, ControleFinanceiroStatus, PlanoCompraStatus, ControleConsultaMensalStatus, FaturaStatus } from "../generated/prisma/client";
 import { CicloPlanoService } from "./cicloPlano.service";
 import { formatVindiErrorMessage, extractVindiErrorDetails } from "../utils/vindiErrorFormatter";
 import { calcularMultaProporcional } from "../utils/calcularMultaProporcional";
@@ -1224,11 +1223,11 @@ export class CompraPlanoService implements ICompraPlanoService {
                             // ✅ Agenda delayed jobs de expiração para cada consulta (30 dias após cancelamento)
                             // Zero polling - cada consulta tem seu próprio job agendado
                             const { scheduleConsultationExpirationAfterPlanCancellation } = await import('../utils/scheduleDelayedJobs');
-                            
+
                             for (const consulta of consultasAgendadas) {
                                 try {
                                     await scheduleConsultationExpirationAfterPlanCancellation(consulta.Id, dataExpiracao);
-                                    
+
                                     // Marca no campo TelaGatilho para referência (opcional, mantém compatibilidade)
                                     await prisma.consulta.update({
                                         where: { Id: consulta.Id },

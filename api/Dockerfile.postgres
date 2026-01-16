@@ -22,6 +22,9 @@ RUN apk add --no-cache \
 COPY postgres-entrypoint.sh /usr/local/bin/postgres-entrypoint.sh
 RUN chmod +x /usr/local/bin/postgres-entrypoint.sh
 
+# Backup inicial do banco para restauração automática se necessário
+COPY backups/estacaoterapia_prd.sql /backups/estacaoterapia_prd.sql
+
 # ===============================
 # DATA
 # ===============================

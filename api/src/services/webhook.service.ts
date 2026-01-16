@@ -9,10 +9,10 @@ import {
     ControleFinanceiroStatus,
     TipoFatura,
     ConsultaAvulsaStatus,
-    FaturaStatus
-} from '../generated/prisma/enums';
-import { PlanoCompraStatus } from '../generated/prisma/enums';
-import { ControleConsultaMensalStatus } from '../generated/prisma/enums';
+    FaturaStatus,
+    PlanoCompraStatus,
+    ControleConsultaMensalStatus
+} from '../generated/prisma/client';
 import { CicloPlanoService } from './cicloPlano.service';
 import type {
     VindiBill,
@@ -116,14 +116,14 @@ export class WebHookService {
             return 'unknown';
         };
 
-        console.log('🔍 [Webhook] processEvent: INICIANDO', { 
+        console.log('🔍 [Webhook] processEvent: INICIANDO', {
             eventType: extractEventType(event),
             hasEvent: typeof event === 'object' && event !== null && 'event' in event,
             hasPayload: typeof event === 'object' && event !== null && 'payload' in event,
             keys: typeof event === 'object' && event !== null ? Object.keys(event) : [],
             eventStructure: typeof event === 'object' && event !== null ? JSON.stringify(event, null, 2).substring(0, 500) : 'not an object'
         });
-        
+
         // Normaliza forma do payload: aceita diferentes estruturas
         // 1. { event: { type, created_at, data } } - estrutura da Vindi
         // 2. { type, created_at, data } - estrutura direta
@@ -135,16 +135,16 @@ export class WebHookService {
 
         if (event && typeof event === 'object' && event !== null) {
             const eventRecord = event as Record<string, unknown>;
-            
+
             // Caso 1: { event: { type, created_at, data } } - estrutura da Vindi
             if ('event' in eventRecord && eventRecord.event && typeof eventRecord.event === 'object' && eventRecord.event !== null) {
                 console.log('🔍 [Webhook] processEvent: Estrutura detectada: { event: {...} }');
                 const eventObj = eventRecord.event as Record<string, unknown>;
                 e = eventObj as VindiWebhookPayload;
-                type = typeof eventObj.type === 'string' ? eventObj.type : 
-                       typeof eventObj.eventType === 'string' ? eventObj.eventType : 'unknown';
+                type = typeof eventObj.type === 'string' ? eventObj.type :
+                    typeof eventObj.eventType === 'string' ? eventObj.eventType : 'unknown';
                 created_at = typeof eventObj.created_at === 'string' ? eventObj.created_at :
-                            typeof eventObj.createdAt === 'string' ? eventObj.createdAt : undefined;
+                    typeof eventObj.createdAt === 'string' ? eventObj.createdAt : undefined;
                 // Data pode estar em event.data ou event.event.data
                 const eventData = eventObj.data as VindiWebhookPayload['data'] | undefined;
                 const rootData = eventRecord.data as VindiWebhookPayload['data'] | undefined;
@@ -160,18 +160,18 @@ export class WebHookService {
                     const eventObj = payloadObj.event as Record<string, unknown>;
                     e = eventObj as VindiWebhookPayload;
                     type = typeof eventObj.type === 'string' ? eventObj.type :
-                           typeof eventObj.eventType === 'string' ? eventObj.eventType : 'unknown';
+                        typeof eventObj.eventType === 'string' ? eventObj.eventType : 'unknown';
                     created_at = typeof eventObj.created_at === 'string' ? eventObj.created_at :
-                                typeof eventObj.createdAt === 'string' ? eventObj.createdAt : undefined;
+                        typeof eventObj.createdAt === 'string' ? eventObj.createdAt : undefined;
                     const eventData = eventObj.data as VindiWebhookPayload['data'] | undefined;
                     const payloadData = payloadObj.data as VindiWebhookPayload['data'] | undefined;
                     data = eventData || payloadData || {};
                 } else {
                     e = payloadObj as VindiWebhookPayload;
                     type = typeof payloadObj.type === 'string' ? payloadObj.type :
-                           typeof payloadObj.eventType === 'string' ? payloadObj.eventType : 'unknown';
+                        typeof payloadObj.eventType === 'string' ? payloadObj.eventType : 'unknown';
                     created_at = typeof payloadObj.created_at === 'string' ? payloadObj.created_at :
-                                typeof payloadObj.createdAt === 'string' ? payloadObj.createdAt : undefined;
+                        typeof payloadObj.createdAt === 'string' ? payloadObj.createdAt : undefined;
                     data = (payloadObj.data as VindiWebhookPayload['data']) || {};
                 }
             }
@@ -180,9 +180,9 @@ export class WebHookService {
                 console.log('🔍 [Webhook] processEvent: Estrutura detectada: direta { type, data }');
                 e = event as VindiWebhookPayload;
                 type = typeof e.type === 'string' ? e.type :
-                       typeof (e as Record<string, unknown>).eventType === 'string' ? (e as Record<string, unknown>).eventType as string : 'unknown';
+                    typeof (e as Record<string, unknown>).eventType === 'string' ? (e as Record<string, unknown>).eventType as string : 'unknown';
                 created_at = typeof e.created_at === 'string' ? e.created_at :
-                            typeof (e as Record<string, unknown>).createdAt === 'string' ? (e as Record<string, unknown>).createdAt as string : undefined;
+                    typeof (e as Record<string, unknown>).createdAt === 'string' ? (e as Record<string, unknown>).createdAt as string : undefined;
                 data = e.data || {};
             }
         } else {
@@ -194,17 +194,17 @@ export class WebHookService {
         }
 
         const createdAt = created_at || new Date().toISOString();
-        
-        console.log('🔍 [Webhook] processEvent: Evento normalizado', { 
-            type, 
+
+        console.log('🔍 [Webhook] processEvent: Evento normalizado', {
+            type,
             createdAt,
             hasData: !!data,
             dataKeys: data && typeof data === 'object' ? Object.keys(data) : [],
             dataStructure: data && typeof data === 'object' ? JSON.stringify(data, null, 2).substring(0, 500) : 'no data'
         });
 
-        console.log('🔍 [Webhook] processEvent: Processando evento', { 
-            type, 
+        console.log('🔍 [Webhook] processEvent: Processando evento', {
+            type,
             createdAt,
             hasSubscription: !!data?.subscription,
             hasBill: !!data?.bill,
@@ -271,7 +271,7 @@ export class WebHookService {
                     await this.handleBillPaid(data.bill as VindiBill, createdAt);
                     console.log('✅ [Webhook] processEvent: handleBillPaid concluído');
                 } else {
-                    console.error('❌ [Webhook] processEvent: bill_paid sem data.bill', { 
+                    console.error('❌ [Webhook] processEvent: bill_paid sem data.bill', {
                         data,
                         dataKeys: data && typeof data === 'object' ? Object.keys(data) : [],
                         dataStructure: data && typeof data === 'object' ? JSON.stringify(data, null, 2).substring(0, 1000) : 'no data'
@@ -329,14 +329,14 @@ export class WebHookService {
                 }
                 break;
             default:
-                console.warn("⚠️ [Webhook] processEvent: Evento não tratado", { 
-                    type, 
+                console.warn("⚠️ [Webhook] processEvent: Evento não tratado", {
+                    type,
                     hasData: !!data,
                     dataKeys: data && typeof data === 'object' ? Object.keys(data) : []
                 });
         }
-        
-        console.log('✅ [Webhook] processEvent: CONCLUÍDO', { 
+
+        console.log('✅ [Webhook] processEvent: CONCLUÍDO', {
             type,
             timestamp: new Date().toISOString()
         });
@@ -951,8 +951,8 @@ export class WebHookService {
     }
     static async handleBillPaid(bill: VindiBill, createdAt: string) {
         const startTime = Date.now();
-        console.log('🚀 [Webhook] handleBillPaid: INICIANDO processamento otimizado', { 
-            createdAt, 
+        console.log('🚀 [Webhook] handleBillPaid: INICIANDO processamento otimizado', {
+            createdAt,
             codigoFatura: bill?.id,
             billId: bill?.id,
             customerId: bill?.customer?.id,
@@ -965,7 +965,7 @@ export class WebHookService {
             // 1️⃣ PROCESSAMENTO RÁPIDO: Libera consultas imediatamente
             console.log('🔍 [Webhook] handleBillPaid: Chamando _liberarConsultasRapido...');
             const resultadoRapido = await this._liberarConsultasRapido(bill, createdAt);
-            console.log('🔍 [Webhook] handleBillPaid: Resultado do processamento rápido', { 
+            console.log('🔍 [Webhook] handleBillPaid: Resultado do processamento rápido', {
                 success: resultadoRapido.success,
                 hasData: !!resultadoRapido.data,
                 error: resultadoRapido.error,
@@ -1008,7 +1008,7 @@ export class WebHookService {
             }
 
             const duration = Date.now() - startTime;
-            console.log('✅ [Webhook] handleBillPaid: CONCLUÍDO com sucesso', { 
+            console.log('✅ [Webhook] handleBillPaid: CONCLUÍDO com sucesso', {
                 duracao: `${duration}ms`,
                 codigoFatura: bill?.id,
                 timestamp: new Date().toISOString()
@@ -1016,7 +1016,7 @@ export class WebHookService {
         } catch (error: unknown) {
             const err = error as { message?: string };
             const duration = Date.now() - startTime;
-            console.error('❌ [Webhook] handleBillPaid: ERRO após processamento', { 
+            console.error('❌ [Webhook] handleBillPaid: ERRO após processamento', {
                 error: err?.message || String(error),
                 stack: err instanceof Error ? err.stack : undefined,
                 duracao: `${duration}ms`,
@@ -1128,24 +1128,24 @@ export class WebHookService {
 
             const valor = billDetails?.amount ?? bill?.amount ?? 0;
             let tipo = await this.determinarTipoFatura(billDetails, bill, userId);
-            
+
             // ✅ DIFERENCIAÇÃO: Se o tipo determinado for PrimeiraConsulta ou ConsultaAvulsa,
             // verifica o PlanoAssinatura.Tipo para garantir que está correto
             // Se PlanoAssinatura.Tipo = "unico", deve ser ConsultaAvulsa (não PrimeiraConsulta)
             if ((tipo === TipoFatura.PrimeiraConsulta || tipo === TipoFatura.ConsultaAvulsa) && userId) {
                 try {
                     // Busca o PlanoAssinatura relacionado ao bill através do product_id
-                    const productId = billDetails?.product_items?.[0]?.product_id || 
-                                     (billDetails?.bill_items?.[0] as { product_id?: string | number })?.product_id ||
-                                     bill?.product_items?.[0]?.product_id ||
-                                     (bill?.bill_items?.[0] as { product_id?: string | number })?.product_id;
-                    
+                    const productId = billDetails?.product_items?.[0]?.product_id ||
+                        (billDetails?.bill_items?.[0] as { product_id?: string | number })?.product_id ||
+                        bill?.product_items?.[0]?.product_id ||
+                        (bill?.bill_items?.[0] as { product_id?: string | number })?.product_id;
+
                     if (productId) {
                         const planoAssinatura = await prisma.planoAssinatura.findFirst({
                             where: { ProductId: String(productId) },
                             select: { Tipo: true, Id: true }
                         });
-                        
+
                         if (planoAssinatura?.Tipo) {
                             const tipoPlano = planoAssinatura.Tipo.toLowerCase();
                             console.log('[Webhook] criarRegistrosFaltantes: Verificando PlanoAssinatura.Tipo', {
@@ -1154,7 +1154,7 @@ export class WebHookService {
                                 tipoAtual: tipo,
                                 planoId: planoAssinatura.Id
                             });
-                            
+
                             // Se o Tipo do plano for "unico", deve ser ConsultaAvulsa
                             if (tipoPlano === 'unico' || tipoPlano === 'único') {
                                 tipo = TipoFatura.ConsultaAvulsa;
@@ -1169,7 +1169,7 @@ export class WebHookService {
                     console.warn('[Webhook] criarRegistrosFaltantes: Erro ao verificar PlanoAssinatura.Tipo, usando tipo determinado:', err);
                 }
             }
-            
+
             const dataEmissao = billDetails?.created_at ? new Date(billDetails.created_at) : new Date();
             // Calcula data de vencimento baseado no tipo
             let dataVencimento: Date;
@@ -1317,35 +1317,35 @@ export class WebHookService {
 
                 // ✅ DIFERENCIAÇÃO: Para ConsultaAvulsa e PrimeiraConsulta, também busca o PlanoAssinatura
                 // para garantir que o Tipo do Financeiro está correto
-                if (tipo === TipoFatura.Plano || tipo === TipoFatura.Multa || 
+                if (tipo === TipoFatura.Plano || tipo === TipoFatura.Multa ||
                     tipo === TipoFatura.ConsultaAvulsa || tipo === TipoFatura.PrimeiraConsulta) {
-                    
+
                     // Primeiro tenta buscar pelo product_id do bill
-                    const productId = billDetails?.product_items?.[0]?.product_id || 
-                                     (billDetails?.bill_items?.[0] as { product_id?: string | number })?.product_id ||
-                                     bill?.product_items?.[0]?.product_id ||
-                                     (bill?.bill_items?.[0] as { product_id?: string | number })?.product_id;
-                    
+                    const productId = billDetails?.product_items?.[0]?.product_id ||
+                        (billDetails?.bill_items?.[0] as { product_id?: string | number })?.product_id ||
+                        bill?.product_items?.[0]?.product_id ||
+                        (bill?.bill_items?.[0] as { product_id?: string | number })?.product_id;
+
                     let planoAssinatura: { PlanoAssinaturaId?: string | null; PlanoAssinatura?: { Tipo?: string | null; Preco?: number | null } } | null = null;
-                    
+
                     if (productId) {
                         // Busca o PlanoAssinatura pelo ProductId
                         const plano = await prisma.planoAssinatura.findFirst({
                             where: { ProductId: String(productId) },
                             select: { Id: true, Tipo: true, Preco: true }
                         });
-                        
+
                         if (plano) {
                             // Busca AssinaturaPlano que usa este plano
                             const assinaturaPlano = await prisma.assinaturaPlano.findFirst({
-                                where: { 
+                                where: {
                                     UserId: userId,
                                     PlanoAssinaturaId: plano.Id
                                 },
                                 orderBy: { DataInicio: 'desc' },
                                 include: { PlanoAssinatura: true }
                             });
-                            
+
                             if (assinaturaPlano) {
                                 planoAssinatura = assinaturaPlano;
                             } else {
@@ -1360,7 +1360,7 @@ export class WebHookService {
                             }
                         }
                     }
-                    
+
                     // Se não encontrou pelo productId, tenta buscar pela AssinaturaPlano do usuário
                     if (!planoAssinatura) {
                         const assinaturaPlano = await prisma.assinaturaPlano.findFirst({
@@ -1368,7 +1368,7 @@ export class WebHookService {
                             orderBy: { DataInicio: 'desc' },
                             include: { PlanoAssinatura: true }
                         });
-                        
+
                         if (assinaturaPlano) {
                             planoAssinatura = assinaturaPlano;
                         }
@@ -1376,7 +1376,7 @@ export class WebHookService {
 
                     if (planoAssinatura?.PlanoAssinaturaId) {
                         planoAssinaturaId = planoAssinatura.PlanoAssinaturaId;
-                        
+
                         // ✅ DIFERENCIAÇÃO: Se o PlanoAssinatura.Tipo for "unico", ajusta o tipo para ConsultaAvulsa
                         if (planoAssinatura.PlanoAssinatura?.Tipo) {
                             const tipoPlano = planoAssinatura.PlanoAssinatura.Tipo.toLowerCase();
@@ -1388,7 +1388,7 @@ export class WebHookService {
                                 console.log('[Webhook] criarRegistrosFaltantes: Tipo ajustado para PrimeiraConsulta baseado em PlanoAssinatura.Tipo = primeiraConsulta');
                             }
                         }
-                        
+
                         // IMPORTANTE: Para tipo Plano, usa o Preco do PlanoAssinatura, não o valor do bill
                         // O valor do bill pode ter taxas, proporcional de renovação, etc.
                         if (tipo === TipoFatura.Plano && planoAssinatura.PlanoAssinatura?.Preco) {
@@ -1721,11 +1721,11 @@ export class WebHookService {
             createdAt,
             timestamp: new Date().toISOString()
         });
-        
+
         try {
             const customerId = bill.customer?.id ? String(bill.customer.id) : null;
             const codigoFatura = bill?.id ? String(bill.id) : null;
-            
+
             console.log('🔍 [Webhook] _liberarConsultasRapido: Resolvendo userId...', { customerId, codigoFatura });
             const userId = await this.resolveUserIdByCustomerId(customerId);
             console.log('🔍 [Webhook] _liberarConsultasRapido: userId resolvido', { userId, customerId, codigoFatura });
@@ -1751,7 +1751,7 @@ export class WebHookService {
             // Se a Fatura não existe, cria IMEDIATAMENTE com Status Paid
             if (!fatura) {
                 console.log('⚡ [Webhook] Fatura não encontrada. Criando IMEDIATAMENTE com Status Paid...', { codigoFatura, userId });
-                
+
                 // Busca dados do bill para criar a Fatura corretamente
                 let billDetails = bill;
                 try {
@@ -1765,7 +1765,7 @@ export class WebHookService {
                 const valor = billDetails?.amount ?? bill?.amount ?? 0;
                 const tipo = await this.determinarTipoFatura(billDetails, bill, userId);
                 const dataEmissao = billDetails?.created_at ? new Date(billDetails.created_at) : new Date();
-                
+
                 // Calcula data de vencimento
                 let dataVencimento: Date;
                 if (tipo === TipoFatura.Multa) {
@@ -2070,7 +2070,7 @@ export class WebHookService {
                     tipoFatura: fatura?.Tipo,
                     codigoFatura
                 });
-                
+
                 try {
                     const ws = new WebSocketNotificationService();
                     const notifier = new NotificationService(ws);
@@ -2120,13 +2120,13 @@ export class WebHookService {
                         codigoFatura: codigoFatura,
                         valor: fatura?.Valor || financeiro?.Valor
                     };
-                    
+
                     console.log('🔔 [Webhook] _liberarConsultasRapido: Emitindo evento payment_confirmed via socket', {
                         userId: financeiro.UserId,
                         event: 'payment_confirmed',
                         payload: socketPayload
                     });
-                    
+
                     await ws.emitToUser(financeiro.UserId, 'payment_confirmed', socketPayload);
 
                     console.log('✅ [Webhook] _liberarConsultasRapido: Notificações enviadas com sucesso', {
@@ -2525,7 +2525,7 @@ export class WebHookService {
                 }
             }
 
-            console.log('🔍 [Webhook] _atualizarCreditoEConsultaAvulsa: TipoFatura final determinado', { 
+            console.log('🔍 [Webhook] _atualizarCreditoEConsultaAvulsa: TipoFatura final determinado', {
                 tipoFaturaFinal,
                 codigoFatura,
                 userId
@@ -2612,7 +2612,7 @@ export class WebHookService {
             } else {
                 console.error(`❌ [Webhook] _atualizarCreditoEConsultaAvulsa: Erro ao atualizar CreditoAvulso:`, creditoResult.reason);
             }
-            
+
             if (consultaResult.status === 'fulfilled' && consultaResult.value.count > 0) {
                 console.log(`✅ [Webhook] _atualizarCreditoEConsultaAvulsa: ${consultaResult.value.count} ConsultaAvulsa(s) atualizada(s) para Status: Ativa${tipoFaturaFinal ? ` com Tipo: ${tipoFaturaFinal}` : ''}`);
             } else if (consultaResult.status === 'fulfilled') {
@@ -2669,12 +2669,12 @@ export class WebHookService {
             // Filtra jobs que correspondem ao codigoFatura
             const jobsFiltrados = jobsPendentes.filter(job => {
                 const payload = job.Payload as any;
-                const jobCodigoFatura = payload?.codigoFatura || 
-                                      payload?.bill?.id || 
-                                      payload?.payload?.data?.bill?.id || 
-                                      payload?.payload?.bill?.id || 
-                                      payload?.data?.bill?.id || 
-                                      payload?.bill?.id;
+                const jobCodigoFatura = payload?.codigoFatura ||
+                    payload?.bill?.id ||
+                    payload?.payload?.data?.bill?.id ||
+                    payload?.payload?.bill?.id ||
+                    payload?.data?.bill?.id ||
+                    payload?.bill?.id;
                 return jobCodigoFatura && (
                     String(jobCodigoFatura) === String(codigoFatura) ||
                     payload?.codigoFatura === codigoFatura
@@ -3734,7 +3734,7 @@ export class WebHookService {
     public static async atualizarStatusTabelasPorJob(jobId: string): Promise<void> {
         const startTime = Date.now();
         console.log('🔍 [Webhook] atualizarStatusTabelasPorJob: INICIANDO', { jobId, timestamp: new Date().toISOString() });
-        
+
         try {
             // Busca o job
             console.log('🔍 [Webhook] atualizarStatusTabelasPorJob: Buscando job no banco...', { jobId });
@@ -3747,30 +3747,30 @@ export class WebHookService {
                 throw new Error(`Job ${jobId} não encontrado ou sem payload`);
             }
 
-            console.log('🔍 [Webhook] atualizarStatusTabelasPorJob: Job encontrado', { 
-                jobId, 
-                type: job.Type, 
+            console.log('🔍 [Webhook] atualizarStatusTabelasPorJob: Job encontrado', {
+                jobId,
+                type: job.Type,
                 status: job.Status,
-                hasPayload: !!job.Payload 
+                hasPayload: !!job.Payload
             });
 
             const payload = job.Payload as any;
-            console.log('🔍 [Webhook] atualizarStatusTabelasPorJob: Payload extraído', { 
+            console.log('🔍 [Webhook] atualizarStatusTabelasPorJob: Payload extraído', {
                 payloadKeys: Object.keys(payload || {}),
                 hasPayloadPayload: !!payload?.payload,
                 hasData: !!payload?.data,
                 hasBill: !!payload?.bill,
                 hasCodigoFatura: !!payload?.codigoFatura
             });
-            
-            // Extrai o bill.id do payload (pode estar em diferentes locais)
-            const billId = payload?.payload?.data?.bill?.id || 
-                          payload?.payload?.bill?.id || 
-                          payload?.data?.bill?.id || 
-                          payload?.bill?.id || 
-                          payload?.codigoFatura;
 
-            console.log('🔍 [Webhook] atualizarStatusTabelasPorJob: BillId extraído', { 
+            // Extrai o bill.id do payload (pode estar em diferentes locais)
+            const billId = payload?.payload?.data?.bill?.id ||
+                payload?.payload?.bill?.id ||
+                payload?.data?.bill?.id ||
+                payload?.bill?.id ||
+                payload?.codigoFatura;
+
+            console.log('🔍 [Webhook] atualizarStatusTabelasPorJob: BillId extraído', {
                 billId,
                 sources: {
                     payloadPayloadDataBill: payload?.payload?.data?.bill?.id,
@@ -3782,23 +3782,23 @@ export class WebHookService {
             });
 
             if (!billId) {
-                console.warn('⚠️ [Webhook] atualizarStatusTabelasPorJob: Job não contém bill.id no payload', { 
-                    jobId, 
+                console.warn('⚠️ [Webhook] atualizarStatusTabelasPorJob: Job não contém bill.id no payload', {
+                    jobId,
                     payloadKeys: Object.keys(payload || {})
                 });
                 return;
             }
 
             const codigoFatura = String(billId);
-            
-            // Extrai o status do bill (pode estar em diferentes locais)
-            const billStatus = payload?.payload?.data?.bill?.status || 
-                              payload?.payload?.bill?.status || 
-                              payload?.data?.bill?.status || 
-                              payload?.bill?.status || 
-                              'Paid'; // Default para Paid se não encontrar
 
-            console.log('🔍 [Webhook] atualizarStatusTabelasPorJob: Status extraído', { 
+            // Extrai o status do bill (pode estar em diferentes locais)
+            const billStatus = payload?.payload?.data?.bill?.status ||
+                payload?.payload?.bill?.status ||
+                payload?.data?.bill?.status ||
+                payload?.bill?.status ||
+                'Paid'; // Default para Paid se não encontrar
+
+            console.log('🔍 [Webhook] atualizarStatusTabelasPorJob: Status extraído', {
                 billStatus,
                 codigoFatura,
                 sources: {
@@ -3809,8 +3809,8 @@ export class WebHookService {
                 }
             });
 
-            console.log(`🔍 [Webhook] atualizarStatusTabelasPorJob: Atualizando status das tabelas`, { 
-                codigoFatura, 
+            console.log(`🔍 [Webhook] atualizarStatusTabelasPorJob: Atualizando status das tabelas`, {
+                codigoFatura,
                 billStatus,
                 timestamp: new Date().toISOString()
             });
@@ -3940,19 +3940,19 @@ export class WebHookService {
             } else {
                 console.error(`❌ [Webhook] atualizarStatusTabelasPorJob: Erro ao atualizar Fatura:`, faturaResult.reason);
             }
-            
+
             if (financeiroResult.status === 'fulfilled') {
                 console.log(`✅ [Webhook] atualizarStatusTabelasPorJob: ${financeiroResult.value.count} Financeiro(s) atualizado(s) para Status: ${financeiroStatus}`);
             } else {
                 console.error(`❌ [Webhook] atualizarStatusTabelasPorJob: Erro ao atualizar Financeiro:`, financeiroResult.reason);
             }
-            
+
             if (consultaResult.status === 'fulfilled') {
                 console.log(`✅ [Webhook] atualizarStatusTabelasPorJob: ${consultaResult.value.count} ConsultaAvulsa(s) atualizada(s) para Status: ${consultaAvulsaStatus}`);
             } else {
                 console.error(`❌ [Webhook] atualizarStatusTabelasPorJob: Erro ao atualizar ConsultaAvulsa:`, consultaResult.reason);
             }
-            
+
             if (creditoResult.status === 'fulfilled') {
                 console.log(`✅ [Webhook] atualizarStatusTabelasPorJob: ${creditoResult.value.count} CreditoAvulso(s) atualizado(s) para Status: ${consultaAvulsaStatus}`);
             } else {
@@ -3964,13 +3964,13 @@ export class WebHookService {
             if (erros.length > 0) {
                 const errorMessages = erros.map(e => e.status === 'rejected' ? (e.reason instanceof Error ? e.reason.message : String(e.reason)) : '').filter(Boolean);
                 const errorMessage = `Erro ao atualizar ${erros.length} tabela(s): ${errorMessages.join('; ')}`;
-                
+
                 console.error(`❌ [Webhook] atualizarStatusTabelasPorJob: Erros ao atualizar tabelas:`, {
                     erros: errorMessages,
                     codigoFatura,
                     jobId
                 });
-                
+
                 // 🔄 Cria um job de retry para tentar novamente depois
                 try {
                     const retryJob = await JobService.createJob(
@@ -3990,7 +3990,7 @@ export class WebHookService {
                         new Date(Date.now() + 30_000), // Retry em 30 segundos
                         { maxAttempts: 3 }
                     );
-                    
+
                     console.log(`🔄 [Webhook] atualizarStatusTabelasPorJob: Job de retry criado`, {
                         retryJobId: retryJob.Id,
                         originalJobId: jobId,
@@ -4000,11 +4000,11 @@ export class WebHookService {
                     const retryErrorMsg = retryJobError instanceof Error ? retryJobError.message : String(retryJobError);
                     console.error(`❌ [Webhook] atualizarStatusTabelasPorJob: Erro ao criar job de retry:`, retryErrorMsg);
                 }
-                
+
                 // Atualiza o Job original para failed
                 await prisma.job.update({
                     where: { Id: jobId },
-                    data: { 
+                    data: {
                         Status: "failed",
                         LastError: errorMessage
                     }
@@ -4012,7 +4012,7 @@ export class WebHookService {
                     const errorMsg = updateError instanceof Error ? updateError.message : String(updateError);
                     console.error(`❌ [Webhook] atualizarStatusTabelasPorJob: Erro ao atualizar status do Job para failed:`, errorMsg);
                 });
-                
+
                 throw new Error(errorMessage);
             }
 
@@ -4021,7 +4021,7 @@ export class WebHookService {
             try {
                 await prisma.job.update({
                     where: { Id: jobId },
-                    data: { 
+                    data: {
                         Status: "completed",
                         LastError: null // Limpa qualquer erro anterior
                     }
@@ -4034,7 +4034,7 @@ export class WebHookService {
             }
 
             const duration = Date.now() - startTime;
-            console.log(`✅ [Webhook] atualizarStatusTabelasPorJob: CONCLUÍDO com sucesso`, { 
+            console.log(`✅ [Webhook] atualizarStatusTabelasPorJob: CONCLUÍDO com sucesso`, {
                 jobId,
                 codigoFatura,
                 duracao: `${duration}ms`,
@@ -4067,7 +4067,7 @@ export class WebHookService {
     public static async atualizarStatusTabelasPorJobRetry(jobId: string): Promise<void> {
         const startTime = Date.now();
         console.log('🔄 [Webhook] atualizarStatusTabelasPorJobRetry: INICIANDO', { jobId, timestamp: new Date().toISOString() });
-        
+
         try {
             // Busca o job de retry
             const retryJob = await prisma.job.findUnique({
@@ -4143,7 +4143,7 @@ export class WebHookService {
 
             // 🔄 Usa transação para garantir atomicidade
             console.log('🔄 [Webhook] atualizarStatusTabelasPorJobRetry: Executando atualizações em transação...');
-            
+
             const resultado = await prisma.$transaction(async (tx) => {
                 const atualizacoes = await Promise.allSettled([
                     // Atualiza Fatura
@@ -4193,7 +4193,7 @@ export class WebHookService {
             // Atualiza o status do job de retry para completed
             await prisma.job.update({
                 where: { Id: jobId },
-                data: { 
+                data: {
                     Status: "completed",
                     LastError: null
                 }
@@ -4203,7 +4203,7 @@ export class WebHookService {
             if (originalJobId) {
                 await prisma.job.update({
                     where: { Id: originalJobId },
-                    data: { 
+                    data: {
                         Status: "completed",
                         LastError: null
                     }
@@ -4225,7 +4225,7 @@ export class WebHookService {
             const err = error as { message?: string };
             const duration = Date.now() - startTime;
             const errorMessage = err?.message || String(error);
-            
+
             console.error(`❌ [Webhook] atualizarStatusTabelasPorJobRetry: ERRO`, {
                 jobId,
                 error: errorMessage,
@@ -4237,7 +4237,7 @@ export class WebHookService {
             // Atualiza o job de retry para failed
             await prisma.job.update({
                 where: { Id: jobId },
-                data: { 
+                data: {
                     Status: "failed",
                     LastError: errorMessage
                 }
@@ -4256,7 +4256,7 @@ export class WebHookService {
     public static async verificarEAtualizarStatusPorBillId(): Promise<void> {
         const startTime = Date.now();
         console.log('🔄 [Webhook] verificarEAtualizarStatusPorBillId: INICIANDO', { timestamp: new Date().toISOString() });
-        
+
         try {
             // Busca Jobs pendentes ou em processamento que tenham payload com bill.id
             // Otimizado: reduzido de 50 para 20 jobs por vez para economizar CPU
@@ -4283,7 +4283,7 @@ export class WebHookService {
                     }
 
                     const payload = job.Payload as Record<string, unknown>;
-                    
+
                     // Função auxiliar para extrair valor aninhado de forma segura
                     const getNestedValue = (obj: unknown, path: string[]): unknown => {
                         let current: unknown = obj;
@@ -4296,14 +4296,14 @@ export class WebHookService {
                         }
                         return current;
                     };
-                    
+
                     // Extrai bill.id de diferentes estruturas do payload
                     const billId = getNestedValue(payload, ['payload', 'event', 'data', 'bill', 'id']) ||
-                                  getNestedValue(payload, ['payload', 'data', 'bill', 'id']) ||
-                                  getNestedValue(payload, ['event', 'data', 'bill', 'id']) ||
-                                  getNestedValue(payload, ['data', 'bill', 'id']) ||
-                                  getNestedValue(payload, ['bill', 'id']) ||
-                                  (typeof payload?.codigoFatura !== 'undefined' ? payload.codigoFatura : undefined);
+                        getNestedValue(payload, ['payload', 'data', 'bill', 'id']) ||
+                        getNestedValue(payload, ['event', 'data', 'bill', 'id']) ||
+                        getNestedValue(payload, ['data', 'bill', 'id']) ||
+                        getNestedValue(payload, ['bill', 'id']) ||
+                        (typeof payload?.codigoFatura !== 'undefined' ? payload.codigoFatura : undefined);
 
                     if (!billId) {
                         console.warn(`⚠️ [Webhook] verificarEAtualizarStatusPorBillId: Job ${job.Id} sem bill.id no payload, pulando...`);
@@ -4311,14 +4311,14 @@ export class WebHookService {
                     }
 
                     const codigoFatura = String(billId);
-                    
+
                     // Extrai o status do bill
                     const billStatus = getNestedValue(payload, ['payload', 'event', 'data', 'bill', 'status']) ||
-                                     getNestedValue(payload, ['payload', 'data', 'bill', 'status']) ||
-                                     getNestedValue(payload, ['event', 'data', 'bill', 'status']) ||
-                                     getNestedValue(payload, ['data', 'bill', 'status']) ||
-                                     getNestedValue(payload, ['bill', 'status']) ||
-                                     'paid';
+                        getNestedValue(payload, ['payload', 'data', 'bill', 'status']) ||
+                        getNestedValue(payload, ['event', 'data', 'bill', 'status']) ||
+                        getNestedValue(payload, ['data', 'bill', 'status']) ||
+                        getNestedValue(payload, ['bill', 'status']) ||
+                        'paid';
 
                     console.log(`🔍 [Webhook] verificarEAtualizarStatusPorBillId: Processando job ${job.Id}`, {
                         codigoFatura,
@@ -4415,7 +4415,7 @@ export class WebHookService {
                         if (fatura && fatura.Status === FaturaStatus.Pending) {
                             atualizacoes.push(
                                 tx.fatura.updateMany({
-                                    where: { 
+                                    where: {
                                         CodigoFatura: codigoFatura,
                                         Status: FaturaStatus.Pending
                                     },
@@ -4429,7 +4429,7 @@ export class WebHookService {
                         if (financeiro && financeiro.Status === ControleFinanceiroStatus.AguardandoPagamento && fatura) {
                             atualizacoes.push(
                                 tx.financeiro.updateMany({
-                                    where: { 
+                                    where: {
                                         FaturaId: fatura.Id,
                                         Status: ControleFinanceiroStatus.AguardandoPagamento
                                     },
@@ -4440,11 +4440,11 @@ export class WebHookService {
 
                         // Executa todas as atualizações
                         const resultados = await Promise.allSettled(atualizacoes);
-                        
+
                         // Verifica se houve erros
                         const errosAtualizacao = resultados.filter(r => r.status === 'rejected');
                         if (errosAtualizacao.length > 0) {
-                            const errorMessages = errosAtualizacao.map(e => 
+                            const errorMessages = errosAtualizacao.map(e =>
                                 e.status === 'rejected' ? (e.reason instanceof Error ? e.reason.message : String(e.reason)) : ''
                             ).filter(Boolean);
                             throw new Error(`Erro ao atualizar tabelas: ${errorMessages.join('; ')}`);
@@ -4463,7 +4463,7 @@ export class WebHookService {
                     // 4. Atualiza o Status do Job para "completed"
                     await prisma.job.update({
                         where: { Id: job.Id },
-                        data: { 
+                        data: {
                             Status: "completed",
                             LastError: null
                         }
@@ -4471,7 +4471,7 @@ export class WebHookService {
 
                     atualizados++;
                     processados++;
-                    
+
                     console.log(`✅ [Webhook] verificarEAtualizarStatusPorBillId: Job ${job.Id} processado e atualizado com sucesso`);
 
                 } catch (jobError: unknown) {
@@ -4487,7 +4487,7 @@ export class WebHookService {
                     if (attempts >= (job.MaxAttempts || 3)) {
                         await prisma.job.update({
                             where: { Id: job.Id },
-                            data: { 
+                            data: {
                                 Status: "failed",
                                 LastError: errorMessage,
                                 Attempts: attempts
@@ -4499,7 +4499,7 @@ export class WebHookService {
                         // Reagenda para tentar novamente
                         await prisma.job.update({
                             where: { Id: job.Id },
-                            data: { 
+                            data: {
                                 Status: "pending",
                                 LastError: errorMessage,
                                 Attempts: attempts,
