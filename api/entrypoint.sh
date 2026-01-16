@@ -42,6 +42,21 @@ check_port() {
 }
 
 # =========================
+# Utilitários (compatíveis com /bin/sh)
+# =========================
+mask_secret() {
+  secret="$1"
+  if [ -z "$secret" ]; then
+    echo ""
+    return 0
+  fi
+
+  prefix="$(printf "%s" "$secret" | cut -c1-5 2>/dev/null || true)"
+  suffix="$(printf "%s" "$secret" | tail -c 3 2>/dev/null || true)"
+  echo "${prefix}...${suffix}"
+}
+
+# =========================
 # API
 # =========================
 start_api() {
@@ -98,8 +113,8 @@ start_api() {
   echo "   REDIS_HOST: ${REDIS_HOST}"
   echo "   REDIS_PORT: ${REDIS_PORT}"
   echo "   REDIS_DB: ${REDIS_DB}"
-  echo "   REDIS_PASSWORD primeiros 5 chars: ${REDIS_PASSWORD:0:5}..."
-  echo "   REDIS_PASSWORD últimos 3 chars: ...${REDIS_PASSWORD: -3}"
+  REDIS_PASSWORD_MASKED="$(mask_secret "$REDIS_PASSWORD")"
+  echo "   REDIS_PASSWORD mascara: ${REDIS_PASSWORD_MASKED}"
 
   check_port "$REDIS_HOST" "$REDIS_PORT" "Redis"
   check_port "$PG_HOST" "$PG_PORT" "PgBouncer"
@@ -168,8 +183,8 @@ start_socket() {
   echo "   REDIS_HOST: ${REDIS_HOST}"
   echo "   REDIS_PORT: ${REDIS_PORT}"
   echo "   REDIS_DB: ${REDIS_DB}"
-  echo "   REDIS_PASSWORD primeiros 5 chars: ${REDIS_PASSWORD:0:5}..."
-  echo "   REDIS_PASSWORD últimos 3 chars: ...${REDIS_PASSWORD: -3}"
+  REDIS_PASSWORD_MASKED="$(mask_secret "$REDIS_PASSWORD")"
+  echo "   REDIS_PASSWORD mascara: ${REDIS_PASSWORD_MASKED}"
 
   check_port "$REDIS_HOST" "$REDIS_PORT" "Redis"
   check_port "$PG_HOST" "$PG_PORT" "PgBouncer"
