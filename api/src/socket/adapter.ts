@@ -34,7 +34,7 @@ export async function initRedisAdapter(
         if (pubClient.status !== 'ready' && pubClient.status !== 'connect') {
             console.log(`⏳ [Socket.IO] Aguardando conexão Redis estar pronta (status: ${pubClient.status})...`);
             try {
-                pubClient = await waitForIORedisReady(15000);
+                pubClient = await waitForIORedisReady(60000); // Timeout aumentado para 60s
             } catch (err) {
                 console.error(`❌ [Socket.IO] Falha ao aguardar conexão Redis: ${(err as Error)?.message}`);
                 throw new Error(`Redis não está pronto: ${(err as Error)?.message}`);
@@ -90,19 +90,19 @@ export async function initRedisAdapter(
                             reject(new Error('Timeout aguardando pubClient'));
                         }
                     }, 15000);
-                    const onReady = () => { 
-                        if (!resolved) { 
-                            resolved = true; 
-                            clearTimeout(timeout); 
-                            resolve(); 
-                        } 
+                    const onReady = () => {
+                        if (!resolved) {
+                            resolved = true;
+                            clearTimeout(timeout);
+                            resolve();
+                        }
                     };
-                    const onError = (err: Error) => { 
-                        if (!resolved) { 
-                            resolved = true; 
-                            clearTimeout(timeout); 
-                            reject(err); 
-                        } 
+                    const onError = (err: Error) => {
+                        if (!resolved) {
+                            resolved = true;
+                            clearTimeout(timeout);
+                            reject(err);
+                        }
                     };
                     pubClient.once('ready', onReady);
                     pubClient.once('error', onError);
@@ -119,19 +119,19 @@ export async function initRedisAdapter(
                             reject(new Error('Timeout aguardando subClient'));
                         }
                     }, 15000);
-                    const onReady = () => { 
-                        if (!resolved) { 
-                            resolved = true; 
-                            clearTimeout(timeout); 
-                            resolve(); 
-                        } 
+                    const onReady = () => {
+                        if (!resolved) {
+                            resolved = true;
+                            clearTimeout(timeout);
+                            resolve();
+                        }
                     };
-                    const onError = (err: Error) => { 
-                        if (!resolved) { 
-                            resolved = true; 
-                            clearTimeout(timeout); 
-                            reject(err); 
-                        } 
+                    const onError = (err: Error) => {
+                        if (!resolved) {
+                            resolved = true;
+                            clearTimeout(timeout);
+                            reject(err);
+                        }
                     };
                     subClient.once('ready', onReady);
                     subClient.once('error', onError);

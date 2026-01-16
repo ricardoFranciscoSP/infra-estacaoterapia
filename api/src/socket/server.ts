@@ -12,7 +12,7 @@ const app = express();
 app.use(express.json());
 
 const PORT = Number(process.env.PORT || 3001);
-const REDIS_HOST = process.env.REDIS_HOST || "estacao_redis_prd";
+const REDIS_HOST = process.env.REDIS_HOST || "redis"; // Alias de rede do Swarm
 const REDIS_PORT = Number(process.env.REDIS_PORT || 6379);
 const REDIS_DB = Number(process.env.REDIS_DB || 1);
 
@@ -135,9 +135,9 @@ app.options("/socket.io", (_req, res) => {
 
 /**
  * Espera o Redis estar disponível antes de iniciar o Socket
- * Usa a conexão singleton existente
+ * Usa a conexão singleton existente com timeouts maiores para Docker Swarm
  */
-async function waitForRedis(host: string, port: number, retries = 10, delay = 2000) {
+async function waitForRedis(host: string, port: number, retries = 15, delay = 3000) {
     console.log("🔹 Verificando disponibilidade do Redis...");
     const { getIORedisClient, waitForIORedisReady } = await import("../config/redis.config");
 
@@ -154,7 +154,8 @@ async function waitForRedis(host: string, port: number, retries = 10, delay = 20
             if (client.status !== 'ready') {
                 console.log(`⏳ Aguardando conexão Redis estar pronta (status: ${client.status})...`);
                 try {
-                    client = await waitForIORedisReady(15000); // Timeout de 15s
+                    // Timeout aumentado para 60s em Docker Swarm (DNS pode ser lento)
+                    client = await waitForIORedisReady(60000);
                 } catch (err) {
                     throw new Error(`Falha ao aguardar conexão Redis: ${(err as Error)?.message}`);
                 }

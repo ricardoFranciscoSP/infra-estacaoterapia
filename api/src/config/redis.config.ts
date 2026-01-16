@@ -535,8 +535,9 @@ function createIORedisClient(): IORedis {
 /**
  * Aguarda a conexão IORedis estar pronta E valida com ping
  * Útil quando você precisa garantir que a conexão está realmente pronta antes de usar
+ * Timeout aumentado para Docker Swarm (DNS pode ser lento)
  */
-export const waitForIORedisReady = async (timeoutMs = 30000): Promise<IORedis> => {
+export const waitForIORedisReady = async (timeoutMs = 60000): Promise<IORedis> => {
     const client = getIORedisClient();
 
     // Verifica se cliente está pronto E testa com ping
