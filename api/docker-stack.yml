@@ -29,7 +29,7 @@ services:
       test:
         [
           'CMD-SHELL',
-          "PGPASSWORD=$(grep POSTGRES_PASSWORD /run/secrets/postgres_env | cut -d= -f2) psql -U $(grep POSTGRES_USER /run/secrets/postgres_env | cut -d= -f2) -d $(grep POSTGRES_DB /run/secrets/postgres_env | cut -d= -f2) -c 'SELECT 1;' >/dev/null 2>&1",
+          "PGPASSWORD=$$(grep POSTGRES_PASSWORD /run/secrets/postgres_env | cut -d= -f2) psql -U $$(grep POSTGRES_USER /run/secrets/postgres_env | cut -d= -f2) -d $$(grep POSTGRES_DB /run/secrets/postgres_env | cut -d= -f2) -c 'SELECT 1;' >/dev/null 2>&1",
         ]
       interval: 10s
       timeout: 5s
@@ -65,7 +65,7 @@ services:
       test:
         [
           'CMD-SHELL',
-          'REDIS_PASS=$(cat /run/secrets/redis_password 2>/dev/null || true); if [ -n "$REDIS_PASS" ]; then redis-cli -a "$REDIS_PASS" ping | grep -q PONG; else redis-cli ping | grep -q PONG; fi',
+          'REDIS_PASS=$$(cat /run/secrets/redis_password 2>/dev/null || true); if [ -n "$$REDIS_PASS" ]; then redis-cli -a "$$REDIS_PASS" ping | grep -q PONG; else redis-cli ping | grep -q PONG; fi',
         ]
       interval: 10s
       timeout: 5s
