@@ -13,7 +13,23 @@ import {
 } from "./middlewares/security";
 import { logInfo, logDebug } from "./utils/logger";
 
+
 const app = express();
+
+// Healthcheck aprimorado: indica readiness e liveness
+let isShuttingDown = false;
+app.get("/health", (_req, res) => {
+    if (isShuttingDown) {
+        return res.status(503).json({
+            status: "shutting_down",
+            time: new Date().toISOString()
+        });
+    }
+    res.status(200).json({
+        status: "ok",
+        time: new Date().toISOString()
+    });
+});
 
 // Debug inicial
 logInfo("Iniciando servidor", {
