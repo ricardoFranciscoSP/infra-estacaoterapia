@@ -38,32 +38,33 @@ try {
         let needsRecode = false;
         let decodedUser = url.username;
         let decodedPass = url.password;
+        let userAlreadyEncoded = false;
+        let passAlreadyEncoded = false;
 
-        // Tenta decodificar para ver se já está codificado
+        // Detecta se usuário/senha já estão codificados para evitar dupla codificação
         try {
             const testDecode = decodeURIComponent(url.username);
-            // Se decodificar mudou algo E não tem caracteres especiais decodificados, já estava codificado
-            if (testDecode === url.username || !hasSpecialChars(testDecode)) {
-                decodedUser = testDecode;
-            }
+            const reencoded = encodeURIComponent(testDecode);
+            userAlreadyEncoded = reencoded === url.username;
+            decodedUser = testDecode;
         } catch {
             // Se falhou ao decodificar, mantém original
         }
 
         try {
             const testDecode = decodeURIComponent(url.password);
-            if (testDecode === url.password || !hasSpecialChars(testDecode)) {
-                decodedPass = testDecode;
-            }
+            const reencoded = encodeURIComponent(testDecode);
+            passAlreadyEncoded = reencoded === url.password;
+            decodedPass = testDecode;
         } catch {
             // Se falhou ao decodificar, mantém original
         }
 
         // Verifica se precisa recodificar (tem caracteres especiais não codificados)
-        if (hasSpecialChars(decodedUser) && decodedUser === url.username) {
+        if (!userAlreadyEncoded && hasSpecialChars(decodedUser)) {
             needsRecode = true;
         }
-        if (hasSpecialChars(decodedPass) && decodedPass === url.password) {
+        if (!passAlreadyEncoded && hasSpecialChars(decodedPass)) {
             needsRecode = true;
         }
 
