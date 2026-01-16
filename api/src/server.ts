@@ -101,7 +101,16 @@ app.use((req: Request, _res: Response, next: NextFunction): void => {
 // ===============================
 app.use("/", router);
 
+
+// Healthcheck aprimorado: indica readiness e liveness
+let isShuttingDown = false;
 app.get("/health", (_req, res) => {
+    if (isShuttingDown) {
+        return res.status(503).json({
+            status: "shutting_down",
+            time: new Date().toISOString()
+        });
+    }
     res.status(200).json({
         status: "ok",
         time: new Date().toISOString()
@@ -271,8 +280,14 @@ server.listen(PORT, "0.0.0.0", async () => {
     // ===============================
     // 🔹 Encerramento Graceful
     // ===============================
-    const shutdown = async () => {
-        console.log("\n🛑 Encerrando servidor...");
+
+    const shutdown = async (signal = "SIGTERM/SIGINT") => {
+        if (isShuttingDown) {
+            console.log("[Shutdown] Ignorado: já em andamento.");
+            return;
+        }
+        isShuttingDown = true;
+        console.log(`\n🛑 Encerrando servidor... (motivo: ${signal})`);
 
         try {
             console.log("🛑 Fechando workers BullMQ...");
@@ -305,7 +320,7 @@ server.listen(PORT, "0.0.0.0", async () => {
             }
 
             server.close(() => {
-                console.log("✅ Servidor finalizado com sucesso");
+                console.log("✅ Servidor finalizado com sucesso (shutdown completo)");
                 process.exit(0);
             });
         } catch (err) {
@@ -314,6 +329,6 @@ server.listen(PORT, "0.0.0.0", async () => {
         }
     };
 
-    process.on("SIGINT", shutdown);
-    process.on("SIGTERM", shutdown);
+    process.on("SIGINT", () => shutdown("SIGINT"));
+    process.on("SIGTERM", () => shutdown("SIGTERM"));
 });
