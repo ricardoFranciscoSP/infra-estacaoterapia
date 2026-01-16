@@ -49,6 +49,7 @@ start_api() {
 
   load_secrets /run/secrets/estacao_api.env
 
+  NODE_ENV="${NODE_ENV:-production}"
   PG_HOST="${PG_HOST:-pgbouncer}"
   PG_PORT="${PG_PORT:-6432}"
   POSTGRES_DB="${POSTGRES_DB:-estacaoterapia}"
@@ -56,15 +57,24 @@ start_api() {
   REDIS_PORT="${REDIS_PORT:-6379}"
   REDIS_DB="${REDIS_DB:-1}"
 
-  # Carrega senha do Redis via Docker Secret, exportando para o ambiente
+  # Carrega senha do Redis via Docker Secret, PRIORIZANDO o secret
   if [ -f /run/secrets/redis_password ]; then
-    export REDIS_PASSWORD="$(tr -d '\n\r' < /run/secrets/redis_password)"
+    REDIS_PASSWORD_FROM_SECRET="$(tr -d '\n\r' < /run/secrets/redis_password)"
+    if [ -n "$REDIS_PASSWORD_FROM_SECRET" ]; then
+      export REDIS_PASSWORD="$REDIS_PASSWORD_FROM_SECRET"
+      echo "🔐 Senha Redis carregada do secret docker (${#REDIS_PASSWORD} chars)"
+    else
+      echo "⚠️  Secret redis_password está vazio, usando do .env se existir"
+    fi
+  else
+    echo "⚠️  Secret redis_password não encontrado em /run/secrets/, usando do .env"
   fi
 
   export NODE_ENV PORT \
     PG_HOST PG_PORT POSTGRES_DB \
+    POSTGRES_USER POSTGRES_PASSWORD \
     REDIS_HOST REDIS_PORT REDIS_DB REDIS_PASSWORD \
-    POSTGRES_USER POSTGRES_PASSWORD
+    JWT_SECRET CORS_ORIGIN
 
   if [ -n "$POSTGRES_USER" ] && [ -n "$POSTGRES_PASSWORD" ]; then
     export DATABASE_URL="${DATABASE_URL:-postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${PG_HOST}:${PG_PORT}/${POSTGRES_DB}?schema=public}"
@@ -76,7 +86,13 @@ start_api() {
 
   echo "📋 Conexões:"
   echo "   PostgreSQL → $PG_HOST:$PG_PORT"
-  echo "   Redis      → $REDIS_HOST:$REDIS_PORT (auth: ${REDIS_PASSWORD:+SIM}${REDIS_PASSWORD:+"NÃO"})"
+  echo "   Redis      → $REDIS_HOST:$REDIS_PORT (auth: ${REDIS_PASSWORD:+SIM (${#REDIS_PASSWORD} chars)}${REDIS_PASSWORD:-NÃO})"
+  echo "📊 Debug Redis:"
+  echo "   REDIS_HOST: ${REDIS_HOST}"
+  echo "   REDIS_PORT: ${REDIS_PORT}"
+  echo "   REDIS_DB: ${REDIS_DB}"
+  echo "   REDIS_PASSWORD primeiros 5 chars: ${REDIS_PASSWORD:0:5}..."
+  echo "   REDIS_PASSWORD últimos 3 chars: ...${REDIS_PASSWORD: -3}"
 
   check_port "$REDIS_HOST" "$REDIS_PORT" "Redis"
   check_port "$PG_HOST" "$PG_PORT" "PgBouncer"
@@ -92,6 +108,7 @@ start_socket() {
 
   load_secrets /run/secrets/estacao_socket.env
 
+  NODE_ENV="${NODE_ENV:-production}"
   PG_HOST="${PG_HOST:-pgbouncer}"
   PG_PORT="${PG_PORT:-6432}"
   POSTGRES_DB="${POSTGRES_DB:-estacaoterapia}"
@@ -100,14 +117,25 @@ start_socket() {
   REDIS_DB="${REDIS_DB:-1}"
   API_BASE_URL="${API_BASE_URL:-http://estacaoterapia_api:3333}"
 
-  # Carrega senha do Redis via Docker Secret, exportando para o ambiente
+  # Carrega senha do Redis via Docker Secret, PRIORIZANDO o secret
   if [ -f /run/secrets/redis_password ]; then
-    export REDIS_PASSWORD="$(tr -d '\n\r' < /run/secrets/redis_password)"
+    REDIS_PASSWORD_FROM_SECRET="$(tr -d '\n\r' < /run/secrets/redis_password)"
+    if [ -n "$REDIS_PASSWORD_FROM_SECRET" ]; then
+      export REDIS_PASSWORD="$REDIS_PASSWORD_FROM_SECRET"
+      echo "🔐 Senha Redis carregada do secret docker (${#REDIS_PASSWORD} chars)"
+    else
+      echo "⚠️  Secret redis_password está vazio, usando do .env se existir"
+    fi
+  else
+    echo "⚠️  Secret redis_password não encontrado em /run/secrets/, usando do .env"
   fi
 
-  export PG_HOST PG_PORT POSTGRES_DB \
+  # Exportar todas as variáveis necessárias
+  export NODE_ENV PORT \
+    PG_HOST PG_PORT POSTGRES_DB \
     POSTGRES_USER POSTGRES_PASSWORD \
     REDIS_HOST REDIS_PORT REDIS_DB REDIS_PASSWORD \
+    JWT_SECRET CORS_ORIGIN \
     API_BASE_URL
 
   if [ -z "$DATABASE_URL" ] && [ -n "$POSTGRES_USER" ] && [ -n "$POSTGRES_PASSWORD" ]; then
@@ -120,8 +148,14 @@ start_socket() {
 
   echo "📋 Conexões:"
   echo "   PostgreSQL → $PG_HOST:$PG_PORT"
-  echo "   Redis      → $REDIS_HOST:$REDIS_PORT"
+  echo "   Redis      → $REDIS_HOST:$REDIS_PORT (auth: ${REDIS_PASSWORD:+SIM (${#REDIS_PASSWORD} chars)}${REDIS_PASSWORD:-NÃO})"
   echo "   API        → $API_BASE_URL"
+  echo "📊 Debug Redis:"
+  echo "   REDIS_HOST: ${REDIS_HOST}"
+  echo "   REDIS_PORT: ${REDIS_PORT}"
+  echo "   REDIS_DB: ${REDIS_DB}"
+  echo "   REDIS_PASSWORD primeiros 5 chars: ${REDIS_PASSWORD:0:5}..."
+  echo "   REDIS_PASSWORD últimos 3 chars: ...${REDIS_PASSWORD: -3}"
 
   check_port "$REDIS_HOST" "$REDIS_PORT" "Redis"
   check_port "$PG_HOST" "$PG_PORT" "PgBouncer"
