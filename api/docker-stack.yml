@@ -137,6 +137,7 @@ services:
     secrets:
       - source: estacao_api_env
         target: estacao_api.env
+      - redis_password
     environment:
       NODE_ENV: production
       NODE_OPTIONS: '--max-old-space-size=2048'
@@ -191,6 +192,7 @@ services:
     secrets:
       - source: estacao_socket_env
         target: estacao_socket.env
+      - redis_password
     environment:
       NODE_ENV: production
       PORT: '3334'

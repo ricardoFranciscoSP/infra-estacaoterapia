@@ -56,8 +56,9 @@ start_api() {
   REDIS_PORT="${REDIS_PORT:-6379}"
   REDIS_DB="${REDIS_DB:-1}"
 
+  # Carrega senha do Redis via Docker Secret, exportando para o ambiente
   if [ -f /run/secrets/redis_password ]; then
-    REDIS_PASSWORD="$(tr -d '\n\r' < /run/secrets/redis_password)"
+    export REDIS_PASSWORD="$(tr -d '\n\r' < /run/secrets/redis_password)"
   fi
 
   export NODE_ENV PORT \
@@ -99,8 +100,9 @@ start_socket() {
   REDIS_DB="${REDIS_DB:-1}"
   API_BASE_URL="${API_BASE_URL:-http://estacaoterapia_api:3333}"
 
+  # Carrega senha do Redis via Docker Secret, exportando para o ambiente
   if [ -f /run/secrets/redis_password ]; then
-    REDIS_PASSWORD="$(tr -d '\n\r' < /run/secrets/redis_password)"
+    export REDIS_PASSWORD="$(tr -d '\n\r' < /run/secrets/redis_password)"
   fi
 
   export PG_HOST PG_PORT POSTGRES_DB \

@@ -1,7 +1,6 @@
 // src/config/redis.config.ts
 import { createClient, RedisClientType } from "redis";
 import IORedis from "ioredis";
-import fs from "fs";
 
 /**
  * ========================================================================================
@@ -315,14 +314,16 @@ function createIORedisClient(): IORedis {
             configDb = url.pathname && url.pathname !== '/' ? Number(url.pathname.slice(1)) : config.db;
             // Prioriza senha da URL, depois do REDIS_PASSWORD, depois undefined
             configPassword = url.password || configPassword || undefined;
-            console.log(`✅ [IORedis] Credenciais extraídas de REDIS_URL: host=${configHost}, port=${configPort}, db=${configDb}, password=${configPassword ? 'definida' : 'não definida'}`);
+            const urlPassword = url.password ? `${url.password.substring(0, 3)}...${url.password.substring(url.password.length - 3)}` : 'indefinida';
+            console.log(`✅ [IORedis] Credenciais extraídas de REDIS_URL: host=${configHost}, port=${configPort}, db=${configDb}, password=${urlPassword}`);
         } catch (err) {
             console.warn(`⚠️ [IORedis] REDIS_URL inválida, usando variáveis individuais`);
         }
     } else if (SHOULD_AUTH && config.password) {
         // Se não tem REDIS_URL mas tem senha, garante que a senha será usada
         configPassword = config.password;
-        console.log(`✅ [IORedis] Usando REDIS_PASSWORD do ambiente (${config.password.length} caracteres)`);
+        const maskedPassword = config.password.substring(0, 3) + '...' + config.password.substring(config.password.length - 3);
+        console.log(`✅ [IORedis] Usando REDIS_PASSWORD do ambiente (${config.password.length} caracteres: ${maskedPassword})`);
     }
 
     const redisConfig = {
@@ -452,20 +453,61 @@ function createIORedisClient(): IORedis {
     ioredisClient.on("error", (err) => {
         // Log detalhado de erros, especialmente DNS
         const errorMsg = err?.message || String(err);
+        const passwordInfo = configPassword ? `(com senha: ${configPassword.substring(0, 3)}...${configPassword.substring(configPassword.length - 3)})` : '(sem senha)';
 
         // Erros de DNS/rede específicos
         if (errorMsg.includes('ENOTFOUND')) {
             console.error(`❌ [IORedis] Erro DNS: Não consegue resolver hostname "${configHost}"`);
+            console.error(`   Análise:`);
+            console.error(`   • Host: ${configHost}`);
+            console.error(`   • Port: ${configPort}`);
+            console.error(`   • DB: ${configDb}`);
+            console.error(`   • Auth: ${passwordInfo}`);
             console.error(`   Causa comum: Problema na rede overlay do Docker Swarm ou container sem DNS configurado`);
-            console.error(`   Solução: Verificar se redis está rodando e se a rede ${configHost} está acessível`);
+            console.error(`   Solução:`);
+            console.error(`   1. Verificar DNS: docker exec <container> nslookup ${configHost}`);
+            console.error(`   2. Verificar serviço Redis: docker service ls | grep redis`);
+            console.error(`   3. Verificar rede Swarm: docker network ls`);
+            console.error(`   4. Verificar logs Redis: docker service logs estacaoterapia_redis --tail 20`);
         } else if (errorMsg.includes('ECONNREFUSED')) {
             console.error(`❌ [IORedis] Conexão recusada: Redis não está escutando em ${configHost}:${configPort}`);
+            console.error(`   Análise:`);
+            console.error(`   • Host: ${configHost}`);
+            console.error(`   • Port: ${configPort}`);
+            console.error(`   • DB: ${configDb}`);
+            console.error(`   • Auth: ${passwordInfo}`);
             console.error(`   Causa: Redis pode não estar rodando ou porta está bloqueada`);
-        } else if (errorMsg.includes('ETIMEDOUT')) {
-            console.error(`❌ [IORedis] Timeout: Conexão com Redis expirou`);
-            console.error(`   Causa: Latência alta ou firewall bloqueando`);
+            console.error(`   Solução:`);
+            console.error(`   1. Verificar se Redis está rodando: docker service ls`);
+            console.error(`   2. Verificar logs: docker service logs estacaoterapia_redis --tail 50`);
+            console.error(`   3. Se Redis foi redeployado, aguardar mais tempo para inicializar`);
+        } else if (errorMsg.includes('ETIMEDOUT') || errorMsg.includes('EHOSTUNREACH')) {
+            console.error(`❌ [IORedis] Timeout/Host não alcançável: Conexão com Redis expirou`);
+            console.error(`   Análise:`);
+            console.error(`   • Host: ${configHost}`);
+            console.error(`   • Port: ${configPort}`);
+            console.error(`   • DB: ${configDb}`);
+            console.error(`   • Auth: ${passwordInfo}`);
+            console.error(`   Causa: Latência alta, firewall bloqueando ou containers em redes diferentes`);
+            console.error(`   Solução:`);
+            console.error(`   1. Verificar ping: docker exec <container> ping ${configHost}`);
+            console.error(`   2. Verificar conectividade: docker exec <container> nc -zv ${configHost} ${configPort}`);
+            console.error(`   3. Ambos no Swarm? docker service ls`);
+        } else if (errorMsg.includes('WRONGPASS') || errorMsg.includes('invalid password')) {
+            console.error(`❌ [IORedis] Erro de autenticação: Senha incorreta`);
+            console.error(`   Análise:`);
+            console.error(`   • Host: ${configHost}`);
+            console.error(`   • Port: ${configPort}`);
+            console.error(`   • DB: ${configDb}`);
+            console.error(`   • Auth: SIM (senha não confere)`);
+            console.error(`   Causa: Senha no REDIS_PASSWORD não bate com a configurada no Redis`);
+            console.error(`   Solução:`);
+            console.error(`   1. Verificar REDIS_PASSWORD no arquivo de secrets`);
+            console.error(`   2. Verificar requirepass no Redis: docker exec <redis-container> redis-cli CONFIG GET requirepass`);
+            console.error(`   3. Sincronizar passwords entre os serviços`);
         } else {
             console.error(`❌ [IORedis] Erro: ${errorMsg}`);
+            console.error(`   Host: ${configHost}, Port: ${configPort}, DB: ${configDb}, Auth: ${passwordInfo}`);
         }
         // Não mata o processo, apenas loga o erro
         // O retryStrategy cuida das reconexões
@@ -490,6 +532,12 @@ function createIORedisClient(): IORedis {
         ioredisConnectionPromise = new Promise<IORedis>((resolve, reject) => {
             const timeout = setTimeout(() => {
                 ioredisConnectionPromise = null; // Limpa a promise em caso de timeout
+                console.error(`⏰ [IORedis] TIMEOUT na conexão (30s)`);
+                console.error(`   Verificar:`);
+                console.error(`   1. Redis está rodando? docker service ls | grep redis`);
+                console.error(`   2. Nome do serviço correto? Service: estacaoterapia_redis`);
+                console.error(`   3. Mesma rede? Verificar docker network ls`);
+                console.error(`   4. DNS resolve? docker exec <container> nslookup ${configHost}`);
                 reject(new Error('Timeout aguardando conexão IORedis'));
             }, 30000);
 
@@ -526,6 +574,17 @@ function createIORedisClient(): IORedis {
         });
     }
 
+    // Se estiver usando lazyConnect, iniciar conexão explicitamente sem bloquear
+    try {
+        if (ioredisClient && (redisConfig as any).lazyConnect) {
+            ioredisClient.connect().catch(err => {
+                console.error("❌ [IORedis] Erro ao conectar explicitamente:", err);
+            });
+        }
+    } catch (err) {
+        console.error("❌ [IORedis] Falha ao iniciar conexão explícita:", (err as Error)?.message || err);
+    }
+
     return ioredisClient;
 }
 
@@ -539,6 +598,16 @@ function createIORedisClient(): IORedis {
  */
 export const waitForIORedisReady = async (timeoutMs = 60000): Promise<IORedis> => {
     const client = getIORedisClient();
+    const config = getRedisConfig();
+    const passwordInfo = config.password ? `(com senha: ${config.password.substring(0, 3)}...${config.password.substring(config.password.length - 3)})` : '(sem senha)';
+
+    // Log diagnóstico inicial
+    console.log(`📡 [IORedis] Iniciando aguardar conexão pronta...`);
+    console.log(`   Status atual: ${client.status}`);
+    console.log(`   Host: ${config.host}:${config.port}`);
+    console.log(`   DB: ${config.db}`);
+    console.log(`   Auth: ${passwordInfo}`);
+    console.log(`   Timeout: ${timeoutMs}ms`);
 
     // Verifica se cliente está pronto E testa com ping
     if (client.status === 'ready') {
@@ -558,7 +627,15 @@ export const waitForIORedisReady = async (timeoutMs = 60000): Promise<IORedis> =
             const connectedClient = await Promise.race([
                 ioredisConnectionPromise,
                 new Promise<IORedis>((_, reject) =>
-                    setTimeout(() => reject(new Error('Timeout aguardando IORedis')), timeoutMs)
+                    setTimeout(() => {
+                        console.error(`⏰ [IORedis] TIMEOUT aguardando promise de conexão (${timeoutMs}ms)`);
+                        console.error(`   Diagnóstico:`);
+                        console.error(`   • Status: ${client.status}`);
+                        console.error(`   • Host: ${config.host}:${config.port}`);
+                        console.error(`   • Auth: ${passwordInfo}`);
+                        console.error(`   • Verificar: docker service logs estacaoterapia_redis --tail 50`);
+                        reject(new Error('Timeout aguardando IORedis'));
+                    }, timeoutMs)
                 )
             ]);
 
@@ -586,6 +663,23 @@ export const waitForIORedisReady = async (timeoutMs = 60000): Promise<IORedis> =
     // Se não há promise, aguarda o cliente conectar
     return new Promise<IORedis>((resolve, reject) => {
         const timeout = setTimeout(() => {
+            console.error(`⏰ [IORedis] TIMEOUT aguardando conexão (${timeoutMs}ms)`);
+            console.error(`   Diagnóstico da rede:`);
+            console.error(`   • Host: ${config.host}`);
+            console.error(`   • Port: ${config.port}`);
+            console.error(`   • DB: ${config.db}`);
+            console.error(`   • Auth: ${passwordInfo}`);
+            console.error(`   Comandos para diagnosticar:`);
+            console.error(`   1. Verificar se Redis está rodando:`);
+            console.error(`      docker service ls | grep redis`);
+            console.error(`   2. Verificar logs do Redis:`);
+            console.error(`      docker service logs estacaoterapia_redis --tail 50`);
+            console.error(`   3. Testar DNS do container:`);
+            console.error(`      docker exec <socket-container> nslookup ${config.host}`);
+            console.error(`   4. Verificar rede Swarm:`);
+            console.error(`      docker network ls | grep estacaoterapia`);
+            console.error(`   5. Se Redis exigir senha:`);
+            console.error(`      docker exec <redis-container> redis-cli CONFIG GET requirepass`);
             reject(new Error('Timeout aguardando IORedis conectar'));
         }, timeoutMs);
 
@@ -608,6 +702,9 @@ export const waitForIORedisReady = async (timeoutMs = 60000): Promise<IORedis> =
 
         const onError = (err: Error) => {
             clearTimeout(timeout);
+            const errorMsg = err?.message || String(err);
+            console.error(`❌ [IORedis] Erro durante conexão: ${errorMsg}`);
+            console.error(`   Auth: ${passwordInfo}`);
             reject(err);
         };
 
@@ -625,6 +722,7 @@ export const waitForIORedisReady = async (timeoutMs = 60000): Promise<IORedis> =
                 });
         } else {
             console.log(`⏳ [IORedis] Aguardando status ready (atual: ${client.status})...`);
+            console.log(`   Host: ${config.host}:${config.port}, DB: ${config.db}`);
             client.once('ready', onReady);
             client.once('error', onError);
         }
