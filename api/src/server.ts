@@ -194,27 +194,11 @@ server.listen(PORT, "0.0.0.0", async () => {
                     console.log("ℹ️ RESET_BULLMQ_ON_DEPLOY=false — mantendo jobs existentes");
                 }
 
-                // Inicializa workers de Controle de Consulta (passa io para session worker)
+                // Inicializa workers de Controle de Consulta (inclui webhook, agenda, consulta, email, etc)
                 const { startControleConsultaWorkers } = await import("./workers/controleConsultaWorkers");
                 // Socket.io é inicializado separadamente, então passa undefined aqui
                 await startControleConsultaWorkers(undefined);
                 console.log("✅ Workers de Controle de Consulta inicializados (com Session Worker)");
-
-                // Inicializa worker de Consultas
-                const { startConsultationWorker } = await import("./jobs/consultationJobs");
-                await startConsultationWorker();
-                console.log("✅ Worker de Consultas inicializado");
-
-                // Inicializa worker de Agenda
-                const { startAgendaWorker, scheduleMonthlyAgendaJob } = await import("./jobs/agendaWorker");
-                startAgendaWorker();
-                await scheduleMonthlyAgendaJob();
-                console.log("✅ Worker de Agenda inicializado");
-
-                // Inicializa worker de Webhooks
-                const { startWebhookWorker } = await import("./jobs/webhookWorker");
-                await startWebhookWorker();
-                console.log("✅ Worker de Webhooks inicializado");
 
                 // ✅ Inicializa worker de delayed jobs (zero polling)
                 const { startDelayedJobsWorker } = await import("./workers/delayedJobsWorker");
