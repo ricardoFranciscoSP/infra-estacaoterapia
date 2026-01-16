@@ -89,49 +89,6 @@ export const corsMiddleware = (
     );
     res.setHeader(
         "Access-Control-Allow-Headers",
-        "Content-Type,Authorization,X-Requested-With,Accept,Origin"
-    );
-    res.setHeader(
-        "Access-Control-Expose-Headers",
-        "Authorization,Content-Disposition,Content-Length"
-    );
-
-    // Em produção, origin é obrigatório
-    if (NODE_ENV === "production" && !origin) {
-        res.status(403).json({ error: "Origin é obrigatório em produção" });
-        return;
-    }
-
-    if (origin && allowedOrigins.includes(origin)) {
-        res.setHeader("Access-Control-Allow-Origin", origin);
-        res.setHeader("Access-Control-Allow-Credentials", "true");
-
-        // Log para debug
-        if (NODE_ENV === "pre" || NODE_ENV === "staging" || origin?.includes("pre.estacaoterapia.com.br")) {
-            console.log(`[CORS] ✅ Origin permitida: ${origin}`);
-        }
-    } else if (origin) {
-        // Origin não permitida - não definir headers CORS
-        if (NODE_ENV === "pre" || NODE_ENV === "staging" || origin?.includes("pre.estacaoterapia.com.br")) {
-            console.log(`[CORS] ❌ Origin bloqueada: ${origin}`);
-        }
-    }
-
-    // Preflight
-    if (req.method === "OPTIONS") {
-        res.setHeader("Access-Control-Max-Age", "86400");
-        return res.sendStatus(204);
-    }
-
-    next();
-    // Headers base (sempre)
-    res.setHeader("Vary", "Origin");
-    res.setHeader(
-        "Access-Control-Allow-Methods",
-        "GET,POST,PUT,PATCH,DELETE,OPTIONS"
-    );
-    res.setHeader(
-        "Access-Control-Allow-Headers",
         "Content-Type,Authorization,X-Requested-With,Accept,Origin,Sec-WebSocket-Key,Sec-WebSocket-Version,Sec-WebSocket-Extensions,Sec-WebSocket-Protocol,Sec-WebSocket-Accept"
     );
     res.setHeader(
