@@ -609,20 +609,27 @@ export const waitForIORedisReady = async (timeoutMs = 60000): Promise<IORedis> =
     console.log(`   Auth: ${passwordInfo}`);
     console.log(`   Timeout: ${timeoutMs}ms`);
 
-    // Verifica se cliente está pronto E testa com ping
-    if (client.status === 'ready') {
+    // Curto-circuito: se já está ready/connect, retorna imediatamente e limpa promises pendentes
+    if (client.status === 'ready' || client.status === 'connect') {
+        ioredisConnectionPromise = null;
         try {
             await client.ping();
             console.log('✅ [IORedis] Conexão validada com ping');
             return client;
         } catch (err) {
-            console.warn('⚠️ [IORedis] Cliente em status ready mas ping falhou, aguardando reconexão...');
+            console.warn('⚠️ [IORedis] Cliente em status ready/connect mas ping falhou, aguardando reconexão...');
             // Continua para aguardar ready novamente
         }
     }
 
     // Aguarda a promise de conexão existente
     if (ioredisConnectionPromise) {
+        // Se o status já for ready/connect, não precisa aguardar a promise
+        if (client.status === 'ready' || client.status === 'connect') {
+            ioredisConnectionPromise = null;
+            return client;
+        }
+
         try {
             const connectedClient = await Promise.race([
                 ioredisConnectionPromise,
@@ -648,7 +655,7 @@ export const waitForIORedisReady = async (timeoutMs = 60000): Promise<IORedis> =
             // Se a promise falhou, tenta novamente
             ioredisConnectionPromise = null;
             const newClient = getIORedisClient();
-            if (newClient.status === 'ready') {
+            if (newClient.status === 'ready' || newClient.status === 'connect') {
                 try {
                     await newClient.ping();
                     return newClient;
