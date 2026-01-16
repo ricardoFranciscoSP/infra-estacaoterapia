@@ -2,6 +2,19 @@
 import { Queue, Job } from 'bullmq';
 import { getBullMQConnectionOptions } from '../config/redis.config';
 
+const ALL_QUEUE_NAMES = [
+    'agendaQueue',
+    'webhookProcessor',
+    'consultationQueue',
+    'renovacao-controle-consulta',
+    'pagamento-controle-consulta',
+    'notificacao-controle-consulta',
+    'emailQueue',
+    'notificationQueue',
+    'delayedJobs',
+    'databaseJobs',
+];
+
 /**
  * Limpa jobs delayed antigos de uma fila BullMQ
  */
@@ -72,15 +85,7 @@ export async function cleanFailedJobs(queueName: string, olderThanMs?: number): 
  * @returns Objeto com o número de jobs removidos por fila
  */
 export async function cleanAllFailedJobs(olderThanMs?: number): Promise<Record<string, number>> {
-    const queueNames = [
-        'agendaQueue',
-        'webhookProcessor',
-        'consultationQueue',
-        'renovacao-controle-consulta',
-        'pagamento-controle-consulta',
-        'notificacao-controle-consulta',
-        'emailQueue',
-    ];
+    const queueNames = ALL_QUEUE_NAMES;
 
     const results: Record<string, number> = {};
 
@@ -118,14 +123,7 @@ export interface WorkerStatus {
 export async function getAllQueuesStatus(): Promise<QueueStatus[]> {
     const redisConnection = getBullMQConnectionOptions();
 
-    const queueNames = [
-        'agendaQueue',
-        'webhookProcessor',
-        'consultationQueue',
-        'renovacao-controle-consulta',
-        'pagamento-controle-consulta',
-        'notificacao-controle-consulta',
-    ];
+    const queueNames = ALL_QUEUE_NAMES;
 
     const statuses: QueueStatus[] = [];
 
@@ -232,14 +230,7 @@ export async function getFailedJobs(queueName: string, limit = 100): Promise<Fai
 export async function getAllFailedJobs(limit = 100): Promise<FailedJobInfo[]> {
     const redisConnection = getBullMQConnectionOptions();
 
-    const queueNames = [
-        'agendaQueue',
-        'webhookProcessor',
-        'consultationQueue',
-        'renovacao-controle-consulta',
-        'pagamento-controle-consulta',
-        'notificacao-controle-consulta',
-    ];
+    const queueNames = ALL_QUEUE_NAMES;
 
     const allFailedJobs: FailedJobInfo[] = [];
 
@@ -373,14 +364,7 @@ export async function getAllJobsByStatus(
     try {
         const redisConnection = getBullMQConnectionOptions();
 
-        const queueNames = [
-            'agendaQueue',
-            'webhookProcessor',
-            'consultationQueue',
-            'renovacao-controle-consulta',
-            'pagamento-controle-consulta',
-            'notificacao-controle-consulta',
-        ];
+        const queueNames = ALL_QUEUE_NAMES;
 
         const allJobs: JobInfo[] = [];
 
@@ -433,5 +417,54 @@ export async function getAllJobs(limit = 100): Promise<JobInfo[]> {
         console.error('❌ Erro em getAllJobs:', error);
         return [];
     }
+}
+
+/**
+ * Zera todas as filas BullMQ (deploy seguro)
+ * Remove jobs em qualquer status para evitar travamentos no boot
+ */
+export async function resetAllQueues(): Promise<Record<string, boolean>> {
+    const redisConnection = getBullMQConnectionOptions();
+    const results: Record<string, boolean> = {};
+
+    for (const queueName of ALL_QUEUE_NAMES) {
+        let queue: Queue | null = null;
+        try {
+            queue = new Queue(queueName, { connection: redisConnection });
+            await queue.obliterate({ force: true });
+            console.log(`🧹 [BullMQ] Fila zerada: ${queueName}`);
+            results[queueName] = true;
+        } catch (error) {
+            console.error(`❌ Erro ao zerar fila ${queueName}:`, error);
+            results[queueName] = false;
+
+            // Fallback: tenta limpar por status caso obliterate falhe
+            if (queue) {
+                try {
+                    await Promise.all([
+                        queue.clean(0, 100000, 'completed'),
+                        queue.clean(0, 100000, 'failed'),
+                        queue.clean(0, 100000, 'wait'),
+                        queue.clean(0, 100000, 'active'),
+                        queue.clean(0, 100000, 'delayed'),
+                        queue.clean(0, 100000, 'paused'),
+                    ]);
+                    console.log(`🧹 [BullMQ] Fallback clean executado: ${queueName}`);
+                } catch (fallbackError) {
+                    console.error(`❌ Fallback clean falhou para ${queueName}:`, fallbackError);
+                }
+            }
+        } finally {
+            if (queue) {
+                try {
+                    await queue.close();
+                } catch (closeError) {
+                    console.warn(`⚠️ Erro ao fechar fila ${queueName}:`, closeError);
+                }
+            }
+        }
+    }
+
+    return results;
 }
 

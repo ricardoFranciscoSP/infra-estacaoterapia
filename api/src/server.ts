@@ -179,6 +179,21 @@ server.listen(PORT, "0.0.0.0", async () => {
                     return;
                 }
 
+                // Zera filas BullMQ no deploy para evitar jobs travados
+                const shouldResetQueues = process.env.RESET_BULLMQ_ON_DEPLOY !== "false";
+                if (shouldResetQueues) {
+                    try {
+                        const { resetAllQueues } = await import("./utils/queueStatus");
+                        console.log("🧹 Zerando todas as filas BullMQ no deploy...");
+                        await resetAllQueues();
+                        console.log("✅ Filas BullMQ zeradas");
+                    } catch (resetErr) {
+                        console.error("⚠️ Erro ao zerar filas BullMQ no deploy:", resetErr);
+                    }
+                } else {
+                    console.log("ℹ️ RESET_BULLMQ_ON_DEPLOY=false — mantendo jobs existentes");
+                }
+
                 // Inicializa workers de Controle de Consulta (passa io para session worker)
                 const { startControleConsultaWorkers } = await import("./workers/controleConsultaWorkers");
                 // Socket.io é inicializado separadamente, então passa undefined aqui

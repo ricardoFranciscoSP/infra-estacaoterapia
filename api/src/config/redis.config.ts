@@ -597,7 +597,7 @@ function createIORedisClient(): IORedis {
  * Timeout aumentado para Docker Swarm (DNS pode ser lento)
  */
 export const waitForIORedisReady = async (timeoutMs = 60000): Promise<IORedis> => {
-    const client = getIORedisClient();
+    let client = getIORedisClient();
     const config = getRedisConfig();
     const passwordInfo = config.password ? `(com senha: ${config.password.substring(0, 3)}...${config.password.substring(config.password.length - 3)})` : '(sem senha)';
 
@@ -620,56 +620,23 @@ export const waitForIORedisReady = async (timeoutMs = 60000): Promise<IORedis> =
             return client;
         } catch (err) {
             console.warn('⚠️ [IORedis] Cliente em status ready/connect mas ping falhou, aguardando reconexão...');
-            // Continua para aguardar ready novamente
+            // Reinicia conexão para evitar promessas travadas
+            try {
+                client.removeAllListeners();
+                client.disconnect();
+                client.quit().catch(() => { });
+            } catch (closeErr) {
+                console.warn('⚠️ [IORedis] Falha ao reiniciar conexão:', closeErr);
+            }
+            ioredisClient = null;
+            ioredisConnectionPromise = null;
+            client = getIORedisClient();
         }
     }
-
-    // Se existe promise, mas o status já está pronto, retorna imediatamente
+    // Ignora promessas antigas para evitar TIMEOUT com status ready
     if (ioredisConnectionPromise) {
-        if (client.status === 'ready' || client.status === 'connect') {
-            ioredisConnectionPromise = null;
-            return client;
-        }
-        // Se não está pronto, aguarda a promise, mas adiciona timeout robusto
-        try {
-            const connectedClient = await Promise.race([
-                ioredisConnectionPromise,
-                new Promise<IORedis>((_, reject) =>
-                    setTimeout(() => {
-                        console.error(`⏰ [IORedis] TIMEOUT aguardando promise de conexão (${timeoutMs}ms)`);
-                        console.error(`   Diagnóstico:`);
-                        console.error(`   • Status: ${client.status}`);
-                        console.error(`   • Host: ${config.host}:${config.port}`);
-                        console.error(`   • Auth: ${passwordInfo}`);
-                        console.error(`   • Verificar: docker service logs estacaoterapia_redis --tail 50`);
-                        // Limpa listeners para evitar leaks
-                        if (client.removeAllListeners) client.removeAllListeners('ready');
-                        if (client.removeAllListeners) client.removeAllListeners('error');
-                        reject(new Error('Timeout aguardando IORedis'));
-                    }, timeoutMs)
-                )
-            ]);
-            await connectedClient.ping();
-            console.log('✅ [IORedis] Conexão estabelecida e validada');
-            return connectedClient;
-        } catch (err) {
-            console.error('❌ [IORedis] Erro ao conectar ou validar:', err);
-            ioredisConnectionPromise = null;
-            // Limpa listeners para evitar leaks
-            if (client.removeAllListeners) client.removeAllListeners('ready');
-            if (client.removeAllListeners) client.removeAllListeners('error');
-            // Tenta novo ciclo
-            const newClient = getIORedisClient();
-            if (newClient.status === 'ready' || newClient.status === 'connect') {
-                try {
-                    await newClient.ping();
-                    return newClient;
-                } catch (pingErr) {
-                    console.error('❌ [IORedis] Ping falhou após reconexão');
-                }
-            }
-            throw err;
-        }
+        console.warn('⚠️ [IORedis] Promise pendente detectada, ignorando e aguardando eventos...');
+        ioredisConnectionPromise = null;
     }
 
     // Se não há promise, aguarda o cliente conectar
