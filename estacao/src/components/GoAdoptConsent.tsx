@@ -76,16 +76,20 @@ export default function GoAdoptConsent() {
                 }
               }
             } catch (error) {
-              console.warn('[GoAdopt] Não foi possível configurar o domínio dos cookies:', error);
+              if (process.env.NODE_ENV === 'development') {
+                console.warn('[GoAdopt] Não foi possível configurar o domínio dos cookies:', error);
+              }
             }
           }
         }
       };
 
       // Callback em caso de erro
-      script.onerror = (error) => {
+    script.onerror = (error) => {
+      if (process.env.NODE_ENV === 'development') {
         console.warn('[GoAdopt] Erro ao carregar script:', error);
-      };
+      }
+    };
 
       document.head.appendChild(script);
     };

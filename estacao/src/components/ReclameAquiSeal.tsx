@@ -31,7 +31,9 @@ export default function ReclameAquiSeal() {
         try {
           windowWithRaichu.__RAICHU_VERIFIED__?.process?.();
         } catch (error) {
-          console.warn('[ReclameAquiSeal] Erro ao processar widget:', error);
+          if (process.env.NODE_ENV === 'development') {
+            console.warn('[ReclameAquiSeal] Erro ao processar widget:', error);
+          }
         }
       }
     }
@@ -75,7 +77,9 @@ export default function ReclameAquiSeal() {
           strategy="afterInteractive"
           onLoad={handleScriptLoad}
           onError={() => {
-            console.warn('[ReclameAquiSeal] Erro ao carregar script do Reclame Aqui');
+            if (process.env.NODE_ENV === 'development') {
+              console.warn('[ReclameAquiSeal] Erro ao carregar script do Reclame Aqui');
+            }
           }}
         />
       </div>

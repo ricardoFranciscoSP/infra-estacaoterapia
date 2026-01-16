@@ -57,6 +57,7 @@ console.log(`   Origens permitidas: ${ALLOWED_ORIGINS.join(", ")}`);
 
 const server = http.createServer(app);
 
+const isProduction = (process.env.NODE_ENV || "development") === "production";
 const io = new Server(server, {
     cors: {
         origin: (origin, callback) => {
@@ -96,8 +97,8 @@ const io = new Server(server, {
         allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin"],
         maxAge: 86400,
     },
-    // Permite websocket e polling como fallback para melhor compatibilidade
-    transports: ["websocket", "polling"],
+    // Em produção, força WebSocket; em dev mantém fallback
+    transports: isProduction ? ["websocket"] : ["websocket", "polling"],
     allowEIO3: true,
     pingTimeout: 60000,
     pingInterval: 25000,

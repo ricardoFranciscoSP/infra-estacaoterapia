@@ -1,6 +1,19 @@
 "use client";
 import { io, Socket } from "socket.io-client";
 import { isPreEnvironment } from "./env-utils";
+const isDev = process.env.NODE_ENV === "development";
+const logDebug = (...args: unknown[]) => {
+    if (isDev) console.debug(...args);
+};
+const logInfo = (...args: unknown[]) => {
+    if (isDev) console.log(...args);
+};
+const logWarn = (...args: unknown[]) => {
+    if (isDev) console.warn(...args);
+};
+const logError = (...args: unknown[]) => {
+    if (isDev) console.error(...args);
+};
 // Listener para eventos de status da consulta (ex: cancelamento automático)
 export const onConsultationStatusChanged = (
     callback: (data: { status: string; consultationId: string }) => void,
@@ -288,7 +301,7 @@ const getSocketUrl = (): string => {
         }
         // Valida que a URL não seja o domínio raiz incorreto
         if (cleanUrl === 'https://estacaoterapia.com.br' || cleanUrl === 'http://estacaoterapia.com.br') {
-            console.warn("🔌 [Socket] URL da variável de ambiente é o domínio raiz, ignorando e usando detecção por hostname");
+            logWarn("🔌 [Socket] URL da variável de ambiente é o domínio raiz, ignorando e usando detecção por hostname");
         } else {
             console.log("🔌 [Socket] Usando URL da variável de ambiente:", cleanUrl);
             return cleanUrl;
@@ -313,7 +326,7 @@ const getSocketUrl = (): string => {
     }
 
     // Se não reconheceu nada, usa fallback de produção
-    console.warn("🔌 [Socket] Hostname não reconhecido:", typeof window !== "undefined" ? window.location.hostname : "SSR", "- usando fallback de produção");
+    logWarn("🔌 [Socket] Hostname não reconhecido:", typeof window !== "undefined" ? window.location.hostname : "SSR", "- usando fallback de produção");
     return "https://ws.prd.estacaoterapia.com.br";
 };
 let socket: Socket | null = null;
@@ -381,7 +394,7 @@ export const getSocket = (): Socket | null => {
 
     const socketOptions: SocketOptions = {
         autoConnect: false, // NÃO conecta automaticamente
-        transports: ["websocket", "polling"], // Tenta WebSocket primeiro, depois polling como fallback
+        transports: isDev ? ["websocket", "polling"] : ["websocket"],
         withCredentials: true,
         reconnection: true,
         reconnectionAttempts: 5, // Aumenta tentativas
@@ -395,10 +408,9 @@ export const getSocket = (): Socket | null => {
 
     // Em produção, força uso de WebSocket seguro
     if (SOCKET_URL.startsWith("https://")) {
-        socketOptions.transports = ["websocket", "polling"];
         socketOptions.secure = true;
-        // Adiciona upgrade automático para WSS
-        socketOptions.upgrade = true;
+        // Em produção usamos apenas websocket, sem upgrade/polling
+        socketOptions.upgrade = isDev;
     }
 
     console.log("🔌 [Socket] Criando conexão com:", SOCKET_URL);
@@ -417,57 +429,57 @@ export const getSocket = (): Socket | null => {
 // ---------------------
 const setupSocketListeners = (s: Socket) => {
     s.on("connect", () => {
-        console.debug("🟢 [Socket] Conectado! ID:", s.id);
+        logDebug("🟢 [Socket] Conectado! ID:", s.id);
         // @ts-expect-error - uri é privado mas útil para debug
         const socketUri = s.io?.uri || "N/A";
-        console.debug("   URL:", socketUri);
-        console.debug("   Transport:", s.io?.engine?.transport?.name);
+        logDebug("   URL:", socketUri);
+        logDebug("   Transport:", s.io?.engine?.transport?.name);
 
         // Desconecta automaticamente após 30 segundos de inatividade
         resetDisconnectionTimer();
     });
 
     s.on("disconnect", (reason) => {
-        console.warn("🔴 [Socket] Desconectado:", reason);
+        logWarn("🔴 [Socket] Desconectado:", reason);
         clearDisconnectionTimer();
 
         // Só reconecta se o servidor desconectou explicitamente
         if (reason === "io server disconnect") {
-            console.debug("🔄 [Socket] Servidor desconectou, aguardando reconexão manual");
+            logDebug("🔄 [Socket] Servidor desconectou, aguardando reconexão manual");
         }
     });
 
     s.on("connect_error", (err) => {
-        console.error("⚠️ [Socket] Erro de conexão:", err.message);
+        logError("⚠️ [Socket] Erro de conexão:", err.message);
         // @ts-expect-error - uri é privado mas útil para debug
         const socketUri = s.io?.uri || "N/A";
-        console.error("   URL tentada:", socketUri);
+        logError("   URL tentada:", socketUri);
         // @ts-expect-error - propriedades específicas do Socket.IO
-        console.error("   Tipo:", err.type || "unknown");
+        logError("   Tipo:", err.type || "unknown");
         // @ts-expect-error - propriedades específicas do Socket.IO
-        console.error("   Descrição:", err.description || "N/A");
+        logError("   Descrição:", err.description || "N/A");
     });
 
     s.on("reconnect", (attemptNumber) => {
-        console.debug("🔄 [Socket] Reconectado após", attemptNumber, "tentativas");
+        logDebug("🔄 [Socket] Reconectado após", attemptNumber, "tentativas");
         resetDisconnectionTimer();
     });
 
     s.on("reconnect_attempt", (attemptNumber) =>
-        console.debug("🔄 [Socket] Tentativa de reconexão:", attemptNumber)
+        logDebug("🔄 [Socket] Tentativa de reconexão:", attemptNumber)
     );
 
     s.on("reconnect_error", (err: Error) =>
-        console.error("❌ [Socket] Erro ao reconectar:", err.message)
+        logError("❌ [Socket] Erro ao reconectar:", err.message)
     );
 
     s.on("reconnect_failed", () => {
-        console.error("❌ [Socket] Falha ao reconectar após todas as tentativas");
+        logError("❌ [Socket] Falha ao reconectar após todas as tentativas");
         clearDisconnectionTimer();
     });
 
     s.on("notification", (data) => {
-        console.debug("🔔 [Socket] Nova notificação:", data);
+        logDebug("🔔 [Socket] Nova notificação:", data);
         resetDisconnectionTimer(); // Mantém vivo ao receber notificação
     });
 
@@ -520,19 +532,19 @@ const clearDisconnectionTimer = () => {
 // ---------------------
 export const connectSocket = () => {
     const s = getSocket();
-    if (!s) return console.warn("⚠️ Socket não disponível (SSR)");
+    if (!s) return logWarn("⚠️ Socket não disponível (SSR)");
     if (!s.connected) {
-        console.debug("🔌 [Socket] Conectando sob demanda...");
+        logDebug("🔌 [Socket] Conectando sob demanda...");
         s.connect();
     } else {
-        console.debug("✅ Socket já conectado");
+        logDebug("✅ Socket já conectado");
     }
 };
 
 export const disconnectSocket = () => {
     const s = getSocket();
     if (!s?.connected) return;
-    console.debug("🔌 [Socket] Desconectando...");
+    logDebug("🔌 [Socket] Desconectando...");
     clearDisconnectionTimer();
     s.disconnect();
 };
@@ -542,10 +554,11 @@ let isConnecting = false; // Flag para evitar múltiplas tentativas simultâneas
 let connectionPromise: Promise<void> | null = null; // Promise para evitar múltiplas tentativas
 
 export const ensureSocketConnection = (): Promise<void> => {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
         const s = getSocket();
         if (!s) {
-            reject(new Error("Socket não disponível"));
+            logWarn("⚠️ [Socket] Socket não disponível");
+            resolve();
             return;
         }
 
@@ -558,20 +571,21 @@ export const ensureSocketConnection = (): Promise<void> => {
 
         // Se já está tentando conectar, aguarda a promise existente
         if (connectionPromise) {
-            connectionPromise.then(resolve).catch(reject);
+            connectionPromise.then(resolve).catch(() => resolve());
             return;
         }
 
         // Se não está conectado e não está tentando, conecta
         if (!s.connected && !isConnecting) {
             isConnecting = true;
-            console.debug("🔌 [Socket] Conectando para ação necessária...");
+            logDebug("🔌 [Socket] Conectando para ação necessária...");
 
-            connectionPromise = new Promise<void>((innerResolve, innerReject) => {
+            connectionPromise = new Promise<void>((innerResolve) => {
                 const timeout = setTimeout(() => {
                     isConnecting = false;
                     connectionPromise = null;
-                    innerReject(new Error("Timeout ao conectar socket"));
+                    logWarn("⚠️ [Socket] Timeout ao conectar socket");
+                    innerResolve();
                 }, 10000); // 10 segundos de timeout
 
                 const onConnect = () => {
@@ -588,7 +602,8 @@ export const ensureSocketConnection = (): Promise<void> => {
                     isConnecting = false;
                     connectionPromise = null;
                     s.off("connect", onConnect);
-                    innerReject(err);
+                    logWarn("⚠️ [Socket] Erro ao conectar socket:", err.message);
+                    innerResolve();
                 };
 
                 s.once("connect", onConnect);
@@ -597,7 +612,7 @@ export const ensureSocketConnection = (): Promise<void> => {
                 s.connect();
             });
 
-            connectionPromise.then(resolve).catch(reject);
+            connectionPromise.then(resolve).catch(() => resolve());
         }
     });
 };
@@ -651,7 +666,7 @@ export interface PrivacyMessageData {
 export const joinConsultation = async (data: ConsultationJoinPayload) => {
     const s = getSocket();
     if (!s) {
-        console.warn("⚠️ [Socket] Socket não disponível para joinConsultation");
+        logWarn("⚠️ [Socket] Socket não disponível para joinConsultation");
         return;
     }
 
@@ -661,7 +676,7 @@ export const joinConsultation = async (data: ConsultationJoinPayload) => {
 
         // Verifica novamente se está conectado
         if (!s.connected) {
-            console.warn("⚠️ [Socket] Socket não conectado após ensureSocketConnection");
+        logWarn("⚠️ [Socket] Socket não conectado após ensureSocketConnection");
             // Tenta conectar novamente
             s.connect();
             // Aguarda conexão
@@ -678,15 +693,15 @@ export const joinConsultation = async (data: ConsultationJoinPayload) => {
             });
         }
 
-        console.log("📹 [Socket] Entrando na consulta:", data);
+        logInfo("📹 [Socket] Entrando na consulta:", data);
         s.emit("consultation:join", data);
 
         // Também entra na sala da consulta para receber eventos
         const roomName = `consulta_${data.consultationId}`;
         s.emit("join-room", roomName);
-        console.log("🏠 [Socket] Entrou na sala:", roomName);
+        logInfo("🏠 [Socket] Entrou na sala:", roomName);
     } catch (error) {
-        console.error("❌ [Socket] Erro ao fazer join na consulta:", error);
+        logError("❌ [Socket] Erro ao fazer join na consulta:", error);
         // Tenta fazer join mesmo assim (pode funcionar se conectar depois)
         s.emit("consultation:join", data);
         s.emit("join-room", `consulta_${data.consultationId}`);
@@ -765,7 +780,7 @@ export interface HandRaisedData {
 export const raiseHandInConsultation = (data: RaiseHandPayload) => {
     const s = getSocket();
     if (!s) {
-        console.warn("✋ [Socket] Socket não disponível para enviar estado da mão");
+        logWarn("✋ [Socket] Socket não disponível para enviar estado da mão");
         return;
     }
 
@@ -794,7 +809,7 @@ export const onHandRaisedInConsultation = (
 ) => {
     const s = getSocket();
     if (!s) {
-        console.warn("✋ [Socket] Socket não disponível para configurar listener de mão levantada");
+        logWarn("✋ [Socket] Socket não disponível para configurar listener de mão levantada");
         return;
     }
     console.log("✋ [Socket] Configurando listener para evento 'hand:raised'");

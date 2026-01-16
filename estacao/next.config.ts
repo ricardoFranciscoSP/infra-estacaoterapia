@@ -291,6 +291,14 @@ const nextConfig: NextConfig = {
     const websiteUrl = process.env.NEXT_PUBLIC_WEBSITE_URL || "";
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
     const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || "";
+    const toOrigin = (url: string): string | null => {
+      if (!url) return null;
+      try {
+        return new URL(url).origin;
+      } catch {
+        return null;
+      }
+    };
 
     const isLocalhost =
       process.env.NODE_ENV !== "production" ||
@@ -326,6 +334,10 @@ const nextConfig: NextConfig = {
       "https://www.google.com", // Google Analytics e Google Ads
       "https://www.googletagmanager.com",
       "https://googleads.g.doubleclick.net", // Google Ads
+      "https://www.googleadservices.com", // Google Ads Services
+      "https://stats.g.doubleclick.net", // Google Ads/Analytics
+      "https://static.cloudflareinsights.com",
+      "https://cloudflareinsights.com",
       "https://api.reclameaqui.com.br", // Reclame Aqui API
       "https://*.agora.io", // Agora RTC WebSocket connections
       "wss://*.agora.io", // Agora RTC WebSocket secure
@@ -334,6 +346,22 @@ const nextConfig: NextConfig = {
       "wss:",
       "ws:",
     ];
+
+    const apiOrigin = toOrigin(apiUrl);
+    if (apiOrigin) {
+      connectSrcDirectives.push(apiOrigin);
+    }
+
+    const socketOrigin = toOrigin(socketUrl);
+    if (socketOrigin) {
+      connectSrcDirectives.push(socketOrigin);
+      if (socketOrigin.startsWith("https://")) {
+        connectSrcDirectives.push(socketOrigin.replace("https://", "wss://"));
+      }
+      if (socketOrigin.startsWith("wss://")) {
+        connectSrcDirectives.push(socketOrigin.replace("wss://", "https://"));
+      }
+    }
 
     // Adiciona localhost em desenvolvimento
     if (isLocalhost) {
@@ -358,8 +386,9 @@ const nextConfig: NextConfig = {
     const scriptSrcDirectives = [
       "'self'",
       "'unsafe-inline'", // Necessário para scripts inline do Next.js
-      "'unsafe-eval'", // Necessário para alguns frameworks (usar com cuidado)
+      "https://static.cloudflareinsights.com",
       "https://tag.goadopt.io",
+      "https://*.goadopt.io",
       "https://www.googletagmanager.com",
       "https://www.google-analytics.com",
       "https://www.googleadservices.com", // Google Ads
@@ -369,10 +398,16 @@ const nextConfig: NextConfig = {
       "https://*.estacaoterapia.com.br", // Permite scripts de todos os subdomínios
     ];
 
+    if (isLocalhost) {
+      scriptSrcDirectives.push("'unsafe-eval'");
+    }
+
     // Explicita style-src-elem para evitar fallback ambíguo em alguns navegadores
     const cspDirectives = [
       "default-src 'self'",
       `script-src ${scriptSrcDirectives.join(" ")}`,
+      `script-src-elem ${scriptSrcDirectives.join(" ")}`,
+      "script-src-attr 'self' 'unsafe-inline'",
       `style-src ${styleSrcDirectives.join(" ")}`,
       `style-src-elem ${styleSrcDirectives.join(" ")}`,
       "font-src 'self' https://fonts.gstatic.com data: blob:",
@@ -382,7 +417,7 @@ const nextConfig: NextConfig = {
       "object-src 'none'",
       "base-uri 'self'",
       "form-action 'self'",
-      "frame-src 'self' https://www.googletagmanager.com https://www.google.com", // Permite iframes do Google
+      "frame-src 'self' https://www.googletagmanager.com https://www.google.com https://googleads.g.doubleclick.net https://www.googleadservices.com https://*.goadopt.io",
       "frame-ancestors 'self'",
     ].join("; ");
 
