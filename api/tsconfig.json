@@ -16,6 +16,7 @@
     "noImplicitThis": false,
     "alwaysStrict": false,
     "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
     "forceConsistentCasingInFileNames": false,
     "skipLibCheck": true,
     "moduleResolution": "node",

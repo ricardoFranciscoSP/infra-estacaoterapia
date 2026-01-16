@@ -4,8 +4,8 @@
  * Garante que notificações de jobs chegam aos clientes em tempo real
  */
 
-import { getIORedisClient, waitForIORedisReady } from '../config/redis.config';
-import type { Redis } from 'ioredis';
+import { getIORedisClient, waitForIORedisReady, getBullMQConnectionOptions } from '../config/redis.config';
+import IORedis, { Redis } from 'ioredis';
 
 // Tipos para eventos
 type EventHandler = (data: Record<string, unknown>) => Promise<void>;
@@ -24,6 +24,7 @@ export class EventSyncService {
     private eventHandlers: Map<string, EventHandler> = new Map();
     private isSubscribed = false;
     private initializationPromise: Promise<void> | null = null;
+    private waitingForReadyPromise: Promise<void> | null = null; // Evita múltiplas esperas simultâneas
 
     constructor() {
         this.pubClient = getIORedisClient();
@@ -84,22 +85,43 @@ export class EventSyncService {
                     try {
                         this.subClient.removeAllListeners();
                         this.subClient.disconnect();
-                        this.subClient.quit().catch(() => {});
+                        this.subClient.quit().catch(() => { });
                     } catch (err) {
                         // Ignora erros ao fechar
                     }
                 }
 
-                // Cria o subClient a partir do pubClient pronto
-                this.subClient = this.pubClient.duplicate();
-                
-                // Adiciona handlers de erro ao subClient (duplicate() não herda listeners)
-                this.subClient.on('error', (err) => {
-                    console.error('❌ [EventSync] Erro no subClient:', err.message);
+                // Cria o subClient diretamente com as mesmas credenciais (não usa .duplicate())
+                const redisConfig = getBullMQConnectionOptions();
+                const redisPassword = process.env.REDIS_PASSWORD || undefined;
+
+                this.subClient = new IORedis({
+                    host: redisConfig.host,
+                    port: redisConfig.port,
+                    db: redisConfig.db,
+                    password: redisPassword,
+                    maxRetriesPerRequest: null,
+                    connectTimeout: 30_000,
+                    commandTimeout: 15_000,
+                    lazyConnect: false, // Conecta imediatamente
+                    keepAlive: 30000,
+                    enableOfflineQueue: true,
+                    enableReadyCheck: true,
+                    autoResubscribe: true,
+                    connectionName: 'estacao-eventsync-sub',
+                    showFriendlyErrorStack: true,
+                    retryStrategy: (times: number) => {
+                        const delay = Math.min(times * 50, 2000);
+                        return delay;
+                    },
                 });
 
-                this.subClient.on('ready', () => {
-                    console.log('✅ [EventSync] subClient pronto');
+                // Aumenta limite de listeners para suportar múltiplos canais
+                this.subClient.setMaxListeners(20);
+
+                // Adiciona handlers de erro ao subClient
+                this.subClient.on('error', (err) => {
+                    console.error('❌ [EventSync] Erro no subClient:', err.message);
                 });
 
                 this.subClient.on('connect', () => {
@@ -114,14 +136,16 @@ export class EventSyncService {
                     console.log(`🔄 [EventSync] subClient reconectando em ${delay}ms...`);
                 });
 
-                // Quando reconectar, resubscribe aos canais
+                // Quando ficar pronto ou reconectar, resubscribe aos canais
                 this.subClient.on('ready', async () => {
+                    console.log('✅ [EventSync] subClient pronto');
+
                     if (this.eventHandlers.size > 0 && this.subClient) {
-                        console.log('🔄 [EventSync] Resubscribindo aos canais após reconexão...');
+                        console.log('🔄 [EventSync] Resubscribindo aos canais após conexão...');
                         try {
                             // Aguarda um pouco para garantir que a conexão está estável
                             await new Promise(resolve => setTimeout(resolve, 500));
-                            
+
                             // Verifica se ainda está pronto
                             if (this.subClient && (this.subClient.status === 'ready' || this.subClient.status === 'connect')) {
                                 for (const channel of this.eventHandlers.keys()) {
@@ -143,7 +167,10 @@ export class EventSyncService {
                 });
             }
 
-            // Adiciona handlers adicionais ao pubClient também para garantir
+            // Aumenta limite de listeners do pubClient
+            this.pubClient.setMaxListeners(20);
+
+            // Adiciona handlers ao pubClient para garantir
             this.pubClient.on('error', (err) => {
                 console.error('❌ [EventSync] Erro no pubClient:', err.message);
             });
@@ -183,8 +210,14 @@ export class EventSyncService {
 
     /**
      * Aguarda o subClient estar pronto antes de usar
+     * Reutiliza a mesma promise se múltiplas chamadas simultâneas
      */
     private async waitForSubClientReady(timeoutMs = 15000): Promise<void> {
+        // Se já existe uma promise aguardando, reutiliza ela
+        if (this.waitingForReadyPromise) {
+            return this.waitingForReadyPromise;
+        }
+
         if (!this.subClient) {
             throw new Error('subClient não está disponível');
         }
@@ -194,14 +227,24 @@ export class EventSyncService {
             return;
         }
 
-        // Aguarda conexão estar pronta
-        return new Promise<void>((resolve, reject) => {
+        // Cria promise de espera
+        this.waitingForReadyPromise = new Promise<void>((resolve, reject) => {
             const timeout = setTimeout(() => {
+                cleanup();
                 reject(new Error(`Timeout aguardando subClient conectar (status: ${this.subClient?.status})`));
             }, timeoutMs);
 
-            const onReady = () => {
+            const cleanup = () => {
                 clearTimeout(timeout);
+                if (this.subClient) {
+                    this.subClient.off('ready', onReady);
+                    this.subClient.off('error', onError);
+                    this.subClient.off('close', onClose);
+                }
+            };
+
+            const onReady = () => {
+                cleanup();
                 if (this.subClient && (this.subClient.status === 'ready' || this.subClient.status === 'connect')) {
                     resolve();
                 } else {
@@ -210,18 +253,18 @@ export class EventSyncService {
             };
 
             const onError = (err: Error) => {
-                clearTimeout(timeout);
+                cleanup();
                 reject(err);
             };
 
             const onClose = () => {
-                clearTimeout(timeout);
+                cleanup();
                 reject(new Error('subClient foi fechado durante conexão'));
             };
 
             if (this.subClient) {
                 if (this.subClient.status === 'ready' || this.subClient.status === 'connect') {
-                    clearTimeout(timeout);
+                    cleanup();
                     resolve();
                 } else {
                     this.subClient.once('ready', onReady);
@@ -229,10 +272,17 @@ export class EventSyncService {
                     this.subClient.once('close', onClose);
                 }
             } else {
-                clearTimeout(timeout);
+                cleanup();
                 reject(new Error('subClient não está disponível'));
             }
         });
+
+        try {
+            await this.waitingForReadyPromise;
+        } finally {
+            // Limpa a promise após completar
+            this.waitingForReadyPromise = null;
+        }
     }
 
     /**
@@ -282,7 +332,7 @@ export class EventSyncService {
         } catch (error) {
             const errorMsg = (error as Error)?.message || String(error);
             console.error(`❌ [EventSync] Erro ao subscribir ao canal '${channel}':`, errorMsg);
-            
+
             // Se erro foi de conexão fechada, tenta reconectar
             if (errorMsg.includes('Connection is closed') || errorMsg.includes('closed')) {
                 console.log(`🔄 [EventSync] Tentando reconectar subClient para canal '${channel}'...`);

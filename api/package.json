@@ -8,7 +8,8 @@
   },
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
-    "build": "tsc && prisma generate && npm run copy-templates",
+    "build": "npm run prisma:generate && tsc && npm run copy-templates",
+    "prisma:generate": "prisma generate",
     "render-build": "npm run build",
     "start": "node dist/server.js",
     "copy-templates": "ts-node scripts/copy-templates.ts",
