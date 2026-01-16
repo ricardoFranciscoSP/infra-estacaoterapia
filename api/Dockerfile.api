@@ -93,26 +93,31 @@ RUN apk add --no-cache \
     && update-ca-certificates \
     && rm -rf /var/cache/apk/*
 
-RUN addgroup -g 1001 -S app && \
-    adduser -u 1001 -S app -G app
+# Criar usuário deploy se não existir (compatível com VPS)
+RUN if ! id deploy >/dev/null 2>&1; then \
+    addgroup -g 1000 -S deploy && \
+    adduser -u 1000 -S deploy -G deploy; \
+    else \
+    echo "✓ Usuário deploy já existe"; \
+    fi
 
 RUN mkdir -p /tmp /run && chmod 1777 /tmp /run
 
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
-COPY --from=builder --chown=1001:1001 /app/dist ./dist
-COPY --from=builder --chown=1001:1001 /app/src/generated ./src/generated
-COPY --from=prod-deps --chown=1001:1001 /app/node_modules ./node_modules
-COPY --from=prod-deps --chown=1001:1001 /app/prisma ./prisma
-COPY --chown=1001:1001 package.json prisma.config.ts ./
+COPY --from=builder --chown=deploy:deploy /app/dist ./dist
+COPY --from=builder --chown=deploy:deploy /app/src/generated ./src/generated
+COPY --from=prod-deps --chown=deploy:deploy /app/node_modules ./node_modules
+COPY --from=prod-deps --chown=deploy:deploy /app/prisma ./prisma
+COPY --chown=deploy:deploy package.json prisma.config.ts ./
 
 EXPOSE 3333
 
 HEALTHCHECK --interval=20s --timeout=10s --start-period=120s --retries=5 \
     CMD curl -f http://localhost:3333/health || exit 1
 
-USER app
+USER deploy
 
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["node", "dist/server.js"]

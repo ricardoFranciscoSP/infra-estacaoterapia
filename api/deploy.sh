@@ -4,6 +4,10 @@ set -euo pipefail
 export LC_ALL=C.UTF-8
 export LANG=C.UTF-8
 
+# Definir valores padrão para variáveis opcionais
+CLEAN_DEPLOY="${CLEAN_DEPLOY:-true}"
+FORCE_BUILD="${FORCE_BUILD:-false}"
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SECRETS_DIR="/opt/secrets"
 STACK_NAME="estacaoterapia"
@@ -20,7 +24,7 @@ GIT_HASH="$(git rev-parse --short HEAD 2>/dev/null || echo local)"
 TAG="${TIMESTAMP}-${GIT_HASH}"
 
 echo "📦 Tag: prd-$TAG | Keep versions: $KEEP_VERSIONS"
-echo "   Clean deploy: $CLEAN_DEPLOY | Force build: ${FORCE_BUILD:-false}"
+echo "   Clean deploy: $CLEAN_DEPLOY | Force build: $FORCE_BUILD"
 
 # ==============================
 # 1. PRÉ-REQUISITOS
@@ -41,8 +45,6 @@ echo "✅ Pré-requisitos OK"
 # ==============================
 # 2. CLEAN DEPLOY (PADRÃO)
 # ==============================
-CLEAN_DEPLOY="${CLEAN_DEPLOY:-true}"  # Padrão: true (deploy limpo)
-
 if [ "$CLEAN_DEPLOY" = true ]; then
   echo "🧹 Removendo stack anterior para deploy limpo..."
   docker stack rm "$STACK_NAME" || true

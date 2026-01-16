@@ -3,7 +3,9 @@ set -e
 
 SERVER_TYPE="${SERVER_TYPE:-api}"
 
-mkdir -p /tmp /run && chmod 1777 /tmp /run
+# Criar apenas se não existir (não tentar chmod)
+mkdir -p /tmp /run 2>/dev/null || true
+chmod 1777 /tmp /run 2>/dev/null || true  # Ignorar erro se falhar (usuário não-root)
 
 # =========================
 # Carregar secrets (.env)
