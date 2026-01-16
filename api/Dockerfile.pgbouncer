@@ -1,16 +1,17 @@
-FROM edoburu/pgbouncer:1.22.1
+FROM alpine:3.19
 
 LABEL maintainer="estacaoterapia@team" \
     org.opencontainers.image.description="PgBouncer Swarm proxy para PostgreSQL"
 
-USER root
-
+# Instalar pgbouncer e dependências
 RUN apk add --no-cache \
     bash \
     netcat-openbsd \
     curl \
     postgresql-client \
     gettext \
+    pgbouncer \
+    ca-certificates \
     && rm -rf /var/cache/apk/*
 
 RUN addgroup -g 1001 -S pgbouncer && \
@@ -104,6 +105,10 @@ EOF
 RUN chmod +x /usr/local/bin/pgbouncer-entrypoint.sh
 
 EXPOSE 6432
+
+HEALTHCHECK --interval=10s --timeout=5s --start-period=30s --retries=3 \
+    CMD pgbouncer -V || exit 1
+
 USER pgbouncer
 ENTRYPOINT ["/usr/local/bin/pgbouncer-entrypoint.sh"]
 CMD []
