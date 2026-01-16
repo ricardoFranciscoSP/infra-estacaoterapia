@@ -527,52 +527,8 @@ function createIORedisClient(): IORedis {
         ioredisConnectionPromise = null;
     });
 
-    // Cria promise para aguardar conexão inicial (apenas se não existe e cliente não está pronto)
-    if (!ioredisConnectionPromise && ioredisClient && ioredisClient.status !== 'ready') {
-        ioredisConnectionPromise = new Promise<IORedis>((resolve, reject) => {
-            const timeout = setTimeout(() => {
-                ioredisConnectionPromise = null; // Limpa a promise em caso de timeout
-                console.error(`⏰ [IORedis] TIMEOUT na conexão (30s)`);
-                console.error(`   Verificar:`);
-                console.error(`   1. Redis está rodando? docker service ls | grep redis`);
-                console.error(`   2. Nome do serviço correto? Service: estacaoterapia_redis`);
-                console.error(`   3. Mesma rede? Verificar docker network ls`);
-                console.error(`   4. DNS resolve? docker exec <container> nslookup ${configHost}`);
-                reject(new Error('Timeout aguardando conexão IORedis'));
-            }, 30000);
-
-            const onReady = () => {
-                clearTimeout(timeout);
-                ioredisConnectionPromise = null; // Limpa a promise após conectar
-                if (ioredisClient && ioredisClient.status === 'ready') {
-                    resolve(ioredisClient);
-                } else {
-                    reject(new Error('Cliente IORedis foi limpo antes de conectar'));
-                }
-            };
-
-            const onError = (err: Error) => {
-                clearTimeout(timeout);
-                ioredisConnectionPromise = null; // Limpa a promise em caso de erro
-                reject(err);
-            };
-
-            if (ioredisClient) {
-                if (ioredisClient.status === 'ready') {
-                    clearTimeout(timeout);
-                    ioredisConnectionPromise = null;
-                    resolve(ioredisClient);
-                } else {
-                    ioredisClient.once('ready', onReady);
-                    ioredisClient.once('error', onError);
-                }
-            } else {
-                clearTimeout(timeout);
-                ioredisConnectionPromise = null;
-                reject(new Error('Cliente IORedis não foi criado'));
-            }
-        });
-    }
+    // Não criar promise interna para evitar unhandled rejection
+    // Aguardas devem ser feitas via waitForIORedisReady()
 
     // Se estiver usando lazyConnect, iniciar conexão explicitamente sem bloquear
     try {
