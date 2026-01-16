@@ -7,18 +7,20 @@ export LANG=C.UTF-8
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SECRETS_DIR="/opt/secrets"
 STACK_NAME="estacaoterapia"
+KEEP_VERSIONS=1  # Manter última versão + 1 anterior (rollback)
 
 echo "🚀 [DEPLOY] Estação Terapia Swarm - $(date)"
 echo "======================================"
 
 # ==============================
-# TAG
+# TAG VERSIONADO
 # ==============================
 TIMESTAMP="$(date +%Y%m%d%H%M%S)"
 GIT_HASH="$(git rev-parse --short HEAD 2>/dev/null || echo local)"
 TAG="${TIMESTAMP}-${GIT_HASH}"
 
-echo "📦 Tag: prd-$TAG | Clean: ${CLEAN_DEPLOY:-false} | Force build: ${FORCE_BUILD:-false}"
+echo "📦 Tag: prd-$TAG | Keep versions: $KEEP_VERSIONS"
+echo "   Clean deploy: $CLEAN_DEPLOY | Force build: ${FORCE_BUILD:-false}"
 
 # ==============================
 # 1. PRÉ-REQUISITOS
@@ -37,10 +39,12 @@ done
 echo "✅ Pré-requisitos OK"
 
 # ==============================
-# 2. CLEAN (OPCIONAL)
+# 2. CLEAN DEPLOY (PADRÃO)
 # ==============================
-if [ "${CLEAN_DEPLOY:-false}" = true ]; then
-  echo "🧹 CLEAN_DEPLOY ativo — removendo stack"
+CLEAN_DEPLOY="${CLEAN_DEPLOY:-true}"  # Padrão: true (deploy limpo)
+
+if [ "$CLEAN_DEPLOY" = true ]; then
+  echo "🧹 Removendo stack anterior para deploy limpo..."
   docker stack rm "$STACK_NAME" || true
   sleep 10
 fi
@@ -96,23 +100,69 @@ docker network create --driver overlay --attachable estacaoterapia_backend
 echo "✅ Volumes e rede OK"
 
 # ==============================
-# 5. BUILD IMAGENS
+# 5. BUILD IMAGENS COM VERSIONAMENTO
 # ==============================
+echo ""
+echo "[BUILD] Construindo imagens versionadas..."
+
 build_image() {
   local name="$1"
-
-  echo "📦 Build $name"
+  local image_name="estacaoterapia-$name"
+  
+  echo "   📦 $image_name:prd-$TAG"
   docker build \
     ${FORCE_BUILD:+--no-cache} \
     --platform linux/amd64 \
-    -t "$name:prd-$TAG" \
-    -f "Dockerfile.$name" .
+    -t "$image_name:prd-$TAG" \
+    -f "Dockerfile.$name" . || {
+      echo "   ❌ Erro ao buildar $image_name"
+      exit 1
+    }
+  
+  # Tag como 'latest' também (para fácil referência)
+  docker tag "$image_name:prd-$TAG" "$image_name:latest"
+  echo "   ✅ $image_name:prd-$TAG (também tagged como latest)"
 }
 
 build_image redis
 build_image api
 build_image socket
 build_image pgbouncer
+
+# ==============================
+# 5.1 LIMPEZA DE VERSÕES ANTIGAS
+# ==============================
+echo ""
+echo "[CLEANUP] Removendo versões antigas (mantendo $KEEP_VERSIONS mais recentes)..."
+
+cleanup_old_images() {
+  local prefix="$1"
+  local to_remove
+  
+  # Listar tags prd-* ordenadas, pegar as antigas (skip as KEEP_VERSIONS mais recentes)
+  to_remove=$(docker images --format "{{.Repository}}:{{.Tag}}" | \
+    grep "^$prefix:prd-" | \
+    sort -r | \
+    tail -n +$((KEEP_VERSIONS + 1)))
+  
+  if [ -z "$to_remove" ]; then
+    echo "   ℹ️  Nenhuma versão antiga para remover ($prefix)"
+    return
+  fi
+  
+  echo "$to_remove" | while read -r image; do
+    echo "   🗑️  Removendo $image"
+    docker rmi "$image" 2>/dev/null || true
+  done
+}
+
+for service in redis api socket pgbouncer; do
+  cleanup_old_images "estacaoterapia-$service"
+done
+
+# Remove dangling images
+echo "   🧹 Removendo imagens órfãs..."
+docker image prune -f --filter "dangling=true" 2>/dev/null || true
 
 # ==============================
 # 6. DEPLOY
@@ -151,11 +201,32 @@ for svc in "${services[@]}"; do
 done
 
 # ==============================
-# 8. CLEANUP
+# 8. CLEANUP FINAL + RELATÓRIO
 # ==============================
+echo ""
+echo "[CLEANUP] Finalizando..."
 rm -f "$STACK_TMP"
-docker image prune -f --filter "until=72h"
+
+# Mostrar versões ativas e disponíveis
+echo ""
+echo "📊 VERSÕES DISPONÍVEIS:"
+for service in redis api socket pgbouncer; do
+  versions=$(docker images --format "{{.Repository}}:{{.Tag}}" | grep "^estacaoterapia-$service:prd-" | sort -r | head -5)
+  if [ -n "$versions" ]; then
+    echo ""
+    echo "   estacaoterapia-$service:"
+    echo "$versions" | sed 's/^/     /'
+  fi
+done
 
 echo ""
 echo "🎉 DEPLOY CONCLUÍDO COM SUCESSO!"
-docker service ls --filter name="$STACK_NAME"
+echo ""
+echo "📡 SERVIÇOS EM EXECUÇÃO:"
+docker service ls --filter name="$STACK_NAME" --format "table {{.Name}}\t{{.Replicas}}\t{{.Image}}"
+
+echo ""
+echo "💡 DICAS:"
+echo "   - Ver logs:  docker service logs estacaoterapia_api -f"
+echo "   - Revert:    docker service update --force --image estacaoterapia-api:prd-TAG estacaoterapia_api"
+echo "   - Versões:   docker images | grep estacaoterapia"

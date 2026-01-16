@@ -62,15 +62,11 @@ services:
           - estacaoterapia_redis
           - redis.estacaoterapia_backend
     healthcheck:
-      test:
-        [
-          'CMD-SHELL',
-          'REDIS_PASS=$$(cat /run/secrets/redis_password 2>/dev/null || true); if [ -n "$$REDIS_PASS" ]; then redis-cli -a "$$REDIS_PASS" ping | grep -q PONG; else redis-cli ping | grep -q PONG; fi',
-        ]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 40s
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
     deploy:
       replicas: 1
       placement:
@@ -111,11 +107,11 @@ services:
           - estacaoterapia_pgbouncer
           - pgbouncer.estacaoterapia_backend
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -h localhost -p 6432']
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 30s
+      test: ['CMD-SHELL', 'pg_isready -h localhost -p 6432 || exit 1']
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
     deploy:
       replicas: 1
       placement:
@@ -154,10 +150,10 @@ services:
       - '3333'
     healthcheck:
       test: ['CMD', 'curl', '-f', 'http://localhost:3333/health']
-      interval: 20s
-      timeout: 10s
-      retries: 5
-      start_period: 120s
+      interval: 30s
+      timeout: 15s
+      retries: 3
+      start_period: 180s
     deploy:
       replicas: 1
       placement:
@@ -204,10 +200,10 @@ services:
       API_BASE_URL: 'http://estacaoterapia_api:3333'
     healthcheck:
       test: ['CMD', 'curl', '-f', 'http://localhost:3334/health']
-      interval: 20s
-      timeout: 10s
-      retries: 5
-      start_period: 150s
+      interval: 30s
+      timeout: 15s
+      retries: 3
+      start_period: 180s
     deploy:
       replicas: 1
       placement:
