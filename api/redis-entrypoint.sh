@@ -79,20 +79,39 @@ if [ "${1:-}" = "redis-server" ]; then
 fi
 
 # 🔧 Redis command otimizado Swarm
-exec redis-server \
-  --port "$REDIS_PORT" \
-  $( [ -n "$REDIS_PASSWORD" ] && echo "--requirepass '$REDIS_PASSWORD'" ) \
-  --appendonly yes \
-  --appendfsync everysec \
-  --maxmemory "$REDIS_MAXMEMORY" \
-  --maxmemory-policy "$REDIS_MAXMEMORY_POLICY" \
-  --save 900 1 \
-  --save 300 10 \
-  --save 60 10000 \
-  --tcp-backlog 511 \
-  --timeout 0 \
-  --tcp-keepalive 60 \
-  --protected-mode no \
-  --supervised systemd \
-  --daemonize no \
-  "$@"
+if [ -n "$REDIS_PASSWORD" ]; then
+  exec redis-server \
+    --port "$REDIS_PORT" \
+    --requirepass "$REDIS_PASSWORD" \
+    --appendonly yes \
+    --appendfsync everysec \
+    --maxmemory "$REDIS_MAXMEMORY" \
+    --maxmemory-policy "$REDIS_MAXMEMORY_POLICY" \
+    --save 900 1 \
+    --save 300 10 \
+    --save 60 10000 \
+    --tcp-backlog 511 \
+    --timeout 0 \
+    --tcp-keepalive 60 \
+    --protected-mode no \
+    --supervised systemd \
+    --daemonize no \
+    "$@"
+else
+  exec redis-server \
+    --port "$REDIS_PORT" \
+    --appendonly yes \
+    --appendfsync everysec \
+    --maxmemory "$REDIS_MAXMEMORY" \
+    --maxmemory-policy "$REDIS_MAXMEMORY_POLICY" \
+    --save 900 1 \
+    --save 300 10 \
+    --save 60 10000 \
+    --tcp-backlog 511 \
+    --timeout 0 \
+    --tcp-keepalive 60 \
+    --protected-mode no \
+    --supervised systemd \
+    --daemonize no \
+    "$@"
+fi

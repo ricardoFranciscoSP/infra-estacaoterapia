@@ -51,10 +51,6 @@ services:
   # =====================================
   redis:
     image: estacaoterapia-redis:prd-{{TAG}}
-    command:
-      - redis-server
-      - --appendonly
-      - no
     secrets:
       - redis_password
     volumes:
