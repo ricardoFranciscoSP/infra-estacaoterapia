@@ -49,6 +49,10 @@ COPY src ./src
 # Build do TypeScript (que vai encontrar os tipos do Prisma)
 RUN npx tsc && npm run copy-templates
 
+# Garante que os artefatos gerados do Prisma (src/generated) estejam disponíveis em runtime
+RUN mkdir -p /app/dist/generated \
+    && cp -r /app/src/generated/. /app/dist/generated/
+
 RUN mkdir -p /app/dist/templates \
     && cp -r /app/src/templates/. /app/dist/templates/ 2>/dev/null || true
 
