@@ -94,6 +94,7 @@ RUN apk add --no-cache \
     curl \
     netcat-openbsd \
     postgresql-client \
+    redis \
     && update-ca-certificates \
     && rm -rf /var/cache/apk/*
 
