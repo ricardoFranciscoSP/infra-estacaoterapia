@@ -11,6 +11,15 @@ config();
 const app = express();
 app.use(express.json());
 
+// Evita queda silenciosa por erros não tratados em background
+process.on("unhandledRejection", (reason) => {
+    console.error("❌ [Process] Unhandled Rejection:", reason);
+});
+
+process.on("uncaughtException", (err) => {
+    console.error("❌ [Process] Uncaught Exception:", err);
+});
+
 const PORT = Number(process.env.PORT || 3001);
 const REDIS_HOST = process.env.REDIS_HOST || "estacaoterapia_redis"; // Nome do serviço no Swarm
 const REDIS_PORT = Number(process.env.REDIS_PORT || 6379);

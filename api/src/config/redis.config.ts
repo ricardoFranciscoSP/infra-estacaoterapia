@@ -38,6 +38,75 @@ let redisClient: RedisClientType | null = null;
 let ioredisClient: IORedis | null = null;
 let ioredisConnectionPromise: Promise<IORedis> | null = null;
 
+const DEFAULT_REDIS_HOST = "estacaoterapia_redis";
+const FALLBACK_REDIS_HOSTS = ["redis"];
+const REDIS_HOST_ROTATE_COOLDOWN_MS = 5_000;
+
+const parseHostList = (value?: string) =>
+    (value || "")
+        .split(",")
+        .map(item => item.trim())
+        .filter(Boolean);
+
+const getRedisHostCandidates = () => {
+    const primary = process.env.REDIS_HOST || DEFAULT_REDIS_HOST;
+    const envFallbacks = parseHostList(process.env.REDIS_HOST_FALLBACK);
+    const candidates = [primary, ...envFallbacks, ...FALLBACK_REDIS_HOSTS];
+    return Array.from(new Set(candidates));
+};
+
+let lastRedisHostRotateAt = 0;
+
+const rotateRedisHost = (reason: string) => {
+    if (process.env.REDIS_URL) {
+        return;
+    }
+
+    const now = Date.now();
+    if (now - lastRedisHostRotateAt < REDIS_HOST_ROTATE_COOLDOWN_MS) {
+        return;
+    }
+
+    const candidates = getRedisHostCandidates();
+    if (candidates.length <= 1) {
+        return;
+    }
+
+    const current = process.env.REDIS_HOST || DEFAULT_REDIS_HOST;
+    const currentIndex = candidates.indexOf(current);
+    const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % candidates.length;
+    const nextHost = candidates[nextIndex];
+
+    if (nextHost === current) {
+        return;
+    }
+
+    lastRedisHostRotateAt = now;
+    process.env.REDIS_HOST = nextHost;
+    console.warn(`⚠️ [Redis] Alternando host por DNS (${reason}): ${current} → ${nextHost}`);
+
+    if (redisClient) {
+        try {
+            redisClient.quit().catch(() => { });
+        } catch {
+            // Ignora erro ao fechar cliente
+        }
+        redisClient = null;
+    }
+
+    if (ioredisClient) {
+        try {
+            ioredisClient.removeAllListeners();
+            ioredisClient.disconnect();
+            ioredisClient.quit().catch(() => { });
+        } catch {
+            // Ignora erro ao fechar cliente
+        }
+        ioredisClient = null;
+        ioredisConnectionPromise = null;
+    }
+};
+
 /**
  * Configuração centralizada
  * Redis é obrigatório em production, staging, pre e development para garantir funcionamento dos jobs
@@ -50,7 +119,7 @@ let ioredisConnectionPromise: Promise<IORedis> | null = null;
  * - redis: alias configurado no docker-stack.yml (pode falhar em alguns casos)
  */
 const getRedisConfig = () => ({
-    host: process.env.REDIS_HOST || "estacaoterapia_redis", // Nome do serviço no Swarm
+    host: process.env.REDIS_HOST || DEFAULT_REDIS_HOST, // Nome do serviço no Swarm
     port: Number(process.env.REDIS_PORT || 6379),
     db: Number(process.env.REDIS_DB || 0),
     password: process.env.REDIS_PASSWORD || undefined,
@@ -183,6 +252,9 @@ export const getRedisClient = async (): Promise<RedisClientType> => {
 
     redisClient.on("error", (err) => {
         console.error("❌ [Redis] Erro:", err.message);
+        if (err?.message?.includes("ENOTFOUND")) {
+            rotateRedisHost("ENOTFOUND");
+        }
     });
 
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
@@ -194,6 +266,9 @@ export const getRedisClient = async (): Promise<RedisClientType> => {
         } catch (err) {
             const errorMsg = (err as Error)?.message || String(err);
             console.error(`⚠️ [Redis] Tentativa ${attempt}/${MAX_RETRIES} falhou: ${errorMsg}`);
+            if (errorMsg.includes("ENOTFOUND")) {
+                rotateRedisHost("ENOTFOUND");
+            }
             if (attempt === MAX_RETRIES) {
                 if (REQUIRES_REDIS) {
                     console.error(`🛑 [Redis] Abortando inicialização (${process.env.NODE_ENV} exige Redis)`);
@@ -469,6 +544,7 @@ function createIORedisClient(): IORedis {
             console.error(`   2. Verificar serviço Redis: docker service ls | grep redis`);
             console.error(`   3. Verificar rede Swarm: docker network ls`);
             console.error(`   4. Verificar logs Redis: docker service logs estacaoterapia_redis --tail 20`);
+            rotateRedisHost("ENOTFOUND");
         } else if (errorMsg.includes('ECONNREFUSED')) {
             console.error(`❌ [IORedis] Conexão recusada: Redis não está escutando em ${configHost}:${configPort}`);
             console.error(`   Análise:`);
@@ -634,6 +710,9 @@ export const waitForIORedisReady = async (timeoutMs = 60000): Promise<IORedis> =
             const errorMsg = err?.message || String(err);
             console.error(`❌ [IORedis] Erro durante conexão: ${errorMsg}`);
             console.error(`   Auth: ${passwordInfo}`);
+            if (errorMsg.includes("ENOTFOUND")) {
+                rotateRedisHost("ENOTFOUND");
+            }
             // Limpa listeners
             if (client.removeAllListeners) client.removeAllListeners('ready');
             if (client.removeAllListeners) client.removeAllListeners('error');

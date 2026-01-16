@@ -170,9 +170,8 @@ services:
         failure_action: pause
         monitor: 60s
       restart_policy:
-        condition: on-failure
+        condition: any
         delay: 15s
-        max_attempts: 5
         window: 180s
     networks:
       estacaoterapia_backend:
@@ -222,9 +221,8 @@ services:
         failure_action: pause
         monitor: 60s
       restart_policy:
-        condition: on-failure
+        condition: any
         delay: 15s
-        max_attempts: 5
         window: 180s
     networks:
       estacaoterapia_backend:

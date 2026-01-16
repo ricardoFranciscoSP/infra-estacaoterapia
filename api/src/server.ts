@@ -22,6 +22,15 @@ logInfo("Iniciando servidor", {
     timestamp: new Date().toISOString(),
 });
 
+// Evita queda silenciosa por erros não tratados em background
+process.on("unhandledRejection", (reason) => {
+    console.error("❌ [Process] Unhandled Rejection:", reason);
+});
+
+process.on("uncaughtException", (err) => {
+    console.error("❌ [Process] Uncaught Exception:", err);
+});
+
 // ===============================
 // 🔹 HTTPS Enforcement
 // ===============================
