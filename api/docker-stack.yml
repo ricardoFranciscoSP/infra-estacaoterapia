@@ -146,6 +146,7 @@ services:
       REDIS_HOST: estacaoterapia_redis
       REDIS_PORT: '6379'
       REDIS_DB: '1'
+      REDIS_PASSWORD: 'REdnRHkZLnQpK1rcoKsseO3pX4GNIRR'
     volumes:
       - documentos_data:/app/documentos
     tmpfs:
@@ -203,6 +204,7 @@ services:
       REDIS_HOST: estacaoterapia_redis
       REDIS_PORT: '6379'
       REDIS_DB: '1'
+      REDIS_PASSWORD: 'REdnRHkZLnQpK1rcoKsseO3pX4GNIRR'
       API_BASE_URL: 'http://estacaoterapia_api:3333'
     healthcheck:
       test: ['CMD', 'curl', '-f', 'http://localhost:3334/health']

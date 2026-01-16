@@ -57,17 +57,24 @@ start_api() {
   REDIS_PORT="${REDIS_PORT:-6379}"
   REDIS_DB="${REDIS_DB:-1}"
 
-  # Carrega senha do Redis via Docker Secret, PRIORIZANDO o secret
-  if [ -f /run/secrets/redis_password ]; then
-    REDIS_PASSWORD_FROM_SECRET="$(tr -d '\n\r' < /run/secrets/redis_password)"
-    if [ -n "$REDIS_PASSWORD_FROM_SECRET" ]; then
-      export REDIS_PASSWORD="$REDIS_PASSWORD_FROM_SECRET"
-      echo "🔐 Senha Redis carregada do secret docker (${#REDIS_PASSWORD} chars)"
+  # Prioridade de senha Redis:
+  # 1. REDIS_PASSWORD do environment (docker-stack.yml)
+  # 2. Secret redis_password
+  # 3. Do arquivo .env
+  if [ -z "$REDIS_PASSWORD" ]; then
+    if [ -f /run/secrets/redis_password ]; then
+      REDIS_PASSWORD_FROM_SECRET="$(tr -d '\n\r' < /run/secrets/redis_password)"
+      if [ -n "$REDIS_PASSWORD_FROM_SECRET" ]; then
+        export REDIS_PASSWORD="$REDIS_PASSWORD_FROM_SECRET"
+        echo "🔐 Senha Redis carregada do secret docker (${#REDIS_PASSWORD} chars)"
+      else
+        echo "⚠️  Secret redis_password está vazio, usando do .env se existir"
+      fi
     else
-      echo "⚠️  Secret redis_password está vazio, usando do .env se existir"
+      echo "⚠️  Secret redis_password não encontrado, usando do .env"
     fi
   else
-    echo "⚠️  Secret redis_password não encontrado em /run/secrets/, usando do .env"
+    echo "🔐 Senha Redis definida via environment variable (${#REDIS_PASSWORD} chars)"
   fi
 
   export NODE_ENV PORT \
@@ -117,17 +124,24 @@ start_socket() {
   REDIS_DB="${REDIS_DB:-1}"
   API_BASE_URL="${API_BASE_URL:-http://estacaoterapia_api:3333}"
 
-  # Carrega senha do Redis via Docker Secret, PRIORIZANDO o secret
-  if [ -f /run/secrets/redis_password ]; then
-    REDIS_PASSWORD_FROM_SECRET="$(tr -d '\n\r' < /run/secrets/redis_password)"
-    if [ -n "$REDIS_PASSWORD_FROM_SECRET" ]; then
-      export REDIS_PASSWORD="$REDIS_PASSWORD_FROM_SECRET"
-      echo "🔐 Senha Redis carregada do secret docker (${#REDIS_PASSWORD} chars)"
+  # Prioridade de senha Redis:
+  # 1. REDIS_PASSWORD do environment (docker-stack.yml)
+  # 2. Secret redis_password
+  # 3. Do arquivo .env
+  if [ -z "$REDIS_PASSWORD" ]; then
+    if [ -f /run/secrets/redis_password ]; then
+      REDIS_PASSWORD_FROM_SECRET="$(tr -d '\n\r' < /run/secrets/redis_password)"
+      if [ -n "$REDIS_PASSWORD_FROM_SECRET" ]; then
+        export REDIS_PASSWORD="$REDIS_PASSWORD_FROM_SECRET"
+        echo "🔐 Senha Redis carregada do secret docker (${#REDIS_PASSWORD} chars)"
+      else
+        echo "⚠️  Secret redis_password está vazio, usando do .env se existir"
+      fi
     else
-      echo "⚠️  Secret redis_password está vazio, usando do .env se existir"
+      echo "⚠️  Secret redis_password não encontrado, usando do .env"
     fi
   else
-    echo "⚠️  Secret redis_password não encontrado em /run/secrets/, usando do .env"
+    echo "🔐 Senha Redis definida via environment variable (${#REDIS_PASSWORD} chars)"
   fi
 
   # Exportar todas as variáveis necessárias
