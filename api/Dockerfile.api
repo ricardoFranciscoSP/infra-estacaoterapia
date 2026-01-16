@@ -125,3 +125,6 @@ USER deploy
 
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["node", "dist/server.js"]
+# Limpa filas BullMQ antes de iniciar a aplicação (evita travamentos)
+RUN chmod +x ./cleanup-bullmq-queues.sh || true
+RUN ./cleanup-bullmq-queues.sh || echo "(Ignorando erro ao limpar filas BullMQ, prosseguindo com build)"

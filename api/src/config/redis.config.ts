@@ -609,9 +609,11 @@ export const waitForIORedisReady = async (timeoutMs = 60000): Promise<IORedis> =
     console.log(`   Auth: ${passwordInfo}`);
     console.log(`   Timeout: ${timeoutMs}ms`);
 
-    // Curto-circuito: se já está ready/connect, retorna imediatamente e limpa promises pendentes
+    // Se já está pronto, retorna imediatamente e limpa qualquer promise antiga
     if (client.status === 'ready' || client.status === 'connect') {
-        ioredisConnectionPromise = null;
+        if (ioredisConnectionPromise) {
+            ioredisConnectionPromise = null;
+        }
         try {
             await client.ping();
             console.log('✅ [IORedis] Conexão validada com ping');
@@ -622,14 +624,13 @@ export const waitForIORedisReady = async (timeoutMs = 60000): Promise<IORedis> =
         }
     }
 
-    // Aguarda a promise de conexão existente
+    // Se existe promise, mas o status já está pronto, retorna imediatamente
     if (ioredisConnectionPromise) {
-        // Se o status já for ready/connect, não precisa aguardar a promise
         if (client.status === 'ready' || client.status === 'connect') {
             ioredisConnectionPromise = null;
             return client;
         }
-
+        // Se não está pronto, aguarda a promise, mas adiciona timeout robusto
         try {
             const connectedClient = await Promise.race([
                 ioredisConnectionPromise,
@@ -641,19 +642,23 @@ export const waitForIORedisReady = async (timeoutMs = 60000): Promise<IORedis> =
                         console.error(`   • Host: ${config.host}:${config.port}`);
                         console.error(`   • Auth: ${passwordInfo}`);
                         console.error(`   • Verificar: docker service logs estacaoterapia_redis --tail 50`);
+                        // Limpa listeners para evitar leaks
+                        if (client.removeAllListeners) client.removeAllListeners('ready');
+                        if (client.removeAllListeners) client.removeAllListeners('error');
                         reject(new Error('Timeout aguardando IORedis'));
                     }, timeoutMs)
                 )
             ]);
-
-            // Valida com ping após conexão
             await connectedClient.ping();
             console.log('✅ [IORedis] Conexão estabelecida e validada');
             return connectedClient;
         } catch (err) {
             console.error('❌ [IORedis] Erro ao conectar ou validar:', err);
-            // Se a promise falhou, tenta novamente
             ioredisConnectionPromise = null;
+            // Limpa listeners para evitar leaks
+            if (client.removeAllListeners) client.removeAllListeners('ready');
+            if (client.removeAllListeners) client.removeAllListeners('error');
+            // Tenta novo ciclo
             const newClient = getIORedisClient();
             if (newClient.status === 'ready' || newClient.status === 'connect') {
                 try {
@@ -676,17 +681,9 @@ export const waitForIORedisReady = async (timeoutMs = 60000): Promise<IORedis> =
             console.error(`   • Port: ${config.port}`);
             console.error(`   • DB: ${config.db}`);
             console.error(`   • Auth: ${passwordInfo}`);
-            console.error(`   Comandos para diagnosticar:`);
-            console.error(`   1. Verificar se Redis está rodando:`);
-            console.error(`      docker service ls | grep redis`);
-            console.error(`   2. Verificar logs do Redis:`);
-            console.error(`      docker service logs estacaoterapia_redis --tail 50`);
-            console.error(`   3. Testar DNS do container:`);
-            console.error(`      docker exec <socket-container> nslookup ${config.host}`);
-            console.error(`   4. Verificar rede Swarm:`);
-            console.error(`      docker network ls | grep estacaoterapia`);
-            console.error(`   5. Se Redis exigir senha:`);
-            console.error(`      docker exec <redis-container> redis-cli CONFIG GET requirepass`);
+            // Limpa listeners para evitar leaks
+            if (client.removeAllListeners) client.removeAllListeners('ready');
+            if (client.removeAllListeners) client.removeAllListeners('error');
             reject(new Error('Timeout aguardando IORedis conectar'));
         }, timeoutMs);
 
@@ -694,9 +691,11 @@ export const waitForIORedisReady = async (timeoutMs = 60000): Promise<IORedis> =
             clearTimeout(timeout);
             if (ioredisClient && ioredisClient.status === 'ready') {
                 try {
-                    // Valida com ping antes de resolver
                     await ioredisClient.ping();
                     console.log('✅ [IORedis] Conexão pronta e validada com ping');
+                    // Limpa listeners
+                    if (client.removeAllListeners) client.removeAllListeners('ready');
+                    if (client.removeAllListeners) client.removeAllListeners('error');
                     resolve(ioredisClient);
                 } catch (pingErr) {
                     console.error('❌ [IORedis] Ping falhou após ready:', pingErr);
@@ -712,15 +711,19 @@ export const waitForIORedisReady = async (timeoutMs = 60000): Promise<IORedis> =
             const errorMsg = err?.message || String(err);
             console.error(`❌ [IORedis] Erro durante conexão: ${errorMsg}`);
             console.error(`   Auth: ${passwordInfo}`);
+            // Limpa listeners
+            if (client.removeAllListeners) client.removeAllListeners('ready');
+            if (client.removeAllListeners) client.removeAllListeners('error');
             reject(err);
         };
 
         if (client.status === 'ready') {
             clearTimeout(timeout);
-            // Testa com ping antes de resolver
             client.ping()
                 .then(() => {
                     console.log('✅ [IORedis] Cliente pronto e respondendo');
+                    if (client.removeAllListeners) client.removeAllListeners('ready');
+                    if (client.removeAllListeners) client.removeAllListeners('error');
                     resolve(client);
                 })
                 .catch((pingErr) => {
