@@ -25,8 +25,8 @@ echo "📦 Tag: prd-$TAG | Clean: ${CLEAN_DEPLOY:-false} | Force build: ${FORCE_
 # ==============================
 command -v docker >/dev/null || { echo "❌ Docker não encontrado"; exit 1; }
 
-SWARM_STATE="$(docker info --format '{{.Swarm.LocalNodeState}}' || echo inactive)"
-[ "$SWARM_STATE" = "active" ] || { echo "❌ Swarm inativo"; exit 1; }
+SWARM_STATE="$(docker info --format '{{.Swarm.LocalNodeState}}' 2>/dev/null || echo inactive)"
+[ "$SWARM_STATE" = "active" ] || { echo "❌ Docker Swarm inativo"; exit 1; }
 
 [ -f docker-stack.yml ] || { echo "❌ docker-stack.yml não encontrado"; exit 1; }
 
@@ -37,50 +37,51 @@ done
 echo "✅ Pré-requisitos OK"
 
 # ==============================
-# 2. CLEAN OPCIONAL
+# 2. CLEAN (OPCIONAL)
 # ==============================
 if [ "${CLEAN_DEPLOY:-false}" = true ]; then
-  echo "🧹 Limpando stack..."
+  echo "🧹 CLEAN_DEPLOY ativo — removendo stack"
   docker stack rm "$STACK_NAME" || true
-  sleep 8
+  sleep 10
 fi
 
 # ==============================
-# 3. SECRETS (IDEMPOTENTE)
+# 3. SECRETS (PRODUÇÃO SAFE)
 # ==============================
-update_secret() {
+create_secret_if_missing() {
   local name="$1" file="$2"
 
-  local new_hash
-  new_hash="$(sha256sum "$file" | awk '{print $1}')"
-
   if docker secret inspect "$name" >/dev/null 2>&1; then
-    local old_hash
-    old_hash="$(docker secret inspect "$name" --format '{{.Spec.Labels.hash}}' || true)"
-
-    if [ "$new_hash" = "$old_hash" ]; then
-      echo "ℹ️  $name inalterado"
-      return
-    fi
-
-    docker secret rm "$name"
+    echo "ℹ️  Secret $name já existe (mantido)"
+    return
   fi
 
-  docker secret create \
-    --label hash="$new_hash" \
-    "$name" "$file"
-
-  echo "✅ Secret $name atualizado"
+  docker secret create "$name" "$file"
+  echo "✅ Secret $name criado"
 }
 
-update_secret postgres_env "$SECRETS_DIR/postgres.env"
-update_secret estacao_api_env "$SECRETS_DIR/estacao_api.env"
-update_secret estacao_socket_env "$SECRETS_DIR/estacao_socket.env"
-update_secret pgbouncer.ini "/opt/secrets/pgbouncer/pgbouncer.ini"
-update_secret userlist.txt "/opt/secrets/pgbouncer/userlist.txt"
+create_secret_if_missing postgres_env "$SECRETS_DIR/postgres.env"
+create_secret_if_missing estacao_api_env "$SECRETS_DIR/estacao_api.env"
+create_secret_if_missing estacao_socket_env "$SECRETS_DIR/estacao_socket.env"
+create_secret_if_missing pgbouncer.ini "/opt/secrets/pgbouncer/pgbouncer.ini"
+create_secret_if_missing userlist.txt "/opt/secrets/pgbouncer/userlist.txt"
 
-REDIS_PASS="$(grep '^REDIS_PASSWORD=' "$SECRETS_DIR/estacao_api.env" | cut -d= -f2-)"
-[ -n "$REDIS_PASS" ] && printf '%s' "$REDIS_PASS" | update_secret redis_password /dev/stdin
+# ==============================
+# Redis password (especial)
+# ==============================
+if ! docker secret inspect redis_password >/dev/null 2>&1; then
+  REDIS_PASS="$(grep -E '^REDIS_PASSWORD=' "$SECRETS_DIR/estacao_api.env" | cut -d= -f2- | tr -d '\r')"
+
+  if [ -z "$REDIS_PASS" ]; then
+    echo "❌ REDIS_PASSWORD vazio em estacao_api.env"
+    exit 1
+  fi
+
+  printf '%s' "$REDIS_PASS" | docker secret create redis_password -
+  echo "✅ Secret redis_password criado"
+else
+  echo "ℹ️  Secret redis_password já existe (mantido)"
+fi
 
 # ==============================
 # 4. VOLUMES + REDE
@@ -92,8 +93,10 @@ done
 docker network inspect estacaoterapia_backend >/dev/null 2>&1 || \
 docker network create --driver overlay --attachable estacaoterapia_backend
 
+echo "✅ Volumes e rede OK"
+
 # ==============================
-# 5. BUILD
+# 5. BUILD IMAGENS
 # ==============================
 build_image() {
   local name="$1"
@@ -118,25 +121,33 @@ STACK_TMP="docker-stack-$TAG.yml"
 cp docker-stack.yml "$STACK_TMP"
 sed -i "s/{{TAG}}/$TAG/g" "$STACK_TMP"
 
+echo "📡 Deploy stack $STACK_NAME"
 docker stack deploy \
   --compose-file "$STACK_TMP" \
   --resolve-image always \
   "$STACK_NAME"
 
 # ==============================
-# 7. HEALTH
+# 7. HEALTH CHECK
 # ==============================
 echo "⏳ Aguardando serviços..."
+
 services=(postgres pgbouncer redis api socket-server)
 
 for svc in "${services[@]}"; do
   full="${STACK_NAME}_${svc}"
+  echo "🔄 $full"
+
   for i in {1..30}; do
     replicas="$(docker service ls --format '{{.Name}} {{.Replicas}}' | awk -v s="$full" '$1==s {print $2}')"
-    [ "${replicas%%/*}" = "${replicas##*/}" ] && break
+    running="${replicas%%/*}"
+    desired="${replicas##*/}"
+
+    [ "$running" = "$desired" ] && break
     sleep 2
   done
-  echo "✅ $svc pronto ($replicas)"
+
+  echo "✅ $svc OK ($replicas)"
 done
 
 # ==============================
@@ -146,5 +157,5 @@ rm -f "$STACK_TMP"
 docker image prune -f --filter "until=72h"
 
 echo ""
-echo "🎉 DEPLOY CONCLUÍDO: prd-$TAG"
+echo "🎉 DEPLOY CONCLUÍDO COM SUCESSO!"
 docker service ls --filter name="$STACK_NAME"
