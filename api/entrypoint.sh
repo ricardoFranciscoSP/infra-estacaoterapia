@@ -168,6 +168,9 @@ start_api() {
     REDIS_HOST REDIS_PORT REDIS_DB REDIS_PASSWORD \
     JWT_SECRET CORS_ORIGIN
 
+  # Remover espaços em branco acidentais
+  POSTGRES_USER="$(echo -n "$POSTGRES_USER" | xargs)"
+  POSTGRES_PASSWORD="$(echo -n "$POSTGRES_PASSWORD" | xargs)"
   if [ -n "$POSTGRES_USER" ] && [ -n "$POSTGRES_PASSWORD" ]; then
     export DATABASE_URL="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${PG_HOST}:${PG_PORT}/${POSTGRES_DB}?schema=public"
   elif [ -n "$DATABASE_URL" ]; then
@@ -247,6 +250,9 @@ start_socket() {
     JWT_SECRET CORS_ORIGIN \
     API_BASE_URL
 
+  # Remover espaços em branco acidentais
+  POSTGRES_USER="$(echo -n "$POSTGRES_USER" | xargs)"
+  POSTGRES_PASSWORD="$(echo -n "$POSTGRES_PASSWORD" | xargs)"
   if [ -n "$POSTGRES_USER" ] && [ -n "$POSTGRES_PASSWORD" ]; then
     export DATABASE_URL="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${PG_HOST}:${PG_PORT}/${POSTGRES_DB}?schema=public"
   elif [ -n "$DATABASE_URL" ]; then
