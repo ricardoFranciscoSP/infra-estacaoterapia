@@ -159,6 +159,12 @@ function getFileTypeInfo(name?: string, url?: string): FileTypeInfo {
   }
 }
 
+type PreviewState = {
+  kind: "image" | "pdf" | "doc" | "other";
+  url: string | null;
+  contentType?: string;
+};
+
 function calcularNota(consultas: Consulta[]) {
   const realizadas = consultas?.filter((c) => c.Status === "Realizada" && typeof c.Estrelas === "number") || [];
   if (realizadas.length === 0) return 0;
@@ -191,95 +197,87 @@ function DocumentoModal({
   const [finalUrl, setFinalUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [preview, setPreview] = useState<PreviewState>({ kind: "other", url: null });
   const [previewLoading, setPreviewLoading] = useState(false);
   const [docxViewer, setDocxViewer] = useState<"office" | "google">("office");
+  const [docViewerLoaded, setDocViewerLoaded] = useState(false);
+  const viewerTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    const loadUrl = async () => {
-      if (!open || !doc) {
-        setFinalUrl(null);
-        setError(null);
-        setPreviewUrl(null);
-        setDocxViewer("office");
+    if (!open || !doc) {
+      setFinalUrl(null);
+      setError(null);
+      setPreview({ kind: "other", url: null });
+      setDocxViewer("office");
+      setDocViewerLoaded(false);
+      return;
+    }
+
+    let objectUrl: string | null = null;
+    const controller = new AbortController();
+
+    const loadPreview = async () => {
+      setError(null);
+      setPreview({ kind: "other", url: null });
+
+      const fileInfo = getFileTypeInfo(doc.nome, doc.url);
+      const isImageType = ["png", "jpg", "jpeg", "gif", "webp", "svg"].includes(fileInfo.ext);
+      const isPdfType = fileInfo.ext === "pdf";
+      const isDocType = ["doc", "docx"].includes(fileInfo.ext);
+
+      if (doc.id && (isImageType || isPdfType)) {
+        try {
+          setPreviewLoading(true);
+          const inlineUrl = `${getApiUrl()}/files/psychologist/documents/${doc.id}/inline`;
+          const response = await fetch(inlineUrl, { signal: controller.signal, credentials: "include" });
+          if (!response.ok) {
+            throw new Error(`Falha ao carregar documento (${response.status})`);
+          }
+          const contentType = response.headers.get("content-type") || "";
+          const blob = await response.blob();
+          objectUrl = URL.createObjectURL(blob);
+          setPreview({
+            kind: contentType.startsWith("image/") ? "image" : "pdf",
+            url: objectUrl,
+            contentType,
+          });
+          return;
+        } catch (err) {
+          if ((err as { name?: string }).name !== "AbortError") {
+            console.error("[DocumentoModal] Erro ao carregar inline:", err);
+            setError("Erro ao carregar o documento para visualização.");
+          }
+        } finally {
+          setPreviewLoading(false);
+        }
+      }
+
+      if (isDocType) {
+        const urlCandidate = doc.url || null;
+        const expiresAt = doc.expiresAt || null;
+        const needsRefresh = !!doc.id && (!urlCandidate || (expiresAt ? documentsFilesService().isUrlExpired(expiresAt) : false));
+        if (needsRefresh && doc.id) {
+          try {
+            setLoading(true);
+            const resp = await documentsFilesService().getDocument(doc.id);
+            setFinalUrl(resp.data.url);
+          } catch (e) {
+            console.error("[DocumentoModal] Erro ao obter URL assinada:", e);
+            setError("Não foi possível carregar a URL do documento.");
+          } finally {
+            setLoading(false);
+          }
+        } else {
+          setFinalUrl(urlCandidate);
+        }
+        setPreview({ kind: "doc", url: null });
         return;
       }
 
-      setError(null);
-      // Se já veio uma URL e não há expiração conhecida, usa imediatamente
-      const urlCandidate = doc.url || null;
-      const expiresAt = doc.expiresAt || null;
-
-      // Se temos id e a URL está ausente ou expirada, busca uma nova URL
-      const needsRefresh = !!doc.id && (!urlCandidate || (expiresAt ? documentsFilesService().isUrlExpired(expiresAt) : false));
-
-      if (needsRefresh && doc.id) {
-        try {
-          setLoading(true);
-          const resp = await documentsFilesService().getDocument(doc.id);
-          setFinalUrl(resp.data.url);
-          return;
-        } catch (e) {
-          console.error('[DocumentoModal] Erro ao obter URL assinada:', e);
-          setError('Não foi possível carregar a URL do documento.');
-        } finally {
-          setLoading(false);
-        }
-      }
-
-      // Fallback: usa a URL recebida
-      setFinalUrl(urlCandidate);
+      setPreview({ kind: "other", url: null });
     };
 
-    loadUrl();
-  }, [open, doc]);
-
-  useEffect(() => {
-    if (!open || !doc) return;
-
-    const urlCandidate = finalUrl || doc.url || "";
-    const urlLower = urlCandidate.toLowerCase();
-    const nameLower = (doc.nome || "").toLowerCase();
-    const endsWithExt = (s: string, ext: string) => new RegExp(`\\.${ext}(\\?|$)`, "i").test(s);
-    const isPdfCandidate = endsWithExt(urlLower, "pdf") || endsWithExt(nameLower, "pdf");
-    const isImageCandidate = ["png", "jpg", "jpeg", "gif", "webp", "svg"].some((ext) => endsWithExt(urlLower, ext) || endsWithExt(nameLower, ext));
-    const isDocCandidate = ["doc", "docx"].some((ext) => endsWithExt(urlLower, ext) || endsWithExt(nameLower, ext));
-
-    const urlToPreview = urlCandidate || null;
-    if (!urlToPreview || isDocCandidate) {
-      setPreviewUrl(null);
-      return;
-    }
-
-    if (!isPdfCandidate && !isImageCandidate) {
-      setPreviewUrl(null);
-      return;
-    }
-
-    const controller = new AbortController();
-    let objectUrl: string | null = null;
-
-    const fetchPreview = async () => {
-      try {
-        setPreviewLoading(true);
-        const response = await fetch(urlToPreview, { signal: controller.signal });
-        if (!response.ok) {
-          throw new Error(`Falha ao carregar arquivo (${response.status})`);
-        }
-        const blob = await response.blob();
-        objectUrl = URL.createObjectURL(blob);
-        setPreviewUrl(objectUrl);
-      } catch (err) {
-        if ((err as Error).name === "AbortError") return;
-        console.error("[DocumentoModal] Erro ao gerar pré-visualização:", err);
-        setPreviewUrl(null);
-        setError("Não foi possível pré-visualizar o documento.");
-      } finally {
-        setPreviewLoading(false);
-      }
-    };
-
-    fetchPreview();
+    loadPreview();
 
     return () => {
       controller.abort();
@@ -287,20 +285,41 @@ function DocumentoModal({
         URL.revokeObjectURL(objectUrl);
       }
     };
-  }, [open, doc, finalUrl]);
+  }, [open, doc]);
+
+  useEffect(() => {
+    if (viewerTimeoutRef.current) {
+      clearTimeout(viewerTimeoutRef.current);
+      viewerTimeoutRef.current = null;
+    }
+
+    if (!open || !doc || preview.kind !== "doc") return;
+
+    setDocViewerLoaded(false);
+    if (docxViewer === "office") {
+      viewerTimeoutRef.current = setTimeout(() => {
+        setDocxViewer("google");
+      }, 5000);
+    }
+
+    return () => {
+      if (viewerTimeoutRef.current) {
+        clearTimeout(viewerTimeoutRef.current);
+        viewerTimeoutRef.current = null;
+      }
+    };
+  }, [open, doc, preview.kind, docxViewer]);
 
   if (!open || !doc) return null;
 
   const urlStr = (finalUrl || doc.url || '').toLowerCase();
   const nameStr = (doc.nome || '').toLowerCase();
   const endsWithExt = (s: string, ext: string) => new RegExp(`\\.${ext}(\\?|$)`, 'i').test(s);
-  const isPDF = endsWithExt(urlStr, 'pdf') || endsWithExt(nameStr, 'pdf');
-  const isImage = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].some((ext) => endsWithExt(urlStr, ext) || endsWithExt(nameStr, ext));
   const isDoc = ['doc', 'docx'].some((ext) => endsWithExt(urlStr, ext) || endsWithExt(nameStr, ext));
   const sourceUrl = finalUrl || doc.url || "";
   const officeViewerUrl = isDoc && sourceUrl ? `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(sourceUrl)}` : undefined;
   const googleViewerUrl = isDoc && sourceUrl ? `https://docs.google.com/gview?embedded=1&url=${encodeURIComponent(sourceUrl)}` : undefined;
-  const previewSource = previewUrl || finalUrl || doc.url || "";
+  const previewSource = preview.url || finalUrl || doc.url || "";
   const fileType = getFileTypeInfo(doc.nome, doc.url);
 
   return (
@@ -340,13 +359,13 @@ function DocumentoModal({
               <p className="text-sm font-semibold">Erro ao carregar documento</p>
               <p className="text-xs text-gray-500">{error}</p>
             </div>
-          ) : isPDF && previewSource ? (
+          ) : preview.kind === "pdf" && previewSource ? (
             <iframe
               src={previewSource}
               title="Documento PDF"
               className="w-full h-full min-h-[60vh] border rounded-lg"
             />
-          ) : isImage && previewSource ? (
+          ) : preview.kind === "image" && previewSource ? (
             <div className="flex items-center justify-center">
               <img
                 src={previewSource}
@@ -355,15 +374,16 @@ function DocumentoModal({
                 onError={() => setError('Erro ao carregar a imagem. O arquivo pode não estar disponível.')}
               />
             </div>
-          ) : isDoc && (officeViewerUrl || googleViewerUrl) ? (
+          ) : preview.kind === "doc" && (officeViewerUrl || googleViewerUrl) ? (
             <div className="flex flex-col gap-3">
               <iframe
                 src={docxViewer === "google" ? googleViewerUrl : officeViewerUrl}
                 title="Documento do Word"
                 className="w-full h-full min-h-[60vh] border rounded-lg"
+                onLoad={() => setDocViewerLoaded(true)}
               />
               <p className="text-xs text-gray-500">
-                Pré-visualização fornecida pelo Microsoft Office Viewer. Caso não carregue, utilize o botão Baixar abaixo.
+                Pré-visualização fornecida pelo Microsoft Office Viewer. Caso não carregue, o sistema alterna automaticamente para o Google Viewer.
               </p>
               <div className="flex items-center gap-3">
                 <button
@@ -384,6 +404,9 @@ function DocumentoModal({
                 >
                   Google Viewer (fallback)
                 </button>
+                {!docViewerLoaded && docxViewer === "office" && (
+                  <span className="text-xs text-gray-500">Tentando Office Viewer...</span>
+                )}
               </div>
             </div>
           ) : (
