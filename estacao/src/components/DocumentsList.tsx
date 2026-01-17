@@ -8,6 +8,7 @@
  */
 
 import { useDocuments } from '@/hooks/useDocuments';
+import { useUser } from '@/contexts/UserContext';
 import { useState } from 'react';
 
 interface DocumentsListProps {
@@ -15,6 +16,18 @@ interface DocumentsListProps {
 }
 
 export function DocumentsList({ profileId }: DocumentsListProps) {
+        const { user } = useUser();
+        const allowedRoles = ['Admin', 'Management', 'Finance'];
+        const isOwner = user?.id === profileId;
+        const isAllowedRole = allowedRoles.includes(user?.role ?? '');
+
+        if (!isOwner && !isAllowedRole) {
+            return (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-yellow-800">
+                    Você não tem permissão para visualizar esses documentos.
+                </div>
+            );
+        }
     const {
         documents,
         loading,

@@ -250,15 +250,17 @@ export class UserService implements IUserService {
             where: { Id: id },
             include: {
                 Images: true,
+                Address: true,
                 ProfessionalProfiles: {
                     include: { Documents: true }
-                }
+                },
+                Documents: true,
             }
         });
         if (!user) throw new Error('Usuário não encontrado');
-        const publicBucket = STORAGE_BUCKET_PUBLIC; // imagens públicas (avatars)
-        // Remove imagens do usuário
+        const publicBucket = STORAGE_BUCKET_PUBLIC;
         const storageClient = (supabaseAdmin || supabase).storage;
+        // Remove imagens do usuário do storage e banco
         for (const img of user.Images) {
             if (img.Url) {
                 const fileName = img.Url.split('/').pop();
@@ -267,12 +269,23 @@ export class UserService implements IUserService {
                     await storageClient.from(publicBucket).remove([filePath]);
                 }
             }
+            await prisma.image.delete({ where: { Id: img.Id } });
         }
-        // Se for psicólogo, remove documentos do storage
+        // Remove documentos do usuário do storage e banco
         let deletedDocuments: string[] = [];
-        if (user.Role === ROLES.Psychologist && user.ProfessionalProfiles) {
-            // Para buckets privados, sempre usar supabaseAdmin
-            const documentsStorageClient = supabaseAdmin?.storage || supabase.storage;
+        for (const doc of user.Documents) {
+            if (doc.Url) {
+                deletedDocuments.push(doc.Url);
+                const fileName = doc.Url.split('/').pop();
+                if (fileName) {
+                    const filePath = `documents/${id}/${fileName}`;
+                    await storageClient.from(STORAGE_BUCKET).remove([filePath]);
+                }
+            }
+            await prisma.document.delete({ where: { Id: doc.Id } });
+        }
+        // Remove documentos de perfis profissionais do storage e banco
+        if (user.ProfessionalProfiles) {
             for (const profile of user.ProfessionalProfiles) {
                 for (const doc of profile.Documents) {
                     if (doc.Url) {
@@ -280,18 +293,35 @@ export class UserService implements IUserService {
                         const fileName = doc.Url.split('/').pop();
                         if (fileName) {
                             const filePath = `documents/${id}/${fileName}`;
-                            // documentos em bucket privado
-                            await documentsStorageClient.from(STORAGE_BUCKET).remove([filePath]);
+                            await storageClient.from(STORAGE_BUCKET).remove([filePath]);
                         }
                     }
+                    await prisma.document.delete({ where: { Id: doc.Id } });
                 }
             }
         }
-        // Soft delete: atualiza deletedAt
+        // Remove endereços do usuário
+        for (const addr of user.Address) {
+            await prisma.address.delete({ where: { Id: addr.Id } });
+        }
+        // Soft delete: atualiza deletedAt, mantém histórico de consultas e financeiro
         const deletedUser = await prisma.user.update({
             where: { Id: id },
             data: { deletedAt: new Date(), Status: 'Deletado' }
         });
+
+        // Auditoria: registra ação de exclusão
+        await prisma.adminActionLog.create({
+            data: {
+                UserId: id,
+                ActionType: 'Delete',
+                Module: 'Users',
+                Description: `Usuário deletado. Imagens, documentos e endereços removidos.`,
+                Status: 'Sucesso',
+                Metadata: JSON.stringify({ deletedImages: user.Images.map((img: { Url: string }) => img.Url), deletedDocuments }),
+            }
+        });
+
         const { Password, ...sanitizedUser } = deletedUser;
         return {
             user: sanitizedUser,
@@ -543,7 +573,7 @@ export class UserService implements IUserService {
 
         const nomePlano = planoSelecionado?.Nome || planoSelecionado?.Tipo || '';
         const tipoPlano = planoSelecionado?.Tipo || '';
-        
+
         // Determina o template baseado no tipo do plano
         const templateName = getTemplateContratoByTipoPlano(tipoPlano);
         const templatePath = path.resolve(__dirname, './../templates', templateName);
@@ -553,7 +583,7 @@ export class UserService implements IUserService {
         } catch (err) {
             throw new Error(`Erro ao carregar template do contrato: ${templatePath}`);
         }
-        
+
         // Processa o Preco corretamente (pode ser number ou string)
         let precoNumero: number = 0;
         if (planoSelecionado?.Preco !== null && planoSelecionado?.Preco !== undefined) {
@@ -565,11 +595,11 @@ export class UserService implements IUserService {
                 precoNumero = preco;
             }
         }
-        
+
         const valorPlano = precoNumero >= 0 && !isNaN(precoNumero)
-            ? precoNumero.toLocaleString('pt-BR', { 
-                minimumFractionDigits: 2, 
-                maximumFractionDigits: 2 
+            ? precoNumero.toLocaleString('pt-BR', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
             })
             : '0,00';
 
@@ -585,10 +615,10 @@ export class UserService implements IUserService {
 
         // Função helper para converter número em extenso
         const numeroPorExtenso = (num: number): string => {
-            const unidades = ['zero', 'um', 'dois', 'três', 'quatro', 'cinco', 'seis', 'sete', 'oito', 'nove', 'dez', 
-                             'onze', 'doze', 'treze', 'quatorze', 'quinze', 'dezesseis', 'dezessete', 'dezoito', 'dezenove'];
+            const unidades = ['zero', 'um', 'dois', 'três', 'quatro', 'cinco', 'seis', 'sete', 'oito', 'nove', 'dez',
+                'onze', 'doze', 'treze', 'quatorze', 'quinze', 'dezesseis', 'dezessete', 'dezoito', 'dezenove'];
             const dezenas = ['', '', 'vinte', 'trinta', 'quarenta', 'cinquenta', 'sessenta', 'setenta', 'oitenta', 'noventa'];
-            
+
             if (num < 20) return unidades[num];
             if (num < 100) {
                 const dez = Math.floor(num / 10);
@@ -839,7 +869,7 @@ export class UserService implements IUserService {
             // Busca TODOS os planos do usuário, incluindo cancelados
             // Isso permite que consultas sejam usadas mesmo com plano cancelado, desde que o ciclo esteja válido
             const planos = await prisma.assinaturaPlano.findMany({
-                where: { 
+                where: {
                     UserId: userId,
                     // Busca planos Ativos, Cancelados ou AguardandoPagamento
                     // Planos cancelados podem ter ciclos válidos ainda
@@ -880,7 +910,7 @@ export class UserService implements IUserService {
                 }
             });
             if (!planos || planos.length === 0) return null;
-            
+
             // Transforma Descricao em array de strings para cada plano
             type PlanoComInclude = Prisma.AssinaturaPlanoGetPayload<{
                 include: {
@@ -914,12 +944,12 @@ export class UserService implements IUserService {
             // Função auxiliar para converter JsonValue para string[]
             const converterDescricaoParaArray = (descricao: Prisma.JsonValue): string[] => {
                 if (!descricao) return [];
-                
+
                 // Se já é um array de strings
                 if (Array.isArray(descricao)) {
                     return descricao.filter((item): item is string => typeof item === 'string');
                 }
-                
+
                 // Se é string, tenta parsear como JSON
                 if (typeof descricao === 'string') {
                     try {
@@ -932,12 +962,12 @@ export class UserService implements IUserService {
                         return [descricao];
                     }
                 }
-                
+
                 // Se é objeto, converte para string
                 if (typeof descricao === 'object' && descricao !== null) {
                     return [JSON.stringify(descricao)];
                 }
-                
+
                 return [];
             };
 
@@ -985,7 +1015,7 @@ export class UserService implements IUserService {
 
             const planosComDescricao: PlanoRetorno[] = planos.map((plano: PlanoComInclude): PlanoRetorno => {
                 if (!plano.PlanoAssinatura) {
-                    return { 
+                    return {
                         Id: plano.Id,
                         UserId: plano.UserId,
                         PlanoAssinaturaId: plano.PlanoAssinaturaId,
@@ -1011,13 +1041,13 @@ export class UserService implements IUserService {
                         })),
                         ControleConsultaMensal: Array.isArray(plano.ControleConsultaMensal) ? plano.ControleConsultaMensal : [],
                         Financeiro: Array.isArray(plano.Financeiro) ? plano.Financeiro : [],
-                        PlanoAssinatura: null 
+                        PlanoAssinatura: null
                     };
                 }
-                
+
                 const planoAssinatura = plano.PlanoAssinatura;
                 const descricaoArray = converterDescricaoParaArray(planoAssinatura.Descricao);
-                
+
                 return {
                     Id: plano.Id,
                     UserId: plano.UserId,
@@ -1060,7 +1090,7 @@ export class UserService implements IUserService {
                     }
                 };
             });
-            
+
             return planosComDescricao;
         } catch (error) {
             console.error('Erro ao buscar planos do usuário:', error);

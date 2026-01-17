@@ -190,13 +190,20 @@ const ModalPerfilPsicologo: React.FC<ModalPerfilPsicologoProps> = ({ open, onClo
               )}
             </div>
 
-            <div className="mt-6 flex justify-center">
+            <div className="mt-6 flex flex-col gap-3 items-center">
               <button
                 className="w-[345px] h-12 rounded-[8px] border border-[#6D75C0] text-[#6D75C0] font-semibold text-base flex items-center justify-center px-6 cursor-pointer hover:bg-[#f2f4fd] transition"
                 onClick={onClose}
                 type="button"
               >
                 Fechar
+              </button>
+              <button
+                className="w-[345px] h-12 rounded-[8px] border border-red-500 text-red-500 font-semibold text-base flex items-center justify-center px-6 cursor-pointer hover:bg-red-50 transition"
+                onClick={() => setShowDeleteConfirm(true)}
+                type="button"
+              >
+                Deletar usuário
               </button>
             </div>
           </div>
@@ -333,7 +340,7 @@ const ModalPerfilPsicologo: React.FC<ModalPerfilPsicologoProps> = ({ open, onClo
               )}
             </div>
 
-            <div className="mt-6 flex justify-center">
+            <div className="mt-6 flex flex-col gap-3 items-center">
               <button
                 className="w-full h-11 rounded-[8px] border border-[#6D75C0] text-[#6D75C0] font-semibold text-base flex items-center justify-center px-6 cursor-pointer hover:bg-[#f2f4fd] transition"
                 onClick={onClose}
@@ -341,7 +348,50 @@ const ModalPerfilPsicologo: React.FC<ModalPerfilPsicologoProps> = ({ open, onClo
               >
                 Fechar
               </button>
+              <button
+                className="w-full h-11 rounded-[8px] border border-red-500 text-red-500 font-semibold text-base flex items-center justify-center px-6 cursor-pointer hover:bg-red-50 transition"
+                onClick={() => setShowDeleteConfirm(true)}
+                type="button"
+              >
+                Deletar usuário
+              </button>
             </div>
+          // Adiciona estado e modal de confirmação
+          import { useDeleteUser } from "@/hooks/user/userHook";
+          const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
+          const { mutate: deleteUser, isPending: isDeleting } = useDeleteUser();
+
+          const handleDeleteUser = () => {
+            if (psicologo?.Id) {
+              deleteUser(psicologo.Id);
+              setShowDeleteConfirm(false);
+              onClose();
+            }
+          };
+
+          {showDeleteConfirm && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black bg-opacity-40">
+              <div className="bg-white rounded-lg shadow-lg p-8 flex flex-col items-center">
+                <span className="text-lg font-bold mb-4 text-red-600">Tem certeza que deseja deletar este usuário?</span>
+                <span className="text-sm text-gray-700 mb-6">Esta ação irá remover todos os dados do usuário, exceto o histórico de consultas.</span>
+                <div className="flex gap-4">
+                  <button
+                    className="px-6 py-2 rounded bg-gray-200 text-gray-800 font-semibold hover:bg-gray-300"
+                    onClick={() => setShowDeleteConfirm(false)}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    className="px-6 py-2 rounded bg-red-500 text-white font-semibold hover:bg-red-600"
+                    onClick={handleDeleteUser}
+                    disabled={isDeleting}
+                  >
+                    {isDeleting ? "Deletando..." : "Confirmar exclusão"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
           </div>
         </div>
       </div>

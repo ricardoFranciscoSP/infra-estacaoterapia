@@ -278,7 +278,7 @@ export const UploadModal: React.FC<Props> = ({ open, onClose, docType, onUpload 
                 ref={inputRef}
                 type="file"
                 className="hidden"
-                accept="image/*"
+                accept=".pdf,.docx,.ppt,.xls,.xlsx,.jpg,.jpeg,.png"
                 onChange={handleFileChange}
               />
               <input
@@ -293,7 +293,7 @@ export const UploadModal: React.FC<Props> = ({ open, onClose, docType, onUpload 
                 ref={documentInputRef}
                 type="file"
                 className="hidden"
-                accept=".pdf,.docx,.ppt,.xls,.xlsx"
+                accept=".pdf,.docx,.ppt,.xls,.xlsx,.jpg,.jpeg,.png"
                 onChange={handleFileChange}
               />
               
