@@ -254,7 +254,7 @@ export class UserService implements IUserService {
                 ProfessionalProfiles: {
                     include: { Documents: true }
                 },
-                Documents: true,
+                Document: true,
             }
         });
         if (!user) throw new Error('Usuário não encontrado');
@@ -273,7 +273,7 @@ export class UserService implements IUserService {
         }
         // Remove documentos do usuário do storage e banco
         let deletedDocuments: string[] = [];
-        for (const doc of user.Documents) {
+        for (const doc of user.Document) {
             if (doc.Url) {
                 deletedDocuments.push(doc.Url);
                 const fileName = doc.Url.split('/').pop();

@@ -6,6 +6,7 @@ import Image from "next/image";
 import { Psicologo, Formacao } from "@/types/psicologoTypes";
 import { normalizeEnum, normalizeExperienciaClinica } from "@/utils/enumUtils";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
+import { useDeleteUser } from "@/hooks/user/userHook";
 interface ModalPerfilPsicologoProps {
   open: boolean;
   onClose: () => void;
@@ -59,6 +60,17 @@ const mapTipoFormacao = (tipo?: string) => {
 const ModalPerfilPsicologo: React.FC<ModalPerfilPsicologoProps> = ({ open, onClose, psicologo }) => {
   // Fecha o modal ao pressionar ESC
   useEscapeKey(open, onClose);
+
+  const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
+  const { mutate: deleteUser, isPending: isDeleting } = useDeleteUser();
+
+  const handleDeleteUser = () => {
+    if (psicologo?.Id) {
+      deleteUser(psicologo.Id);
+      setShowDeleteConfirm(false);
+      onClose();
+    }
+  };
   
   if (!open || !psicologo) return null;
 
@@ -356,45 +368,33 @@ const ModalPerfilPsicologo: React.FC<ModalPerfilPsicologoProps> = ({ open, onClo
                 Deletar usuário
               </button>
             </div>
-          // Adiciona estado e modal de confirmação
-          import { useDeleteUser } from "@/hooks/user/userHook";
-          const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
-          const { mutate: deleteUser, isPending: isDeleting } = useDeleteUser();
-
-          const handleDeleteUser = () => {
-            if (psicologo?.Id) {
-              deleteUser(psicologo.Id);
-              setShowDeleteConfirm(false);
-              onClose();
-            }
-          };
-
-          {showDeleteConfirm && (
-            <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black bg-opacity-40">
-              <div className="bg-white rounded-lg shadow-lg p-8 flex flex-col items-center">
-                <span className="text-lg font-bold mb-4 text-red-600">Tem certeza que deseja deletar este usuário?</span>
-                <span className="text-sm text-gray-700 mb-6">Esta ação irá remover todos os dados do usuário, exceto o histórico de consultas.</span>
-                <div className="flex gap-4">
-                  <button
-                    className="px-6 py-2 rounded bg-gray-200 text-gray-800 font-semibold hover:bg-gray-300"
-                    onClick={() => setShowDeleteConfirm(false)}
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    className="px-6 py-2 rounded bg-red-500 text-white font-semibold hover:bg-red-600"
-                    onClick={handleDeleteUser}
-                    disabled={isDeleting}
-                  >
-                    {isDeleting ? "Deletando..." : "Confirmar exclusão"}
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
           </div>
         </div>
       </div>
+
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black bg-opacity-40">
+          <div className="bg-white rounded-lg shadow-lg p-8 flex flex-col items-center">
+            <span className="text-lg font-bold mb-4 text-red-600">Tem certeza que deseja deletar este usuário?</span>
+            <span className="text-sm text-gray-700 mb-6">Esta ação irá remover todos os dados do usuário, exceto o histórico de consultas.</span>
+            <div className="flex gap-4">
+              <button
+                className="px-6 py-2 rounded bg-gray-200 text-gray-800 font-semibold hover:bg-gray-300"
+                onClick={() => setShowDeleteConfirm(false)}
+              >
+                Cancelar
+              </button>
+              <button
+                className="px-6 py-2 rounded bg-red-500 text-white font-semibold hover:bg-red-600"
+                onClick={handleDeleteUser}
+                disabled={isDeleting}
+              >
+                {isDeleting ? "Deletando..." : "Confirmar exclusão"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };

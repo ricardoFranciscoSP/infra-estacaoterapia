@@ -16,18 +16,10 @@ interface DocumentsListProps {
 }
 
 export function DocumentsList({ profileId }: DocumentsListProps) {
-        const { user } = useUser();
-        const allowedRoles = ['Admin', 'Management', 'Finance'];
-        const isOwner = user?.id === profileId;
-        const isAllowedRole = allowedRoles.includes(user?.role ?? '');
-
-        if (!isOwner && !isAllowedRole) {
-            return (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-yellow-800">
-                    Você não tem permissão para visualizar esses documentos.
-                </div>
-            );
-        }
+    const { user } = useUser();
+    const allowedRoles = ['Admin', 'Management', 'Finance'];
+    const isOwner = user?.Id === profileId;
+    const isAllowedRole = allowedRoles.includes(user?.Role ?? '');
     const {
         documents,
         loading,
@@ -41,6 +33,14 @@ export function DocumentsList({ profileId }: DocumentsListProps) {
     } = useDocuments(profileId);
 
     const [downloadingId, setDownloadingId] = useState<string | null>(null);
+
+    if (!isOwner && !isAllowedRole) {
+        return (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-yellow-800">
+                Você não tem permissão para visualizar esses documentos.
+            </div>
+        );
+    }
 
     const handleDownload = async (documentId: string) => {
         try {
