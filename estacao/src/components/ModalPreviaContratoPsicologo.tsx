@@ -141,52 +141,8 @@ const ModalPreviaContratoPsicologo: React.FC<ModalPreviaContratoPsicologoProps> 
                   minHeight: "100%",
                 }}
               >
-                {/* Estilos customizados para o contrato */}
-                <style dangerouslySetInnerHTML={{
-                  __html: `
-                    .contrato-psicologo-content {
-                      font-family: 'Times New Roman', serif;
-                      line-height: 1.6;
-                      color: #1a1a1a;
-                    }
-                    .contrato-psicologo-content * {
-                      color: inherit;
-                    }
-                    .contrato-psicologo-content h1,
-                    .contrato-psicologo-content h2,
-                    .contrato-psicologo-content h3 {
-                      color: #1a1a1a;
-                      font-weight: bold;
-                    }
-                    .contrato-psicologo-content p {
-                      margin-bottom: 0.5em;
-                      text-align: justify;
-                    }
-                    .contrato-psicologo-content strong,
-                    .contrato-psicologo-content b {
-                      font-weight: bold;
-                      color: #000000;
-                    }
-                    .contrato-psicologo-content .field {
-                      border-bottom: 1px solid #cbd5e1;
-                      padding: 0 2px;
-                      min-width: 100px;
-                      display: inline-block;
-                    }
-                    /* Ajustes para o PDF convertido */
-                    .contrato-psicologo-content .pdf24_01 {
-                      position: relative !important;
-                      left: auto !important;
-                      top: auto !important;
-                    }
-                    .contrato-psicologo-content .pdf24_view {
-                      transform: none !important;
-                      font-size: 1em !important;
-                    }
-                  `
-                }} />
                 <div
-                  className="contrato-psicologo-content"
+                  className="contrato-content"
                   dangerouslySetInnerHTML={{ __html: contratoHtml }}
                 />
               </div>
@@ -265,6 +221,28 @@ const ModalPreviaContratoPsicologo: React.FC<ModalPreviaContratoPsicologoProps> 
 
       {/* Estilos globais para animação */}
       <style jsx global>{`
+        .contrato-content,
+        .contrato-content *,
+        .contrato-content p,
+        .contrato-content span,
+        .contrato-content div,
+        .contrato-content h1,
+        .contrato-content h2,
+        .contrato-content h3,
+        .contrato-content h4,
+        .contrato-content h5,
+        .contrato-content h6,
+        .contrato-content table,
+        .contrato-content th,
+        .contrato-content td,
+        .contrato-content li {
+          color: #1a1a1a !important;
+        }
+        .contrato-content b,
+        .contrato-content strong {
+          color: #000000 !important;
+          font-weight: bold !important;
+        }
         @keyframes fade-in {
           from {
             opacity: 0;

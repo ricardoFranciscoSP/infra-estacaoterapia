@@ -1311,16 +1311,11 @@ export default function PsicologoDetalhePage() {
                     : "text-gray-400 cursor-not-allowed opacity-60"
                 }`}
                 type="button"
-                onClick={async () => {
+                onClick={() => {
                   if (hasContrato || editMode) {
                     setModalContratoOpen(true);
                     // Ativa o carregamento da prévia e refetch quando o modal é aberto
                     setShouldLoadPrevia(true);
-                    try {
-                      await refetchPreviaContrato();
-                    } catch (error) {
-                      console.error('[Contrato] Erro ao buscar prévia do contrato:', error);
-                    }
                   }
                 }}
                 disabled={!hasContrato && !editMode}
