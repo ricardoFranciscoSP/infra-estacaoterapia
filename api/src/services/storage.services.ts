@@ -185,14 +185,14 @@ export async function createSignedUrl(
     const normalizeFilePath = (p: string, bucketName: string) => {
         if (!p) return p;
         if (!/^https?:\/\//i.test(p)) return p;
-        // Tenta extrair a parte após /storage/v1/object/public/{bucket}/
-        const match = p.match(/storage\/v1\/object\/public\/([^\/]+)\/(.+)$/);
-        if (match && match[2]) return match[2];
+        // Tenta extrair a parte após /storage/v1/object/(public|sign)/{bucket}/
+        const match = p.match(/storage\/v1\/object\/(public|sign)\/([^\/]+)\/(.+)$/);
+        if (match && match[3]) return match[3].split("?")[0];
         // Fallback: busca a última ocorrência de `/{bucket}/` e pega tudo depois
         const idx = p.lastIndexOf(`/${bucketName}/`);
-        if (idx !== -1) return p.substring(idx + bucketName.length + 2);
+        if (idx !== -1) return p.substring(idx + bucketName.length + 2).split("?")[0];
         // Último fallback: retorna apenas o último segmento (nome do arquivo)
-        const parts = p.split('/');
+        const parts = p.split('?')[0].split('/');
         return parts.slice(-2).join('/');
     };
 
@@ -296,11 +296,11 @@ export async function fileExists(
     const normalizeFilePath = (p: string, bucketName: string) => {
         if (!p) return p;
         if (!/^https?:\/\//i.test(p)) return p;
-        const match = p.match(/storage\/v1\/object\/public\/([^\/]+)\/(.+)$/);
-        if (match && match[2]) return match[2];
+        const match = p.match(/storage\/v1\/object\/(public|sign)\/([^\/]+)\/(.+)$/);
+        if (match && match[3]) return match[3].split("?")[0];
         const idx = p.lastIndexOf(`/${bucketName}/`);
-        if (idx !== -1) return p.substring(idx + bucketName.length + 2);
-        const parts = p.split('/');
+        if (idx !== -1) return p.substring(idx + bucketName.length + 2).split("?")[0];
+        const parts = p.split('?')[0].split('/');
         return parts.slice(-2).join('/');
     };
 
@@ -352,11 +352,11 @@ export async function deleteFile(
     const normalizeFilePath = (p: string, bucketName: string) => {
         if (!p) return p;
         if (!/^https?:\/\//i.test(p)) return p;
-        const match = p.match(/storage\/v1\/object\/public\/([^\/]+)\/(.+)$/);
-        if (match && match[2]) return match[2];
+        const match = p.match(/storage\/v1\/object\/(public|sign)\/([^\/]+)\/(.+)$/);
+        if (match && match[3]) return match[3].split("?")[0];
         const idx = p.lastIndexOf(`/${bucketName}/`);
-        if (idx !== -1) return p.substring(idx + bucketName.length + 2);
-        const parts = p.split('/');
+        if (idx !== -1) return p.substring(idx + bucketName.length + 2).split("?")[0];
+        const parts = p.split('?')[0].split('/');
         return parts.slice(-2).join('/');
     };
 
@@ -392,11 +392,11 @@ export async function downloadFile(
     const normalizeFilePath = (p: string, bucketName: string) => {
         if (!p) return p;
         if (!/^https?:\/\//i.test(p)) return p;
-        const match = p.match(/storage\/v1\/object\/public\/([^\/]+)\/(.+)$/);
-        if (match && match[2]) return match[2];
+        const match = p.match(/storage\/v1\/object\/(public|sign)\/([^\/]+)\/(.+)$/);
+        if (match && match[3]) return match[3].split("?")[0];
         const idx = p.lastIndexOf(`/${bucketName}/`);
-        if (idx !== -1) return p.substring(idx + bucketName.length + 2);
-        const parts = p.split('/');
+        if (idx !== -1) return p.substring(idx + bucketName.length + 2).split("?")[0];
+        const parts = p.split('?')[0].split('/');
         return parts.slice(-2).join('/');
     };
 

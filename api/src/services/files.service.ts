@@ -19,6 +19,9 @@ export class FilesService {
         if (!document) {
             throw Object.assign(new Error("Documento não encontrado"), { status: 404 });
         }
+        if (!document.Url || document.Url.trim() === "") {
+            throw Object.assign(new Error("Documento sem URL armazenada"), { status: 404 });
+        }
 
         const isPsychologist = document.ProfessionalProfile.UserId === user?.Id;
         const isPrivileged = user?.Role === "Admin" || user?.Role === "Management" || user?.Role === "Finance";
@@ -65,6 +68,9 @@ export class FilesService {
 
         if (!document) {
             throw Object.assign(new Error("Documento não encontrado"), { status: 404 });
+        }
+        if (!document.Url || document.Url.trim() === "") {
+            throw Object.assign(new Error("Documento sem URL armazenada"), { status: 404 });
         }
 
         const isPsychologist = document.ProfessionalProfile.UserId === user?.Id;
@@ -121,34 +127,56 @@ export class FilesService {
             return { total: 0, documents: [], psychologist: profile.User.Nome };
         }
 
-        const filePaths = documents.map(d => d.Url);
-        let urlResults: Array<any> = [];
-        // Timeout de 10s para evitar travas prolongadas
-        try {
-            urlResults = await Promise.race([
-                createSignedUrls(filePaths, { bucket: STORAGE_BUCKET, expiresIn: isPrivileged ? 86400 * 7 : 43200 }), // 7 dias para admin/management/finance
-                new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout ao gerar signed URLs (10s)')), 10000))
-            ] as any);
-        } catch (err) {
-            throw Object.assign(new Error(`Erro ao gerar URLs dos documentos: ${err instanceof Error ? err.message : err}`), { status: 500 });
-        }
-
-        const documentsWithUrls: DocumentSignedItem[] = documents.map((doc, index) => {
-            const result = urlResults[index];
-            const hasError = result && typeof result === 'object' && 'error' in result;
-            return {
-                id: doc.Id,
-                fileName: doc.Url.split('/').pop() || null,
-                type: doc.Type,
-                description: doc.Description ?? undefined,
-                createdAt: doc.CreatedAt,
-                updatedAt: doc.UpdatedAt,
-                url: hasError ? null : result.signedUrl,
-                expiresAt: hasError ? null : result.expiresAt,
-                error: hasError ? result.error : null,
-                fileExists: !hasError
-            };
-        });
+        const documentsWithUrls: DocumentSignedItem[] = await Promise.all(
+            documents.map(async (doc) => {
+                if (!doc.Url || doc.Url.trim() === "") {
+                    return {
+                        id: doc.Id,
+                        fileName: null,
+                        type: doc.Type,
+                        description: doc.Description ?? undefined,
+                        createdAt: doc.CreatedAt,
+                        updatedAt: doc.UpdatedAt,
+                        url: null,
+                        expiresAt: null,
+                        error: "Documento sem URL armazenada",
+                        fileExists: false
+                    };
+                }
+                try {
+                    const { signedUrl, expiresAt } = await createSignedUrl(doc.Url, {
+                        bucket: STORAGE_BUCKET,
+                        expiresIn: isPrivileged ? 86400 * 7 : 43200
+                    });
+                    return {
+                        id: doc.Id,
+                        fileName: doc.Url.split('/').pop() || null,
+                        type: doc.Type,
+                        description: doc.Description ?? undefined,
+                        createdAt: doc.CreatedAt,
+                        updatedAt: doc.UpdatedAt,
+                        url: signedUrl,
+                        expiresAt,
+                        error: null,
+                        fileExists: true
+                    };
+                } catch (err) {
+                    const message = err instanceof Error ? err.message : "Erro ao gerar URL assinada";
+                    return {
+                        id: doc.Id,
+                        fileName: doc.Url.split('/').pop() || null,
+                        type: doc.Type,
+                        description: doc.Description ?? undefined,
+                        createdAt: doc.CreatedAt,
+                        updatedAt: doc.UpdatedAt,
+                        url: null,
+                        expiresAt: null,
+                        error: message,
+                        fileExists: false
+                    };
+                }
+            })
+        );
 
         return { total: documentsWithUrls.length, psychologist: profile.User.Nome, documents: documentsWithUrls };
     }
