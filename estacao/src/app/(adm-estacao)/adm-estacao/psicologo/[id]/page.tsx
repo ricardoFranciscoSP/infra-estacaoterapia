@@ -130,7 +130,7 @@ type FileTypeInfo = {
   ext: string;
 };
 
-function getFileTypeInfo(name?: string, url?: string): FileTypeInfo {
+function getFileTypeInfo(name?: string | null, url?: string | null): FileTypeInfo {
   const candidate = `${name || ""} ${url || ""}`.toLowerCase();
   const match = candidate.match(/\.([a-z0-9]+)(\?|$)/i);
   const ext = match?.[1] ? match[1].toLowerCase() : "";
@@ -367,9 +367,11 @@ function DocumentoModal({
             />
           ) : preview.kind === "image" && previewSource ? (
             <div className="flex items-center justify-center">
-              <img
+              <Image
                 src={previewSource}
                 alt={doc.nome}
+                width={1200}
+                height={800}
                 className="max-h-[60vh] w-auto mx-auto rounded-lg object-contain"
                 onError={() => setError('Erro ao carregar a imagem. O arquivo pode não estar disponível.')}
               />
@@ -1845,7 +1847,7 @@ export default function PsicologoDetalhePage() {
                           {doc.fileExists ? "✓ Recebido" : "⚠ Pendente"}
                         </span>
                         <span className="inline-flex items-center text-xs px-2.5 py-1 rounded-full font-semibold bg-[#EEF1FF] text-[#6D75C0]">
-                          {getFileTypeInfo(doc.fileName, doc.url).label}
+                          {getFileTypeInfo(doc.fileName ?? undefined, doc.url ?? undefined).label}
                         </span>
                         {expired && (
                           <span className="inline-flex items-center text-xs px-2.5 py-1 rounded-full font-semibold bg-orange-100 text-orange-700">

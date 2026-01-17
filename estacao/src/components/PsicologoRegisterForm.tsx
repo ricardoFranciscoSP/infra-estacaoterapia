@@ -109,6 +109,9 @@ export const PsicologoRegisterFormJuridico: React.FC<PsicologoRegisterJuridicoFo
     const [enderecoEmpresaPreenchidoPorCep, setEnderecoEmpresaPreenchidoPorCep] = useState(false);
     const estadoEmpresaSelecionado = useWatch({ control: form.control, name: "estadoEmpresa" });
 
+    // Estado para checkbox de endereço igual
+    const [enderecoIgualRepresentante, setEnderecoIgualRepresentante] = useState(false);
+
     // Interface para resposta da API do IBGE
     interface IBGEMunicipio {
       id: number;
@@ -395,9 +398,6 @@ export const PsicologoRegisterFormJuridico: React.FC<PsicologoRegisterJuridicoFo
   const cidadeEmpresa = useWatch({ control: form.control, name: "cidadeEmpresa" });
   const estadoEmpresa = useWatch({ control: form.control, name: "estadoEmpresa" });
   
-  // Estado para checkbox de endereço igual
-  const [enderecoIgualRepresentante, setEnderecoIgualRepresentante] = useState(false);
-
   // Função para copiar endereço do representante para empresa
   const copiarEnderecoParaEmpresa = React.useCallback(async () => {
     if (enderecoIgualRepresentante) {
@@ -419,7 +419,7 @@ export const PsicologoRegisterFormJuridico: React.FC<PsicologoRegisterJuridicoFo
       // Trigger validação dos campos
       form.trigger(["cepEmpresa", "enderecoEmpresa", "numeroEmpresa", "bairroEmpresa", "estadoEmpresa"]);
     }
-  }, [enderecoIgualRepresentante, cep, endereco, numero, bairro, estado, complemento, form, buscarCidadesEmpresaPorEstado]);
+  }, [enderecoIgualRepresentante, cep, endereco, numero, bairro, cidade, estado, complemento, form, buscarCidadesEmpresaPorEstado]);
 
   // Efeito para copiar endereço quando checkbox for marcado ou quando endereço do representante mudar
   useEffect(() => {
