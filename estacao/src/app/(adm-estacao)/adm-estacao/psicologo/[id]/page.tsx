@@ -22,6 +22,7 @@ import FormBancarioAdmin from "@/components/admin/FormBancarioAdmin";
 import FormProfissionaisAdmin from "@/components/admin/FormProfissionaisAdmin";
 import { normalizeEnum, normalizeExperienciaClinica } from "@/utils/enumUtils";
 import { getApiUrl } from "@/config/env";
+import { useRef } from "react";
 import { getStatusTagInfo } from "@/utils/statusConsulta.util";
 import { admPsicologoService } from "@/services/admPsicologoService";
 
@@ -642,8 +643,34 @@ export default function PsicologoDetalhePage() {
   const errorDocuments = documentsHook.error;
   const downloadDocument = documentsHook.downloadDocument;
   const deleteDocument = documentsHook.deleteDocument;
+  const refreshDocumentUrl = documentsHook.refreshDocumentUrl;
   const isUrlExpired = documentsHook.isUrlExpired;
   const formatExpirationTime = documentsHook.formatExpirationTime;
+  const refreshedDocumentIdsRef = useRef<Set<string>>(new Set());
+
+  // Renova URLs expiradas/ausentes ao entrar na página
+  useEffect(() => {
+    if (!documentsFromHook.length) return;
+
+    const idsToRefresh = documentsFromHook
+      .filter((doc) => {
+        const docId = doc.id;
+        if (!docId || refreshedDocumentIdsRef.current.has(docId)) return false;
+        if (doc.error) return true;
+        if (!doc.url) return true;
+        return doc.expiresAt ? isUrlExpired(doc.expiresAt) : true;
+      })
+      .map((doc) => doc.id as string);
+
+    if (!idsToRefresh.length) return;
+
+    idsToRefresh.forEach((id) => refreshedDocumentIdsRef.current.add(id));
+
+    Promise.all(idsToRefresh.map((id) => refreshDocumentUrl(id))).catch((err) => {
+      console.error("[Admin Psicologo] Erro ao renovar URLs:", err);
+      idsToRefresh.forEach((id) => refreshedDocumentIdsRef.current.delete(id));
+    });
+  }, [documentsFromHook, isUrlExpired, refreshDocumentUrl]);
 
   // Verifica se já existe contrato e está disponível no storage
   const hasContrato = React.useMemo(() => {
@@ -1741,18 +1768,28 @@ export default function PsicologoDetalhePage() {
                       {/* Botões de Ação */}
                       <div className="flex flex-col items-center gap-2 mt-3 w-full">
                         {/* Botões principais: Visualizar e Baixar */}
-                        {doc.url && !expired && doc.fileExists && (
+                        {doc.fileExists && (
                           <div className="flex flex-row items-center justify-center gap-3 w-full">
                             <button
                               type="button"
-                              onClick={() => setModalDoc({
-                                id: doc.id,
-                                nome: doc.fileName,
-                                status: doc.fileExists ? "Recebido" : "Pendente",
-                                url: doc.url ?? undefined,
-                                descricao: doc.description,
-                                expiresAt: doc.expiresAt ?? null,
-                              })}
+                              onClick={async () => {
+                                if (!doc.id) return;
+                                if (expired || !doc.url) {
+                                  try {
+                                    await refreshDocumentUrl(doc.id);
+                                  } catch (error) {
+                                    console.error("[Admin Psicologo] Erro ao renovar URL no visualizar:", error);
+                                  }
+                                }
+                                setModalDoc({
+                                  id: doc.id,
+                                  nome: doc.fileName,
+                                  status: doc.fileExists ? "Recebido" : "Pendente",
+                                  url: doc.url ?? undefined,
+                                  descricao: doc.description,
+                                  expiresAt: doc.expiresAt ?? null,
+                                });
+                              }}
                               className="flex items-center justify-center gap-1.5 text-[#8494E9] hover:text-[#6B7FD7] text-xs font-semibold transition-colors px-3 py-1.5 rounded-lg hover:bg-[#8494E9]/5"
                               title="Visualizar documento"
                             >
@@ -1784,7 +1821,7 @@ export default function PsicologoDetalhePage() {
                         )}
                         
                         {/* Separador visual (linha divisória) */}
-                        {doc.url && !expired && doc.fileExists && (
+                        {doc.fileExists && (
                           <div className="w-full border-t border-gray-200 my-1"></div>
                         )}
                         

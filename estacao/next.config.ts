@@ -338,6 +338,7 @@ const nextConfig: NextConfig = {
       "https://*.goadopt.io",
       "https://www.google-analytics.com",
       "https://www.google.com", // Google Analytics e Google Ads
+      "https://www.gstatic.com", // reCAPTCHA assets
       "https://www.googletagmanager.com",
       "https://googleads.g.doubleclick.net", // Google Ads
       "https://www.googleadservices.com", // Google Ads Services
@@ -397,6 +398,8 @@ const nextConfig: NextConfig = {
       "https://*.goadopt.io",
       "https://www.googletagmanager.com",
       "https://www.google-analytics.com",
+      "https://www.google.com", // reCAPTCHA script
+      "https://www.gstatic.com", // reCAPTCHA assets
       "https://www.googleadservices.com", // Google Ads
       "https://googleads.g.doubleclick.net", // Google Ads DoubleClick
       "https://s3.amazonaws.com", // Reclame Aqui
@@ -423,7 +426,7 @@ const nextConfig: NextConfig = {
       "object-src 'none'",
       "base-uri 'self'",
       "form-action 'self'",
-      "frame-src 'self' https://www.googletagmanager.com https://www.google.com https://googleads.g.doubleclick.net https://www.googleadservices.com https://*.goadopt.io",
+      "frame-src 'self' https://www.googletagmanager.com https://www.google.com https://www.gstatic.com https://googleads.g.doubleclick.net https://www.googleadservices.com https://*.goadopt.io",
       "frame-ancestors 'self'",
     ].join("; ");
 
