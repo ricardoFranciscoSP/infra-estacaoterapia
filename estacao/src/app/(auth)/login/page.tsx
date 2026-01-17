@@ -14,9 +14,15 @@ import { useRouter } from "next/navigation";
 import { useUIStore } from "@/store/uiStore";
 import { ProgressButton } from "@/components/ProgressButton";
 import { getRedirectRouteByRole } from "@/utils/redirectByRole";
+import { RecaptchaV2, type RecaptchaHandle } from "@/components/RecaptchaV2";
 
 const LoginPage = () => {
   const [tab, setTab] = useState("paciente");
+  const siteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || "";
+  const [pacienteRecaptchaToken, setPacienteRecaptchaToken] = useState("");
+  const [psicologoRecaptchaToken, setPsicologoRecaptchaToken] = useState("");
+  const pacienteRecaptchaRef = React.useRef<RecaptchaHandle>(null);
+  const psicologoRecaptchaRef = React.useRef<RecaptchaHandle>(null);
 
   
   // Formulários separados para paciente e psicólogo
@@ -42,7 +48,10 @@ const LoginPage = () => {
   const isLoading = useUIStore((s) => s.isLoading);
 
 
-  async function handleLogin({ email, senha, crp }: Partial<PacienteForm & PsicologoForm>) {
+  async function handleLogin(
+    { email, senha, crp }: Partial<PacienteForm & PsicologoForm>,
+    recaptchaToken: string
+  ) {
     setLoading(true);
     try {
       const loginId = email ?? crp ?? '';
@@ -50,7 +59,7 @@ const LoginPage = () => {
         throw new Error('Preencha todos os campos');
       }
 
-      const result = await login(loginId, senha);
+      const result = await login(loginId, senha, recaptchaToken);
 
       if (!result.success) {
         throw new Error(result.message || 'Login inválido');
@@ -170,8 +179,39 @@ const LoginPage = () => {
     }
   }
 
-  const handlePaciente = (data: PacienteForm) => handleLogin({ email: data.email, senha: data.senha });
-  const handlePsicologo = (data: PsicologoForm) => handleLogin({ crp: data.crp, senha: data.senha });
+  const handlePaciente = async (data: PacienteForm) => {
+    if (!siteKey) {
+      toast.error("reCAPTCHA não configurado.");
+      return;
+    }
+    if (!pacienteRecaptchaToken) {
+      toast.error("Confirme o reCAPTCHA para continuar.");
+      return;
+    }
+    try {
+      await handleLogin({ email: data.email, senha: data.senha }, pacienteRecaptchaToken);
+    } finally {
+      setPacienteRecaptchaToken("");
+      pacienteRecaptchaRef.current?.reset();
+    }
+  };
+
+  const handlePsicologo = async (data: PsicologoForm) => {
+    if (!siteKey) {
+      toast.error("reCAPTCHA não configurado.");
+      return;
+    }
+    if (!psicologoRecaptchaToken) {
+      toast.error("Confirme o reCAPTCHA para continuar.");
+      return;
+    }
+    try {
+      await handleLogin({ crp: data.crp, senha: data.senha }, psicologoRecaptchaToken);
+    } finally {
+      setPsicologoRecaptchaToken("");
+      psicologoRecaptchaRef.current?.reset();
+    }
+  };
 
 
   return (
@@ -242,6 +282,18 @@ const LoginPage = () => {
                       Esqueci minha senha
                     </button>
                   </div>
+                  {siteKey ? (
+                    <RecaptchaV2
+                      ref={pacienteRecaptchaRef}
+                      siteKey={siteKey}
+                      onVerify={(token) => setPacienteRecaptchaToken(token)}
+                      onExpired={() => setPacienteRecaptchaToken("")}
+                      onError={() => setPacienteRecaptchaToken("")}
+                      className="self-start"
+                    />
+                  ) : (
+                    <p className="text-xs text-red-600">reCAPTCHA não configurado.</p>
+                  )}
                   <ProgressButton
                     type="submit"
                     isLoading={isLoading}
@@ -291,6 +343,18 @@ const LoginPage = () => {
                       Esqueci minha senha
                     </button>
                   </div>
+                  {siteKey ? (
+                    <RecaptchaV2
+                      ref={psicologoRecaptchaRef}
+                      siteKey={siteKey}
+                      onVerify={(token) => setPsicologoRecaptchaToken(token)}
+                      onExpired={() => setPsicologoRecaptchaToken("")}
+                      onError={() => setPsicologoRecaptchaToken("")}
+                      className="self-start"
+                    />
+                  ) : (
+                    <p className="text-xs text-red-600">reCAPTCHA não configurado.</p>
+                  )}
                   <ProgressButton
                     type="submit"
                     isLoading={isLoading}

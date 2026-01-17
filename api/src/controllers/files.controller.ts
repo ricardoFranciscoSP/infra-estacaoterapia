@@ -17,6 +17,25 @@ export class FilesController {
         }
     }
 
+    static async viewPsychologistDocumentInline(req: Request, res: Response) {
+        try {
+            const { buffer, contentType, fileName } = await FilesService.getPsychologistDocumentInline(
+                normalizeParamStringRequired(req.params.id),
+                req.user as any
+            );
+
+            res.setHeader("Content-Type", contentType);
+            res.setHeader("Content-Disposition", `inline; filename="${fileName}"`);
+            res.setHeader("Cache-Control", "no-store");
+            return res.status(200).send(buffer);
+        } catch (error: any) {
+            const status = error?.status || 500;
+            const message = error?.message || "Erro ao carregar documento";
+            if (status >= 500) console.error("Erro ao carregar documento inline:", error);
+            return res.status(status).json({ error: message, details: status >= 500 ? error?.message : undefined });
+        }
+    }
+
     static async listPsychologistDocuments(req: Request, res: Response) {
         try {
             const userId = normalizeParamStringRequired(req.params.profileId); // parâmetro tratado como userId por compatibilidade

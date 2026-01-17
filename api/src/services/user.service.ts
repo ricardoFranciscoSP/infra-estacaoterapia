@@ -269,7 +269,7 @@ export class UserService implements IUserService {
                     await storageClient.from(publicBucket).remove([filePath]);
                 }
             }
-            await prisma.image.delete({ where: { Id: img.Id } });
+            await prisma.image.deleteMany({ where: { Id: img.Id } });
         }
         // Remove documentos do usuário do storage e banco
         let deletedDocuments: string[] = [];
@@ -282,7 +282,7 @@ export class UserService implements IUserService {
                     await storageClient.from(STORAGE_BUCKET).remove([filePath]);
                 }
             }
-            await prisma.document.delete({ where: { Id: doc.Id } });
+            await prisma.document.deleteMany({ where: { Id: doc.Id } });
         }
         // Remove documentos de perfis profissionais do storage e banco
         if (user.ProfessionalProfiles) {
@@ -296,13 +296,13 @@ export class UserService implements IUserService {
                             await storageClient.from(STORAGE_BUCKET).remove([filePath]);
                         }
                     }
-                    await prisma.document.delete({ where: { Id: doc.Id } });
+                    await prisma.document.deleteMany({ where: { Id: doc.Id } });
                 }
             }
         }
         // Remove endereços do usuário
         for (const addr of user.Address) {
-            await prisma.address.delete({ where: { Id: addr.Id } });
+            await prisma.address.deleteMany({ where: { Id: addr.Id } });
         }
         // Soft delete: atualiza deletedAt, mantém histórico de consultas e financeiro
         const deletedUser = await prisma.user.update({

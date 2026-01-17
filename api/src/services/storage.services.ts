@@ -375,6 +375,51 @@ export async function deleteFile(
 }
 
 /**
+ * Faz download de um arquivo do bucket e retorna o buffer e o contentType.
+ */
+export async function downloadFile(
+    filePath: string,
+    bucket: string = STORAGE_BUCKET
+): Promise<{ buffer: Buffer; contentType: string | null; fileName: string }> {
+    if (!supabaseAdmin) {
+        throw new Error("SUPABASE_SERVICE_ROLE_KEY não definido");
+    }
+
+    if (!bucket) {
+        throw new Error("Bucket não especificado");
+    }
+
+    const normalizeFilePath = (p: string, bucketName: string) => {
+        if (!p) return p;
+        if (!/^https?:\/\//i.test(p)) return p;
+        const match = p.match(/storage\/v1\/object\/public\/([^\/]+)\/(.+)$/);
+        if (match && match[2]) return match[2];
+        const idx = p.lastIndexOf(`/${bucketName}/`);
+        if (idx !== -1) return p.substring(idx + bucketName.length + 2);
+        const parts = p.split('/');
+        return parts.slice(-2).join('/');
+    };
+
+    const normalized = normalizeFilePath(filePath, bucket);
+    const fileName = normalized.includes("/") ? normalized.split("/").pop() || "documento" : normalized;
+
+    const { data, error } = await supabaseAdmin
+        .storage
+        .from(bucket)
+        .download(normalized);
+
+    if (error || !data) {
+        throw new Error(`Erro ao baixar arquivo: ${error?.message || "desconhecido"}`);
+    }
+
+    const arrayBuffer = await data.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    const contentType = data.type || null;
+
+    return { buffer, contentType, fileName };
+}
+
+/**
  * Faz upload de um arquivo para o bucket.
  * 
  * @param filePath - Caminho onde o arquivo será salvo no bucket

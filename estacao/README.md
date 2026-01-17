@@ -41,6 +41,7 @@ Principais variáveis `NEXT_PUBLIC_*`:
 - `NEXT_PUBLIC_API_URL` - URL da API
 - `NEXT_PUBLIC_SOCKET_URL` - URL do WebSocket
 - `NEXT_PUBLIC_WEBSITE_URL` - URL do site
+- `NEXT_PUBLIC_RECAPTCHA_SITE_KEY` - Site key do reCAPTCHA
 
 ## 🐳 Docker
 

@@ -21,6 +21,7 @@ import FormJuridicoAdmin from "@/components/admin/FormJuridicoAdmin";
 import FormBancarioAdmin from "@/components/admin/FormBancarioAdmin";
 import FormProfissionaisAdmin from "@/components/admin/FormProfissionaisAdmin";
 import { normalizeEnum, normalizeExperienciaClinica } from "@/utils/enumUtils";
+import { getApiUrl } from "@/config/env";
 import { getStatusTagInfo } from "@/utils/statusConsulta.util";
 import { admPsicologoService } from "@/services/admPsicologoService";
 
@@ -198,6 +199,13 @@ function DocumentoModal({
 
   useEffect(() => {
     if (!open || !doc) return;
+    const inlineUrl = doc.id ? `${getApiUrl()}/files/psychologist/documents/${doc.id}/inline` : null;
+    if (inlineUrl) {
+      setPreviewUrl(inlineUrl);
+      setPreviewLoading(false);
+      return;
+    }
+
     const urlToPreview = finalUrl || doc.url || null;
     if (!urlToPreview) return;
 

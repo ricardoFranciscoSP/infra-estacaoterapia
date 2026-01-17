@@ -6,6 +6,7 @@ import BreadcrumbsVoltar from "@/components/BreadcrumbsVoltar";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { RecaptchaV2, type RecaptchaHandle } from "@/components/RecaptchaV2";
 
 const schema = z.object({
   nome: z.string().min(2, "Nome obrigatório"),
@@ -31,6 +32,9 @@ function maskTelefone(value: string) {
 
 export default function FaleConosco() {
   const { enviarContato, error, success } = useContato();
+  const siteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || "";
+  const [recaptchaToken, setRecaptchaToken] = React.useState("");
+  const recaptchaRef = React.useRef<RecaptchaHandle>(null);
       // Exibe o Toast de sucesso ou erro sempre que o estado mudar
   React.useEffect(() => {
     // Evita ReferenceError usando fallback seguro
@@ -77,9 +81,19 @@ export default function FaleConosco() {
   // Função para enviar o formulário usando o hook
   const onSubmit = async (data: FormData) => {
     setApiError("");
-    await enviarContato(data);
+    if (!siteKey) {
+      setApiError("reCAPTCHA não configurado.");
+      return;
+    }
+    if (!recaptchaToken) {
+      setApiError("Confirme o reCAPTCHA para continuar.");
+      return;
+    }
+    await enviarContato({ ...data, recaptchaToken });
     // Limpa os campos após sucesso
     reset();
+    setRecaptchaToken("");
+    recaptchaRef.current?.reset();
   };
 
   // Verifica se todos os campos estão preenchidos e válidos
@@ -199,6 +213,19 @@ export default function FaleConosco() {
             >
               {isSubmitting ? "Enviando..." : "Enviar"}
             </button>
+          </div>
+          <div className="mt-3">
+            {siteKey ? (
+              <RecaptchaV2
+                ref={recaptchaRef}
+                siteKey={siteKey}
+                onVerify={(token) => setRecaptchaToken(token)}
+                onExpired={() => setRecaptchaToken("")}
+                onError={() => setRecaptchaToken("")}
+              />
+            ) : (
+              <span className="text-red-600 text-xs font-fira-sans">reCAPTCHA não configurado.</span>
+            )}
           </div>
           <div className="w-full">
             <span className="text-red-600 text-xs font-fira-sans">{apiError}</span>

@@ -1,5 +1,5 @@
 import prisma from "../prisma/client";
-import { STORAGE_BUCKET, createSignedUrl, createSignedUrls, fileExists, deleteFile } from "./storage.services";
+import { STORAGE_BUCKET, createSignedUrl, createSignedUrls, fileExists, deleteFile, downloadFile } from "./storage.services";
 import { AvatarResponse, DocumentListResponse, DocumentSignedItem, DocumentViewResponse, DownloadResponse, ValidationResponse, AuthUser } from "../interfaces/files.interface";
 
 export class FilesService {
@@ -21,8 +21,8 @@ export class FilesService {
         }
 
         const isPsychologist = document.ProfessionalProfile.UserId === user?.Id;
-        const isAdmin = user?.Role === "Admin" || user?.Role === "Management";
-        if (!isPsychologist && !isAdmin) {
+        const isPrivileged = user?.Role === "Admin" || user?.Role === "Management" || user?.Role === "Finance";
+        if (!isPsychologist && !isPrivileged) {
             throw Object.assign(new Error("Você não tem permissão para acessar este documento"), { status: 403 });
         }
 
@@ -50,6 +50,42 @@ export class FilesService {
         };
     }
 
+    // Documento específico do psicólogo (visualização inline)
+    static async getPsychologistDocumentInline(documentId: string, user?: AuthUser): Promise<{ buffer: Buffer; contentType: string; fileName: string }> {
+        const document = await prisma.psychologistDocument.findUnique({
+            where: { Id: documentId },
+            include: {
+                ProfessionalProfile: {
+                    include: {
+                        User: { select: { Id: true, Nome: true, Email: true } }
+                    }
+                }
+            }
+        });
+
+        if (!document) {
+            throw Object.assign(new Error("Documento não encontrado"), { status: 404 });
+        }
+
+        const isPsychologist = document.ProfessionalProfile.UserId === user?.Id;
+        const isPrivileged = user?.Role === "Admin" || user?.Role === "Management" || user?.Role === "Finance";
+        if (!isPsychologist && !isPrivileged) {
+            throw Object.assign(new Error("Você não tem permissão para acessar este documento"), { status: 403 });
+        }
+
+        const exists = await fileExists(document.Url, STORAGE_BUCKET);
+        if (!exists) {
+            throw Object.assign(new Error("Arquivo não encontrado no storage"), { status: 404 });
+        }
+
+        const { buffer, contentType, fileName } = await downloadFile(document.Url, STORAGE_BUCKET);
+        return {
+            buffer,
+            contentType: contentType || "application/octet-stream",
+            fileName
+        };
+    }
+
     // Listar documentos por userId (mapeando para ProfessionalProfile)
     static async listDocumentsByUserId(userIdParam: string, user?: AuthUser): Promise<DocumentListResponse> {
         // Tenta buscar por UserId (padrão)
@@ -71,8 +107,8 @@ export class FilesService {
         }
 
         const isPsychologist = profile.UserId === user?.Id;
-        const isAdmin = user?.Role === "Admin" || user?.Role === "Management";
-        if (!isPsychologist && !isAdmin) {
+        const isPrivileged = user?.Role === "Admin" || user?.Role === "Management" || user?.Role === "Finance";
+        if (!isPsychologist && !isPrivileged) {
             throw Object.assign(new Error("Você não tem permissão para acessar estes documentos"), { status: 403 });
         }
 
@@ -90,7 +126,7 @@ export class FilesService {
         // Timeout de 10s para evitar travas prolongadas
         try {
             urlResults = await Promise.race([
-                createSignedUrls(filePaths, { bucket: STORAGE_BUCKET, expiresIn: isAdmin ? 86400 * 7 : 43200 }), // 7 dias para admin
+                createSignedUrls(filePaths, { bucket: STORAGE_BUCKET, expiresIn: isPrivileged ? 86400 * 7 : 43200 }), // 7 dias para admin/management/finance
                 new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout ao gerar signed URLs (10s)')), 10000))
             ] as any);
         } catch (err) {
@@ -129,8 +165,8 @@ export class FilesService {
             throw Object.assign(new Error("Documento não encontrado"), { status: 404 });
         }
         const isPsychologist = document.ProfessionalProfile.UserId === user?.Id;
-        const isAdmin = user?.Role === "Admin" || user?.Role === "Management";
-        if (!isPsychologist && !isAdmin) {
+        const isPrivileged = user?.Role === "Admin" || user?.Role === "Management" || user?.Role === "Finance";
+        if (!isPsychologist && !isPrivileged) {
             throw Object.assign(new Error("Acesso negado"), { status: 403 });
         }
 
@@ -157,8 +193,8 @@ export class FilesService {
             throw Object.assign(new Error("Documento não encontrado"), { status: 404 });
         }
         const isPsychologist = document.ProfessionalProfile.UserId === user?.Id;
-        const isAdmin = user?.Role === "Admin" || user?.Role === "Management";
-        if (!isPsychologist && !isAdmin) {
+        const isPrivileged = user?.Role === "Admin" || user?.Role === "Management" || user?.Role === "Finance";
+        if (!isPsychologist && !isPrivileged) {
             throw Object.assign(new Error("Acesso negado"), { status: 403 });
         }
         const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(document.Url);

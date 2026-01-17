@@ -7,19 +7,31 @@ import toast from "react-hot-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import Image from "next/image";
+import { RecaptchaV2, type RecaptchaHandle } from "@/components/RecaptchaV2";
 
 export default function AdmLoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const siteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || "";
+  const [recaptchaToken, setRecaptchaToken] = useState("");
+  const recaptchaRef = React.useRef<RecaptchaHandle>(null);
   const { login } = useAuthStore();
   const router = useRouter();
   const { register: formRegister, handleSubmit } = useForm<User>();
 
   async function handleLogin({ Email, Password }: User) {
+    if (!siteKey) {
+      toast.error("reCAPTCHA não configurado.");
+      return;
+    }
+    if (!recaptchaToken) {
+      toast.error("Confirme o reCAPTCHA para continuar.");
+      return;
+    }
     setIsLoading(true);
     try {
       console.log('[LOGIN PAGE] Iniciando login...');
-      const result = await login(Email, Password);
+      const result = await login(Email, Password, recaptchaToken);
       
       console.log('[LOGIN PAGE] Resultado do login:', {
         success: result.success,
@@ -62,6 +74,8 @@ export default function AdmLoginPage() {
       toast.error("Erro ao realizar login.");
     } finally {
       setIsLoading(false);
+      setRecaptchaToken("");
+      recaptchaRef.current?.reset();
     }
   }
 
@@ -125,6 +139,18 @@ export default function AdmLoginPage() {
               )}
             </button>
           </div>
+          {siteKey ? (
+            <RecaptchaV2
+              ref={recaptchaRef}
+              siteKey={siteKey}
+              onVerify={(token) => setRecaptchaToken(token)}
+              onExpired={() => setRecaptchaToken("")}
+              onError={() => setRecaptchaToken("")}
+              className="mb-4"
+            />
+          ) : (
+            <p className="text-xs text-red-600 mb-4">reCAPTCHA não configurado.</p>
+          )}
           <button
             type="submit"
             className={`w-full bg-[#8494E9] text-white font-semibold py-2 rounded hover:bg-[#6d7ad6] transition-colors flex items-center justify-center`}

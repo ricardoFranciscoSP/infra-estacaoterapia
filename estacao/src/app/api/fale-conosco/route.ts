@@ -25,7 +25,8 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     
     // Validação básica
-    if (!body.nome || !body.email || !body.assunto || !body.mensagem || !body.token) {
+    const token = body.recaptchaToken || body.token;
+    if (!body.nome || !body.email || !body.assunto || !body.mensagem || !token) {
       return NextResponse.json({ error: 'Campos obrigatórios ausentes.' }, { status: 400 });
     }
 
@@ -35,7 +36,7 @@ export async function POST(req: NextRequest) {
     const assunto = sanitizeString(body.assunto);
     const mensagem = sanitizeString(body.mensagem);
     const telefone = body.telefone ? sanitizeString(body.telefone) : undefined;
-    const token = sanitizeString(body.token);
+    const sanitizedToken = sanitizeString(token);
 
     // Validações adicionais
     if (!nome || nome.length < 2) {
@@ -54,7 +55,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Mensagem muito curta.' }, { status: 400 });
     }
 
-    if (!token) {
+    if (!sanitizedToken) {
       return NextResponse.json({ error: 'Token de captcha ausente.' }, { status: 400 });
     }
 
@@ -70,7 +71,7 @@ export async function POST(req: NextRequest) {
       'https://www.google.com/recaptcha/api/siteverify',
       new URLSearchParams({
         secret: captchaSecret,
-        response: token
+        response: sanitizedToken
       }),
       {
         headers: {

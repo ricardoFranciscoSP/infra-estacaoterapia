@@ -30,6 +30,12 @@ const router = Router();
 router.get("/psychologist/documents/:id", protect, FilesController.viewPsychologistDocument);
 
 /**
+ * Visualizar documento específico do psicólogo (inline)
+ * GET /api/files/psychologist/documents/:id/inline
+ */
+router.get("/psychologist/documents/:id/inline", protect, FilesController.viewPsychologistDocumentInline);
+
+/**
  * Visualizar documento da tabela Document (usado em solicitações de saque)
  * GET /api/files/documents/:id
  * 

@@ -48,6 +48,7 @@ Principais:
 - `POSTGRES_PASSWORD` - Senha do PostgreSQL
 - `REDIS_PASSWORD` - Senha do Redis
 - `NODE_ENV` - Ambiente (production/development)
+- `RECAPTCHA_SECRET_KEY` - Secret key do reCAPTCHA
 
 ## 🐳 Docker
 

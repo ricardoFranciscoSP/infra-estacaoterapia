@@ -21,6 +21,7 @@ import { PsicologoRegisterFormAutonomo } from "@/components/PsicologoRegisterFor
 import Image from "next/image";
 import Link from "next/link";
 import { ensureISO8601Date } from "@/utils/date";
+import { RecaptchaV2, type RecaptchaHandle } from "@/components/RecaptchaV2";
 
 // --- Função auxiliar: montar FormData ---
 function buildFormData(
@@ -106,6 +107,7 @@ function buildFormData(
 
 const RegisterPageInner = () => {
   const { register } = useAuth();
+  const siteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || "";
   const searchParams = useSearchParams();
   const [tab, setTab] = useState<"paciente" | "psicologo">(
     searchParams?.get("tab") === "psicologo" ? "psicologo" : "paciente"
@@ -115,6 +117,10 @@ const RegisterPageInner = () => {
   const setLoading = useUIStore((s) => s.setLoading);
   const isLoading = useUIStore((s) => s.isLoading);
   const isBusy = isLoading;
+  const [pacienteRecaptchaToken, setPacienteRecaptchaToken] = useState("");
+  const [psicologoRecaptchaToken, setPsicologoRecaptchaToken] = useState("");
+  const pacienteRecaptchaRef = React.useRef<RecaptchaHandle>(null);
+  const psicologoRecaptchaRef = React.useRef<RecaptchaHandle>(null);
 
   // --- Forms ---
   const pacienteForm = useForm<PacienteRegisterFormType>({
@@ -179,11 +185,16 @@ const RegisterPageInner = () => {
 
 
   // --- Função principal de registro ---
-  async function handleRegister(data: PacienteRegisterFormType | PsicologoAutonomoRegisterForm | PsicologoJuridicoRegisterForm | FormData, role: "Psychologist" | "Patient") {
+  async function handleRegister(
+    data: PacienteRegisterFormType | PsicologoAutonomoRegisterForm | PsicologoJuridicoRegisterForm | FormData,
+    role: "Psychologist" | "Patient",
+    recaptchaToken: string
+  ) {
     setLoading(true);
     try {
       // Garante que arquivos são enviados via FormData para API Node.js
       const formData = buildFormData(data, role, tipoAtuacao);
+      formData.set("recaptchaToken", recaptchaToken);
       
       const result = await register(formData);
 
@@ -199,7 +210,7 @@ const RegisterPageInner = () => {
         const { email, password } = data as PacienteRegisterFormType;
         try {
           const { login } = await import("@/store/authStore").then((mod) => mod.useAuthStore.getState());
-          const loginResult = await login(email, password);
+          const loginResult = await login(email, password, recaptchaToken);
 
           if (!loginResult.success) {
             toast.error(loginResult.message || "Erro ao fazer login automático.");
@@ -289,6 +300,14 @@ async function handleRegisterPsicologo(
   data: PsicologoAutonomoRegisterForm | PsicologoJuridicoRegisterForm | FormData,
   tipoAtuacaoParam?: "autonomo" | "juridico"
 ): Promise<void> {
+  if (!siteKey) {
+    toast.error("reCAPTCHA não configurado.");
+    return;
+  }
+  if (!psicologoRecaptchaToken) {
+    toast.error("Confirme o reCAPTCHA para continuar.");
+    return;
+  }
   const tipo = tipoAtuacaoParam || tipoAtuacao;
   // Se vier FormData, valida os arquivos
   if (data instanceof FormData) {
@@ -313,7 +332,12 @@ async function handleRegisterPsicologo(
       }
     }
 
-    await handleRegister(data, "Psychologist");
+    try {
+      await handleRegister(data, "Psychologist", psicologoRecaptchaToken);
+    } finally {
+      setPsicologoRecaptchaToken("");
+      psicologoRecaptchaRef.current?.reset();
+    }
     return;
   }
 
@@ -423,14 +447,32 @@ async function handleRegisterPsicologo(
     }
   }
 
-  await handleRegister(formData, "Psychologist");
+  try {
+    await handleRegister(formData, "Psychologist", psicologoRecaptchaToken);
+  } finally {
+    setPsicologoRecaptchaToken("");
+    psicologoRecaptchaRef.current?.reset();
+  }
 }
 
 
   async function handleRegisterPaciente(data: PacienteRegisterFormType) {
+    if (!siteKey) {
+      toast.error("reCAPTCHA não configurado.");
+      return;
+    }
+    if (!pacienteRecaptchaToken) {
+      toast.error("Confirme o reCAPTCHA para continuar.");
+      return;
+    }
     const valid = await pacienteForm.trigger();
     if (!valid) return toast.error("Preencha todos os campos obrigatórios corretamente.");
-    return handleRegister(data, "Patient");
+    try {
+      return await handleRegister(data, "Patient", pacienteRecaptchaToken);
+    } finally {
+      setPacienteRecaptchaToken("");
+      pacienteRecaptchaRef.current?.reset();
+    }
   }
 
   // Mantém a aba sincronizada se o query param mudar
@@ -524,12 +566,38 @@ async function handleRegisterPsicologo(
                     isSubmitting={isBusy}
                   />
                 )}
+                <div className="mt-4">
+                  {siteKey ? (
+                    <RecaptchaV2
+                      ref={psicologoRecaptchaRef}
+                      siteKey={siteKey}
+                      onVerify={(token) => setPsicologoRecaptchaToken(token)}
+                      onExpired={() => setPsicologoRecaptchaToken("")}
+                      onError={() => setPsicologoRecaptchaToken("")}
+                    />
+                  ) : (
+                    <p className="text-xs text-red-600">reCAPTCHA não configurado.</p>
+                  )}
+                </div>
               </motion.div>
             )}
  
             {tab === "paciente" && (
               <motion.div key="paciente" initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -40 }} transition={{ duration: 0.25 }}>
                 <PacienteRegisterForm form={pacienteForm} onSubmit={handleRegisterPaciente} isSubmitting={isBusy} />
+                <div className="mt-4">
+                  {siteKey ? (
+                    <RecaptchaV2
+                      ref={pacienteRecaptchaRef}
+                      siteKey={siteKey}
+                      onVerify={(token) => setPacienteRecaptchaToken(token)}
+                      onExpired={() => setPacienteRecaptchaToken("")}
+                      onError={() => setPacienteRecaptchaToken("")}
+                    />
+                  ) : (
+                    <p className="text-xs text-red-600">reCAPTCHA não configurado.</p>
+                  )}
+                </div>
               </motion.div>
             )}
           </AnimatePresence>

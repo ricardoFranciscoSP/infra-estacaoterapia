@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { AuthService } from '../services/auth.service';
 import { ITokenService } from '../interfaces/token.interface';
+import { verifyRecaptcha } from '../utils/recaptcha.util';
 
 /**
  * Controller responsável pelas operações de autenticação, registro,
@@ -22,7 +23,14 @@ export class AuthController {
    */
   async login(req: Request, res: Response): Promise<Response> {
     try {
-      const { email, telefone, crp, password } = req.body;
+      const { email, telefone, crp, password, recaptchaToken } = req.body;
+
+      if (!recaptchaToken || typeof recaptchaToken !== 'string') {
+        return res.status(400).json({
+          success: false,
+          message: 'reCAPTCHA obrigatório.',
+        });
+      }
 
       let identifier = email || telefone || crp;
       // Remove hífen apenas se o identifier for telefone no formato antigo "00-000000" (apenas números)
@@ -42,6 +50,14 @@ export class AuthController {
       const ip = req.headers['x-forwarded-for']?.toString() || req.socket.remoteAddress || '';
       const userAgent = req.headers['user-agent'] || '';
       console.log(`[LOGIN] IP: ${ip}, User-Agent: ${userAgent.substring(0, 50)}...`);
+
+      const captchaResult = await verifyRecaptcha(recaptchaToken, ip);
+      if (!captchaResult.success) {
+        return res.status(400).json({
+          success: false,
+          message: 'Captcha inválido.',
+        });
+      }
 
       // Passa ip e userAgent para o service
       const result = await this.authService.login(identifier, password, ip, userAgent);
@@ -183,6 +199,24 @@ export class AuthController {
    */
   async register(req: Request, res: Response): Promise<Response> {
     try {
+      const { recaptchaToken } = req.body;
+      if (!recaptchaToken || typeof recaptchaToken !== 'string') {
+        return res.status(400).json({
+          success: false,
+          message: 'reCAPTCHA obrigatório.',
+        });
+      }
+
+      const ip = req.headers['x-forwarded-for']?.toString() || req.socket.remoteAddress || '';
+      const captchaResult = await verifyRecaptcha(recaptchaToken, ip);
+      if (!captchaResult.success) {
+        return res.status(400).json({
+          success: false,
+          message: 'Captcha inválido.',
+        });
+      }
+
+      delete req.body.recaptchaToken;
       // Observação: aceita tanto multipart/form-data (Multer) quanto fallback JSON/base64 (service)
 
       // Aceita ambos formatos do Multer:
