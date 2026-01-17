@@ -9,6 +9,19 @@ import { supabaseAdmin, STORAGE_BUCKET } from "../services/storage.services";
 import { ContratoPsicologoData, ContratoGeradoResult } from "../types/contrato.types";
 const emailService = new EmailService();
 
+const normalizeContratoText = (text: string) =>
+    text
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/\uFFFD/g, "")
+        .toUpperCase();
+
+const hasParceriaTitle = (text: string) =>
+    normalizeContratoText(text).includes("CONTRATO DE PARCERIA E INTERMEDIACAO");
+
+const hasPacienteTitle = (text: string) =>
+    normalizeContratoText(text).includes("CONTRATO DE PRESTACAO DE SERVICOS PSICOLOGICOS VIA PLATAFORMA VIRTUAL");
+
 // Replace static TEMPLATES_DIR with a resolver that checks common locations
 function resolveTemplatesDir(): string {
     // Ordem de preferência: src/templates primeiro (desenvolvimento), depois dist/templates (produção)
@@ -61,7 +74,7 @@ function resolveTemplatePath(templateName: string): string {
         console.info(`[resolveTemplatePath] Template resolvido diretamente: ${directCandidate}`);
         // Validação adicional: verifica se o arquivo contém o conteúdo correto
         const content = fs.readFileSync(directCandidate, 'utf8').substring(0, 500);
-        if (templateName.includes('parceria') && !content.includes('CONTRATO DE PARCERIA E INTERMEDIAÇÃO')) {
+        if (templateName.includes('parceria') && !hasParceriaTitle(content)) {
             console.error(`[resolveTemplatePath] ❌ ERRO: Arquivo encontrado não é o template de parceria!`);
             throw new Error(`Template incorreto: O arquivo ${directCandidate} não contém o título de parceria.`);
         }
@@ -75,7 +88,7 @@ function resolveTemplatePath(templateName: string): string {
         console.info(`[resolveTemplatePath] Template encontrado em src/templates: ${srcTemplatesPath}`);
         // Validação adicional: verifica se o arquivo contém o conteúdo correto
         const content = fs.readFileSync(srcTemplatesPath, 'utf8').substring(0, 500);
-        if (templateName.includes('parceria') && !content.includes('CONTRATO DE PARCERIA E INTERMEDIAÇÃO')) {
+        if (templateName.includes('parceria') && !hasParceriaTitle(content)) {
             console.error(`[resolveTemplatePath] ❌ ERRO: Arquivo encontrado não é o template de parceria!`);
             console.error(`[resolveTemplatePath] Primeiros 500 caracteres:`, content);
             throw new Error(`Template incorreto: O arquivo ${srcTemplatesPath} não contém o título de parceria.`);
@@ -91,12 +104,12 @@ function resolveTemplatePath(templateName: string): string {
         console.info(`[resolveTemplatePath] Template encontrado relativo ao compilado: ${relativeToCompiled}`);
         // Validação adicional: verifica se o arquivo contém o conteúdo correto
         const content = fs.readFileSync(relativeToCompiled, 'utf8').substring(0, 500);
-        if (templateName.includes('parceria') && !content.includes('CONTRATO DE PARCERIA E INTERMEDIAÇÃO')) {
+        if (templateName.includes('parceria') && !hasParceriaTitle(content)) {
             console.error(`[resolveTemplatePath] ❌ ERRO: Arquivo encontrado não é o template de parceria!`);
             console.error(`[resolveTemplatePath] Primeiros 500 caracteres:`, content);
             throw new Error(`Template incorreto: O arquivo ${relativeToCompiled} não contém o título de parceria.`);
         }
-        if (templateName.includes('parceria') && content.includes('CONTRATO DE PRESTAÇÃO DE SERVIÇOS PSICOLÓGICOS VIA PLATAFORMA VIRTUAL')) {
+        if (templateName.includes('parceria') && hasPacienteTitle(content)) {
             console.error(`[resolveTemplatePath] ❌ ERRO: Template de PACIENTE encontrado em caminho relativo!`);
             throw new Error(`Template incorreto: O arquivo ${relativeToCompiled} contém o template de paciente, não o de parceria.`);
         }
@@ -111,12 +124,12 @@ function resolveTemplatePath(templateName: string): string {
         console.info(`[resolveTemplatePath] Template encontrado em src/templates (relativo): ${relativeSrcTemplates}`);
         // Validação adicional: verifica se o arquivo contém o conteúdo correto
         const content = fs.readFileSync(relativeSrcTemplates, 'utf8').substring(0, 500);
-        if (templateName.includes('parceria') && !content.includes('CONTRATO DE PARCERIA E INTERMEDIAÇÃO')) {
+        if (templateName.includes('parceria') && !hasParceriaTitle(content)) {
             console.error(`[resolveTemplatePath] ❌ ERRO: Arquivo encontrado não é o template de parceria!`);
             console.error(`[resolveTemplatePath] Primeiros 500 caracteres:`, content);
             throw new Error(`Template incorreto: O arquivo ${relativeSrcTemplates} não contém o título de parceria.`);
         }
-        if (templateName.includes('parceria') && content.includes('CONTRATO DE PRESTAÇÃO DE SERVIÇOS PSICOLÓGICOS VIA PLATAFORMA VIRTUAL')) {
+        if (templateName.includes('parceria') && hasPacienteTitle(content)) {
             console.error(`[resolveTemplatePath] ❌ ERRO: Template de PACIENTE encontrado em src/templates relativo!`);
             throw new Error(`Template incorreto: O arquivo ${relativeSrcTemplates} contém o template de paciente, não o de parceria.`);
         }
@@ -131,7 +144,7 @@ function resolveTemplatePath(templateName: string): string {
         console.info(`[resolveTemplatePath] Template encontrado em TEMPLATES_DIR: ${joinWithTemplatesDir}`);
         // Validação adicional: verifica se o arquivo contém o conteúdo correto
         const content = fs.readFileSync(joinWithTemplatesDir, 'utf8').substring(0, 500);
-        if (templateName.includes('parceria') && !content.includes('CONTRATO DE PARCERIA E INTERMEDIAÇÃO')) {
+        if (templateName.includes('parceria') && !hasParceriaTitle(content)) {
             console.error(`[resolveTemplatePath] ❌ ERRO: Arquivo encontrado não é o template de parceria!`);
             console.error(`[resolveTemplatePath] Primeiros 500 caracteres:`, content);
             throw new Error(`Template incorreto: O arquivo ${joinWithTemplatesDir} não contém o título de parceria.`);
@@ -147,12 +160,12 @@ function resolveTemplatePath(templateName: string): string {
         console.info(`[resolveTemplatePath] Template encontrado por basename em TEMPLATES_DIR: ${basenameCandidate}`);
         // Validação adicional: verifica se o arquivo contém o conteúdo correto
         const content = fs.readFileSync(basenameCandidate, 'utf8').substring(0, 500);
-        if (templateName.includes('parceria') && !content.includes('CONTRATO DE PARCERIA E INTERMEDIAÇÃO')) {
+        if (templateName.includes('parceria') && !hasParceriaTitle(content)) {
             console.error(`[resolveTemplatePath] ❌ ERRO: Arquivo encontrado não é o template de parceria!`);
             console.error(`[resolveTemplatePath] Primeiros 500 caracteres:`, content);
             throw new Error(`Template incorreto: O arquivo ${basenameCandidate} não contém o título de parceria.`);
         }
-        if (templateName.includes('parceria') && content.includes('CONTRATO DE PRESTAÇÃO DE SERVIÇOS PSICOLÓGICOS VIA PLATAFORMA VIRTUAL')) {
+        if (templateName.includes('parceria') && hasPacienteTitle(content)) {
             console.error(`[resolveTemplatePath] ❌ ERRO: Template de PACIENTE encontrado por basename!`);
             throw new Error(`Template incorreto: O arquivo ${basenameCandidate} contém o template de paciente, não o de parceria.`);
         }
@@ -167,11 +180,11 @@ function resolveTemplatePath(templateName: string): string {
         console.info(`[resolveTemplatePath] Template encontrado em dist/templates: ${distTemplatesPath}`);
         // Validação adicional: verifica se o arquivo contém o conteúdo correto
         const content = fs.readFileSync(distTemplatesPath, 'utf8').substring(0, 500);
-        if (templateName.includes('parceria') && !content.includes('CONTRATO DE PARCERIA E INTERMEDIAÇÃO')) {
+        if (templateName.includes('parceria') && !hasParceriaTitle(content)) {
             console.error(`[resolveTemplatePath] ❌ ERRO: Arquivo encontrado não é o template de parceria!`);
             throw new Error(`Template incorreto: O arquivo ${distTemplatesPath} não contém o título de parceria.`);
         }
-        if (templateName.includes('parceria') && content.includes('CONTRATO DE PRESTAÇÃO DE SERVIÇOS PSICOLÓGICOS VIA PLATAFORMA VIRTUAL')) {
+        if (templateName.includes('parceria') && hasPacienteTitle(content)) {
             console.error(`[resolveTemplatePath] ❌ ERRO: Template de PACIENTE encontrado em dist/templates!`);
             throw new Error(`Template incorreto: O arquivo ${distTemplatesPath} contém o template de paciente, não o de parceria.`);
         }
@@ -185,11 +198,11 @@ function resolveTemplatePath(templateName: string): string {
         console.info(`[resolveTemplatePath] Template encontrado em /dist: ${distCandidate}`);
         // Validação adicional
         const content = fs.readFileSync(distCandidate, 'utf8').substring(0, 500);
-        if (templateName.includes('parceria') && !content.includes('CONTRATO DE PARCERIA E INTERMEDIAÇÃO')) {
+        if (templateName.includes('parceria') && !hasParceriaTitle(content)) {
             console.error(`[resolveTemplatePath] ❌ ERRO: Arquivo encontrado não é o template de parceria!`);
             throw new Error(`Template incorreto: O arquivo ${distCandidate} não contém o título de parceria.`);
         }
-        if (templateName.includes('parceria') && content.includes('CONTRATO DE PRESTAÇÃO DE SERVIÇOS PSICOLÓGICOS VIA PLATAFORMA VIRTUAL')) {
+        if (templateName.includes('parceria') && hasPacienteTitle(content)) {
             console.error(`[resolveTemplatePath] ❌ ERRO: Template de PACIENTE encontrado em /dist!`);
             throw new Error(`Template incorreto: O arquivo ${distCandidate} contém o template de paciente, não o de parceria.`);
         }
@@ -201,11 +214,11 @@ function resolveTemplatePath(templateName: string): string {
         console.info(`[resolveTemplatePath] Template encontrado em /dist por basename: ${distBasename}`);
         // Validação adicional
         const content = fs.readFileSync(distBasename, 'utf8').substring(0, 500);
-        if (templateName.includes('parceria') && !content.includes('CONTRATO DE PARCERIA E INTERMEDIAÇÃO')) {
+        if (templateName.includes('parceria') && !hasParceriaTitle(content)) {
             console.error(`[resolveTemplatePath] ❌ ERRO: Arquivo encontrado não é o template de parceria!`);
             throw new Error(`Template incorreto: O arquivo ${distBasename} não contém o título de parceria.`);
         }
-        if (templateName.includes('parceria') && content.includes('CONTRATO DE PRESTAÇÃO DE SERVIÇOS PSICOLÓGICOS VIA PLATAFORMA VIRTUAL')) {
+        if (templateName.includes('parceria') && hasPacienteTitle(content)) {
             console.error(`[resolveTemplatePath] ❌ ERRO: Template de PACIENTE encontrado em /dist por basename!`);
             throw new Error(`Template incorreto: O arquivo ${distBasename} contém o template de paciente, não o de parceria.`);
         }
@@ -219,12 +232,12 @@ function resolveTemplatePath(templateName: string): string {
         console.info(`[resolveTemplatePath] Template encontrado em src/templates (basename): ${finalSrcPath}`);
         // Validação adicional: verifica se o arquivo contém o conteúdo correto
         const content = fs.readFileSync(finalSrcPath, 'utf8').substring(0, 500);
-        if (templateName.includes('parceria') && !content.includes('CONTRATO DE PARCERIA E INTERMEDIAÇÃO')) {
+        if (templateName.includes('parceria') && !hasParceriaTitle(content)) {
             console.error(`[resolveTemplatePath] ❌ ERRO: Arquivo encontrado não é o template de parceria!`);
             console.error(`[resolveTemplatePath] Primeiros 500 caracteres:`, content);
             throw new Error(`Template incorreto: O arquivo ${finalSrcPath} não contém o título de parceria.`);
         }
-        if (templateName.includes('parceria') && content.includes('CONTRATO DE PRESTAÇÃO DE SERVIÇOS PSICOLÓGICOS VIA PLATAFORMA VIRTUAL')) {
+        if (templateName.includes('parceria') && hasPacienteTitle(content)) {
             console.error(`[resolveTemplatePath] ❌ ERRO: Template de PACIENTE encontrado em src/templates (basename)!`);
             throw new Error(`Template incorreto: O arquivo ${finalSrcPath} contém o template de paciente, não o de parceria.`);
         }
@@ -417,12 +430,12 @@ export class ContratoService {
                     // Validação crítica: se estamos procurando template de parceria, o arquivo encontrado DEVE ser de parceria
                     if (templatePath.includes('parceria') || templatePath.includes('contrato-parceria-psicologo')) {
                         const content = fs.readFileSync(altPath, 'utf8').substring(0, 500);
-                        if (!content.includes('CONTRATO DE PARCERIA E INTERMEDIAÇÃO')) {
+                        if (!hasParceriaTitle(content)) {
                             console.error(`[renderHtml] ❌ ERRO: Arquivo encontrado em caminho alternativo não é o template de parceria!`);
                             console.error(`[renderHtml] Caminho: ${altPath}`);
                             console.error(`[renderHtml] Primeiros 500 caracteres:`, content);
 
-                            if (content.includes('CONTRATO DE PRESTAÇÃO DE SERVIÇOS PSICOLÓGICOS VIA PLATAFORMA VIRTUAL')) {
+                            if (hasPacienteTitle(content)) {
                                 console.error(`[renderHtml] ❌ ERRO: Template de PACIENTE encontrado em caminho alternativo!`);
                                 throw new Error(`Template incorreto: O arquivo encontrado em ${altPath} contém o template de paciente, não o de parceria.`);
                             }
@@ -450,12 +463,12 @@ export class ContratoService {
                 console.log(`[renderHtml] Validando template de parceria...`);
                 console.log(`[renderHtml] Primeiros 500 caracteres do HTML lido:`, html.substring(0, 500));
 
-                if (!html.includes('CONTRATO DE PARCERIA E INTERMEDIAÇÃO')) {
+                if (!hasParceriaTitle(html)) {
                     console.error(`[renderHtml] ❌ ERRO CRÍTICO: HTML lido não contém título de PARCERIA!`);
                     console.error(`[renderHtml] Template path: ${templatePath}`);
                     console.error(`[renderHtml] Primeiros 1000 caracteres:`, html.substring(0, 1000));
 
-                    if (html.includes('CONTRATO DE PRESTAÇÃO DE SERVIÇOS PSICOLÓGICOS VIA PLATAFORMA VIRTUAL')) {
+                    if (hasPacienteTitle(html)) {
                         console.error(`[renderHtml] ❌ ERRO: Template de PACIENTE detectado no arquivo lido!`);
                         console.error(`[renderHtml] O arquivo ${templatePath} contém o template ERRADO!`);
                         throw new Error(`Template incorreto: O arquivo ${templatePath} contém o template de paciente, não o de parceria do psicólogo. Verifique se o arquivo 'contrato-parceria-psicologo.html' existe e está correto.`);
@@ -464,7 +477,7 @@ export class ContratoService {
                     throw new Error(`Template incorreto: O HTML lido de ${templatePath} não contém o título 'CONTRATO DE PARCERIA E INTERMEDIAÇÃO'.`);
                 }
 
-                if (html.includes('CONTRATO DE PRESTAÇÃO DE SERVIÇOS PSICOLÓGICOS VIA PLATAFORMA VIRTUAL')) {
+                if (hasPacienteTitle(html)) {
                     console.error(`[renderHtml] ❌ ERRO CRÍTICO: Template de PACIENTE detectado no arquivo lido!`);
                     throw new Error(`Template incorreto: O arquivo ${templatePath} contém o template de paciente. Deve usar 'contrato-parceria-psicologo.html'.`);
                 }
@@ -511,12 +524,12 @@ export class ContratoService {
                 console.log(`[renderHtml] Tamanho do HTML: ${html.length} caracteres`);
                 console.log(`[renderHtml] Primeiros 500 caracteres:`, html.substring(0, 500));
 
-                if (!html.includes('CONTRATO DE PARCERIA E INTERMEDIAÇÃO')) {
+                if (!hasParceriaTitle(html)) {
                     console.error(`[renderHtml] ❌ ERRO CRÍTICO: HTML lido não contém título de PARCERIA!`);
                     console.error(`[renderHtml] Template path: ${templatePath}`);
                     console.error(`[renderHtml] Primeiros 1000 caracteres do HTML:`, html.substring(0, 1000));
 
-                    if (html.includes('CONTRATO DE PRESTAÇÃO DE SERVIÇOS PSICOLÓGICOS VIA PLATAFORMA VIRTUAL')) {
+                    if (hasPacienteTitle(html)) {
                         console.error(`[renderHtml] ❌ ERRO: Template de PACIENTE detectado no HTML lido!`);
                         console.error(`[renderHtml] Isso indica que o arquivo ERRADO está sendo usado!`);
                         throw new Error(`Template incorreto: O arquivo ${templatePath} contém o template de paciente, não o de parceria do psicólogo. Verifique se o arquivo 'contrato-parceria-psicologo.html' existe e está correto.`);
@@ -526,7 +539,7 @@ export class ContratoService {
                 }
 
                 // Verifica se NÃO contém o título ERRADO
-                if (html.includes('CONTRATO DE PRESTAÇÃO DE SERVIÇOS PSICOLÓGICOS VIA PLATAFORMA VIRTUAL')) {
+                if (hasPacienteTitle(html)) {
                     console.error(`[renderHtml] ❌ ERRO CRÍTICO: Template de PACIENTE detectado no HTML lido!`);
                     console.error(`[renderHtml] Template path: ${templatePath}`);
                     throw new Error(`Template incorreto: O arquivo ${templatePath} contém o template de paciente. Deve usar 'contrato-parceria-psicologo.html'.`);
@@ -565,12 +578,12 @@ export class ContratoService {
 
             // Validação final do resultado compilado
             if (templatePath.includes('contrato-parceria-psicologo')) {
-                if (!result.includes('CONTRATO DE PARCERIA E INTERMEDIAÇÃO')) {
+                if (!hasParceriaTitle(result)) {
                     console.error(`[renderHtml] ❌ ERRO: HTML compilado não contém título de PARCERIA!`);
                     throw new Error(`HTML compilado não contém o título esperado do contrato de parceria.`);
                 }
 
-                if (result.includes('CONTRATO DE PRESTAÇÃO DE SERVIÇOS PSICOLÓGICOS VIA PLATAFORMA VIRTUAL')) {
+                if (hasPacienteTitle(result)) {
                     console.error(`[renderHtml] ❌ ERRO CRÍTICO: Template de PACIENTE detectado no HTML compilado!`);
                     throw new Error(`HTML compilado contém o template de paciente. O template correto não foi usado.`);
                 }
@@ -799,13 +812,13 @@ export class ContratoService {
         console.log(`[renderHtmlForPreview] Template carregado. Tamanho: ${templateContent.length} caracteres`);
 
         // Validações rigorosas do conteúdo do template
-        if (!templateContent.includes('CONTRATO DE PARCERIA E INTERMEDIAÇÃO')) {
+        if (!hasParceriaTitle(templateContent)) {
             console.error(`[renderHtmlForPreview] ❌ ERRO CRÍTICO: Template carregado NÃO é o contrato de parceria!`);
             console.error(`[renderHtmlForPreview] Arquivo: ${templatePath}`);
             console.error(`[renderHtmlForPreview] Primeiros 1000 caracteres:`, templateContent.substring(0, 1000));
 
             // Verifica se é o template ERRADO (de paciente)
-            if (templateContent.includes('CONTRATO DE PRESTAÇÃO DE SERVIÇOS PSICOLÓGICOS VIA PLATAFORMA VIRTUAL')) {
+            if (hasPacienteTitle(templateContent)) {
                 console.error(`[renderHtmlForPreview] ❌ ERRO: Template de PACIENTE detectado no arquivo!`);
                 throw new Error(`Template incorreto: O arquivo ${templatePath} contém o template de paciente, não o de parceria do psicólogo.`);
             }
@@ -814,7 +827,7 @@ export class ContratoService {
         }
 
         // Verifica se NÃO contém o título ERRADO (de paciente)
-        if (templateContent.includes('CONTRATO DE PRESTAÇÃO DE SERVIÇOS PSICOLÓGICOS VIA PLATAFORMA VIRTUAL')) {
+        if (hasPacienteTitle(templateContent)) {
             console.error(`[renderHtmlForPreview] ❌ ERRO CRÍTICO: Template de PACIENTE detectado no arquivo!`);
             throw new Error(`Template incorreto: O arquivo ${templatePath} contém o template de paciente. Deve usar 'contrato-parceria-psicologo.html'.`);
         }
@@ -856,11 +869,11 @@ export class ContratoService {
         console.log(`[renderHtmlForPreview] HTML renderizado. Tamanho: ${html.length} caracteres`);
         console.log(`[renderHtmlForPreview] Primeiros 500 caracteres:`, html.substring(0, 500));
 
-        if (!html.includes('CONTRATO DE PARCERIA E INTERMEDIAÇÃO')) {
+        if (!hasParceriaTitle(html)) {
             console.error(`[renderHtmlForPreview] ❌ ERRO: HTML renderizado não contém título de PARCERIA!`);
             console.error(`[renderHtmlForPreview] Primeiros 1000 caracteres:`, html.substring(0, 1000));
 
-            if (html.includes('CONTRATO DE PRESTAÇÃO DE SERVIÇOS PSICOLÓGICOS VIA PLATAFORMA VIRTUAL')) {
+            if (hasPacienteTitle(html)) {
                 console.error(`[renderHtmlForPreview] ❌ ERRO CRÍTICO: HTML renderizado contém título de PACIENTE!`);
                 console.error(`[renderHtmlForPreview] Isso indica que o template ERRADO foi usado!`);
                 throw new Error(`HTML renderizado contém o template de paciente. O template correto não foi usado. Verifique se o arquivo 'contrato-parceria-psicologo.html' existe e está correto.`);
@@ -869,7 +882,7 @@ export class ContratoService {
             throw new Error(`HTML renderizado não contém o título esperado do contrato de parceria.`);
         }
 
-        if (html.includes('CONTRATO DE PRESTAÇÃO DE SERVIÇOS PSICOLÓGICOS VIA PLATAFORMA VIRTUAL')) {
+        if (hasPacienteTitle(html)) {
             console.error(`[renderHtmlForPreview] ❌ ERRO CRÍTICO: HTML renderizado contém título de PACIENTE!`);
             throw new Error(`HTML renderizado contém o template de paciente. O template correto não foi usado.`);
         }
@@ -912,7 +925,7 @@ export class ContratoService {
 
         // Lê o início do arquivo para validar que é o template correto
         const templateContent = fs.readFileSync(templatePath, 'utf8').substring(0, 1000);
-        if (!templateContent.includes('CONTRATO DE PARCERIA E INTERMEDIAÇÃO')) {
+        if (!hasParceriaTitle(templateContent)) {
             console.error(`[Contrato Psicólogo] ERRO: Template carregado não é o contrato de parceria!`);
             console.error(`[Contrato Psicólogo] Primeiros 500 caracteres: ${templateContent.substring(0, 500)}`);
             throw new Error(`Template carregado não é o contrato de parceria. Arquivo: ${templatePath}`);
@@ -958,12 +971,12 @@ export class ContratoService {
         console.log(`[Contrato Psicólogo] Primeiros 500 caracteres:`, html.substring(0, 500));
 
         // Verifica se o HTML gerado contém o título correto
-        if (!html.includes('CONTRATO DE PARCERIA E INTERMEDIAÇÃO')) {
+        if (!hasParceriaTitle(html)) {
             console.error(`[Contrato Psicólogo] ❌ ERRO CRÍTICO: HTML gerado não contém o título esperado do contrato de parceria!`);
             console.error(`[Contrato Psicólogo] Primeiros 1000 caracteres do HTML: ${html.substring(0, 1000)}`);
 
             // Verifica se contém o título ERRADO (de paciente)
-            if (html.includes('CONTRATO DE PRESTAÇÃO DE SERVIÇOS PSICOLÓGICOS VIA PLATAFORMA VIRTUAL')) {
+            if (hasPacienteTitle(html)) {
                 console.error(`[Contrato Psicólogo] ❌ ERRO: Template de PACIENTE detectado no HTML gerado!`);
                 console.error(`[Contrato Psicólogo] Isso indica que o template ERRADO foi usado!`);
                 throw new Error(`Template incorreto: O HTML gerado contém o template de paciente, não o de parceria do psicólogo. Verifique se o arquivo 'contrato-parceria-psicologo.html' existe e está correto.`);
@@ -973,7 +986,7 @@ export class ContratoService {
         }
 
         // Verifica se NÃO contém o título ERRADO (de paciente)
-        if (html.includes('CONTRATO DE PRESTAÇÃO DE SERVIÇOS PSICOLÓGICOS VIA PLATAFORMA VIRTUAL')) {
+        if (hasPacienteTitle(html)) {
             console.error(`[Contrato Psicólogo] ❌ ERRO CRÍTICO: Template de PACIENTE detectado no HTML gerado!`);
             throw new Error(`Template incorreto: O HTML gerado contém o template de paciente. O template correto não foi usado.`);
         }

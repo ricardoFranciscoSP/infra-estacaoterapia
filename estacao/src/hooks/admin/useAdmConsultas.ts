@@ -160,8 +160,12 @@ export function useAdmConsultasMesAtualLista() {
                 // Tenta buscar do endpoint específico primeiro
                 try {
                     const response = await admConsultasService().getConsultasMesAtualLista();
-                    if (response.data && Array.isArray(response.data) && response.data.length > 0) {
-                        return response.data;
+                    const data = response.data as unknown;
+                    if (Array.isArray(data)) {
+                        return data;
+                    }
+                    if (data && Array.isArray((data as { data?: unknown }).data)) {
+                        return (data as { data: ConsultasRealizadas[] }).data;
                     }
                 } catch {
                     // Endpoint pode não existir, continua para fallback
@@ -170,11 +174,12 @@ export function useAdmConsultasMesAtualLista() {
                 
                 // Fallback: busca todas as consultas realizadas e filtra pelo mês atual
                 const todasConsultas = await getConsultasRealizadas();
+                const lista = Array.isArray(todasConsultas) ? todasConsultas : [];
                 const agora = new Date();
                 const mesAtual = agora.getMonth();
                 const anoAtual = agora.getFullYear();
                 
-                return todasConsultas.filter((consulta: ConsultasRealizadas) => {
+                return lista.filter((consulta: ConsultasRealizadas) => {
                     if (!consulta.Date) return false;
                     try {
                         const dataConsulta = new Date(consulta.Date);

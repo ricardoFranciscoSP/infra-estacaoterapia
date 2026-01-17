@@ -14,6 +14,23 @@ import { EmailService } from "../email.service";
 import { UserService } from "../user.service";
 
 export class PsicologoService {
+    private normalizeContratoText(text: string) {
+        return text
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .replace(/\uFFFD/g, "")
+            .toUpperCase();
+    }
+
+    private hasParceriaTitle(text: string) {
+        return this.normalizeContratoText(text).includes("CONTRATO DE PARCERIA E INTERMEDIACAO");
+    }
+
+    private hasPacienteTitle(text: string) {
+        return this.normalizeContratoText(text).includes(
+            "CONTRATO DE PRESTACAO DE SERVICOS PSICOLOGICOS VIA PLATAFORMA VIRTUAL"
+        );
+    }
     private authorizationService: AuthorizationService | undefined;
     private contratoService: ContratoService;
     private emailService: IEmailService;
@@ -569,12 +586,12 @@ export class PsicologoService {
             console.log(`[Previa Contrato] HTML gerado. Tamanho: ${html.length} caracteres`);
 
             // Verifica se contém o título CORRETO do contrato de parceria
-            if (!html.includes('CONTRATO DE PARCERIA E INTERMEDIAÇÃO')) {
+            if (!this.hasParceriaTitle(html)) {
                 console.error(`[Previa Contrato] ❌ ERRO CRÍTICO: HTML não contém título de PARCERIA!`);
                 console.error(`[Previa Contrato] Primeiros 1000 caracteres do HTML:`, html.substring(0, 1000));
 
                 // Verifica se contém o título ERRADO (de paciente)
-                if (html.includes('CONTRATO DE PRESTAÇÃO DE SERVIÇOS PSICOLÓGICOS VIA PLATAFORMA VIRTUAL')) {
+                if (this.hasPacienteTitle(html)) {
                     console.error(`[Previa Contrato] ❌ ERRO: Template de PACIENTE detectado! Isso não deveria acontecer!`);
                     throw new Error(`Template incorreto: Foi detectado o template de paciente em vez do template de parceria do psicólogo. Verifique a configuração do serviço.`);
                 }
@@ -583,7 +600,7 @@ export class PsicologoService {
             }
 
             // Verifica se NÃO contém o título ERRADO (de paciente)
-            if (html.includes('CONTRATO DE PRESTAÇÃO DE SERVIÇOS PSICOLÓGICOS VIA PLATAFORMA VIRTUAL')) {
+            if (this.hasPacienteTitle(html)) {
                 console.error(`[Previa Contrato] ❌ ERRO CRÍTICO: Template de PACIENTE detectado no HTML!`);
                 console.error(`[Previa Contrato] Isso indica que o template errado está sendo usado!`);
                 throw new Error(`Template incorreto: Foi detectado o template de paciente. O sistema deve usar 'contrato-parceria-psicologo.html' para psicólogos.`);

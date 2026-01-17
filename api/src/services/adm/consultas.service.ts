@@ -162,6 +162,68 @@ export class ConsultasService {
     }
 
     /**
+     * Retorna a lista de consultas do mês atual (todas, independente do status)
+     * @param user - Usuário autenticado
+     * @returns Lista de consultas do mês atual
+     */
+    async getConsultasMesAtualLista(user: User) {
+        if (this.authorizationService && typeof this.authorizationService.checkPermission === "function") {
+            const hasPermission = await this.authorizationService.checkPermission(
+                user.Id,
+                Module.Sessions,
+                ActionType.Read
+            );
+            if (!hasPermission) {
+                throw new Error("Acesso negado ao módulo de consultas.");
+            }
+        }
+
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = now.getMonth(); // 0-11
+
+        const startDate = new Date(year, month, 1, 0, 0, 0, 0);
+        const endDate = new Date(year, month + 1, 0, 23, 59, 59, 999);
+
+        const consultas = await prisma.consulta.findMany({
+            where: {
+                Date: {
+                    gte: startDate,
+                    lte: endDate
+                }
+            },
+            include: {
+                Paciente: {
+                    select: {
+                        Id: true,
+                        Nome: true,
+                        Email: true
+                    }
+                },
+                Psicologo: {
+                    select: {
+                        Id: true,
+                        Nome: true,
+                        Email: true
+                    }
+                },
+                ReservaSessao: {
+                    select: {
+                        Status: true,
+                        VideoCallLink: true
+                    }
+                }
+            },
+            orderBy: [
+                { Date: 'asc' },
+                { Time: 'asc' }
+            ]
+        });
+
+        return consultas;
+    }
+
+    /**
      * Retorna as consultas agrupadas por mês do ano informado (TODAS as consultas, não apenas realizadas)
      * @param user Usuário autenticado
      * @param year Ano de referência (padrão: ano atual)

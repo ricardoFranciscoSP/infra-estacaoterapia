@@ -170,6 +170,36 @@ export class ConsultasController implements IConsultas {
     }
 
     /**
+     * Retorna a lista de consultas do mês atual (todas, independente do status)
+     */
+    async getConsultasMesAtualLista(req: Request, res: Response): Promise<Response> {
+        const user = req.user;
+        if (!user) {
+            return res.status(401).json({ success: false, error: 'Unauthorized', data: [] });
+        }
+
+        const hasPermission = await this.authService.checkPermission(
+            user.Id,
+            Module.Sessions,
+            ActionType.Read
+        );
+        if (!hasPermission) {
+            return res.status(403).json({ success: false, message: "Acesso negado", data: [] });
+        }
+
+        try {
+            const consultas = await this.service.getConsultasMesAtualLista(user);
+            return res.json(consultas);
+        } catch (error: any) {
+            return res.status(500).json({
+                success: false,
+                error: error.message || "Erro ao buscar consultas do mês atual",
+                data: []
+            });
+        }
+    }
+
+    /**
      * Retorna contagem mensal de TODAS as consultas para o ano informado (ou atual).
      * Query param: year (opcional)
      */

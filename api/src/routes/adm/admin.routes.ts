@@ -59,6 +59,7 @@ router.get('/consultas/mensais', authorize('Admin', 'Management'), asyncHandler(
 router.get('/consultas/mensais-todas', authorize('Admin', 'Management'), asyncHandler(consultasController.getConsultasMensaisTodas.bind(consultasController)));
 router.get('/consultas/canceladas', authorize('Admin', 'Management'), asyncHandler(consultasController.getConsultasCanceladas.bind(consultasController)));
 router.get('/consultas/mes-atual', authorize('Admin', 'Management'), asyncHandler(consultasController.getConsultasMesAtual.bind(consultasController)));
+router.get('/consultas/mes-atual-lista', authorize('Admin', 'Management'), asyncHandler(consultasController.getConsultasMesAtualLista.bind(consultasController)));
 
 // Rotas para gerenciamento de avaliações
 router.get('/reviews', asyncHandler(reviewsController.list.bind(reviewsController)));

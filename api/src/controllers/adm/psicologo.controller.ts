@@ -9,6 +9,19 @@ import { getClientIp } from "../../utils/getClientIp.util";
 import prisma from "../../prisma/client";
 import { normalizeParamStringRequired } from "../../utils/validation.util";
 
+const normalizeContratoText = (text: string) =>
+    text
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/\uFFFD/g, "")
+        .toUpperCase();
+
+const hasParceriaTitle = (text: string) =>
+    normalizeContratoText(text).includes("CONTRATO DE PARCERIA E INTERMEDIACAO");
+
+const hasPacienteTitle = (text: string) =>
+    normalizeContratoText(text).includes("CONTRATO DE PRESTACAO DE SERVICOS PSICOLOGICOS VIA PLATAFORMA VIRTUAL");
+
 export class PsicologoController implements IPsicologoController {
     private service: PsicologoService;
     private authService: AuthorizationService;
@@ -342,12 +355,12 @@ export class PsicologoController implements IPsicologoController {
             console.log('[Previa Contrato Controller] HTML recebido do serviço. Tamanho:', htmlContrato.length);
 
             // Verifica se o HTML retornado é do contrato de parceria
-            if (!htmlContrato.includes('CONTRATO DE PARCERIA E INTERMEDIAÇÃO')) {
+            if (!hasParceriaTitle(htmlContrato)) {
                 console.error('[Previa Contrato Controller] ❌ ERRO CRÍTICO: HTML retornado NÃO é do contrato de parceria!');
                 console.error('[Previa Contrato Controller] Primeiros 1000 caracteres:', htmlContrato.substring(0, 1000));
 
                 // Verifica se é o template ERRADO (de paciente)
-                if (htmlContrato.includes('CONTRATO DE PRESTAÇÃO DE SERVIÇOS PSICOLÓGICOS VIA PLATAFORMA VIRTUAL')) {
+                if (hasPacienteTitle(htmlContrato)) {
                     console.error('[Previa Contrato Controller] ❌ ERRO: Template de PACIENTE detectado!');
                     return res.status(500).json({
                         error: 'Template incorreto: O sistema retornou o template de paciente em vez do template de parceria do psicólogo. Por favor, contate o suporte técnico.'
@@ -360,7 +373,7 @@ export class PsicologoController implements IPsicologoController {
             }
 
             // Verifica se NÃO contém o título ERRADO (de paciente)
-            if (htmlContrato.includes('CONTRATO DE PRESTAÇÃO DE SERVIÇOS PSICOLÓGICOS VIA PLATAFORMA VIRTUAL')) {
+            if (hasPacienteTitle(htmlContrato)) {
                 console.error('[Previa Contrato Controller] ❌ ERRO CRÍTICO: Template de PACIENTE detectado no HTML!');
                 return res.status(500).json({
                     error: 'Template incorreto: O sistema retornou o template de paciente. Deve usar contrato-parceria-psicologo.html para psicólogos.'
