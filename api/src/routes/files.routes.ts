@@ -12,10 +12,12 @@
  */
 
 import { Router } from "express";
+import multer from "multer";
 import { FilesController } from "../controllers/files.controller";
 import { protect } from "../middlewares/authMiddleware";
 
 const router = Router();
+const upload = multer({ storage: multer.memoryStorage() });
 
 // ============================================================================
 // DOCUMENTOS DE PSICÓLOGOS
@@ -52,6 +54,12 @@ router.get("/documents/:id", protect, FilesController.viewDocument);
 router.get("/psychologist/:profileId/documents", protect, FilesController.listPsychologistDocuments);
 
 /**
+ * Enviar novo documento do psicólogo
+ * POST /api/files/psychologist/:profileId/documents
+ */
+router.post("/psychologist/:profileId/documents", protect, upload.single("file"), FilesController.uploadPsychologistDocument);
+
+/**
  * Download de documento com nome amigável
  * GET /api/files/psychologist/documents/:id/download
  * 
@@ -66,6 +74,12 @@ router.get("/psychologist/documents/:id/download", protect, FilesController.down
  * Uso: Admin excluir documento
  */
 router.delete("/psychologist/documents/:id", protect, FilesController.deletePsychologistDocument);
+
+/**
+ * Reenviar documento do psicólogo (substitui no storage)
+ * POST /api/files/psychologist/documents/:id/reupload
+ */
+router.post("/psychologist/documents/:id/reupload", protect, upload.single("file"), FilesController.reuploadPsychologistDocument);
 
 /**
  * Thumbnail de imagem de documento

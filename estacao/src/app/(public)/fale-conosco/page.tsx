@@ -6,7 +6,8 @@ import BreadcrumbsVoltar from "@/components/BreadcrumbsVoltar";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { RecaptchaV2, type RecaptchaHandle } from "@/components/RecaptchaV2";
+import Script from "next/script";
+import { getRecaptchaEnterpriseToken } from "@/utils/recaptchaEnterprise";
 
 const schema = z.object({
   nome: z.string().min(2, "Nome obrigatório"),
@@ -33,8 +34,6 @@ function maskTelefone(value: string) {
 export default function FaleConosco() {
   const { enviarContato, error, success } = useContato();
   const siteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || "";
-  const [recaptchaToken, setRecaptchaToken] = React.useState("");
-  const recaptchaRef = React.useRef<RecaptchaHandle>(null);
       // Exibe o Toast de sucesso ou erro sempre que o estado mudar
   React.useEffect(() => {
     // Evita ReferenceError usando fallback seguro
@@ -85,15 +84,16 @@ export default function FaleConosco() {
       setApiError("reCAPTCHA não configurado.");
       return;
     }
-    if (!recaptchaToken) {
-      setApiError("Confirme o reCAPTCHA para continuar.");
+    try {
+      const token = await getRecaptchaEnterpriseToken(siteKey, "CONTACT");
+      await enviarContato({ ...data, recaptchaToken: token, recaptchaAction: "CONTACT" });
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Falha ao validar reCAPTCHA.";
+      setApiError(msg);
       return;
     }
-    await enviarContato({ ...data, recaptchaToken });
     // Limpa os campos após sucesso
     reset();
-    setRecaptchaToken("");
-    recaptchaRef.current?.reset();
   };
 
   // Verifica se todos os campos estão preenchidos e válidos
@@ -107,6 +107,10 @@ export default function FaleConosco() {
 
   return (
     <main className="font-fira flex flex-col items-start justify-center min-h-[60vh] bg-gradient-to-br from-[#f7f8fc] to-[#e3e6f9] px-4 py-8 md:py-0">
+      <Script
+        src={`https://www.google.com/recaptcha/enterprise.js?render=${siteKey}`}
+        strategy="afterInteractive"
+      />
       <div className="w-full max-w-[1200px] px-4 md:px-0 mx-auto flex flex-col items-start">
         <div className="w-full flex flex-col mt-6 items-start" style={{ maxWidth: 340 }}>
           <BreadcrumbsVoltar label="Voltar" />
@@ -214,19 +218,11 @@ export default function FaleConosco() {
               {isSubmitting ? "Enviando..." : "Enviar"}
             </button>
           </div>
-          <div className="mt-3">
-            {siteKey ? (
-              <RecaptchaV2
-                ref={recaptchaRef}
-                siteKey={siteKey}
-                onVerify={(token) => setRecaptchaToken(token)}
-                onExpired={() => setRecaptchaToken("")}
-                onError={() => setRecaptchaToken("")}
-              />
-            ) : (
+          {!siteKey && (
+            <div className="mt-3">
               <span className="text-red-600 text-xs font-fira-sans">reCAPTCHA não configurado.</span>
-            )}
-          </div>
+            </div>
+          )}
           <div className="w-full">
             <span className="text-red-600 text-xs font-fira-sans">{apiError}</span>
           </div>

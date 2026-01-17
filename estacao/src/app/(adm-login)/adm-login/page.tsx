@@ -7,14 +7,13 @@ import toast from "react-hot-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import Image from "next/image";
-import { RecaptchaV2, type RecaptchaHandle } from "@/components/RecaptchaV2";
+import Script from "next/script";
+import { getRecaptchaEnterpriseToken } from "@/utils/recaptchaEnterprise";
 
 export default function AdmLoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const siteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || "";
-  const [recaptchaToken, setRecaptchaToken] = useState("");
-  const recaptchaRef = React.useRef<RecaptchaHandle>(null);
   const { login } = useAuthStore();
   const router = useRouter();
   const { register: formRegister, handleSubmit } = useForm<User>();
@@ -24,14 +23,11 @@ export default function AdmLoginPage() {
       toast.error("reCAPTCHA não configurado.");
       return;
     }
-    if (!recaptchaToken) {
-      toast.error("Confirme o reCAPTCHA para continuar.");
-      return;
-    }
     setIsLoading(true);
     try {
       console.log('[LOGIN PAGE] Iniciando login...');
-      const result = await login(Email, Password, recaptchaToken);
+      const token = await getRecaptchaEnterpriseToken(siteKey, "LOGIN");
+      const result = await login(Email, Password, token, "LOGIN");
       
       console.log('[LOGIN PAGE] Resultado do login:', {
         success: result.success,
@@ -74,13 +70,15 @@ export default function AdmLoginPage() {
       toast.error("Erro ao realizar login.");
     } finally {
       setIsLoading(false);
-      setRecaptchaToken("");
-      recaptchaRef.current?.reset();
     }
   }
 
   return (
     <div className="min-h-screen flex flex-col justify-center items-center bg-[#F2F4FD]">
+      <Script
+        src={`https://www.google.com/recaptcha/enterprise.js?render=${siteKey}`}
+        strategy="afterInteractive"
+      />
       {/* Logo centralizado */}
       <div className="mb-8">
         <Link href="/">
@@ -139,16 +137,7 @@ export default function AdmLoginPage() {
               )}
             </button>
           </div>
-          {siteKey ? (
-            <RecaptchaV2
-              ref={recaptchaRef}
-              siteKey={siteKey}
-              onVerify={(token) => setRecaptchaToken(token)}
-              onExpired={() => setRecaptchaToken("")}
-              onError={() => setRecaptchaToken("")}
-              className="mb-4"
-            />
-          ) : (
+          {!siteKey && (
             <p className="text-xs text-red-600 mb-4">reCAPTCHA não configurado.</p>
           )}
           <button

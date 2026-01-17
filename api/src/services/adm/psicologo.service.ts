@@ -40,7 +40,9 @@ export class PsicologoService {
 
         const psicologos = await prisma.user.findMany({
             where: {
-                Role: "Psychologist"
+                Role: "Psychologist",
+                deletedAt: null,
+                Status: { not: "Deletado" },
             },
             include: {
                 ProfessionalProfiles: {

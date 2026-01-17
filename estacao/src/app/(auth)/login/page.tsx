@@ -14,15 +14,12 @@ import { useRouter } from "next/navigation";
 import { useUIStore } from "@/store/uiStore";
 import { ProgressButton } from "@/components/ProgressButton";
 import { getRedirectRouteByRole } from "@/utils/redirectByRole";
-import { RecaptchaV2, type RecaptchaHandle } from "@/components/RecaptchaV2";
+import Script from "next/script";
+import { getRecaptchaEnterpriseToken } from "@/utils/recaptchaEnterprise";
 
 const LoginPage = () => {
   const [tab, setTab] = useState("paciente");
   const siteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || "";
-  const [pacienteRecaptchaToken, setPacienteRecaptchaToken] = useState("");
-  const [psicologoRecaptchaToken, setPsicologoRecaptchaToken] = useState("");
-  const pacienteRecaptchaRef = React.useRef<RecaptchaHandle>(null);
-  const psicologoRecaptchaRef = React.useRef<RecaptchaHandle>(null);
 
   
   // Formulários separados para paciente e psicólogo
@@ -50,7 +47,8 @@ const LoginPage = () => {
 
   async function handleLogin(
     { email, senha, crp }: Partial<PacienteForm & PsicologoForm>,
-    recaptchaToken: string
+    recaptchaToken: string,
+    recaptchaAction: string
   ) {
     setLoading(true);
     try {
@@ -59,7 +57,7 @@ const LoginPage = () => {
         throw new Error('Preencha todos os campos');
       }
 
-      const result = await login(loginId, senha, recaptchaToken);
+      const result = await login(loginId, senha, recaptchaToken, recaptchaAction);
 
       if (!result.success) {
         throw new Error(result.message || 'Login inválido');
@@ -184,15 +182,12 @@ const LoginPage = () => {
       toast.error("reCAPTCHA não configurado.");
       return;
     }
-    if (!pacienteRecaptchaToken) {
-      toast.error("Confirme o reCAPTCHA para continuar.");
-      return;
-    }
     try {
-      await handleLogin({ email: data.email, senha: data.senha }, pacienteRecaptchaToken);
-    } finally {
-      setPacienteRecaptchaToken("");
-      pacienteRecaptchaRef.current?.reset();
+      const token = await getRecaptchaEnterpriseToken(siteKey, "LOGIN");
+      await handleLogin({ email: data.email, senha: data.senha }, token, "LOGIN");
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Falha ao validar reCAPTCHA.";
+      toast.error(msg);
     }
   };
 
@@ -201,21 +196,22 @@ const LoginPage = () => {
       toast.error("reCAPTCHA não configurado.");
       return;
     }
-    if (!psicologoRecaptchaToken) {
-      toast.error("Confirme o reCAPTCHA para continuar.");
-      return;
-    }
     try {
-      await handleLogin({ crp: data.crp, senha: data.senha }, psicologoRecaptchaToken);
-    } finally {
-      setPsicologoRecaptchaToken("");
-      psicologoRecaptchaRef.current?.reset();
+      const token = await getRecaptchaEnterpriseToken(siteKey, "LOGIN");
+      await handleLogin({ crp: data.crp, senha: data.senha }, token, "LOGIN");
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Falha ao validar reCAPTCHA.";
+      toast.error(msg);
     }
   };
 
 
   return (
     <>
+      <Script
+        src={`https://www.google.com/recaptcha/enterprise.js?render=${siteKey}`}
+        strategy="afterInteractive"
+      />
       <div className="w-screen h-screen min-h-screen min-w-full flex flex-col md:flex-row bg-white md:bg-[#f5f7ff]">
         {/* Lado esquerdo - Login */}
         <div className="w-full md:w-1/2 flex flex-col justify-center items-center bg-white px-6 md:px-16 py-8 md:py-0 min-h-screen">
@@ -282,16 +278,7 @@ const LoginPage = () => {
                       Esqueci minha senha
                     </button>
                   </div>
-                  {siteKey ? (
-                    <RecaptchaV2
-                      ref={pacienteRecaptchaRef}
-                      siteKey={siteKey}
-                      onVerify={(token) => setPacienteRecaptchaToken(token)}
-                      onExpired={() => setPacienteRecaptchaToken("")}
-                      onError={() => setPacienteRecaptchaToken("")}
-                      className="self-start"
-                    />
-                  ) : (
+                  {!siteKey && (
                     <p className="text-xs text-red-600">reCAPTCHA não configurado.</p>
                   )}
                   <ProgressButton
@@ -343,16 +330,7 @@ const LoginPage = () => {
                       Esqueci minha senha
                     </button>
                   </div>
-                  {siteKey ? (
-                    <RecaptchaV2
-                      ref={psicologoRecaptchaRef}
-                      siteKey={siteKey}
-                      onVerify={(token) => setPsicologoRecaptchaToken(token)}
-                      onExpired={() => setPsicologoRecaptchaToken("")}
-                      onError={() => setPsicologoRecaptchaToken("")}
-                      className="self-start"
-                    />
-                  ) : (
+                  {!siteKey && (
                     <p className="text-xs text-red-600">reCAPTCHA não configurado.</p>
                   )}
                   <ProgressButton

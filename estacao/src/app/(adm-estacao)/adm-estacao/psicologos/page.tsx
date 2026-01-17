@@ -63,6 +63,7 @@ export default function PsicologosPage() {
   };
 
   const psicologosFiltrados = (psicologos || []).filter((p: Psicologo) => {
+    if (p.Status === "Deletado") return false;
     const buscaMatch =
       (p.Nome?.toLowerCase().includes(busca.toLowerCase()) ||
         p.Email?.toLowerCase().includes(busca.toLowerCase()) ||

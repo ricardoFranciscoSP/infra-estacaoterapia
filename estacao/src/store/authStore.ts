@@ -111,7 +111,7 @@ interface AuthState {
     notifications: string[];
     fetchUser: () => Promise<void>;
     logout: () => Promise<void>;
-    login: (email: string, password: string, recaptchaToken?: string) => Promise<{ success: boolean; message?: string; user?: User }>;
+    login: (email: string, password: string, recaptchaToken?: string, recaptchaAction?: string) => Promise<{ success: boolean; message?: string; user?: User }>;
     register: (data: RegisterData) => Promise<{ success: boolean; message?: string; user?: User }>;
     forgot: (email: string) => Promise<{ success: boolean; message?: string; user?: User }>;
     reset: (token: string, password: string) => Promise<{ success: boolean; message?: string; user?: User }>;
@@ -211,10 +211,10 @@ export const useAuthStore = create<AuthState>((set) => ({
         }
     },
 
-    login: async (email: string, password: string, recaptchaToken?: string) => {
+    login: async (email: string, password: string, recaptchaToken?: string, recaptchaAction?: string) => {
         set({ isLoading: true });
         try {
-            const { data } = await authService().login(email, password, recaptchaToken);
+            const { data } = await authService().login(email, password, recaptchaToken, recaptchaAction);
 
             if (!data.user) {
                 set({ user: null, isLoading: false, socketConnected: false, notifications: [] });

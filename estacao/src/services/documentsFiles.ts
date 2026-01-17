@@ -106,6 +106,19 @@ export const documentsFilesService = () => {
             api.get<DocumentListResponse>(`/files/psychologist/${profileId}/documents`),
 
         /**
+         * Enviar novo documento do psicólogo
+         * POST /api/files/psychologist/:profileId/documents
+         */
+        uploadDocument: (profileId: string, type: string, file: File) => {
+            const formData = new FormData();
+            formData.append("file", file);
+            formData.append("type", type);
+            return api.post(`/files/psychologist/${profileId}/documents`, formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+        },
+
+        /**
          * Download de documento com nome amigável
          * GET /api/files/psychologist/documents/:id/download
          */
@@ -118,6 +131,18 @@ export const documentsFilesService = () => {
          */
         deleteDocument: (documentId: string) =>
             api.delete<{ message: string }>(`/files/psychologist/documents/${documentId}`),
+
+        /**
+         * Reenviar documento do psicólogo (substitui no storage)
+         * POST /api/files/psychologist/documents/:id/reupload
+         */
+        reuploadDocument: (documentId: string, file: File) => {
+            const formData = new FormData();
+            formData.append("file", file);
+            return api.post(`/files/psychologist/documents/${documentId}/reupload`, formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+        },
 
         /**
          * Thumbnail de imagem de documento

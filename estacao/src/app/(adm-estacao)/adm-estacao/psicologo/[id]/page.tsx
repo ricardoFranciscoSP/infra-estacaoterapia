@@ -646,6 +646,28 @@ export default function PsicologoDetalhePage() {
   const refreshDocumentUrl = documentsHook.refreshDocumentUrl;
   const isUrlExpired = documentsHook.isUrlExpired;
   const formatExpirationTime = documentsHook.formatExpirationTime;
+  const refetchDocuments = documentsHook.refetch;
+  const [reuploadDoc, setReuploadDoc] = useState<Documento | null>(null);
+  const [reuploadFile, setReuploadFile] = useState<File | null>(null);
+  const [reuploadLoading, setReuploadLoading] = useState(false);
+  const [reuploadError, setReuploadError] = useState<string | null>(null);
+  const [uploadDocOpen, setUploadDocOpen] = useState(false);
+  const [uploadDocType, setUploadDocType] = useState("");
+  const [uploadDocFile, setUploadDocFile] = useState<File | null>(null);
+  const [uploadDocLoading, setUploadDocLoading] = useState(false);
+  const [uploadDocError, setUploadDocError] = useState<string | null>(null);
+
+  const documentTypeOptions = [
+    { value: "CRP", label: "CRP" },
+    { value: "RG_CPF_REPRESENTANTE", label: "RG/CPF Representante" },
+    { value: "CNPJ", label: "Cartão CNPJ" },
+    { value: "CONTRATO_SOCIAL", label: "Contrato social" },
+    { value: "COMPROVANTE_ENDERECO", label: "Comprovante de endereço" },
+    { value: "RG_CPF_SOCIO", label: "RG/CPF Sócio" },
+    { value: "RG", label: "RG" },
+    { value: "SIMPLES_NACIONAL", label: "Simples Nacional" },
+    { value: "COMPROVACAO_ISS", label: "Comprovação ISS" },
+  ];
   const refreshedDocumentIdsRef = useRef<Set<string>>(new Set());
 
   // Renova URLs expiradas/ausentes ao entrar na página
@@ -1862,6 +1884,28 @@ export default function PsicologoDetalhePage() {
                             </>
                           )}
                         </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setReuploadError(null);
+                            setReuploadFile(null);
+                            setReuploadDoc({
+                              id: doc.id,
+                              nome: doc.fileName,
+                              status: doc.fileExists ? "Recebido" : "Pendente",
+                              url: doc.url ?? undefined,
+                              descricao: doc.description,
+                              expiresAt: doc.expiresAt ?? null,
+                            });
+                          }}
+                          className="flex items-center justify-center gap-1.5 text-[#6D75C0] hover:text-[#5a63a9] hover:bg-[#f2f4fd] text-xs font-semibold transition-all px-3 py-1.5 rounded-lg border border-[#D8DCF1] w-full"
+                          title="Reenviar documento"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v6h6M20 20v-6h-6M5 19A9 9 0 0119 5" />
+                          </svg>
+                          Reenviar
+                        </button>
                       </div>
                     </div>
                   );
@@ -1932,6 +1976,21 @@ export default function PsicologoDetalhePage() {
                   </svg>
                 </div>
                 <p className="text-[#6C757D] text-base font-medium">Nenhum documento enviado</p>
+                <button
+                  type="button"
+                  className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#6D75C0] text-white hover:bg-[#5a63a9] text-sm font-semibold"
+                  onClick={() => {
+                    setUploadDocError(null);
+                    setUploadDocFile(null);
+                    setUploadDocType("");
+                    setUploadDocOpen(true);
+                  }}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  Enviar documento
+                </button>
               </div>
             )}
           </Section>
@@ -2139,6 +2198,122 @@ export default function PsicologoDetalhePage() {
         onClose={() => setModalDoc(null)}
         doc={modalDoc}
       />
+
+      {reuploadDoc && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Reenviar documento</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Selecione o novo arquivo para substituir o documento:{" "}
+              <span className="font-medium">{reuploadDoc.nome || "documento"}</span>
+            </p>
+            <input
+              type="file"
+              accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+              onChange={(event) => setReuploadFile(event.target.files?.[0] || null)}
+              className="w-full text-sm mb-3"
+            />
+            {reuploadError && (
+              <p className="text-xs text-red-600 mb-3">{reuploadError}</p>
+            )}
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
+                onClick={() => setReuploadDoc(null)}
+                disabled={reuploadLoading}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="px-4 py-2 rounded-lg bg-[#6D75C0] text-white hover:bg-[#5a63a9] disabled:opacity-50"
+                disabled={!reuploadFile || reuploadLoading}
+                onClick={async () => {
+                  if (!reuploadDoc?.id || !reuploadFile) return;
+                  try {
+                    setReuploadLoading(true);
+                    setReuploadError(null);
+                    await documentsFilesService().reuploadDocument(reuploadDoc.id, reuploadFile);
+                    await refetchDocuments();
+                    setReuploadDoc(null);
+                  } catch (error) {
+                    const msg = error instanceof Error ? error.message : "Erro ao reenviar documento.";
+                    setReuploadError(msg);
+                  } finally {
+                    setReuploadLoading(false);
+                  }
+                }}
+              >
+                {reuploadLoading ? "Enviando..." : "Reenviar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {uploadDocOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Enviar documento</h3>
+            <p className="text-sm text-gray-600 mb-4">Selecione o tipo e anexe o arquivo.</p>
+            <label className="text-sm font-medium text-gray-700 mb-1 block">Tipo de documento</label>
+            <select
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mb-3"
+              value={uploadDocType}
+              onChange={(event) => setUploadDocType(event.target.value)}
+            >
+              <option value="">Selecione</option>
+              {documentTypeOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <input
+              type="file"
+              accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+              onChange={(event) => setUploadDocFile(event.target.files?.[0] || null)}
+              className="w-full text-sm mb-3"
+            />
+            {uploadDocError && (
+              <p className="text-xs text-red-600 mb-3">{uploadDocError}</p>
+            )}
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
+                onClick={() => setUploadDocOpen(false)}
+                disabled={uploadDocLoading}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="px-4 py-2 rounded-lg bg-[#6D75C0] text-white hover:bg-[#5a63a9] disabled:opacity-50"
+                disabled={!uploadDocFile || !uploadDocType || uploadDocLoading}
+                onClick={async () => {
+                  if (!uploadDocFile || !uploadDocType || !firstProfileId) return;
+                  try {
+                    setUploadDocLoading(true);
+                    setUploadDocError(null);
+                    await documentsFilesService().uploadDocument(firstProfileId, uploadDocType, uploadDocFile);
+                    await refetchDocuments();
+                    setUploadDocOpen(false);
+                  } catch (error) {
+                    const msg = error instanceof Error ? error.message : "Erro ao enviar documento.";
+                    setUploadDocError(msg);
+                  } finally {
+                    setUploadDocLoading(false);
+                  }
+                }}
+              >
+                {uploadDocLoading ? "Enviando..." : "Enviar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <ModalPreviaContratoPsicologo
         open={modalContratoOpen}
         onClose={() => {

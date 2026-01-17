@@ -36,6 +36,54 @@ export class FilesController {
         }
     }
 
+    static async reuploadPsychologistDocument(req: Request, res: Response) {
+        try {
+            const file = (req as Request & { file?: Express.Multer.File }).file;
+            if (!file) {
+                return res.status(400).json({ error: "Arquivo não enviado" });
+            }
+
+            const updated = await FilesService.reuploadPsychologistDocument(
+                normalizeParamStringRequired(req.params.id),
+                file,
+                req.user as any
+            );
+            return res.status(200).json(updated);
+        } catch (error: any) {
+            const status = error?.status || 500;
+            const message = error?.message || "Erro ao reenviar documento";
+            if (status >= 500) console.error("Erro ao reenviar documento:", error);
+            return res.status(status).json({ error: message, details: status >= 500 ? error?.message : undefined });
+        }
+    }
+
+    static async uploadPsychologistDocument(req: Request, res: Response) {
+        try {
+            const file = (req as Request & { file?: Express.Multer.File }).file;
+            if (!file) {
+                return res.status(400).json({ error: "Arquivo não enviado" });
+            }
+            const profileId = normalizeParamStringRequired(req.params.profileId);
+            const { type } = req.body as { type?: string };
+            if (!type) {
+                return res.status(400).json({ error: "Tipo de documento é obrigatório" });
+            }
+
+            const created = await FilesService.uploadPsychologistDocument(
+                profileId,
+                type,
+                file,
+                req.user as any
+            );
+            return res.status(201).json(created);
+        } catch (error: any) {
+            const status = error?.status || 500;
+            const message = error?.message || "Erro ao enviar documento";
+            if (status >= 500) console.error("Erro ao enviar documento:", error);
+            return res.status(status).json({ error: message, details: status >= 500 ? error?.message : undefined });
+        }
+    }
+
     static async listPsychologistDocuments(req: Request, res: Response) {
         try {
             const userId = normalizeParamStringRequired(req.params.profileId); // parâmetro tratado como userId por compatibilidade

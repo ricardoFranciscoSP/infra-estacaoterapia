@@ -1,8 +1,13 @@
 import prisma from "../prisma/client";
-import { STORAGE_BUCKET, createSignedUrl, createSignedUrls, fileExists, deleteFile, downloadFile } from "./storage.services";
+import { STORAGE_BUCKET, createSignedUrl, createSignedUrls, fileExists, deleteFile, downloadFile, uploadFile } from "./storage.services";
 import { AvatarResponse, DocumentListResponse, DocumentSignedItem, DocumentViewResponse, DownloadResponse, ValidationResponse, AuthUser } from "../interfaces/files.interface";
 
 export class FilesService {
+    private static sanitizeFilename(name: string): string {
+        const base = (name || '').split(/[\\/]/).pop() || 'documento';
+        const cleaned = base.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9._-]/g, '_');
+        return cleaned.slice(0, 120);
+    }
     // Documento específico do psicólogo (visualização)
     static async getPsychologistDocument(documentId: string, user?: AuthUser): Promise<DocumentViewResponse> {
         const document = await prisma.psychologistDocument.findUnique({
@@ -235,6 +240,110 @@ export class FilesService {
             transform: { width: size, height: size, resize: 'cover', format: 'webp', quality: 80 }
         });
         return { thumbnailUrl: signedUrl, expiresAt, size };
+    }
+
+    static async reuploadPsychologistDocument(
+        documentId: string,
+        file: Express.Multer.File,
+        user?: AuthUser
+    ) {
+        if (!file || !file.buffer) {
+            throw Object.assign(new Error("Arquivo não enviado"), { status: 400 });
+        }
+
+        const document = await prisma.psychologistDocument.findUnique({
+            where: { Id: documentId },
+            include: {
+                ProfessionalProfile: {
+                    include: { User: { select: { Id: true } } }
+                }
+            }
+        });
+
+        if (!document) {
+            throw Object.assign(new Error("Documento não encontrado"), { status: 404 });
+        }
+
+        const isPsychologist = document.ProfessionalProfile.UserId === user?.Id;
+        const isPrivileged = user?.Role === "Admin" || user?.Role === "Management" || user?.Role === "Finance";
+        if (!isPsychologist && !isPrivileged) {
+            throw Object.assign(new Error("Acesso negado"), { status: 403 });
+        }
+
+        if (document.Url) {
+            try {
+                await deleteFile(document.Url, STORAGE_BUCKET);
+            } catch (err) {
+                console.warn("[FilesService] Falha ao remover arquivo anterior:", err);
+            }
+        }
+
+        const fileName = FilesService.sanitizeFilename(file.originalname);
+        const filePath = `documents/${document.ProfessionalProfile.User.Id}/${Date.now()}_${fileName}`;
+        const upload = await uploadFile(filePath, file.buffer, {
+            bucket: STORAGE_BUCKET,
+            contentType: file.mimetype,
+            upsert: true
+        });
+
+        const updated = await prisma.psychologistDocument.update({
+            where: { Id: documentId },
+            data: {
+                Url: upload.fullUrl,
+                Type: file.mimetype,
+                UpdatedAt: new Date()
+            }
+        });
+
+        return updated;
+    }
+
+    static async uploadPsychologistDocument(
+        profileId: string,
+        type: string,
+        file: Express.Multer.File,
+        user?: AuthUser
+    ) {
+        if (!file || !file.buffer) {
+            throw Object.assign(new Error("Arquivo não enviado"), { status: 400 });
+        }
+        if (!type || type.trim() === "") {
+            throw Object.assign(new Error("Tipo de documento é obrigatório"), { status: 400 });
+        }
+
+        const profile = await prisma.professionalProfile.findUnique({
+            where: { Id: profileId },
+            include: { User: { select: { Id: true } } }
+        });
+
+        if (!profile) {
+            throw Object.assign(new Error("Perfil profissional não encontrado"), { status: 404 });
+        }
+
+        const isPsychologist = profile.UserId === user?.Id;
+        const isPrivileged = user?.Role === "Admin" || user?.Role === "Management" || user?.Role === "Finance";
+        if (!isPsychologist && !isPrivileged) {
+            throw Object.assign(new Error("Acesso negado"), { status: 403 });
+        }
+
+        const fileName = FilesService.sanitizeFilename(file.originalname);
+        const filePath = `documents/${profile.User.Id}/${Date.now()}_${fileName}`;
+        const upload = await uploadFile(filePath, file.buffer, {
+            bucket: STORAGE_BUCKET,
+            contentType: file.mimetype,
+            upsert: true
+        });
+
+        const created = await prisma.psychologistDocument.create({
+            data: {
+                ProfessionalProfileId: profile.Id,
+                Url: upload.fullUrl,
+                Type: type,
+                Description: type
+            }
+        });
+
+        return created;
     }
 
     // Avatar (thumbnail)

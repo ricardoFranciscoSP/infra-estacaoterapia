@@ -42,7 +42,7 @@ const requiredEnvVars = [
 if (!global.__NEXT_CONFIG_VALIDATED__) {
   // Fallback explícito para reCAPTCHA quando não vier do build/runtime
   if (!process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY.trim() === "") {
-    process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY = "6LdSuU0sAAAAAJn1iapwFziV9NxOUpNUfHup2YPy";
+    process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY = "6Ldxqk0sAAAAAGrvzYOyVkGDOiK4UIgFxHY9zcdh";
   }
 
   // Verificar variáveis obrigatórias

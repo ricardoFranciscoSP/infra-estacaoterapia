@@ -21,7 +21,8 @@ import { PsicologoRegisterFormAutonomo } from "@/components/PsicologoRegisterFor
 import Image from "next/image";
 import Link from "next/link";
 import { ensureISO8601Date } from "@/utils/date";
-import { RecaptchaV2, type RecaptchaHandle } from "@/components/RecaptchaV2";
+import Script from "next/script";
+import { getRecaptchaEnterpriseToken } from "@/utils/recaptchaEnterprise";
 
 // --- Função auxiliar: montar FormData ---
 function buildFormData(
@@ -117,10 +118,6 @@ const RegisterPageInner = () => {
   const setLoading = useUIStore((s) => s.setLoading);
   const isLoading = useUIStore((s) => s.isLoading);
   const isBusy = isLoading;
-  const [pacienteRecaptchaToken, setPacienteRecaptchaToken] = useState("");
-  const [psicologoRecaptchaToken, setPsicologoRecaptchaToken] = useState("");
-  const pacienteRecaptchaRef = React.useRef<RecaptchaHandle>(null);
-  const psicologoRecaptchaRef = React.useRef<RecaptchaHandle>(null);
 
   // --- Forms ---
   const pacienteForm = useForm<PacienteRegisterFormType>({
@@ -195,6 +192,7 @@ const RegisterPageInner = () => {
       // Garante que arquivos são enviados via FormData para API Node.js
       const formData = buildFormData(data, role, tipoAtuacao);
       formData.set("recaptchaToken", recaptchaToken);
+      formData.set("recaptchaAction", role === "Psychologist" ? "REGISTER_PSYCHOLOGIST" : "REGISTER_PATIENT");
       
       const result = await register(formData);
 
@@ -210,7 +208,8 @@ const RegisterPageInner = () => {
         const { email, password } = data as PacienteRegisterFormType;
         try {
           const { login } = await import("@/store/authStore").then((mod) => mod.useAuthStore.getState());
-          const loginResult = await login(email, password, recaptchaToken);
+          const loginToken = await getRecaptchaEnterpriseToken(siteKey, "LOGIN");
+          const loginResult = await login(email, password, loginToken, "LOGIN");
 
           if (!loginResult.success) {
             toast.error(loginResult.message || "Erro ao fazer login automático.");
@@ -304,10 +303,6 @@ async function handleRegisterPsicologo(
     toast.error("reCAPTCHA não configurado.");
     return;
   }
-  if (!psicologoRecaptchaToken) {
-    toast.error("Confirme o reCAPTCHA para continuar.");
-    return;
-  }
   const tipo = tipoAtuacaoParam || tipoAtuacao;
   // Se vier FormData, valida os arquivos
   if (data instanceof FormData) {
@@ -333,10 +328,11 @@ async function handleRegisterPsicologo(
     }
 
     try {
-      await handleRegister(data, "Psychologist", psicologoRecaptchaToken);
-    } finally {
-      setPsicologoRecaptchaToken("");
-      psicologoRecaptchaRef.current?.reset();
+      const token = await getRecaptchaEnterpriseToken(siteKey, "REGISTER_PSYCHOLOGIST");
+      await handleRegister(data, "Psychologist", token);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Falha ao validar reCAPTCHA.";
+      toast.error(msg);
     }
     return;
   }
@@ -377,20 +373,7 @@ async function handleRegisterPsicologo(
       }
     }
     
-    // Valida Simples Nacional se for optante
-    const simplesNacional = formData.get("simplesNacional");
-    if (simplesNacional === "sim") {
-      const simplesNacionalFile = formData.get("simplesNacionalDocumento");
-      if (!(simplesNacionalFile instanceof File)) {
-        toast.error("Documento Simples Nacional é obrigatório quando você é optante.");
-        return;
-      }
-      const error = validateFile(simplesNacionalFile);
-      if (error) {
-        toast.error(error);
-        return;
-      }
-    }
+  // Documento Simples Nacional é sempre opcional
     
     // Valida arquivos opcionais se foram enviados
     const juridicoDocsOpcionais = [
@@ -448,10 +431,11 @@ async function handleRegisterPsicologo(
   }
 
   try {
-    await handleRegister(formData, "Psychologist", psicologoRecaptchaToken);
-  } finally {
-    setPsicologoRecaptchaToken("");
-    psicologoRecaptchaRef.current?.reset();
+    const token = await getRecaptchaEnterpriseToken(siteKey, "REGISTER_PSYCHOLOGIST");
+    await handleRegister(formData, "Psychologist", token);
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : "Falha ao validar reCAPTCHA.";
+    toast.error(msg);
   }
 }
 
@@ -461,17 +445,14 @@ async function handleRegisterPsicologo(
       toast.error("reCAPTCHA não configurado.");
       return;
     }
-    if (!pacienteRecaptchaToken) {
-      toast.error("Confirme o reCAPTCHA para continuar.");
-      return;
-    }
     const valid = await pacienteForm.trigger();
     if (!valid) return toast.error("Preencha todos os campos obrigatórios corretamente.");
     try {
-      return await handleRegister(data, "Patient", pacienteRecaptchaToken);
-    } finally {
-      setPacienteRecaptchaToken("");
-      pacienteRecaptchaRef.current?.reset();
+      const token = await getRecaptchaEnterpriseToken(siteKey, "REGISTER_PATIENT");
+      return await handleRegister(data, "Patient", token);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Falha ao validar reCAPTCHA.";
+      toast.error(msg);
     }
   }
 
@@ -483,6 +464,10 @@ async function handleRegisterPsicologo(
 
   return (
     <>
+      <Script
+        src={`https://www.google.com/recaptcha/enterprise.js?render=${siteKey}`}
+        strategy="afterInteractive"
+      />
       <div className="w-full min-h-screen flex flex-col justify-center items-center bg-white px-4 sm:px-8 py-5">
         {/* Logo */}
         <div className="mb-8">
@@ -566,38 +551,22 @@ async function handleRegisterPsicologo(
                     isSubmitting={isBusy}
                   />
                 )}
-                <div className="mt-4">
-                  {siteKey ? (
-                    <RecaptchaV2
-                      ref={psicologoRecaptchaRef}
-                      siteKey={siteKey}
-                      onVerify={(token) => setPsicologoRecaptchaToken(token)}
-                      onExpired={() => setPsicologoRecaptchaToken("")}
-                      onError={() => setPsicologoRecaptchaToken("")}
-                    />
-                  ) : (
+                {!siteKey && (
+                  <div className="mt-4">
                     <p className="text-xs text-red-600">reCAPTCHA não configurado.</p>
-                  )}
-                </div>
+                  </div>
+                )}
               </motion.div>
             )}
  
             {tab === "paciente" && (
               <motion.div key="paciente" initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -40 }} transition={{ duration: 0.25 }}>
                 <PacienteRegisterForm form={pacienteForm} onSubmit={handleRegisterPaciente} isSubmitting={isBusy} />
-                <div className="mt-4">
-                  {siteKey ? (
-                    <RecaptchaV2
-                      ref={pacienteRecaptchaRef}
-                      siteKey={siteKey}
-                      onVerify={(token) => setPacienteRecaptchaToken(token)}
-                      onExpired={() => setPacienteRecaptchaToken("")}
-                      onError={() => setPacienteRecaptchaToken("")}
-                    />
-                  ) : (
+                {!siteKey && (
+                  <div className="mt-4">
                     <p className="text-xs text-red-600">reCAPTCHA não configurado.</p>
-                  )}
-                </div>
+                  </div>
+                )}
               </motion.div>
             )}
           </AnimatePresence>
