@@ -27,6 +27,12 @@ interface WindowWithGoAdopt extends Window {
  */
 export default function GoAdoptConsent() {
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const pathname = window.location.pathname;
+      if (pathname.startsWith('/adm-finance') || pathname.startsWith('/adm-estacao') || pathname.startsWith('/adm-login')) {
+        return;
+      }
+    }
     // Configura o domínio dos cookies do GoAdopt após o script carregar
     if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
       // Define o domínio base para os cookies do GoAdopt

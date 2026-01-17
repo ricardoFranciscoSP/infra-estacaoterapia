@@ -1652,14 +1652,6 @@ export default function PsicologoDetalhePage() {
                   disabled={!editMode} 
                 />
               )}
-              <button
-                className="w-full mt-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-lg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                type="button"
-                onClick={handleSalvarEdicao}
-                disabled={updatePsicologoMutation.isPending}
-              >
-                {updatePsicologoMutation.isPending ? "Salvando..." : "Salvar alterações da empresa"}
-              </button>
             </Section>
           )}
 
@@ -1716,14 +1708,6 @@ export default function PsicologoDetalhePage() {
                   disabled={!editMode} 
                 />
               </div>
-              <button
-                className="w-full mt-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-lg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                type="button"
-                onClick={handleSalvarEdicao}
-                disabled={updatePsicologoMutation.isPending}
-              >
-                {updatePsicologoMutation.isPending ? "Salvando..." : "Salvar alterações de endereço da empresa"}
-              </button>
             </Section>
           )}
           <Section 
