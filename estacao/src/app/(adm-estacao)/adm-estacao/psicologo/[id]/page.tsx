@@ -1,9 +1,9 @@
 "use client";
 import { motion } from "framer-motion";
 import React, { useEffect, useState } from "react";
-import { useSearchParams, useParams } from "next/navigation";
+import { useSearchParams, useParams, useRouter } from "next/navigation";
 import Image from "next/image";
-import { useAdmPsicologoById, usePreviaContrato, useGerarContrato, useUpdateAdmPsicologo } from "@/hooks/admin/useAdmPsicologo";
+import { useAdmPsicologoById, useDeleteAdmPsicologo, usePreviaContrato, useGerarContrato, useUpdateAdmPsicologo } from "@/hooks/admin/useAdmPsicologo";
 import type { Psicologo } from "@/types/psicologoTypes";
 import { useDocuments } from "@/hooks/useDocuments";
 import { documentsFilesService } from "@/services/documentsFiles";
@@ -155,12 +155,15 @@ function DocumentoModal({
   const [finalUrl, setFinalUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
 
   useEffect(() => {
     const loadUrl = async () => {
       if (!open || !doc) {
         setFinalUrl(null);
         setError(null);
+        setPreviewUrl(null);
         return;
       }
 
@@ -193,6 +196,55 @@ function DocumentoModal({
     loadUrl();
   }, [open, doc]);
 
+  useEffect(() => {
+    if (!open || !doc) return;
+    const urlToPreview = finalUrl || doc.url || null;
+    if (!urlToPreview) return;
+
+    const urlLower = urlToPreview.toLowerCase();
+    const nameLower = (doc.nome || "").toLowerCase();
+    const endsWithExt = (s: string, ext: string) => new RegExp(`\\.${ext}(\\?|$)`, "i").test(s);
+    const isPdfCandidate = endsWithExt(urlLower, "pdf") || endsWithExt(nameLower, "pdf");
+    const isImageCandidate = ["png", "jpg", "jpeg", "gif", "webp", "svg"].some((ext) => endsWithExt(urlLower, ext) || endsWithExt(nameLower, ext));
+
+    if (!isPdfCandidate && !isImageCandidate) {
+      setPreviewUrl(null);
+      return;
+    }
+
+    const controller = new AbortController();
+    let objectUrl: string | null = null;
+
+    const fetchPreview = async () => {
+      try {
+        setPreviewLoading(true);
+        const response = await fetch(urlToPreview, { signal: controller.signal });
+        if (!response.ok) {
+          throw new Error(`Falha ao carregar arquivo (${response.status})`);
+        }
+        const blob = await response.blob();
+        objectUrl = URL.createObjectURL(blob);
+        setPreviewUrl(objectUrl);
+      } catch (err) {
+        if ((err as Error).name === "AbortError") return;
+        console.error("[DocumentoModal] Erro ao gerar pré-visualização:", err);
+        setPreviewUrl(null);
+        setError("Não foi possível pré-visualizar o documento.");
+      } finally {
+        setPreviewLoading(false);
+      }
+    };
+
+    fetchPreview();
+
+    return () => {
+      controller.abort();
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+      }
+    };
+  }, [open, doc, finalUrl]);
+
   if (!open || !doc) return null;
 
   const urlStr = (finalUrl || doc.url || '').toLowerCase();
@@ -202,6 +254,7 @@ function DocumentoModal({
   const isImage = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].some((ext) => endsWithExt(urlStr, ext) || endsWithExt(nameStr, ext));
   const isDoc = ['doc', 'docx'].some((ext) => endsWithExt(urlStr, ext) || endsWithExt(nameStr, ext));
   const officeViewerUrl = isDoc && (finalUrl || doc.url) ? `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(finalUrl || doc.url || '')}` : undefined;
+  const previewSource = previewUrl || finalUrl || doc.url || "";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-transparent p-4">
@@ -222,7 +275,7 @@ function DocumentoModal({
         </div>
 
         <div className="flex-1 overflow-auto p-6">
-          {loading ? (
+          {loading || previewLoading ? (
             <div className="flex flex-col items-center justify-center text-center text-gray-600 gap-3 py-12">
               <div className="w-10 h-10 border-4 border-[#8494E9] border-t-transparent rounded-full animate-spin"></div>
               <p className="text-sm">Carregando documento...</p>
@@ -235,16 +288,16 @@ function DocumentoModal({
               <p className="text-sm font-semibold">Erro ao carregar documento</p>
               <p className="text-xs text-gray-500">{error}</p>
             </div>
-          ) : isPDF && (finalUrl || doc.url) ? (
+          ) : isPDF && previewSource ? (
             <iframe
-              src={finalUrl || doc.url || ''}
+              src={previewSource}
               title="Documento PDF"
               className="w-full h-full min-h-[60vh] border rounded-lg"
             />
-          ) : isImage && (finalUrl || doc.url) ? (
+          ) : isImage && previewSource ? (
             <div className="flex items-center justify-center">
               <Image
-                src={finalUrl || doc.url || ''}
+                src={previewSource}
                 alt={doc.nome}
                 width={800}
                 height={600}
@@ -422,6 +475,7 @@ export default function PsicologoDetalhePage() {
   const params = useParams();
   const id = params && "id" in params ? params.id : undefined;
   const idStr = Array.isArray(id) ? id[0] : id;
+  const router = useRouter();
   const { psicologo: psicologoRaw, isLoading: isLoadingPsicologo, refetch } = useAdmPsicologoById(idStr);
   const psicologo = Array.isArray(psicologoRaw) ? psicologoRaw[0] : psicologoRaw;
   
@@ -431,11 +485,13 @@ export default function PsicologoDetalhePage() {
   const { data: previaContratoData, isLoading: isLoadingPrevContrato, refetch: refetchPreviaContrato } = usePreviaContrato(idStr, shouldLoadPrevia);
   const gerarContratoMutation = useGerarContrato();
   const updatePsicologoMutation = useUpdateAdmPsicologo();
+  const deletePsicologoMutation = useDeleteAdmPsicologo();
   const searchParams = useSearchParams();
   const editMode = searchParams?.get("edit") === "1";
   const [statusEdit, setStatusEdit] = useState(psicologo?.Status || "");
   const { enums } = useEnums();
   const [modal, setModal] = useState<null | string>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   
   // Estados para edição de foto
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -872,6 +928,19 @@ export default function PsicologoDetalhePage() {
     }
   };
 
+  const handleDeletePsicologo = async () => {
+    if (!idStr) return;
+    try {
+      await deletePsicologoMutation.mutateAsync(idStr);
+      toast.success("Psicólogo deletado com sucesso.");
+      setShowDeleteConfirm(false);
+      router.push("/adm-estacao/psicologos");
+    } catch (error) {
+      console.error("Erro ao deletar psicólogo:", error);
+      toast.error("Erro ao deletar psicólogo. Tente novamente.");
+    }
+  };
+
   // Função para lidar com upload de imagem
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -1139,6 +1208,17 @@ export default function PsicologoDetalhePage() {
                 {updatePsicologoMutation.status === "pending" ? "Aprovando..." : "Aprovar"}
               </button>
             )}
+            <button
+              className="bg-red-600 hover:bg-red-700 text-white font-semibold px-5 py-2.5 rounded-lg transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              type="button"
+              onClick={() => setShowDeleteConfirm(true)}
+              disabled={deletePsicologoMutation.status === "pending"}
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M10 4h4a1 1 0 011 1v2H9V5a1 1 0 011-1z" />
+              </svg>
+              {deletePsicologoMutation.status === "pending" ? "Deletando..." : "Deletar"}
+            </button>
           </div>
         </div>
 
@@ -2161,6 +2241,34 @@ export default function PsicologoDetalhePage() {
           />
         )}
       </EditModal>
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Confirmar exclusão</h3>
+            <p className="text-sm text-gray-600 mb-6">
+              Tem certeza que deseja excluir este psicólogo? Esta ação remove documentos e imagens do storage e mantém o histórico de consultas e financeiro.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
+                onClick={() => setShowDeleteConfirm(false)}
+                disabled={deletePsicologoMutation.status === "pending"}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
+                onClick={handleDeletePsicologo}
+                disabled={deletePsicologoMutation.status === "pending"}
+              >
+                {deletePsicologoMutation.status === "pending" ? "Deletando..." : "Confirmar exclusão"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </motion.main>
   );
 }

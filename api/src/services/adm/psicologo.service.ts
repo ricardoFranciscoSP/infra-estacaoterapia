@@ -11,16 +11,19 @@ import { prismaAgendaRepository } from "../../repositories/prismaAgenda.reposito
 import { prismaUserRepository } from "../../repositories/prismaUser.repository";
 import { IEmailService } from "../../interfaces/communication.interface";
 import { EmailService } from "../email.service";
+import { UserService } from "../user.service";
 
 export class PsicologoService {
     private authorizationService: AuthorizationService | undefined;
     private contratoService: ContratoService;
     private emailService: IEmailService;
+    private userService: UserService;
 
     constructor(authorizationService?: AuthorizationService, emailService?: IEmailService) {
         this.authorizationService = authorizationService;
         this.contratoService = new ContratoService();
         this.emailService = emailService ?? new EmailService();
+        this.userService = new UserService();
     }
 
     async list(user: User) {
@@ -83,36 +86,16 @@ export class PsicologoService {
                 throw new Error("Acesso negado ao módulo de psicólogos.");
             }
         }
-
-        return prisma.user.delete({
-            where: { Id: id, Role: "Psychologist" },
-            include: {
-                ProfessionalProfiles: {
-                    include: {
-                        Documents: true,
-                        Formacoes: true,
-                    }
-                },
-                PsychologistAgendas: true,
-                ReviewsReceived: true,
-                FavoritesReceived: true,
-                Images: true,
-                BillingAddress: true,
-                PlanoAssinaturas: true,
-                FinanceiroEntries: true,
-                Onboardings: true,
-                Commissions: true,
-                CreditosAvulsos: true,
-                WorkSchedules: true,
-                RefreshTokens: true,
-                NotificationStatus: true,
-                ConsultaPsicologos: {
-                    include: {
-                        ReservaSessao: true
-                    }
-                },
-            }
+        const existing = await prisma.user.findUnique({
+            where: { Id: id },
+            select: { Id: true, Role: true }
         });
+        if (!existing || existing.Role !== "Psychologist") {
+            throw new Error("Psicólogo não encontrado.");
+        }
+
+        // Soft delete com limpeza de storage/arquivos, mantendo histórico de consultas/financeiro
+        return this.userService.deleteUser(id);
     }
 
     async update(user: User, id: string, data: Record<string, unknown>) {
