@@ -423,7 +423,7 @@ const nextConfig: NextConfig = {
       "object-src 'none'",
       "base-uri 'self'",
       "form-action 'self'",
-      "frame-src 'self' https://www.googletagmanager.com https://www.google.com https://www.gstatic.com https://googleads.g.doubleclick.net https://www.googleadservices.com https://*.goadopt.io https://docs.google.com https://view.officeapps.live.com",
+      "frame-src 'self' blob: https://www.googletagmanager.com https://www.google.com https://www.gstatic.com https://googleads.g.doubleclick.net https://www.googleadservices.com https://*.goadopt.io https://docs.google.com https://view.officeapps.live.com",
       "frame-ancestors 'self'",
     ].join("; ");
 
