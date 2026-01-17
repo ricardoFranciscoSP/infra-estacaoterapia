@@ -152,19 +152,22 @@ export const PsicologoRegisterFormJuridico: React.FC<PsicologoRegisterJuridicoFo
 
     // Função para buscar cidades por estado (IBGE API) - endereço empresa
     const buscarCidadesEmpresaPorEstado = React.useCallback(async (uf: string) => {
-      if (!uf || uf.length !== 2) return;
+      if (!uf || uf.length !== 2) return [] as Array<{ nome: string }>;
       setLoadingCidadesEmpresa(true);
       try {
         const response = await fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${uf}/municipios`);
         if (response.ok) {
           const data: IBGEMunicipio[] = await response.json();
-          setCidadesEmpresa(data.map((c) => ({ nome: c.nome })));
+          const list = data.map((c) => ({ nome: c.nome }));
+          setCidadesEmpresa(list);
+          return list;
         }
       } catch (error) {
         console.error("Erro ao buscar cidades empresa:", error);
       } finally {
         setLoadingCidadesEmpresa(false);
       }
+      return [];
     }, []);
 
     // Carrega cidades quando o estado pessoal é selecionado
@@ -182,14 +185,16 @@ export const PsicologoRegisterFormJuridico: React.FC<PsicologoRegisterJuridicoFo
     // Carrega cidades quando o estado empresa é selecionado
     useEffect(() => {
       if (estadoEmpresaSelecionado && estadoEmpresaSelecionado.length === 2) {
-        if (!enderecoEmpresaPreenchidoPorCep) {
+        if (!enderecoEmpresaPreenchidoPorCep || enderecoIgualRepresentante) {
           buscarCidadesEmpresaPorEstado(estadoEmpresaSelecionado);
-          form.setValue("cidadeEmpresa", "", { shouldValidate: false, shouldDirty: true });
+          if (!enderecoIgualRepresentante) {
+            form.setValue("cidadeEmpresa", "", { shouldValidate: false, shouldDirty: true });
+          }
         } else {
           setCidadesEmpresa([]);
         }
       }
-    }, [estadoEmpresaSelecionado, enderecoEmpresaPreenchidoPorCep, buscarCidadesEmpresaPorEstado, form]);
+    }, [estadoEmpresaSelecionado, enderecoEmpresaPreenchidoPorCep, enderecoIgualRepresentante, buscarCidadesEmpresaPorEstado, form]);
   // removido telBorder não utilizado
 
     const getInputClass = (field: string, extra?: string) => {
@@ -405,10 +410,10 @@ export const PsicologoRegisterFormJuridico: React.FC<PsicologoRegisterJuridicoFo
       // Primeiro copia o estado e carrega as cidades
       if (estado && estado.length === 2) {
         form.setValue("estadoEmpresa", estado, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
-        // Carrega as cidades para o estado da empresa
-        await buscarCidadesEmpresaPorEstado(estado);
-        // Aguarda as cidades serem carregadas antes de copiar a cidade
-        // O useEffect adicional vai cuidar de copiar a cidade quando as cidades forem carregadas
+        const cidadesList = await buscarCidadesEmpresaPorEstado(estado);
+        if (cidade && cidadesList.some((c) => c.nome === cidade)) {
+          form.setValue("cidadeEmpresa", cidade, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+        }
       }
       
       // Trigger validação dos campos

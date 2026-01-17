@@ -125,6 +125,40 @@ type Consulta = {
   Valor?: number;
 };
 
+type FileTypeInfo = {
+  label: string;
+  ext: string;
+};
+
+function getFileTypeInfo(name?: string, url?: string): FileTypeInfo {
+  const candidate = `${name || ""} ${url || ""}`.toLowerCase();
+  const match = candidate.match(/\.([a-z0-9]+)(\?|$)/i);
+  const ext = match?.[1] ? match[1].toLowerCase() : "";
+  const normalized = ext.replace(".", "");
+  switch (normalized) {
+    case "pdf":
+      return { label: "PDF", ext: "pdf" };
+    case "doc":
+      return { label: "DOC", ext: "doc" };
+    case "docx":
+      return { label: "DOCX", ext: "docx" };
+    case "png":
+      return { label: "PNG", ext: "png" };
+    case "jpg":
+      return { label: "JPG", ext: "jpg" };
+    case "jpeg":
+      return { label: "JPEG", ext: "jpeg" };
+    case "gif":
+      return { label: "GIF", ext: "gif" };
+    case "webp":
+      return { label: "WEBP", ext: "webp" };
+    case "svg":
+      return { label: "SVG", ext: "svg" };
+    default:
+      return { label: "ARQUIVO", ext: "" };
+  }
+}
+
 function calcularNota(consultas: Consulta[]) {
   const realizadas = consultas?.filter((c) => c.Status === "Realizada" && typeof c.Estrelas === "number") || [];
   if (realizadas.length === 0) return 0;
@@ -211,13 +245,6 @@ function DocumentoModal({
     const isImageCandidate = ["png", "jpg", "jpeg", "gif", "webp", "svg"].some((ext) => endsWithExt(urlLower, ext) || endsWithExt(nameLower, ext));
     const isDocCandidate = ["doc", "docx"].some((ext) => endsWithExt(urlLower, ext) || endsWithExt(nameLower, ext));
 
-    if (doc.id && (isPdfCandidate || isImageCandidate)) {
-      const inlineUrl = `${getApiUrl()}/files/psychologist/documents/${doc.id}/inline`;
-      setPreviewUrl(inlineUrl);
-      setPreviewLoading(false);
-      return;
-    }
-
     const urlToPreview = urlCandidate || null;
     if (!urlToPreview || isDocCandidate) {
       setPreviewUrl(null);
@@ -274,6 +301,7 @@ function DocumentoModal({
   const officeViewerUrl = isDoc && sourceUrl ? `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(sourceUrl)}` : undefined;
   const googleViewerUrl = isDoc && sourceUrl ? `https://docs.google.com/gview?embedded=1&url=${encodeURIComponent(sourceUrl)}` : undefined;
   const previewSource = previewUrl || finalUrl || doc.url || "";
+  const fileType = getFileTypeInfo(doc.nome, doc.url);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-transparent p-4">
@@ -287,7 +315,12 @@ function DocumentoModal({
         </button>
 
         <div className="p-6 border-b border-gray-200">
-          <h3 className="text-xl font-semibold text-gray-800">{doc.nome}</h3>
+          <div className="flex flex-wrap items-center gap-3">
+            <h3 className="text-xl font-semibold text-gray-800">{doc.nome}</h3>
+            <span className="inline-flex items-center text-xs px-2.5 py-1 rounded-full font-semibold bg-[#EEF1FF] text-[#6D75C0]">
+              {fileType.label}
+            </span>
+          </div>
           {doc.descricao && (
             <p className="text-sm text-gray-500 mt-1">{doc.descricao}</p>
           )}
@@ -315,13 +348,10 @@ function DocumentoModal({
             />
           ) : isImage && previewSource ? (
             <div className="flex items-center justify-center">
-              <Image
+              <img
                 src={previewSource}
                 alt={doc.nome}
-                width={800}
-                height={600}
                 className="max-h-[60vh] w-auto mx-auto rounded-lg object-contain"
-                unoptimized
                 onError={() => setError('Erro ao carregar a imagem. O arquivo pode não estar disponível.')}
               />
             </div>
@@ -1784,12 +1814,15 @@ export default function PsicologoDetalhePage() {
                           <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>
                       </span>
-                      {/* Status e expiração */}
+                      {/* Status, tipo e expiração */}
                       <div className="flex items-center gap-2 flex-wrap justify-center mb-2">
                         <span className={`inline-flex items-center text-xs px-2.5 py-1 rounded-full font-semibold ${
                           doc.fileExists ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"
                         }`}>
                           {doc.fileExists ? "✓ Recebido" : "⚠ Pendente"}
+                        </span>
+                        <span className="inline-flex items-center text-xs px-2.5 py-1 rounded-full font-semibold bg-[#EEF1FF] text-[#6D75C0]">
+                          {getFileTypeInfo(doc.fileName, doc.url).label}
                         </span>
                         {expired && (
                           <span className="inline-flex items-center text-xs px-2.5 py-1 rounded-full font-semibold bg-orange-100 text-orange-700">

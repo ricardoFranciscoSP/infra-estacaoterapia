@@ -321,6 +321,7 @@ const nextConfig: NextConfig = {
       "'self'",
       "https://estacaoterapia.com.br", // Domínio raiz (sem subdomínio)
       "https://*.estacaoterapia.com.br", // Todos os subdomínios
+      "https://servicodados.ibge.gov.br", // IBGE (cidades/estados)
       // Endpoints explícitos para Socket.IO (upgrade para WebSocket)
       "https://ws.prd.estacaoterapia.com.br",
       "wss://ws.prd.estacaoterapia.com.br",
@@ -337,6 +338,8 @@ const nextConfig: NextConfig = {
       "https://googleads.g.doubleclick.net", // Google Ads
       "https://www.googleadservices.com", // Google Ads Services
       "https://stats.g.doubleclick.net", // Google Ads/Analytics
+      "https://docs.google.com", // Google Docs Viewer (DOC/DOCX)
+      "https://view.officeapps.live.com", // Microsoft Office Viewer (DOC/DOCX)
       "https://static.cloudflareinsights.com",
       "https://cloudflareinsights.com",
       "https://api.reclameaqui.com.br", // Reclame Aqui API
@@ -420,7 +423,7 @@ const nextConfig: NextConfig = {
       "object-src 'none'",
       "base-uri 'self'",
       "form-action 'self'",
-      "frame-src 'self' https://www.googletagmanager.com https://www.google.com https://www.gstatic.com https://googleads.g.doubleclick.net https://www.googleadservices.com https://*.goadopt.io",
+      "frame-src 'self' https://www.googletagmanager.com https://www.google.com https://www.gstatic.com https://googleads.g.doubleclick.net https://www.googleadservices.com https://*.goadopt.io https://docs.google.com https://view.officeapps.live.com",
       "frame-ancestors 'self'",
     ].join("; ");
 
