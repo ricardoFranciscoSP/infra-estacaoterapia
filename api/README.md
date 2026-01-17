@@ -48,10 +48,6 @@ Principais:
 - `POSTGRES_PASSWORD` - Senha do PostgreSQL
 - `REDIS_PASSWORD` - Senha do Redis
 - `NODE_ENV` - Ambiente (production/development)
-- `RECAPTCHA_ENTERPRISE_PROJECT_ID` - Projeto do reCAPTCHA Enterprise
-- `RECAPTCHA_ENTERPRISE_SITE_KEY` - Site key do reCAPTCHA Enterprise
-- `RECAPTCHA_ENTERPRISE_SCORE_THRESHOLD` - Score mínimo (default 0.5)
-- `GOOGLE_APPLICATION_CREDENTIALS` - Service account JSON
 
 ## 🐳 Docker
 

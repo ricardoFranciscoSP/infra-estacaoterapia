@@ -36,15 +36,9 @@ const requiredEnvVars = [
   "NEXT_PUBLIC_SOCKET_URL",
   "NEXT_PUBLIC_VINDI_PUBLIC_KEY",
   "NEXT_PUBLIC_URL_VINDI_API",
-  "NEXT_PUBLIC_RECAPTCHA_SITE_KEY",
 ] as const;
 
 if (!global.__NEXT_CONFIG_VALIDATED__) {
-  // Fallback explícito para reCAPTCHA quando não vier do build/runtime
-  if (!process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY.trim() === "") {
-    process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY = "6Ldxqk0sAAAAAGrvzYOyVkGDOiK4UIgFxHY9zcdh";
-  }
-
   // Verificar variáveis obrigatórias
   // Permitir placeholders durante build (serão substituídos em runtime via env_file)
   const missing = requiredEnvVars.filter(v => {

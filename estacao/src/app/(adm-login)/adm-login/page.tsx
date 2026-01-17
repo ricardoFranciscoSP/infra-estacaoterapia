@@ -7,27 +7,19 @@ import toast from "react-hot-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import Image from "next/image";
-import Script from "next/script";
-import { getRecaptchaEnterpriseToken } from "@/utils/recaptchaEnterprise";
 
 export default function AdmLoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const siteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || "";
   const { login } = useAuthStore();
   const router = useRouter();
   const { register: formRegister, handleSubmit } = useForm<User>();
 
   async function handleLogin({ Email, Password }: User) {
-    if (!siteKey) {
-      toast.error("reCAPTCHA não configurado.");
-      return;
-    }
     setIsLoading(true);
     try {
       console.log('[LOGIN PAGE] Iniciando login...');
-      const token = await getRecaptchaEnterpriseToken(siteKey, "LOGIN");
-      const result = await login(Email, Password, token, "LOGIN");
+      const result = await login(Email, Password);
       
       console.log('[LOGIN PAGE] Resultado do login:', {
         success: result.success,
@@ -75,10 +67,6 @@ export default function AdmLoginPage() {
 
   return (
     <div className="min-h-screen flex flex-col justify-center items-center bg-[#F2F4FD]">
-      <Script
-        src={`https://www.google.com/recaptcha/enterprise.js?render=${siteKey}`}
-        strategy="afterInteractive"
-      />
       {/* Logo centralizado */}
       <div className="mb-8">
         <Link href="/">
@@ -137,9 +125,6 @@ export default function AdmLoginPage() {
               )}
             </button>
           </div>
-          {!siteKey && (
-            <p className="text-xs text-red-600 mb-4">reCAPTCHA não configurado.</p>
-          )}
           <button
             type="submit"
             className={`w-full bg-[#8494E9] text-white font-semibold py-2 rounded hover:bg-[#6d7ad6] transition-colors flex items-center justify-center`}

@@ -42,7 +42,6 @@
     "@prisma/client": "^7.1.0",
     "@socket.io/redis-adapter": "^8.3.0",
     "@supabase/supabase-js": "^2.49.4",
-    "@google-cloud/recaptcha-enterprise": "^5.4.2",
     "D": "^1.0.0",
     "agora-rtc-sdk-ng": "^4.23.4",
     "agora-token": "^2.0.5",

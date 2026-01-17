@@ -5,8 +5,6 @@ export interface ContatoPayload {
     telefone: string;
     assunto: string;
     mensagem: string;
-    recaptchaToken: string;
-    recaptchaAction?: string;
 }
 
 
@@ -19,8 +17,6 @@ export interface ContatoPayload {
     telefone: string;
     assunto: string;
     mensagem: string;
-    recaptchaToken: string;
-    recaptchaAction?: string;
 }
 
 export const contatoService = () => {

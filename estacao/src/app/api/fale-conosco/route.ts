@@ -25,8 +25,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     
     // Validação básica
-    const token = body.recaptchaToken || body.token;
-    if (!body.nome || !body.email || !body.assunto || !body.mensagem || !token) {
+    if (!body.nome || !body.email || !body.assunto || !body.mensagem) {
       return NextResponse.json({ error: 'Campos obrigatórios ausentes.' }, { status: 400 });
     }
 
@@ -36,7 +35,6 @@ export async function POST(req: NextRequest) {
     const assunto = sanitizeString(body.assunto);
     const mensagem = sanitizeString(body.mensagem);
     const telefone = body.telefone ? sanitizeString(body.telefone) : undefined;
-    const sanitizedToken = sanitizeString(token);
 
     // Validações adicionais
     if (!nome || nome.length < 2) {
@@ -53,35 +51,6 @@ export async function POST(req: NextRequest) {
 
     if (!mensagem || mensagem.length < 10) {
       return NextResponse.json({ error: 'Mensagem muito curta.' }, { status: 400 });
-    }
-
-    if (!sanitizedToken) {
-      return NextResponse.json({ error: 'Token de captcha ausente.' }, { status: 400 });
-    }
-
-    // Verifica o captcha do Google
-    const captchaSecret = process.env.RECAPTCHA_SECRET_KEY;
-    if (!captchaSecret) {
-      console.error('[fale-conosco] RECAPTCHA_SECRET_KEY não configurada');
-      return NextResponse.json({ error: 'Configuração de segurança ausente.' }, { status: 500 });
-    }
-
-    // Usa POST com body ao invés de query string para proteger a secret key
-    const captchaVerify = await axios.post(
-      'https://www.google.com/recaptcha/api/siteverify',
-      new URLSearchParams({
-        secret: captchaSecret,
-        response: sanitizedToken
-      }),
-      {
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded'
-        }
-      }
-    );
-
-    if (!captchaVerify.data.success) {
-      return NextResponse.json({ error: 'Captcha inválido.' }, { status: 400 });
     }
 
     // Envia para a API backend

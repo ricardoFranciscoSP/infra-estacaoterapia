@@ -21,8 +21,6 @@ import { PsicologoRegisterFormAutonomo } from "@/components/PsicologoRegisterFor
 import Image from "next/image";
 import Link from "next/link";
 import { ensureISO8601Date } from "@/utils/date";
-import Script from "next/script";
-import { getRecaptchaEnterpriseToken } from "@/utils/recaptchaEnterprise";
 
 // --- Função auxiliar: montar FormData ---
 function buildFormData(
@@ -108,7 +106,6 @@ function buildFormData(
 
 const RegisterPageInner = () => {
   const { register } = useAuth();
-  const siteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || "";
   const searchParams = useSearchParams();
   const [tab, setTab] = useState<"paciente" | "psicologo">(
     searchParams?.get("tab") === "psicologo" ? "psicologo" : "paciente"
@@ -184,15 +181,12 @@ const RegisterPageInner = () => {
   // --- Função principal de registro ---
   async function handleRegister(
     data: PacienteRegisterFormType | PsicologoAutonomoRegisterForm | PsicologoJuridicoRegisterForm | FormData,
-    role: "Psychologist" | "Patient",
-    recaptchaToken: string
+    role: "Psychologist" | "Patient"
   ) {
     setLoading(true);
     try {
       // Garante que arquivos são enviados via FormData para API Node.js
       const formData = buildFormData(data, role, tipoAtuacao);
-      formData.set("recaptchaToken", recaptchaToken);
-      formData.set("recaptchaAction", role === "Psychologist" ? "REGISTER_PSYCHOLOGIST" : "REGISTER_PATIENT");
       
       const result = await register(formData);
 
@@ -208,8 +202,7 @@ const RegisterPageInner = () => {
         const { email, password } = data as PacienteRegisterFormType;
         try {
           const { login } = await import("@/store/authStore").then((mod) => mod.useAuthStore.getState());
-          const loginToken = await getRecaptchaEnterpriseToken(siteKey, "LOGIN");
-          const loginResult = await login(email, password, loginToken, "LOGIN");
+          const loginResult = await login(email, password);
 
           if (!loginResult.success) {
             toast.error(loginResult.message || "Erro ao fazer login automático.");
@@ -299,10 +292,6 @@ async function handleRegisterPsicologo(
   data: PsicologoAutonomoRegisterForm | PsicologoJuridicoRegisterForm | FormData,
   tipoAtuacaoParam?: "autonomo" | "juridico"
 ): Promise<void> {
-  if (!siteKey) {
-    toast.error("reCAPTCHA não configurado.");
-    return;
-  }
   const tipo = tipoAtuacaoParam || tipoAtuacao;
   // Se vier FormData, valida os arquivos
   if (data instanceof FormData) {
@@ -327,13 +316,7 @@ async function handleRegisterPsicologo(
       }
     }
 
-    try {
-      const token = await getRecaptchaEnterpriseToken(siteKey, "REGISTER_PSYCHOLOGIST");
-      await handleRegister(data, "Psychologist", token);
-    } catch (error) {
-      const msg = error instanceof Error ? error.message : "Falha ao validar reCAPTCHA.";
-      toast.error(msg);
-    }
+    await handleRegister(data, "Psychologist");
     return;
   }
 
@@ -430,30 +413,14 @@ async function handleRegisterPsicologo(
     }
   }
 
-  try {
-    const token = await getRecaptchaEnterpriseToken(siteKey, "REGISTER_PSYCHOLOGIST");
-    await handleRegister(formData, "Psychologist", token);
-  } catch (error) {
-    const msg = error instanceof Error ? error.message : "Falha ao validar reCAPTCHA.";
-    toast.error(msg);
-  }
+  await handleRegister(formData, "Psychologist");
 }
 
 
   async function handleRegisterPaciente(data: PacienteRegisterFormType) {
-    if (!siteKey) {
-      toast.error("reCAPTCHA não configurado.");
-      return;
-    }
     const valid = await pacienteForm.trigger();
     if (!valid) return toast.error("Preencha todos os campos obrigatórios corretamente.");
-    try {
-      const token = await getRecaptchaEnterpriseToken(siteKey, "REGISTER_PATIENT");
-      return await handleRegister(data, "Patient", token);
-    } catch (error) {
-      const msg = error instanceof Error ? error.message : "Falha ao validar reCAPTCHA.";
-      toast.error(msg);
-    }
+    return await handleRegister(data, "Patient");
   }
 
   // Mantém a aba sincronizada se o query param mudar
@@ -464,10 +431,6 @@ async function handleRegisterPsicologo(
 
   return (
     <>
-      <Script
-        src={`https://www.google.com/recaptcha/enterprise.js?render=${siteKey}`}
-        strategy="afterInteractive"
-      />
       <div className="w-full min-h-screen flex flex-col justify-center items-center bg-white px-4 sm:px-8 py-5">
         {/* Logo */}
         <div className="mb-8">
@@ -551,22 +514,12 @@ async function handleRegisterPsicologo(
                     isSubmitting={isBusy}
                   />
                 )}
-                {!siteKey && (
-                  <div className="mt-4">
-                    <p className="text-xs text-red-600">reCAPTCHA não configurado.</p>
-                  </div>
-                )}
               </motion.div>
             )}
  
             {tab === "paciente" && (
               <motion.div key="paciente" initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -40 }} transition={{ duration: 0.25 }}>
                 <PacienteRegisterForm form={pacienteForm} onSubmit={handleRegisterPaciente} isSubmitting={isBusy} />
-                {!siteKey && (
-                  <div className="mt-4">
-                    <p className="text-xs text-red-600">reCAPTCHA não configurado.</p>
-                  </div>
-                )}
               </motion.div>
             )}
           </AnimatePresence>

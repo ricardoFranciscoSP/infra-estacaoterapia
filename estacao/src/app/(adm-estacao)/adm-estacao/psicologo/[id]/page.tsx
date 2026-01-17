@@ -159,6 +159,7 @@ function DocumentoModal({
   const [error, setError] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
+  const [docxViewer, setDocxViewer] = useState<"office" | "google">("office");
 
   useEffect(() => {
     const loadUrl = async () => {
@@ -166,6 +167,7 @@ function DocumentoModal({
         setFinalUrl(null);
         setError(null);
         setPreviewUrl(null);
+        setDocxViewer("office");
         return;
       }
 
@@ -200,21 +202,27 @@ function DocumentoModal({
 
   useEffect(() => {
     if (!open || !doc) return;
-    const inlineUrl = doc.id ? `${getApiUrl()}/files/psychologist/documents/${doc.id}/inline` : null;
-    if (inlineUrl) {
+
+    const urlCandidate = finalUrl || doc.url || "";
+    const urlLower = urlCandidate.toLowerCase();
+    const nameLower = (doc.nome || "").toLowerCase();
+    const endsWithExt = (s: string, ext: string) => new RegExp(`\\.${ext}(\\?|$)`, "i").test(s);
+    const isPdfCandidate = endsWithExt(urlLower, "pdf") || endsWithExt(nameLower, "pdf");
+    const isImageCandidate = ["png", "jpg", "jpeg", "gif", "webp", "svg"].some((ext) => endsWithExt(urlLower, ext) || endsWithExt(nameLower, ext));
+    const isDocCandidate = ["doc", "docx"].some((ext) => endsWithExt(urlLower, ext) || endsWithExt(nameLower, ext));
+
+    if (doc.id && (isPdfCandidate || isImageCandidate)) {
+      const inlineUrl = `${getApiUrl()}/files/psychologist/documents/${doc.id}/inline`;
       setPreviewUrl(inlineUrl);
       setPreviewLoading(false);
       return;
     }
 
-    const urlToPreview = finalUrl || doc.url || null;
-    if (!urlToPreview) return;
-
-    const urlLower = urlToPreview.toLowerCase();
-    const nameLower = (doc.nome || "").toLowerCase();
-    const endsWithExt = (s: string, ext: string) => new RegExp(`\\.${ext}(\\?|$)`, "i").test(s);
-    const isPdfCandidate = endsWithExt(urlLower, "pdf") || endsWithExt(nameLower, "pdf");
-    const isImageCandidate = ["png", "jpg", "jpeg", "gif", "webp", "svg"].some((ext) => endsWithExt(urlLower, ext) || endsWithExt(nameLower, ext));
+    const urlToPreview = urlCandidate || null;
+    if (!urlToPreview || isDocCandidate) {
+      setPreviewUrl(null);
+      return;
+    }
 
     if (!isPdfCandidate && !isImageCandidate) {
       setPreviewUrl(null);
@@ -262,7 +270,9 @@ function DocumentoModal({
   const isPDF = endsWithExt(urlStr, 'pdf') || endsWithExt(nameStr, 'pdf');
   const isImage = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].some((ext) => endsWithExt(urlStr, ext) || endsWithExt(nameStr, ext));
   const isDoc = ['doc', 'docx'].some((ext) => endsWithExt(urlStr, ext) || endsWithExt(nameStr, ext));
-  const officeViewerUrl = isDoc && (finalUrl || doc.url) ? `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(finalUrl || doc.url || '')}` : undefined;
+  const sourceUrl = finalUrl || doc.url || "";
+  const officeViewerUrl = isDoc && sourceUrl ? `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(sourceUrl)}` : undefined;
+  const googleViewerUrl = isDoc && sourceUrl ? `https://docs.google.com/gview?embedded=1&url=${encodeURIComponent(sourceUrl)}` : undefined;
   const previewSource = previewUrl || finalUrl || doc.url || "";
 
   return (
@@ -315,16 +325,36 @@ function DocumentoModal({
                 onError={() => setError('Erro ao carregar a imagem. O arquivo pode não estar disponível.')}
               />
             </div>
-          ) : isDoc && officeViewerUrl ? (
+          ) : isDoc && (officeViewerUrl || googleViewerUrl) ? (
             <div className="flex flex-col gap-3">
               <iframe
-                src={officeViewerUrl}
+                src={docxViewer === "google" ? googleViewerUrl : officeViewerUrl}
                 title="Documento do Word"
                 className="w-full h-full min-h-[60vh] border rounded-lg"
               />
               <p className="text-xs text-gray-500">
                 Pré-visualização fornecida pelo Microsoft Office Viewer. Caso não carregue, utilize o botão Baixar abaixo.
               </p>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-lg border ${
+                    docxViewer === "office" ? "border-[#6D75C0] text-[#6D75C0]" : "border-gray-300 text-gray-600"
+                  }`}
+                  onClick={() => setDocxViewer("office")}
+                >
+                  Office Viewer
+                </button>
+                <button
+                  type="button"
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-lg border ${
+                    docxViewer === "google" ? "border-[#6D75C0] text-[#6D75C0]" : "border-gray-300 text-gray-600"
+                  }`}
+                  onClick={() => setDocxViewer("google")}
+                >
+                  Google Viewer (fallback)
+                </button>
+              </div>
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center text-center text-gray-600 gap-3">

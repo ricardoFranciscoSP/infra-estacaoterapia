@@ -1,7 +1,6 @@
 import { Request, Response } from 'express';
 import { AuthService } from '../services/auth.service';
 import { ITokenService } from '../interfaces/token.interface';
-import { verifyRecaptchaEnterprise } from '../utils/recaptchaEnterprise.util';
 
 /**
  * Controller responsável pelas operações de autenticação, registro,
@@ -23,14 +22,7 @@ export class AuthController {
    */
   async login(req: Request, res: Response): Promise<Response> {
     try {
-      const { email, telefone, crp, password, recaptchaToken, recaptchaAction } = req.body;
-
-      if (!recaptchaToken || typeof recaptchaToken !== 'string') {
-        return res.status(400).json({
-          success: false,
-          message: 'reCAPTCHA obrigatório.',
-        });
-      }
+      const { email, telefone, crp, password } = req.body;
 
       let identifier = email || telefone || crp;
       // Remove hífen apenas se o identifier for telefone no formato antigo "00-000000" (apenas números)
@@ -51,13 +43,6 @@ export class AuthController {
       const userAgent = req.headers['user-agent'] || '';
       console.log(`[LOGIN] IP: ${ip}, User-Agent: ${userAgent.substring(0, 50)}...`);
 
-      const expectedAction = typeof recaptchaAction === 'string' && recaptchaAction.trim() !== ''
-        ? recaptchaAction
-        : 'LOGIN';
-      await verifyRecaptchaEnterprise({
-        token: recaptchaToken,
-        expectedAction,
-      });
 
       // Passa ip e userAgent para o service
       const result = await this.authService.login(identifier, password, ip, userAgent);
@@ -199,24 +184,6 @@ export class AuthController {
    */
   async register(req: Request, res: Response): Promise<Response> {
     try {
-      const { recaptchaToken, recaptchaAction } = req.body;
-      if (!recaptchaToken || typeof recaptchaToken !== 'string') {
-        return res.status(400).json({
-          success: false,
-          message: 'reCAPTCHA obrigatório.',
-        });
-      }
-
-      const expectedAction = typeof recaptchaAction === 'string' && recaptchaAction.trim() !== ''
-        ? recaptchaAction
-        : 'REGISTER';
-      await verifyRecaptchaEnterprise({
-        token: recaptchaToken,
-        expectedAction,
-      });
-
-      delete req.body.recaptchaToken;
-      delete req.body.recaptchaAction;
       // Observação: aceita tanto multipart/form-data (Multer) quanto fallback JSON/base64 (service)
 
       // Aceita ambos formatos do Multer:

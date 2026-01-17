@@ -14,12 +14,9 @@ import { useRouter } from "next/navigation";
 import { useUIStore } from "@/store/uiStore";
 import { ProgressButton } from "@/components/ProgressButton";
 import { getRedirectRouteByRole } from "@/utils/redirectByRole";
-import Script from "next/script";
-import { getRecaptchaEnterpriseToken } from "@/utils/recaptchaEnterprise";
 
 const LoginPage = () => {
   const [tab, setTab] = useState("paciente");
-  const siteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || "";
 
   
   // Formulários separados para paciente e psicólogo
@@ -46,9 +43,7 @@ const LoginPage = () => {
 
 
   async function handleLogin(
-    { email, senha, crp }: Partial<PacienteForm & PsicologoForm>,
-    recaptchaToken: string,
-    recaptchaAction: string
+    { email, senha, crp }: Partial<PacienteForm & PsicologoForm>
   ) {
     setLoading(true);
     try {
@@ -57,7 +52,7 @@ const LoginPage = () => {
         throw new Error('Preencha todos os campos');
       }
 
-      const result = await login(loginId, senha, recaptchaToken, recaptchaAction);
+      const result = await login(loginId, senha);
 
       if (!result.success) {
         throw new Error(result.message || 'Login inválido');
@@ -178,40 +173,16 @@ const LoginPage = () => {
   }
 
   const handlePaciente = async (data: PacienteForm) => {
-    if (!siteKey) {
-      toast.error("reCAPTCHA não configurado.");
-      return;
-    }
-    try {
-      const token = await getRecaptchaEnterpriseToken(siteKey, "LOGIN");
-      await handleLogin({ email: data.email, senha: data.senha }, token, "LOGIN");
-    } catch (error) {
-      const msg = error instanceof Error ? error.message : "Falha ao validar reCAPTCHA.";
-      toast.error(msg);
-    }
+    await handleLogin({ email: data.email, senha: data.senha });
   };
 
   const handlePsicologo = async (data: PsicologoForm) => {
-    if (!siteKey) {
-      toast.error("reCAPTCHA não configurado.");
-      return;
-    }
-    try {
-      const token = await getRecaptchaEnterpriseToken(siteKey, "LOGIN");
-      await handleLogin({ crp: data.crp, senha: data.senha }, token, "LOGIN");
-    } catch (error) {
-      const msg = error instanceof Error ? error.message : "Falha ao validar reCAPTCHA.";
-      toast.error(msg);
-    }
+    await handleLogin({ crp: data.crp, senha: data.senha });
   };
 
 
   return (
     <>
-      <Script
-        src={`https://www.google.com/recaptcha/enterprise.js?render=${siteKey}`}
-        strategy="afterInteractive"
-      />
       <div className="w-screen h-screen min-h-screen min-w-full flex flex-col md:flex-row bg-white md:bg-[#f5f7ff]">
         {/* Lado esquerdo - Login */}
         <div className="w-full md:w-1/2 flex flex-col justify-center items-center bg-white px-6 md:px-16 py-8 md:py-0 min-h-screen">
@@ -278,9 +249,6 @@ const LoginPage = () => {
                       Esqueci minha senha
                     </button>
                   </div>
-                  {!siteKey && (
-                    <p className="text-xs text-red-600">reCAPTCHA não configurado.</p>
-                  )}
                   <ProgressButton
                     type="submit"
                     isLoading={isLoading}
@@ -330,9 +298,6 @@ const LoginPage = () => {
                       Esqueci minha senha
                     </button>
                   </div>
-                  {!siteKey && (
-                    <p className="text-xs text-red-600">reCAPTCHA não configurado.</p>
-                  )}
                   <ProgressButton
                     type="submit"
                     isLoading={isLoading}
