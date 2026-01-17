@@ -209,8 +209,7 @@ export class ConsultasService {
                 },
                 ReservaSessao: {
                     select: {
-                        Status: true,
-                        VideoCallLink: true
+                        Status: true
                     }
                 }
             },
