@@ -2,11 +2,9 @@ import { NextResponse } from "next/server";
 
 const BASE_URL = "https://s3.amazonaws.com/raichu-beta/";
 
-export async function GET(
-  request: Request,
-  { params }: { params: { path: string[] } }
-) {
-  const path = Array.isArray(params.path) ? params.path.join("/") : "";
+export async function GET(request: Request) {
+  const pathname = new URL(request.url).pathname;
+  const path = pathname.replace(/^\/api\/reclame-aqui\//, "");
   if (!path || !path.startsWith("ra-verified/")) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
