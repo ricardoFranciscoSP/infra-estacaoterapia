@@ -437,20 +437,26 @@ export class PsicologoService {
                     });
                 }
             } else if (Object.keys(pjPayload).length > 0) {
-                const created = await prisma.pessoalJuridica.create({
-                    data: {
-                        PsicologoId: id,
-                        ...(pjPayload as {
-                            RazaoSocial?: string;
-                            NomeFantasia?: string | null;
-                            CNPJ?: string;
-                            InscricaoEstadual?: string | null;
-                            SimplesNacional?: boolean | null;
-                            DescricaoExtenso?: string | null;
-                        })
-                    }
-                });
-                pjId = created.Id;
+                const razaoSocial = typeof pjPayload.RazaoSocial === "string" ? pjPayload.RazaoSocial : undefined;
+                const cnpj = typeof pjPayload.CNPJ === "string" ? pjPayload.CNPJ : undefined;
+                if (razaoSocial && cnpj) {
+                    const created = await prisma.pessoalJuridica.create({
+                        data: {
+                            ...(pjPayload as {
+                                RazaoSocial: string;
+                                NomeFantasia?: string | null;
+                                CNPJ: string;
+                                InscricaoEstadual?: string | null;
+                                SimplesNacional?: boolean | null;
+                                DescricaoExtenso?: string | null;
+                            }),
+                            Psicologo: { connect: { Id: id } }
+                        }
+                    });
+                    pjId = created.Id;
+                } else {
+                    console.warn("[PsicologoService] Dados PJ incompletos para criação (RazaoSocial/CNPJ ausentes).");
+                }
             }
 
             const pjDadosBancarios = pjData.DadosBancarios as Record<string, unknown> | undefined;

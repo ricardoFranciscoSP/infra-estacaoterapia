@@ -16,6 +16,13 @@ export interface PolicyDocumentUpdateData extends Partial<PolicyDocumentData> {
 }
 
 export class PolicyDocumentService {
+  private getPolicyDocumentDelegate() {
+    const delegate = (prisma as unknown as { policyDocument?: any }).policyDocument;
+    if (!delegate) {
+      throw new Error("Model PolicyDocument não está disponível no Prisma Client.");
+    }
+    return delegate;
+  }
   /**
    * Lista todos os documentos de políticas
    */
@@ -38,7 +45,8 @@ export class PolicyDocumentService {
 
     const where = whereConditions.length > 0 ? { AND: whereConditions } : {};
 
-    return await prisma.policyDocument.findMany({
+    const policyDocument = this.getPolicyDocumentDelegate();
+    return await policyDocument.findMany({
       where,
       orderBy: [
         { Ordem: "asc" },
@@ -67,7 +75,8 @@ export class PolicyDocumentService {
    * Busca um documento por ID
    */
   async getDocumentById(id: string) {
-    return await prisma.policyDocument.findUnique({
+    const policyDocument = this.getPolicyDocumentDelegate();
+    return await policyDocument.findUnique({
       where: { Id: id },
       include: {
         CreatedBy: {
@@ -92,7 +101,8 @@ export class PolicyDocumentService {
    * Cria um novo documento
    */
   async createDocument(data: PolicyDocumentData, userId: string) {
-    return await prisma.policyDocument.create({
+    const policyDocument = this.getPolicyDocumentDelegate();
+    return await policyDocument.create({
       data: {
         ...data,
         CreatedById: userId,
@@ -116,7 +126,8 @@ export class PolicyDocumentService {
   async updateDocument(data: PolicyDocumentUpdateData, userId: string) {
     const { Id, ...updateData } = data;
 
-    return await prisma.policyDocument.update({
+    const policyDocument = this.getPolicyDocumentDelegate();
+    return await policyDocument.update({
       where: { Id },
       data: {
         ...updateData,
@@ -139,7 +150,8 @@ export class PolicyDocumentService {
    */
   async deleteDocument(id: string) {
     // Busca o documento para obter a URL
-    const document = await prisma.policyDocument.findUnique({
+    const policyDocument = this.getPolicyDocumentDelegate();
+    const document = await policyDocument.findUnique({
       where: { Id: id }
     });
 
@@ -174,7 +186,7 @@ export class PolicyDocumentService {
     }
 
     // Remove o registro do banco
-    return await prisma.policyDocument.delete({
+    return await policyDocument.delete({
       where: { Id: id }
     });
   }
