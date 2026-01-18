@@ -44,34 +44,34 @@ export default function RedesSociaisFooter() {
       <div className="flex gap-3 justify-end w-full items-center mb-3">
         {instagram && (
           <Link href={instagram} target="_blank" rel="noopener noreferrer" aria-label="Instagram">
-            <Image src="/assets/icons/instagram.png" alt="Instagram" className="w-6 h-6" width={24} height={24} />
+            <Image src="/assets/icons/instagram.webp" alt="Instagram" className="w-6 h-6" width={24} height={24} sizes="24px" quality={80} loading="lazy" />
           </Link>
         )}
         {facebook && (
           <Link href={facebook} target="_blank" rel="noopener noreferrer" aria-label="Facebook">
-            <Image src="/assets/icons/facebook.png" alt="Facebook" className="w-6 h-6" width={24} height={24} />
+            <Image src="/assets/icons/facebook.webp" alt="Facebook" className="w-6 h-6" width={24} height={24} sizes="24px" quality={80} loading="lazy" />
           </Link>
         )}
         {linkedin && (
           <Link href={linkedin} target="_blank" rel="noopener noreferrer" aria-label="LinkedIn">
-            <Image src="/assets/icons/linkedin.png" alt="LinkedIn" className="w-6 h-6" width={24} height={24} />
+            <Image src="/assets/icons/linkedin.webp" alt="LinkedIn" className="w-6 h-6" width={24} height={24} sizes="24px" quality={80} loading="lazy" />
           </Link>
         )}
         {tiktok && (
           <Link href={tiktok} target="_blank" rel="noopener noreferrer" aria-label="TikTok">
-            <Image src="/assets/icons/tiktok.png" alt="TikTok" className="w-6 h-6" width={24} height={24} />
+            <Image src="/assets/icons/tiktok.webp" alt="TikTok" className="w-6 h-6" width={24} height={24} sizes="24px" quality={80} loading="lazy" />
           </Link>
         )}
         {youtube && (
           <Link href={youtube} target="_blank" rel="noopener noreferrer" aria-label="YouTube">
-            <Image src="/assets/icons/youtube.png" alt="YouTube" className="w-6 h-6" width={24} height={24} />
+            <Image src="/assets/icons/youtube.webp" alt="YouTube" className="w-6 h-6" width={24} height={24} sizes="24px" quality={80} loading="lazy" />
           </Link>
         )}
       </div>
       {/* Logo Reclame Aqui abaixo das redes sociais, alinhado à direita */}
       <div className="flex justify-end w-full">
         <Link href="https://www.reclameaqui.com.br" target="_blank" rel="noopener noreferrer" aria-label="Reclame Aqui" className="transition-opacity hover:opacity-80">
-          <Image src="/assets/logo-reclame-aqui.png" alt="Reclame Aqui" className="h-auto w-auto max-w-[160px]" width={160} height={52} />
+          <Image src="/assets/logo-reclame-aqui.webp" alt="Reclame Aqui" className="h-auto w-auto max-w-[160px]" width={160} height={52} sizes="160px" quality={85} loading="lazy" />
         </Link>
       </div>
     </div>

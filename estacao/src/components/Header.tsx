@@ -667,7 +667,7 @@ const Header: React.FC = () => {
                     style={{ background: 'none', border: 'none', padding: 0, margin: 0 }}
                   >
                     <Image 
-                      src="/logo.png" 
+                      src="/logo.svg" 
                       alt="Logo Estação Terapia" 
                       width={140} 
                       height={48} 
@@ -675,6 +675,7 @@ const Header: React.FC = () => {
                       style={{ width: 140, height: 48 }} 
                       priority
                       fetchPriority="high"
+                      sizes="140px"
                     />
                   </button>
                   <button

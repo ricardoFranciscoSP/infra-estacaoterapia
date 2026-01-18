@@ -84,13 +84,14 @@ export default function Footer() {
               style={{ background: 'none', border: 'none', padding: 0, margin: 0 }}
             >
               <Image 
-                src="/logo.png" 
+                src="/logo.svg" 
                 alt="Estação terapia" 
                 width={110} 
                 height={38} 
                 className="w-[110px] h-[38px] object-contain" 
                 style={{ width: 110, height: 38 }} 
                 priority
+                sizes="110px"
                 onError={(e) => {
                   const target = e.target as HTMLImageElement;
                   if (target.src !== '/logo.svg') {
@@ -105,12 +106,14 @@ export default function Footer() {
         <div className="flex gap-3 justify-start w-full mb-3">
           <Link href="https://www.instagram.com/estacaoterapia" target="_blank" rel="noopener noreferrer" aria-label="Instagram">
             <Image 
-              src="/assets/icons/instagram.png" 
+              src="/assets/icons/instagram.webp" 
               alt="Instagram" 
               className="w-6 h-6" 
               width={24} 
               height={24}
-              unoptimized
+              sizes="24px"
+              quality={80}
+              loading="lazy"
               onError={() => {
                 console.warn('Erro ao carregar ícone do Instagram');
               }}
@@ -118,12 +121,14 @@ export default function Footer() {
           </Link>
           <Link href="https://www.facebook.com/profile.php?id=61582287230956" target="_blank" rel="noopener noreferrer" aria-label="Facebook">
             <Image 
-              src="/assets/icons/facebook.png" 
+              src="/assets/icons/facebook.webp" 
               alt="Facebook" 
               className="w-6 h-6" 
               width={24} 
               height={24}
-              unoptimized
+              sizes="24px"
+              quality={80}
+              loading="lazy"
               onError={() => {
                 console.warn('Erro ao carregar ícone do Facebook');
               }}
@@ -131,12 +136,14 @@ export default function Footer() {
           </Link>
           <Link href="https://www.linkedin.com/in/estacaoterapia" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn">
             <Image 
-              src="/assets/icons/linkedin.png" 
+              src="/assets/icons/linkedin.webp" 
               alt="LinkedIn" 
               className="w-6 h-6" 
               width={24} 
               height={24}
-              unoptimized
+              sizes="24px"
+              quality={80}
+              loading="lazy"
               onError={() => {
                 console.warn('Erro ao carregar ícone do LinkedIn');
               }}
@@ -144,18 +151,20 @@ export default function Footer() {
           </Link>
           <Link href="http://tiktok.com/@estacaoterapia" target="_blank" rel="noopener noreferrer" aria-label="TikTok">
             <Image 
-              src="/assets/icons/tiktok.png" 
+              src="/assets/icons/tiktok.webp" 
               alt="TikTok" 
               className="w-6 h-6" 
               width={24} 
               height={24}
-              unoptimized
+              sizes="24px"
+              quality={80}
+              loading="lazy"
               onError={() => {
                 console.warn('Erro ao carregar ícone do TikTok');
               }}
             />
           </Link>
-          {/* <Link href="#" target="_blank" rel="noopener noreferrer" aria-label="YouTube"><Image src="/assets/icons/youtube.png" alt="YouTube" className="w-6 h-6" width={24} height={24} /></Link> */}
+          {/* <Link href="#" target="_blank" rel="noopener noreferrer" aria-label="YouTube"><Image src="/assets/icons/youtube.webp" alt="YouTube" className="w-6 h-6" width={24} height={24} /></Link> */}
         </div>
         {/* Reclame Aqui Verified Seal */}
         <ReclameAquiSeal />

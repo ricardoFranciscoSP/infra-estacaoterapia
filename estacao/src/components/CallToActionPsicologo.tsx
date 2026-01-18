@@ -39,12 +39,14 @@ const CallToActionPsicologo: React.FC = () => {
             </div>
             <div className="w-full md:w-1/2 flex justify-center md:justify-end order-1 md:order-2">
               <Image
-                src="/call-service.png"
+                src="/call-service.webp"
                 alt="Psicólogo em atendimento remoto"
                 width={588}
                 height={588}
                 className="w-[250px] h-[250px] sm:w-[300px] sm:h-[300px] md:w-[350px] md:h-[350px] lg:w-[450px] lg:h-[450px] xl:w-[500px] xl:h-[500px] opacity-100 object-contain"
-                priority
+                sizes="(max-width: 640px) 250px, (max-width: 768px) 300px, (max-width: 1024px) 350px, (max-width: 1280px) 450px, 500px"
+                quality={80}
+                loading="lazy"
               />
             </div>
           </div>

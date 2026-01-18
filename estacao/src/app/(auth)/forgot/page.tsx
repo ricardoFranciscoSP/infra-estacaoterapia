@@ -66,13 +66,14 @@ const ForgotPage = () => {
             className="flex-shrink-0 mb-6 flex justify-center mt-8 md:mt-10"
           >
             <Image
-              src="/logo.png"
+              src="/logo.svg"
               alt="Logo Estação Terapia"
               width={200}
               height={60}
               className="w-[100px] h-auto xs:w-[120px] sm:w-[140px] md:w-[120px] lg:w-[200px] max-w-[60vw] hover:opacity-80 transition-opacity duration-300"
               style={{ maxWidth: "200px", width: "100%", height: "auto" }}
               priority
+              sizes="(max-width: 640px) 120px, (max-width: 1024px) 140px, 200px"
             />
           </Link>
           <div className="w-full max-w-[652px] px-4 md:px-0 mx-auto">

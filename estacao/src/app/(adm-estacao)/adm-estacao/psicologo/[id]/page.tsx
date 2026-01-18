@@ -2427,7 +2427,9 @@ export default function PsicologoDetalhePage() {
                 }
               },
               onError: (error: unknown) => {
-                const errorMessage = error instanceof Error ? error.message : 'Erro ao emitir contrato';
+                const errorWithResponse = error as { response?: { data?: { error?: string; message?: string } } };
+                const backendMessage = errorWithResponse?.response?.data?.error || errorWithResponse?.response?.data?.message;
+                const errorMessage = backendMessage || (error instanceof Error ? error.message : 'Erro ao emitir contrato');
                 toast.error(errorMessage);
               },
             });

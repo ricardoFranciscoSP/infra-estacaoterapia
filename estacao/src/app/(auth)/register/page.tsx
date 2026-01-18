@@ -436,12 +436,13 @@ async function handleRegisterPsicologo(
         <div className="mb-8">
           <Link href="/" aria-label="Ir para a página inicial">
             <Image 
-              src="/logo.png" 
+              src="/logo.svg" 
               alt="Logo Estação Terapia" 
               width={200} 
               height={56} 
               className="hover:opacity-80 transition-opacity" 
               priority 
+              sizes="(max-width: 640px) 120px, (max-width: 1024px) 160px, 200px"
               style={{ width: 200, height: 56, objectFit: "contain" }}
             />
           </Link>

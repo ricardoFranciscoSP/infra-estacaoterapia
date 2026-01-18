@@ -503,23 +503,23 @@ export function normalizeExperienciaClinica(experiencia: string | null | undefin
   if (!experiencia || typeof experiencia !== 'string') return 'Não informado';
 
   const map: { [key: string]: string } = {
-    'Nenhuma': 'Nenhuma',
-    'Ano1': '1 ano',
-    'Entre1_5Anos': '1 a 5 anos',
-    'Entre6_10Anos': '6 a 10 anos',
-    'Entre11_15Anos': '11 a 15 anos',
-    'Entre15_20Anos': '15 a 20 anos',
+    'Entre1_5Anos': '1 - 5 anos',
+    'Entre6_10Anos': '6 - 10 anos',
+    'Entre11_15Anos': '11 - 15 anos',
+    'Entre15_20Anos': '15 - 20 anos',
     'Mais20Anos': 'Mais de 20 anos',
     // Compatibilidade com formatos anteriores
-    'Menos1Ano': 'Menos de 1 ano',
-    'Entre1_3Anos': '1 a 3 anos',
-    'Entre3_5Anos': '3 a 5 anos',
-    'Entre5_10Anos': '5 a 10 anos',
-    'Mais10Anos': 'Mais de 10 anos',
-    'ENTRE_1_2_ANOS': '1 a 2 anos',
-    'ENTRE_3_5_ANOS': '3 a 5 anos',
-    'ENTRE_5_10_ANOS': '5 a 10 anos',
-    'MAIS_10_ANOS': 'Mais de 10 anos',
+    'Nenhuma': 'Não informado',
+    'Menos1Ano': '1 - 5 anos',
+    'Ano1': '1 - 5 anos',
+    'Entre1_3Anos': '1 - 5 anos',
+    'Entre3_5Anos': '1 - 5 anos',
+    'Entre5_10Anos': '6 - 10 anos',
+    'Mais10Anos': '11 - 15 anos',
+    'ENTRE_1_2_ANOS': '1 - 5 anos',
+    'ENTRE_3_5_ANOS': '1 - 5 anos',
+    'ENTRE_5_10_ANOS': '6 - 10 anos',
+    'MAIS_10_ANOS': '11 - 15 anos',
   };
 
   const normalized = map[experiencia];
@@ -531,17 +531,17 @@ export function normalizeExperienciaClinica(experiencia: string | null | undefin
   // Converte "Entre1_3Anos" -> "1 a 3 anos"
   const match = experiencia.match(/^Entre(\d+)_(\d+)Anos$/);
   if (match) {
-    return `${match[1]} a ${match[2]} anos`;
+    return `${match[1]} - ${match[2]} anos`;
   }
   
   // Converte "Menos1Ano" -> "Menos de 1 ano"
   if (experiencia === 'Menos1Ano' || experiencia === 'MENOS1ANO') {
-    return 'Menos de 1 ano';
+    return '1 - 5 anos';
   }
   
   // Converte "Mais10Anos" -> "Mais de 10 anos"
   if (experiencia === 'Mais10Anos' || experiencia === 'MAIS10ANOS') {
-    return 'Mais de 10 anos';
+    return '11 - 15 anos';
   }
 
   return experiencia;

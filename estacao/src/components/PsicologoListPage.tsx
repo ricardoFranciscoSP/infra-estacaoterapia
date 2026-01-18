@@ -100,24 +100,24 @@ function PsicologosPage() {
     if (!experiencia) return 0;
     
     const map: { [key: string]: number } = {
-      'Nenhuma': 0,
-      'Ano1': 1,
       'Entre1_5Anos': 3,
       'Entre6_10Anos': 8,
       'Entre11_15Anos': 13,
       'Entre15_20Anos': 18,
-      'Mais20Anos': 20,
+      'Mais20Anos': 21,
       // Compatibilidade com formatos anteriores
-      'Menos1Ano': 0.5,
+      'Nenhuma': 0,
+      'Menos1Ano': 1,
+      'Ano1': 1,
       'Entre1_3Anos': 2,
       'Entre3_5Anos': 4,
-      'Entre5_10Anos': 7.5,
-      'Mais10Anos': 10,
+      'Entre5_10Anos': 8,
+      'Mais10Anos': 13,
       // Compatibilidade com formatos antigos
-      'ENTRE_1_2_ANOS': 1.5,
+      'ENTRE_1_2_ANOS': 2,
       'ENTRE_3_5_ANOS': 4,
-      'ENTRE_5_10_ANOS': 7.5,
-      'MAIS_10_ANOS': 10,
+      'ENTRE_5_10_ANOS': 8,
+      'MAIS_10_ANOS': 13,
     };
     
     return map[experiencia] ?? 0;

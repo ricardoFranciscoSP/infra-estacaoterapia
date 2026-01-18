@@ -20,13 +20,14 @@ export default function EsqueceuSenhaPage() {
       <div className="mb-8">
         <Link href="/">
           <Image
-            src="/logo.png"
+            src="/logo.svg"
             alt="Logo"
             width={200}
             height={80}
             className="w-[100px] h-auto xs:w-[120px] sm:w-[140px] md:w-[120px] lg:w-[200px] max-w-[60vw] hover:opacity-80 transition-opacity duration-300"
             style={{ maxWidth: '200px', width: '100%', height: 'auto' }}
             priority
+            sizes="(max-width: 640px) 120px, (max-width: 1024px) 140px, 200px"
           />
         </Link>
       </div>

@@ -139,7 +139,7 @@ export function getAutorTipoCancelamento(): string[] {
 }
 
 export function getExperienciaClinica(): string[] {
-    return ["Nenhuma", "Ano1", "Entre1_5Anos", "Entre6_10Anos", "Entre11_15Anos", "Entre15_20Anos", "Mais20Anos"];
+    return ["Entre1_5Anos", "Entre6_10Anos", "Entre11_15Anos", "Entre15_20Anos", "Mais20Anos"];
 }
 
 export function getAbordagem(): string[] {

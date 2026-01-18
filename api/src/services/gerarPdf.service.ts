@@ -5,7 +5,7 @@ import puppeteer from "puppeteer";
 import { EmailService } from "./email.service";
 import { Plano } from "../interfaces/user.interface";
 import prisma from "../prisma/client";
-import { supabaseAdmin, STORAGE_BUCKET } from "../services/storage.services";
+import { supabase, supabaseAdmin, STORAGE_BUCKET } from "../services/storage.services";
 import { ContratoPsicologoData, ContratoGeradoResult } from "../types/contrato.types";
 const emailService = new EmailService();
 
@@ -1318,14 +1318,14 @@ export class ContratoService {
 
         const fileBuffer = fs.readFileSync(localPath);
         const filePath = `contracts/${Date.now()}_${fileName}`;
-        // Sempre usar supabaseAdmin para uploads em buckets privados
-        if (!supabaseAdmin) {
-            throw new Error(
-                "SUPABASE_SERVICE_ROLE_KEY não definido. " +
-                "Uploads para buckets privados requerem service role key para evitar erros de verificação de assinatura."
-            );
+        const storageClient = supabaseAdmin ?? supabase;
+        const usingAdminKey = !!supabaseAdmin;
+
+        if (!usingAdminKey) {
+            console.warn('[Contrato] SUPABASE_SERVICE_ROLE_KEY não definido. Tentando upload com chave pública.');
         }
-        const { error: uploadError } = await supabaseAdmin.storage
+
+        const { error: uploadError } = await storageClient.storage
             .from(bucketName)
             .upload(filePath, fileBuffer, { contentType: 'application/pdf', upsert: true });
         if (uploadError) {
@@ -1343,6 +1343,14 @@ export class ContratoService {
                 throw new Error(
                     `Bucket '${bucketName}' não encontrado no Supabase Storage. ` +
                     `Verifique se o bucket existe e se a variável de ambiente SUPABASE_BUCKET está configurada corretamente. ` +
+                    `Erro original: ${uploadError.message}`
+                );
+            }
+
+            if (!usingAdminKey) {
+                throw new Error(
+                    `Erro ao fazer upload do contrato com chave pública. ` +
+                    `Configure SUPABASE_SERVICE_ROLE_KEY ou torne o bucket público. ` +
                     `Erro original: ${uploadError.message}`
                 );
             }
@@ -1385,15 +1393,14 @@ export class ContratoService {
         try {
             console.log(`[Contrato Psicólogo] Tentando fazer upload para o bucket: ${bucketName}`);
 
-            // Sempre usar supabaseAdmin para uploads em buckets privados
-            if (!supabaseAdmin) {
-                throw new Error(
-                    "SUPABASE_SERVICE_ROLE_KEY não definido. " +
-                    "Uploads para buckets privados requerem service role key para evitar erros de verificação de assinatura."
-                );
+            const storageClient = supabaseAdmin ?? supabase;
+            const usingAdminKey = !!supabaseAdmin;
+
+            if (!usingAdminKey) {
+                console.warn('[Contrato Psicólogo] SUPABASE_SERVICE_ROLE_KEY não definido. Tentando upload com chave pública.');
             }
 
-            const { error: uploadError } = await supabaseAdmin.storage
+            const { error: uploadError } = await storageClient.storage
                 .from(bucketName)
                 .upload(filePath, buffer, {
                     contentType: 'application/pdf',
@@ -1415,6 +1422,14 @@ export class ContratoService {
                     throw new Error(
                         `Bucket '${bucketName}' não encontrado no Supabase Storage. ` +
                         `Verifique se o bucket existe e se a variável de ambiente SUPABASE_BUCKET está configurada corretamente. ` +
+                        `Erro original: ${uploadError.message}`
+                    );
+                }
+
+                if (!usingAdminKey) {
+                    throw new Error(
+                        `Erro ao fazer upload do contrato com chave pública. ` +
+                        `Configure SUPABASE_SERVICE_ROLE_KEY ou torne o bucket público. ` +
                         `Erro original: ${uploadError.message}`
                     );
                 }

@@ -601,7 +601,7 @@ export default function MeuPerfilPage() {
     if (sobreMim && sobreMim.trim() !== "") camposPreenchidos++;
 
     // Atendimento e Experiência (5 campos)
-    if (experienciaClinica && experienciaClinica !== 'Nenhuma') camposPreenchidos++;
+    if (experienciaClinica) camposPreenchidos++;
     if (idiomasSelecionados && idiomasSelecionados.length > 0) camposPreenchidos++;
     if (publicoSelecionado && publicoSelecionado.length > 0) camposPreenchidos++;
     if (abordagensSelecionadas && abordagensSelecionadas.length > 0) camposPreenchidos++;
