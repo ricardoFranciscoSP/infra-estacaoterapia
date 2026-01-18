@@ -349,16 +349,26 @@ export default function PainelPsicologoPage() {
 
   // Estado para modal de completar perfil
   const [showModal, setShowModal] = useState(false);
-  
+
   // Estado para modal de detalhes da consulta
   const [showModalDetalhes, setShowModalDetalhes] = useState(false);
   const [consultaSelecionada, setConsultaSelecionada] = useState<ProximasConsultaType | null>(null);
-  
+
   // Estado para modal de cancelamento
   const [showModalCancelar, setShowModalCancelar] = useState(false);
   const [consultaParaCancelar, setConsultaParaCancelar] = useState<ProximasConsultaType | null>(null);
   const [isLoadingCancel, setIsLoadingCancel] = useState(false);
   const { cancelarConsulta } = useCancelamentoConsulta();
+
+  // Estado para largura da tela (evita acesso direto ao window no render)
+  const [isDesktop, setIsDesktop] = useState<boolean | null>(null);
+  useEffect(() => {
+    // Só roda no client
+    const checkWidth = () => setIsDesktop(window.innerWidth >= 640);
+    checkWidth();
+    window.addEventListener('resize', checkWidth);
+    return () => window.removeEventListener('resize', checkWidth);
+  }, []);
   
   // Função para abrir modal de detalhes
   const handleAbrirModalDetalhes = (consulta: ProximasConsultaType) => {
@@ -890,9 +900,9 @@ export default function PainelPsicologoPage() {
           })()}
           
           {/* Modal de cancelamento - Desktop */}
-          {consultaParaCancelar && (
+          {consultaParaCancelar && isDesktop === true && (
             <ModalCancelarSessaoDesk
-              open={showModalCancelar && window.innerWidth >= 640}
+              open={showModalCancelar}
               onClose={() => {
                 setShowModalCancelar(false);
                 setConsultaParaCancelar(null);
@@ -914,11 +924,11 @@ export default function PainelPsicologoPage() {
               }}
             />
           )}
-          
+
           {/* Modal de cancelamento - Mobile */}
-          {consultaParaCancelar && (
+          {consultaParaCancelar && isDesktop === false && (
             <ModalCancelarSessaoMobile
-              open={showModalCancelar && window.innerWidth < 640}
+              open={showModalCancelar}
               onClose={() => {
                 setShowModalCancelar(false);
                 setConsultaParaCancelar(null);

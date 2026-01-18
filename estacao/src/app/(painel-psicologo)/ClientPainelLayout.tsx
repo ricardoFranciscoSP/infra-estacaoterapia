@@ -14,6 +14,7 @@ import { useProtectedRoute } from "@/hooks/useProtectedRoute";
 import { SocketProvider } from "@/components/SocketProvider";
 import { useNotificacoes } from "@/store/useNotificacoes";
 import toast from "react-hot-toast";
+import LoggedErrorBoundary from "@/components/LoggedErrorBoundary";
 
 // ⚡ OTIMIZAÇÃO: Dynamic import do PainelHeader com loading skeleton
 const PainelHeader = dynamic(() => import('@/components/PainelHeader'), {
@@ -214,13 +215,15 @@ const ClientPainelLayout: React.FC<{ children: React.ReactNode }> = ({ children 
 
   return (
     <QueryClientProvider client={queryClient}>
-      <Suspense fallback={<LoadingFallback />}>
-        <ClientPainelContent>
-          <Suspense fallback={<LoadingFallback />}>
-            {children}
-          </Suspense>
-        </ClientPainelContent>
-      </Suspense>
+      <LoggedErrorBoundary>
+        <Suspense fallback={<LoadingFallback />}>
+          <ClientPainelContent>
+            <Suspense fallback={<LoadingFallback />}>
+              {children}
+            </Suspense>
+          </ClientPainelContent>
+        </Suspense>
+      </LoggedErrorBoundary>
     </QueryClientProvider>
   );
 };
