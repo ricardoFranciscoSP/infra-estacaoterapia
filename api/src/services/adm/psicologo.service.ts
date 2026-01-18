@@ -23,7 +23,12 @@ export class PsicologoService {
     }
 
     private hasParceriaTitle(text: string) {
-        return this.normalizeContratoText(text).includes("CONTRATO DE PARCERIA E INTERMEDIACAO");
+        const normalized = this.normalizeContratoText(text);
+        return normalized.includes("CONTRATO DE PARCERIA") && (
+            normalized.includes("INTERMEDIACAO") ||
+            normalized.includes("INTERMEDIAO") ||
+            normalized.includes("INTERMEDIA")
+        );
     }
 
     private hasPacienteTitle(text: string) {

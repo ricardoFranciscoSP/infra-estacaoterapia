@@ -16,8 +16,14 @@ const normalizeContratoText = (text: string) =>
         .replace(/\uFFFD/g, "")
         .toUpperCase();
 
-const hasParceriaTitle = (text: string) =>
-    normalizeContratoText(text).includes("CONTRATO DE PARCERIA E INTERMEDIACAO");
+const hasParceriaTitle = (text: string) => {
+    const normalized = normalizeContratoText(text);
+    return normalized.includes("CONTRATO DE PARCERIA") && (
+        normalized.includes("INTERMEDIACAO") ||
+        normalized.includes("INTERMEDIAO") ||
+        normalized.includes("INTERMEDIA")
+    );
+};
 
 const hasPacienteTitle = (text: string) =>
     normalizeContratoText(text).includes("CONTRATO DE PRESTACAO DE SERVICOS PSICOLOGICOS VIA PLATAFORMA VIRTUAL");
