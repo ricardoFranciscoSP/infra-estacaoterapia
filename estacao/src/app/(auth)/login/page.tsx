@@ -158,14 +158,16 @@ const LoginPage = () => {
 
       // Paciente: verifica se onboarding já foi concluído
       if (user?.Role === 'Patient') {
-        const completedOnboarding = Array.isArray(user.Onboardings)
-          ? user.Onboardings.some((onboarding) => {
-              if (typeof onboarding.Completed === 'string') {
-                return onboarding.Completed === 'true';
-              }
-              return Boolean(onboarding.Completed);
-            })
-          : false;
+        const completedOnboarding = Boolean(user?.IsOnboard)
+          ? true
+          : Array.isArray(user.Onboardings)
+            ? user.Onboardings.some((onboarding) => {
+                if (typeof onboarding.Completed === 'string') {
+                  return onboarding.Completed === 'true';
+                }
+                return Boolean(onboarding.Completed);
+              })
+            : false;
 
         const redirectRoute = completedOnboarding ? '/painel' : '/boas-vindas';
         console.log('[LOGIN] Redirecionando paciente para:', redirectRoute, {
