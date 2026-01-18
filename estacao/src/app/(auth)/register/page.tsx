@@ -436,7 +436,7 @@ async function handleRegisterPsicologo(
         <div className="mb-8">
           <Link href="/" aria-label="Ir para a página inicial">
             <Image 
-              src="/logo.svg" 
+              src="/logo.png" 
               alt="Logo Estação Terapia" 
               width={200} 
               height={56} 
@@ -564,4 +564,5 @@ function validateFile(file: File): string | null {
   }
   return null;
 }
+
 

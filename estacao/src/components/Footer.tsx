@@ -84,7 +84,7 @@ export default function Footer() {
               style={{ background: 'none', border: 'none', padding: 0, margin: 0 }}
             >
               <Image 
-                src="/logo.svg" 
+                src="/logo.png" 
                 alt="Estação terapia" 
                 width={110} 
                 height={38} 
@@ -94,8 +94,8 @@ export default function Footer() {
                 sizes="110px"
                 onError={(e) => {
                   const target = e.target as HTMLImageElement;
-                  if (target.src !== '/logo.svg') {
-                    target.src = '/logo.svg';
+                  if (target.src !== '/logo.png') {
+                    target.src = '/logo.png';
                   }
                 }}
               />
@@ -189,7 +189,7 @@ export default function Footer() {
               }}
             >
               <Image
-                src="/logo.svg"
+                src="/logo.png"
                 alt="Estação terapia - Página inicial"
                 width={180}
                 height={65}

@@ -34,7 +34,7 @@ const PlataformaBeneficios: React.FC = () => {
                     {/* Imagem à esquerda */}
                     <div className="order-1 md:order-1 flex-shrink-0 flex justify-center items-center w-full md:w-auto">
                         <Image
-                            src="/assets/blob.svg"
+                            src="/assets/blob.png"
                             alt="Paciente usando plataforma online"
                             width={350}
                             height={350}

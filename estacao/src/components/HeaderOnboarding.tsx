@@ -83,7 +83,7 @@ const HeaderOnboarding: React.FC = () => {
           onClick={() => router.push('/')}
         >
           <Image
-            src="/assets/logo.svg"
+            src="/assets/logo.png"
             alt="Logo Estação Terapia"
             width={64}
             height={22}
@@ -141,7 +141,7 @@ const HeaderOnboarding: React.FC = () => {
           onClick={() => router.push('/')}
         >
           <Image
-            src="/assets/logo.svg"
+            src="/assets/logo.png"
             alt="Logo Estação Terapia"
             width={180}
             height={62}

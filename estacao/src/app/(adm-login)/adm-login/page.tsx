@@ -71,7 +71,7 @@ export default function AdmLoginPage() {
       <div className="mb-8">
         <Link href="/">
           <Image
-            src="/logo.svg"
+            src="/logo.png"
             alt="Logo"
             width={200}
             height={80}
@@ -182,3 +182,4 @@ export default function AdmLoginPage() {
     </div>
   );
 }
+

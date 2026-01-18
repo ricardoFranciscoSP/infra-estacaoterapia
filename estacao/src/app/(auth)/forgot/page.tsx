@@ -66,7 +66,7 @@ const ForgotPage = () => {
             className="flex-shrink-0 mb-6 flex justify-center mt-8 md:mt-10"
           >
             <Image
-              src="/logo.svg"
+              src="/logo.png"
               alt="Logo Estação Terapia"
               width={200}
               height={60}
@@ -152,3 +152,4 @@ const ForgotPage = () => {
 };
 
 export default ForgotPage;
+

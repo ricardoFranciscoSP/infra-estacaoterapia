@@ -1,5 +1,4 @@
 import Card from "./Card";
-import DesktopCard from "./DesktopCard";
 import { motion } from "framer-motion";
 
 const ComoFunciona = () => {
@@ -68,7 +67,6 @@ const ComoFunciona = () => {
                 {cards.map((card, index) => (
                     <div key={`card-${index}`} className="flex flex-col md:flex-row items-center justify-center w-full">
                         <Card {...card} />
-                        <DesktopCard {...card} />
                     </div>
                 ))}
             </div>

@@ -43,7 +43,7 @@ export default function CartaoExemplo({
           {/* Header com logo e bandeira */}
           <div className="flex items-center justify-between mb-3 relative z-10">
             <Image
-              src="/assets/logo/logo.svg"
+              src="/assets/logo/logo.png"
               alt="Logo Plataforma"
               className="w-28 h-12 object-contain"
               width={112}

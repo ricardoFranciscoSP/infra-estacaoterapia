@@ -188,7 +188,7 @@ const LoginPage = () => {
         <div className="w-full md:w-1/2 flex flex-col justify-center items-center bg-white px-6 md:px-16 py-8 md:py-0 min-h-screen">
           <Link href="/" className="flex-shrink-0 mb-6 flex justify-center mt-8 md:mt-10">
             <Image
-              src="/logo.svg"
+              src="/logo.png"
               alt="Logo Estação Terapia"
               width={200}
               height={60}
@@ -347,3 +347,4 @@ const LoginPage = () => {
 };
 
 export default LoginPage;
+

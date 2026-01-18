@@ -17,7 +17,6 @@ const firaSans = Fira_Sans({
 });
 
 import '@/globals.css';
-import Providers from '../../Providers';
 import { MaintenanceGuard } from '@/components/MaintenanceGuard';
 import ThirdPartyScripts from '@/components/ThirdPartyScripts';
 
@@ -104,7 +103,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* ⚡ CRÍTICO: Preconnect para Supabase (economia estimada: 320ms) */}
         <link rel="preconnect" href="https://mktmsurbxszuisgxjnkq.supabase.co" crossOrigin="anonymous" />
         {/* ⚡ CRÍTICO: Preconnect para API (economia estimada: 300ms) */}
-        <link rel="preconnect" href="https://api.pre.estacaoterapia.com.br" />
+        <link rel="preconnect" href="https://api-prd.estacaoterapia.com.br" />
+        <link rel="dns-prefetch" href="https://api-prd.estacaoterapia.com.br" />
+        {/* ⚡ CRÍTICO: Preconnect para Reclame Aqui (economia estimada: 310ms) */}
+        <link rel="preconnect" href="https://api.reclameaqui.com.br" />
+        <link rel="dns-prefetch" href="https://api.reclameaqui.com.br" />
         {/* DNS prefetch para outras origens não críticas */}
         <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
         <link rel="dns-prefetch" href="https://www.google-analytics.com" />
@@ -177,11 +180,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* ⚡ OTIMIZAÇÃO: Scripts de terceiros carregados apenas no cliente */}
         <ThirdPartyScripts />
         
-        <Providers>
-          <MaintenanceGuard>
-            {children}
-          </MaintenanceGuard>
-        </Providers>
+        <MaintenanceGuard>
+          {children}
+        </MaintenanceGuard>
       </body>
     </html>
   );

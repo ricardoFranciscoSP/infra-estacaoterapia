@@ -483,7 +483,7 @@ const Header: React.FC = () => {
   return (
     <>
       <Head>
-        <link rel="icon" type="image/svg+xml" href="/logo.svg" />
+        <link rel="icon" href="/favicon.ico" sizes="any" />
       </Head>
       <motion.header 
         className="bg-[#fcfbf6] w-full sticky top-0 z-50 border-b border-[#E3E6E8] sticky-header"
@@ -503,7 +503,7 @@ const Header: React.FC = () => {
               style={{ background: 'none', border: 'none', padding: 0, margin: 0 }}
             >
               <Image 
-                src="/logo.svg" 
+                src="/logo.png" 
                 alt="Logo Estação Terapia" 
                 width={100} 
                 height={35} 
@@ -553,7 +553,7 @@ const Header: React.FC = () => {
               style={{ background: 'none', border: 'none', padding: 0, margin: 0 }}
             >
               <Image 
-                src="/logo.svg" 
+                src="/logo.png" 
                 alt="Logo Estação Terapia" 
                 width={190} 
                 height={64} 
@@ -667,7 +667,7 @@ const Header: React.FC = () => {
                     style={{ background: 'none', border: 'none', padding: 0, margin: 0 }}
                   >
                     <Image 
-                      src="/logo.svg" 
+                      src="/logo.png" 
                       alt="Logo Estação Terapia" 
                       width={140} 
                       height={48} 
