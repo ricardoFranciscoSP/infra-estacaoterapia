@@ -8,6 +8,7 @@ import type {
     IRemoteVideoTrack,
     IAgoraRTCError,
 } from 'agora-rtc-sdk-ng';
+import { loadAgoraRTC } from '@/lib/agoraRtc';
 
 const isBrowser = typeof window !== 'undefined';
 
@@ -178,7 +179,7 @@ export function useAgora({
                     clientRef.current = null;
                 }
 
-                const AgoraRTC = (await import('agora-rtc-sdk-ng')).default;
+                const AgoraRTC = await loadAgoraRTC();
                 const client = AgoraRTC.createClient(agoraConfig.client);
                 clientRef.current = client;
 

@@ -90,7 +90,7 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   compress: false, // Traefik já faz compressão
 
-  productionBrowserSourceMaps: true,
+  productionBrowserSourceMaps: false,
 
   // ⚡ OTIMIZAÇÃO: Reduz preloads desnecessários
   // O Next.js faz preload automático, mas podemos otimizar para evitar preloads não utilizados

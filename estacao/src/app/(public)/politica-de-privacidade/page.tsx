@@ -47,7 +47,7 @@ export default function PoliticaPage() {
                 </tr>
                 <tr className="border-b border-gray-300">
                   <td className="py-3 px-3 sm:px-4 font-semibold bg-gray-50 text-gray-900">Atendimento ao Cliente</td>
-                  <td className="py-3 px-3 sm:px-4 text-gray-700"><a href="mailto:atendimento@estacaoterapia.com.br" className="text-blue-600 break-all">atendimento@estacaoterapia.com.br</a></td>
+                  <td className="py-3 px-3 sm:px-4 text-gray-700"><a href="mailto:contato@estacaoterapia.com.br" className="text-blue-600 break-all">contato@estacaoterapia.com.br</a></td>
                 </tr>
                 <tr className="border-b border-gray-300">
                   <td className="py-3 px-3 sm:px-4 font-semibold bg-gray-50 text-gray-900">Suporte Técnico</td>

@@ -17,7 +17,7 @@ export default function PoliticaPage() {
           {/* Introdução */}
           <section>
             <p className="text-gray-700 leading-relaxed">
-              Esta Política de Cookies explica como a <strong>Estação Saúde Mental</strong> utiliza cookies e tecnologias similares em nossa plataforma para proporcionar uma melhor experiência aos usuários, melhorar nossos serviços e personalizar o conteúdo.
+              Esta Política de Cookies explica como a <strong>Estação Terapia</strong> utiliza cookies e tecnologias similares em nossa plataforma para proporcionar uma melhor experiência aos usuários, melhorar nossos serviços e personalizar o conteúdo.
             </p>
           </section>
 
@@ -226,21 +226,16 @@ export default function PoliticaPage() {
               <div className="space-y-2 text-gray-700">
                 <p>
                   <strong>E-mail:</strong>{' '}
-                  <a href="mailto:privacidade@estacaosaudemental.com.br" className="text-blue-600 hover:underline">
-                    privacidade@estacaosaudemental.com.br
+                  <a href="mailto:privacidade@estacaoterapia.com.br" className="text-blue-600 hover:underline">
+                    privacidade@estacaoterapia.com.br
                   </a>
                 </p>
                 <p>
-                  <strong>Empresa:</strong> Estação Saúde Mental
+                  <strong>Empresa:</strong> Estação Terapia
                 </p>
               </div>
             </div>
           </section>
-        </div>
-
-        {/* Rodapé */}
-        <div className="mt-6 text-center text-sm text-gray-500">
-          <p>© {new Date().getFullYear()} Estação Saúde Mental. Todos os direitos reservados.</p>
         </div>
       </div>
     </div>

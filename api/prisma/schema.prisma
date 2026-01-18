@@ -80,6 +80,8 @@ model User {
   AssinaturaPlanos            AssinaturaPlano[]        @relation("UserAssinaturaPlano")
   BannersCreated              Banner[]                 @relation("BannerCreator")
   BannersUpdated              Banner[]                 @relation("BannerUpdater")
+  PolicyDocumentsCreated      PolicyDocument[]         @relation("PolicyDocumentsCreated")
+  PolicyDocumentsUpdated      PolicyDocument[]         @relation("PolicyDocumentsUpdated")
   BillingAddress              BillingAddress[]         @relation("UserBillingAddress")
   CancelamentosPac            CancelamentoSessao[]     @relation("CancelamentoPaciente")
   CiclosPlano                 CicloPlano[]             @relation("UserCicloPlano")
@@ -811,6 +813,26 @@ model Document_fiscal {
 
   @@index([UserId])
   @@index([SolicitacaoId])
+}
+
+model PolicyDocument {
+  Id          String   @id @default(uuid())
+  Titulo      String
+  Descricao   String?
+  Url         String
+  Tipo        String   @default("pdf")
+  PublicoPara String   @default("todos")
+  Ordem       Int?     @default(0)
+  Ativo       Boolean  @default(true)
+  CreatedAt   DateTime @default(now())
+  UpdatedAt   DateTime @updatedAt
+  CreatedById String?
+  UpdatedById String?
+  CreatedBy   User?    @relation("PolicyDocumentsCreated", fields: [CreatedById], references: [Id], onDelete: SetNull)
+  UpdatedBy   User?    @relation("PolicyDocumentsUpdated", fields: [UpdatedById], references: [Id], onDelete: SetNull)
+
+  @@index([PublicoPara], name: "PolicyDocument_PublicoPara_idx")
+  @@index([Ativo], name: "PolicyDocument_Ativo_idx")
 }
 
 model Solicitacoes {

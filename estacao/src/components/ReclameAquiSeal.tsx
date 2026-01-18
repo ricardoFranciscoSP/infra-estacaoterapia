@@ -84,7 +84,6 @@ export default function ReclameAquiSeal() {
         id="ra-verified-seal"
         ref={containerRef}
         data-testid="reclame-aqui-seal"
-        aria-label="Reclame Aqui - Verificado"
       >
         {/* Placeholder enquanto o script carrega */}
         <div className="inline-block bg-gray-100 rounded animate-pulse w-32 h-12" />
