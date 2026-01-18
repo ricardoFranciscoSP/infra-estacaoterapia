@@ -1,4 +1,8 @@
-let cachedPolicy: TrustedTypePolicy | null | undefined;
+type TrustedTypePolicyLike = {
+    createHTML: (input: string) => string;
+};
+
+let cachedPolicy: TrustedTypePolicyLike | null | undefined;
 
 const getPolicy = () => {
     if (typeof window === "undefined") {
@@ -10,9 +14,9 @@ const getPolicy = () => {
     }
 
     cachedPolicy =
-        window.trustedTypes?.createPolicy("estacao-trusted-html", {
+        (window.trustedTypes?.createPolicy("estacao-trusted-html", {
             createHTML: (input) => input,
-        }) ?? null;
+        }) as TrustedTypePolicyLike | undefined) ?? null;
 
     return cachedPolicy;
 };
