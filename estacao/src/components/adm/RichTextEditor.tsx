@@ -1,6 +1,5 @@
 "use client";
 import React, { useState, useRef, useEffect } from "react";
-import { asTrustedHTML } from "@/utils/trustedTypes";
 
 interface RichTextEditorProps {
     value: string;
@@ -16,7 +15,7 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
     // Sincroniza o conteúdo quando muda o modo
     useEffect(() => {
         if (mode === "visual" && editorRef.current) {
-            editorRef.current.innerHTML = asTrustedHTML(value || "");
+            editorRef.current.innerHTML = value || "";
         } else if (mode === "html" && htmlTextareaRef.current) {
             htmlTextareaRef.current.value = value || "";
         }
@@ -32,7 +31,7 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
         onChange(e.target.value);
         // Atualiza o visual também
         if (editorRef.current) {
-            editorRef.current.innerHTML = asTrustedHTML(e.target.value);
+            editorRef.current.innerHTML = e.target.value;
         }
     };
 

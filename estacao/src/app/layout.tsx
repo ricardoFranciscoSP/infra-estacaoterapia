@@ -2,7 +2,6 @@ import React from 'react';
 import { Fira_Sans } from 'next/font/google';
 import type { Metadata, Viewport } from 'next';
 import { getSEOMetaTags, isPreEnvironment } from '@/lib/maintenance';
-import { asTrustedHTML } from '@/utils/trustedTypes';
 
 const firaSans = Fira_Sans({ 
   subsets: ['latin'], 
@@ -151,7 +150,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             type="application/ld+json"
             async
             dangerouslySetInnerHTML={{
-              __html: asTrustedHTML(JSON.stringify([
+              __html: JSON.stringify([
                 {
                   "@context": "https://schema.org",
                   "@type": "LocalBusiness",
@@ -184,7 +183,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                     url: "https://estacaoterapia.com.br",
                   },
                 }
-              ])),
+              ]),
             }}
           />
         )}

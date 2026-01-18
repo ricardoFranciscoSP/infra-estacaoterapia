@@ -7,7 +7,6 @@ import { useEffect } from "react";
 import { useAuthStore } from "@/store/authStore";
 import { useUserBasic } from "@/hooks/user/userHook";
 import Script from "next/script";
-import { asTrustedHTML } from "@/utils/trustedTypes";
 
 export default function BoasVindasPage() {
   const router = useRouter();
@@ -78,9 +77,9 @@ export default function BoasVindasPage() {
         id="protrack-boas-vindas"
         strategy="afterInteractive"
         dangerouslySetInnerHTML={{
-          __html: asTrustedHTML(`
+          __html: `
             (function(w,d,s,o,p){w.proTrackDataLayer=w.proTrackDataLayer||[];w.proTrackDataLayer.push({offerId:o,pageType:p});var f=d.getElementsByTagName(s)[0],j=d.createElement(s);j.async=true;j.src='https://kppuuqnpekounoylsdum.supabase.co/storage/v1/object/public/tracking-script/tracking.min.js';f.parentNode.insertBefore(j,f);})(window,document,'script','11','conversion');
-          `),
+          `,
         }}
       />
       <motion.div
