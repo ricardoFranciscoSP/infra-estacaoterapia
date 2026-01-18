@@ -55,8 +55,15 @@ export default function PsicologosPage() {
     switch (status) {
       case "EmAnalise":
         return "Em Análise";
+      case "PendenteDocumentacao":
+        return "Pendente Documentação";
+      case "AnaliseContrato":
       case "EmAnaliseContrato":
-        return "Em Análise Contrato";
+        return "Análise Contrato";
+      case "DescredenciadoVoluntario":
+        return "Descredenciado Voluntário";
+      case "DescredenciadoInvoluntario":
+        return "Descredenciado Involuntário";
       default:
         return status;
     }
@@ -68,8 +75,7 @@ export default function PsicologosPage() {
       (p.Nome?.toLowerCase().includes(busca.toLowerCase()) ||
         p.Email?.toLowerCase().includes(busca.toLowerCase()) ||
         p.Crp?.toLowerCase().includes(busca.toLowerCase())) ?? false;
-    const statusFormatado = formatarStatus(p.Status);
-    const statusMatch = filtroStatus === "Todos" || statusFormatado === filtroStatus;
+    const statusMatch = filtroStatus === "Todos" || p.Status === filtroStatus;
     return buscaMatch && statusMatch;
   });
 
@@ -85,13 +91,15 @@ export default function PsicologosPage() {
   // Cores para status (usando o status já formatado)
   const statusClasses: Record<string, string> = {
     "Ativo": "bg-green-100 text-green-700",
-    "Em Análise": "bg-blue-100 text-blue-700",
-    "Em Análise Contrato": "bg-blue-100 text-blue-700",
-    "Pendente": "bg-yellow-100 text-yellow-700",
+    "EmAnalise": "bg-blue-100 text-blue-700",
+    "PendenteDocumentacao": "bg-yellow-100 text-yellow-700",
+    "AnaliseContrato": "bg-blue-100 text-blue-700",
     "Inativo": "bg-gray-100 text-gray-700",
     "Reprovado": "bg-red-100 text-red-700",
     "Bloqueado": "bg-red-100 text-red-700",
     "Deletado": "bg-red-100 text-red-700",
+    "DescredenciadoVoluntario": "bg-red-100 text-red-700",
+    "DescredenciadoInvoluntario": "bg-red-100 text-red-700",
   };
 
 
@@ -173,11 +181,13 @@ export default function PsicologosPage() {
             >
               <option value="Todos">Todos os status</option>
               <option value="Ativo">Ativo</option>
-              <option value="Em Análise">Em Análise</option>
-              <option value="Em Análise Contrato">Em Análise Contrato</option>
-              <option value="Pendente">Pendente</option>
+              <option value="EmAnalise">Em Análise</option>
+              <option value="PendenteDocumentacao">Pendente Documentação</option>
+              <option value="AnaliseContrato">Análise Contrato</option>
               <option value="Inativo">Inativo</option>
               <option value="Reprovado">Reprovado</option>
+              <option value="DescredenciadoVoluntario">Descredenciado Voluntário</option>
+              <option value="DescredenciadoInvoluntario">Descredenciado Involuntário</option>
             </select>
           </div>
         </div>
@@ -243,7 +253,7 @@ export default function PsicologosPage() {
                         {p.CreatedAt ? new Date(p.CreatedAt).toLocaleDateString("pt-BR") : "-"}
                       </td>
                       <td className="py-4 px-6 whitespace-nowrap">
-                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${statusClasses[statusFmt] || "bg-gray-100 text-gray-700"}`}>
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${statusClasses[p.Status] || "bg-gray-100 text-gray-700"}`}>
                           {statusFmt}
                         </span>
                       </td>
@@ -318,7 +328,7 @@ export default function PsicologosPage() {
                     <h3 className="font-semibold text-gray-800 truncate">{p.Nome}</h3>
                     <p className="text-sm text-gray-500 truncate">{p.Email || "-"}</p>
                   </div>
-                  <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold flex-shrink-0 ${statusClasses[statusFmt] || "bg-gray-100 text-gray-700"}`}>
+                  <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold flex-shrink-0 ${statusClasses[p.Status] || "bg-gray-100 text-gray-700"}`}>
                     {statusFmt}
                   </span>
                 </div>

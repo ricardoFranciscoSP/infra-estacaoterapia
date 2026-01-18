@@ -92,24 +92,20 @@ const ClientPainelContent: React.FC<{ children: React.ReactNode }> = ({ children
     
     const userStatusNormalized = normalizeStatus(user.Status);
     const isAtivo = userStatusNormalized === "ativo";
-    const isBloqueado = userStatusNormalized === "bloqueado";
-    const isInativo = userStatusNormalized === "inativo";
     
     console.log('[ClientPainelLayout] Verificando acesso psicólogo:', {
       role: user.Role,
       status: user.Status,
       statusNormalized: userStatusNormalized,
       isAtivo: isAtivo,
-      isBloqueado: isBloqueado,
-      isInativo: isInativo,
       pathname: pathname,
       isCadastroEmAnalise: isCadastroEmAnalise
     });
     
-    // Status de bloqueio ou inativo: faz logout e redireciona
-    if (isBloqueado || isInativo) {
-      console.log('[ClientPainelLayout] Status bloqueado ou inativo, fazendo logout');
-      toast.error(`Sua conta foi ${isBloqueado ? 'bloqueada' : 'desativada'}`);
+    // Somente status Ativo permite acesso à plataforma
+    if (!isAtivo) {
+      console.log('[ClientPainelLayout] Status não ativo, acesso bloqueado');
+      toast.error("Seu acesso à plataforma está indisponível no momento.");
       const { logout } = useAuthStore.getState();
       logout().then(() => {
         router.push("/login");
@@ -119,23 +115,11 @@ const ClientPainelContent: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
     
-    // Se for psicólogo ativo, permite acesso a todas as rotas (EXCETO a página de cadastro-em-analise)
-    // Se tentar acessar cadastro-em-analise enquanto ativo, é permitido mas apenas nessa página
+    // Se for psicólogo ativo, permite acesso a todas as rotas
     if (isAtivo) {
       console.log('[ClientPainelLayout] Psicólogo ativo, acesso permitido a todas as rotas');
       return;
     }
-    
-    // Se não for ativo, bloqueado ou inativo = é emanalise ou similar
-    // Permite acesso APENAS à página de cadastro-em-analise
-    // Se estiver tentando acessar outra rota, redireciona para cadastro-em-analise
-    if (!isCadastroEmAnalise) {
-      console.log('[ClientPainelLayout] Psicólogo em análise tentando acessar rota não permitida, redirecionando para cadastro-em-analise');
-      router.push('/painel-psicologo/cadastro-em-analise');
-      return;
-    }
-    
-    console.log('[ClientPainelLayout] Psicólogo em análise, acesso permitido à página de cadastro-em-analise');
   }, [user, router, isCadastroEmAnalise, isCadastro, pathname, isLoadingUser]);
 
   // Mostra loading enquanto está carregando o usuário

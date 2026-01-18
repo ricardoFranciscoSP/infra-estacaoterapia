@@ -86,7 +86,8 @@ FROM node:22-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production \
-    NODE_OPTIONS="--dns-result-order=ipv4first --max-old-space-size=2048"
+    NODE_OPTIONS="--dns-result-order=ipv4first --max-old-space-size=2048" \
+    PUPPETEER_CACHE_DIR=/home/deploy/.cache/puppeteer
 
 RUN apk add --no-cache \
     bash \
@@ -95,6 +96,10 @@ RUN apk add --no-cache \
     netcat-openbsd \
     postgresql-client \
     redis \
+    nss \
+    freetype \
+    harfbuzz \
+    ttf-freefont \
     && update-ca-certificates \
     && rm -rf /var/cache/apk/*
 
@@ -116,6 +121,11 @@ COPY --from=builder --chown=deploy:deploy /app/src/generated ./src/generated
 COPY --from=prod-deps --chown=deploy:deploy /app/node_modules ./node_modules
 COPY --from=prod-deps --chown=deploy:deploy /app/prisma ./prisma
 COPY --chown=deploy:deploy package.json prisma.config.ts ./
+
+# Instala o Chrome do Puppeteer no cache correto
+RUN mkdir -p /home/deploy/.cache/puppeteer \
+    && PUPPETEER_CACHE_DIR=/home/deploy/.cache/puppeteer npx puppeteer browsers install chrome \
+    && chown -R deploy:deploy /home/deploy/.cache/puppeteer
 
 EXPOSE 3333
 

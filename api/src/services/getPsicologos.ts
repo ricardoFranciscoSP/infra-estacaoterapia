@@ -1,4 +1,4 @@
-import { PrismaClient, Prisma, Sexo, Queixa, Abordagem, TipoAtendimento, Languages } from "../generated/prisma/client";
+import { PrismaClient, Prisma, Sexo, Queixa, Abordagem, TipoAtendimento, Languages, ProfessionalProfileStatus } from "../generated/prisma/client";
 import prismaDefault from "../prisma/client";
 
 interface FiltroPsicologo {
@@ -34,6 +34,11 @@ export class PsicologoService {
         const where: Prisma.UserWhereInput = {
             Status: 'Ativo',
             Role: 'Psychologist',
+            ProfessionalProfiles: {
+                some: {
+                    Status: ProfessionalProfileStatus.Preenchido
+                }
+            }
         };
 
         if (nome) {
@@ -108,6 +113,7 @@ export class PsicologoService {
         if (profileConditions.length > 0) {
             where.ProfessionalProfiles = {
                 some: {
+                    Status: ProfessionalProfileStatus.Preenchido,
                     AND: profileConditions
                 }
             };

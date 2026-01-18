@@ -1,18 +1,21 @@
 'use client';
 
-import dynamic from 'next/dynamic';
+import { useEffect, useState } from 'react';
+import GoogleIntegrations from '@/components/GoogleIntegrations';
+import GoAdoptConsent from '@/components/GoAdoptConsent';
 
-// ⚡ OTIMIZAÇÃO: Wrapper Client Component para scripts de terceiros
-// Scripts de terceiros carregados apenas no cliente após hidratação
-const GoogleIntegrations = dynamic(() => import('@/components/GoogleIntegrations'), {
-  ssr: false, // Scripts de terceiros não precisam de SSR
-});
-
-const GoAdoptConsent = dynamic(() => import('@/components/GoAdoptConsent'), {
-  ssr: false, // Script de consentimento não precisa de SSR
-});
+// Wrapper Client Component para scripts de terceiros
+// Renderiza apenas após mount para evitar instabilidades em HMR no dev
 
 export default function ThirdPartyScripts() {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) return null;
+
   return (
     <>
       <GoogleIntegrations />

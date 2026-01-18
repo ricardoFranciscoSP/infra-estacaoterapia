@@ -137,7 +137,7 @@ export class PsicologoService {
         // Busca o psicólogo antes da atualização para verificar se está sendo aprovado
         const psicologoAntes = await prisma.user.findUnique({
             where: { Id: id, Role: "Psychologist" },
-            select: { Id: true, Status: true, DataAprovacao: true }
+            select: { Id: true, Status: true, DataAprovacao: true, Nome: true, Email: true }
         });
 
         // Lista de campos que não devem ser incluídos no update direto do User
@@ -189,6 +189,31 @@ export class PsicologoService {
             'ReviewsMade'
         ];
 
+        const normalizeUserStatus = (status: string): string | undefined => {
+            const normalized = status
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "")
+                .toUpperCase()
+                .replace(/[^A-Z]/g, "");
+
+            const map: Record<string, string> = {
+                ATIVO: "Ativo",
+                EMANALISE: "EmAnalise",
+                PENDENTEDOCUMENTACAO: "PendenteDocumentacao",
+                ANALISECONTRATO: "AnaliseContrato",
+                INATIVO: "Inativo",
+                REPROVADO: "Reprovado",
+                DESCREDENCIADOVOLUNTARIO: "DescredenciadoVoluntario",
+                DESCREDENCIADOINVOLUNTARIO: "DescredenciadoInvoluntario",
+                BLOQUEADO: "Bloqueado",
+                PENDENTE: "Pendente",
+                DELETADO: "Deletado",
+                EMANALISECONTRATO: "AnaliseContrato",
+            };
+
+            return map[normalized];
+        };
+
         // Filtra os dados removendo apenas campos de relação
         // Permite editar TODOS os campos do modelo User (exceto Password que é tratado separadamente)
         const updateData: Record<string, unknown> = {};
@@ -196,6 +221,15 @@ export class PsicologoService {
             // Permite todos os campos do User, exceto relações e Password
             if (!relationFields.includes(key) && key !== 'Password') {
                 updateData[key] = data[key];
+            }
+        }
+
+        if (typeof updateData.Status === "string") {
+            const normalizedStatus = normalizeUserStatus(updateData.Status);
+            if (normalizedStatus) {
+                updateData.Status = normalizedStatus;
+            } else {
+                throw new Error("Status inválido. Use um status válido do sistema.");
             }
         }
 
@@ -510,6 +544,34 @@ export class PsicologoService {
                 },
             }
         });
+
+        const statusLabelMap: Record<string, string> = {
+            Ativo: "Ativo",
+            EmAnalise: "Em Análise",
+            PendenteDocumentacao: "Pendente Documentação",
+            AnaliseContrato: "Análise Contrato",
+            Inativo: "Inativo",
+            Reprovado: "Reprovado",
+            DescredenciadoVoluntario: "Descredenciado Voluntário",
+            DescredenciadoInvoluntario: "Descredenciado Involuntário",
+            Bloqueado: "Bloqueado",
+            Pendente: "Pendente",
+            Deletado: "Deletado",
+            EmAnaliseContrato: "Em Análise Contrato",
+        };
+
+        const statusAtual = typeof resultado.Status === "string" ? resultado.Status : String(resultado.Status);
+        const statusLabel = statusLabelMap[statusAtual] || statusAtual;
+        const statusAlterado = psicologoAntes?.Status && updateData.Status && psicologoAntes.Status !== updateData.Status;
+        const responsavelAlterado = typeof updateData.Nome === "string" && psicologoAntes?.Nome && updateData.Nome !== psicologoAntes.Nome;
+
+        if ((statusAlterado || responsavelAlterado) && resultado.Email && resultado.Nome) {
+            try {
+                await this.emailService.sendStatusAtualizadoPsicologoEmail(resultado.Email, resultado.Nome, statusLabel);
+            } catch (emailError) {
+                console.error('[PsicologoService] Erro ao enviar email de status do psicólogo:', emailError);
+            }
+        }
 
         // Se o psicólogo foi aprovado, gera a agenda automaticamente e envia email
         if (estaSendoAprovado) {

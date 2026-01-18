@@ -4,7 +4,19 @@ import getSocket, { joinUserRoom } from '@/lib/socket';
 
 type Role = 'Patient' | 'Psychologist' | 'Admin' | 'Management' | 'Finance';
 export type Sexo = 'Masculino' | 'Feminino' | 'NaoBinario' | 'PrefiroNaoDeclarar';
-export type UserStatus = 'Ativo' | 'Inativo' | 'Bloqueado' | 'Pendente' | 'Deletado' | 'EmAnalise';
+export type UserStatus =
+    | 'Ativo'
+    | 'Em Análise'
+    | 'Pendente Documentação'
+    | 'Análise Contrato'
+    | 'Inativo'
+    | 'Reprovado'
+    | 'Descredenciado Voluntário'
+    | 'Descredenciado Involuntário'
+    | 'Bloqueado'
+    | 'Pendente'
+    | 'Deletado'
+    | 'Em Análise Contrato';
 
 interface Address {
     Id: string;

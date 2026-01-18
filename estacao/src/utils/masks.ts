@@ -101,13 +101,19 @@ export function maskCrp(value: string): string {
     return maskCrpAutonomo(value);
 }
 
-// Máscara para telefone celular com dígito 9: (99) 99999-9999
+// Máscara para telefone brasileiro: (99) 99999-9999 ou (99) 9999-9999
 export function maskTelefone(value: string): string {
-    const numeric = value.replace(/\D/g, "");
-    return numeric
-        .replace(/^(\d{2})(\d)/, "($1) $2")
-        .replace(/(\d{5})(\d)/, "$1-$2")
-        .slice(0, 15);
+    const numeric = value.replace(/\D/g, "").slice(0, 11);
+    const ddd = numeric.slice(0, 2);
+    const rest = numeric.slice(2);
+
+    if (!ddd) return "";
+    if (numeric.length <= 2) return ddd;
+    if (rest.length <= 4) return `(${ddd}) ${rest}`.trim();
+    if (rest.length <= 8) {
+        return `(${ddd}) ${rest.slice(0, 4)}-${rest.slice(4)}`.trim();
+    }
+    return `(${ddd}) ${rest.slice(0, 5)}-${rest.slice(5, 9)}`.trim();
 }
 
 // Máscara inteligente para CPF

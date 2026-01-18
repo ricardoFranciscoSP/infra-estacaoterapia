@@ -1,3 +1,5 @@
+"use client";
+
 import { useEffect, useState } from "react";
 import { useSocket } from "@/components/SocketProvider";
 import { useNotificacoes } from "@/store/useNotificacoes";

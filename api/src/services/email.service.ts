@@ -357,6 +357,34 @@ export class EmailService implements IEmailService {
         console.log('[EmailService] ✅ Email de aprovação enviado para:', email);
     }
 
+    async sendStatusAtualizadoPsicologoEmail(email: string, nome: string, statusLabel: string): Promise<void> {
+        console.log('[EmailService] 📧 Preparando email de atualização de status do psicólogo...');
+        const primeiroNome = nome.split(' ')[0];
+
+        const attachments = createImageAttachments([
+            'logo.svg',
+            'facebook.png',
+            'instagram.png',
+            'linkedin.png',
+            'tiktok.png',
+            'youtube.png',
+        ]);
+
+        await sendEmail({
+            to: email,
+            subject: `Atualização de status do seu credenciamento – ESTAÇÃO TERAPIA 💜`,
+            htmlTemplate: 'statusAtualizadoPsicologo',
+            templateData: {
+                nome,
+                primeiro_nome: primeiroNome,
+                status: statusLabel,
+            },
+            attachments,
+        });
+
+        console.log('[EmailService] ✅ Email de status enviado para:', email);
+    }
+
     async sendCompletePerfilPsicologoEmail(email: string, nome: string): Promise<void> {
         // Extrai o primeiro nome
         const primeiroNome = nome.split(' ')[0];

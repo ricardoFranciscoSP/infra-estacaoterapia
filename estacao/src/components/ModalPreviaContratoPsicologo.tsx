@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef } from "react";
+import { Button } from "@/components/ui/button";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 
 interface ModalPreviaContratoPsicologoProps {
@@ -60,7 +61,7 @@ const ModalPreviaContratoPsicologo: React.FC<ModalPreviaContratoPsicologoProps> 
       {/* Modal */}
       <div
         ref={modalRef}
-        className="fixed inset-0 z-50 flex items-center justify-center p-5"
+        className="fixed inset-0 z-50 flex items-center justify-center p-6 sm:p-8"
         onClick={(e) => {
           // Fecha apenas se clicar no overlay, não no conteúdo do modal
           if (e.target === e.currentTarget) {
@@ -70,7 +71,7 @@ const ModalPreviaContratoPsicologo: React.FC<ModalPreviaContratoPsicologoProps> 
       >
         <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[85vh] flex flex-col relative animate-in fade-in zoom-in duration-200">
           {/* Header */}
-          <div className="flex items-center justify-between gap-4 p-5 border-b border-[#5f5bd6] bg-[#6f6ce7] rounded-t-2xl">
+          <div className="flex items-center justify-between gap-4 p-6 border-b border-[#5f5bd6] bg-[#6f6ce7] rounded-t-2xl">
             <div className="flex items-start gap-3">
               <div className="w-10 h-10 bg-white/15 rounded-lg flex items-center justify-center">
                 <svg
@@ -97,9 +98,11 @@ const ModalPreviaContratoPsicologo: React.FC<ModalPreviaContratoPsicologoProps> 
                 </p>
               </div>
             </div>
-            <button
+            <Button
               onClick={onClose}
-              className="text-white/80 hover:text-white transition-colors p-2 hover:bg-white/10 rounded-lg"
+              variant="ghost"
+              size="icon"
+              className="text-white/80 hover:text-white hover:bg-white/10"
               aria-label="Fechar modal"
             >
               <svg
@@ -116,13 +119,13 @@ const ModalPreviaContratoPsicologo: React.FC<ModalPreviaContratoPsicologoProps> 
                   d="M6 18L18 6M6 6l12 12"
                 />
               </svg>
-            </button>
+            </Button>
           </div>
 
           {/* Content */}
           <div
             ref={contentRef}
-            className="flex-1 overflow-y-auto p-5 bg-gray-50"
+            className="flex-1 overflow-y-auto p-6 sm:p-8 bg-gray-50"
             style={{
               scrollbarWidth: "thin",
               scrollbarColor: "#cbd5e1 #f1f5f9",
@@ -136,7 +139,7 @@ const ModalPreviaContratoPsicologo: React.FC<ModalPreviaContratoPsicologoProps> 
               </div>
             ) : contratoHtml ? (
               <div
-                className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 md:p-8"
+                className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 sm:p-8 md:p-10"
                 style={{
                   minHeight: "100%",
                 }}
@@ -175,19 +178,22 @@ const ModalPreviaContratoPsicologo: React.FC<ModalPreviaContratoPsicologoProps> 
           </div>
 
           {/* Footer com botão de ação */}
-          <div className="p-5 border-t border-gray-200 bg-white rounded-b-2xl flex flex-wrap items-center justify-end gap-2.5">
-            <button
+          <div className="p-6 border-t border-gray-200 bg-white rounded-b-2xl flex flex-wrap items-center justify-end gap-3">
+            <Button
               onClick={onClose}
-              className="px-5 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 font-medium rounded-lg transition-colors shadow-sm border border-gray-200"
+              variant="outline"
+              size="lg"
+              className="min-w-[120px]"
               disabled={emitirLoading}
             >
               Fechar
-            </button>
+            </Button>
             {!onlyView && (
-              <button
+              <Button
                 onClick={onEmitirContrato}
                 disabled={isLoading || !contratoHtml || emitirLoading}
-                className="px-6 py-2 bg-[#6f6ce7] hover:bg-[#5f5bd6] text-white font-semibold rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-indigo-500/25 ring-1 ring-indigo-500/20"
+                size="lg"
+                className="min-w-[180px] bg-[#6f6ce7] hover:bg-[#5f5bd6] text-white shadow-md shadow-indigo-500/25 ring-1 ring-indigo-500/20"
               >
                 {emitirLoading ? (
                   <>
@@ -213,7 +219,7 @@ const ModalPreviaContratoPsicologo: React.FC<ModalPreviaContratoPsicologoProps> 
                     <span>Emitir Contrato</span>
                   </>
                 )}
-              </button>
+              </Button>
             )}
           </div>
         </div>

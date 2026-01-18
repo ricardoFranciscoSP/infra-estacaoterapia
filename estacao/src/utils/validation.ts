@@ -47,10 +47,17 @@ const VALID_DDDS = [
 ];
 
 // Validação de telefone com DDD brasileiro
-export function validatePhone(phone: string): string | undefined {
+export function validatePhone(phone: string, countryCode: string = "BR"): string | undefined {
     if (!phone) return "Telefone é obrigatório";
 
     const digits = phone.replace(/\D/g, "");
+
+    if (countryCode !== "BR") {
+        if (digits.length < 6 || digits.length > 15) {
+            return "Digite um telefone válido";
+        }
+        return undefined;
+    }
 
     // Deve ter 10 dígitos (fixo) ou 11 dígitos (móvel)
     if (digits.length < 10 || digits.length > 11) {

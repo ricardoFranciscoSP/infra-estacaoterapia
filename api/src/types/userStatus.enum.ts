@@ -6,4 +6,10 @@ export enum UserStatus {
     Pendente = 'Pendente',
     Deletado = 'Deletado',
     EmAnalise = 'EmAnalise',
+    EmAnaliseContrato = 'EmAnaliseContrato',
+    PendenteDocumentacao = 'PendenteDocumentacao',
+    AnaliseContrato = 'AnaliseContrato',
+    Reprovado = 'Reprovado',
+    DescredenciadoVoluntario = 'DescredenciadoVoluntario',
+    DescredenciadoInvoluntario = 'DescredenciadoInvoluntario',
 }

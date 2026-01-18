@@ -12,7 +12,7 @@ import { psicologoJuridicoRegisterSchema } from "@/app/(auth)/register/schemas";
 import { UploadDocumentos, DocumentoConfig } from "./UploadJuridico";
 import Link from "next/link";
 // Adicionar utils de telefone com país
-import { PHONE_COUNTRIES, PhoneCountry, onlyDigits, maskTelefoneByCountry, getFlagUrl } from "@/utils/phoneCountries";
+import { PHONE_COUNTRIES, PhoneCountry, onlyDigits, maskTelefoneByCountry, getFlagUrl, validatePhoneByCountry } from "@/utils/phoneCountries";
 import { ProgressButton } from "@/components/ProgressButton";
 
 // Tipo explícito para os campos do formulário de psicólogo juridico
@@ -481,11 +481,20 @@ export const PsicologoRegisterFormJuridico: React.FC<PsicologoRegisterJuridicoFo
   const semErros = Object.keys(errosFiltrados).length === 0;
 
   // Verifica se todos os campos obrigatórios principais estão preenchidos (usando valores monitorados)
+  const telefoneDigits = onlyDigits(String(telefone || ""));
+  const whatsappDigits = onlyDigits(String(whatsapp || ""));
+  const telefoneValido = country.code === "BR"
+    ? telefoneDigits.length >= 10 && telefoneDigits.length <= 11
+    : telefoneDigits.length >= 6 && telefoneDigits.length <= 15;
+  const whatsappValido = countryWhatsapp.code === "BR"
+    ? whatsappDigits.length >= 10 && whatsappDigits.length <= 11
+    : whatsappDigits.length >= 6 && whatsappDigits.length <= 15;
+
   const camposPrincipaisValidos = Boolean(
     nome && String(nome).trim().length >= 2 &&
     email && String(email).includes("@") &&
-    telefone && String(telefone).replace(/\D/g, "").length >= 10 &&
-    whatsapp && String(whatsapp).replace(/\D/g, "").length >= 10 &&
+    telefone && telefoneValido &&
+    whatsapp && whatsappValido &&
     cnpj && String(cnpj).replace(/\D/g, "").length >= 14 &&
     crp && String(crp).trim().length >= 1 &&
     razaoSocial && String(razaoSocial).trim().length >= 2 &&
@@ -516,8 +525,8 @@ export const PsicologoRegisterFormJuridico: React.FC<PsicologoRegisterJuridicoFo
         faltando: {
           nome: !nome || String(nome).trim().length < 2,
           email: !email || !String(email).includes("@"),
-          telefone: !telefone || String(telefone).replace(/\D/g, "").length < 10,
-          whatsapp: !whatsapp || String(whatsapp).replace(/\D/g, "").length < 10,
+          telefone: !telefone || !telefoneValido,
+          whatsapp: !whatsapp || !whatsappValido,
           cnpj: !cnpj || String(cnpj).replace(/\D/g, "").length < 14,
           crp: !crp || String(crp).trim().length < 1,
           razaoSocial: !razaoSocial || String(razaoSocial).trim().length < 2,
@@ -552,7 +561,7 @@ export const PsicologoRegisterFormJuridico: React.FC<PsicologoRegisterJuridicoFo
     } else {
       console.log("✅ Formulário válido! Botão deve estar habilitado.");
     }
-  }, [isFormValid, semErros, camposPrincipaisValidos, camposEnderecoValidos, documentosObrigatoriosValidos, errosFiltrados, form, crpDocumento, rgDocumento, cartaoCnpjDocumento, simplesNacional, simplesNacionalDocumento, nome, email, telefone, whatsapp, cnpj, crp, razaoSocial, password, confirmarSenha, termosAceitos, cep, endereco, numero, bairro, cidade, estado, cepEmpresa, enderecoEmpresa, numeroEmpresa, bairroEmpresa, cidadeEmpresa, estadoEmpresa]);
+  }, [isFormValid, semErros, camposPrincipaisValidos, camposEnderecoValidos, documentosObrigatoriosValidos, errosFiltrados, form, crpDocumento, rgDocumento, cartaoCnpjDocumento, simplesNacional, simplesNacionalDocumento, nome, email, telefone, whatsapp, telefoneValido, whatsappValido, cnpj, crp, razaoSocial, password, confirmarSenha, termosAceitos, cep, endereco, numero, bairro, cidade, estado, cepEmpresa, enderecoEmpresa, numeroEmpresa, bairroEmpresa, cidadeEmpresa, estadoEmpresa]);
 
   // Lista de documentos para upload (dinâmica baseada em simplesNacional)
   const isSimplesNacionalSim = simplesNacional === "sim";
@@ -727,8 +736,9 @@ export const PsicologoRegisterFormJuridico: React.FC<PsicologoRegisterJuridicoFo
                             form.setError("telefone", { type: "validate", message: "Telefone é obrigatório" });
                             return;
                           }
-                          if (digits.length < 10) {
-                            form.setError("telefone", { type: "validate", message: "Digite um telefone válido" });
+                          const validation = validatePhoneByCountry(country.code, digits);
+                          if (!validation.valid) {
+                            form.setError("telefone", { type: "validate", message: validation.error || "Digite um telefone válido" });
                             return;
                           }
                           form.clearErrors("telefone");
@@ -805,8 +815,9 @@ export const PsicologoRegisterFormJuridico: React.FC<PsicologoRegisterJuridicoFo
                             form.setError("whatsapp", { type: "validate", message: "Whatsapp é obrigatório" });
                             return;
                           }
-                          if (digits.length < 10) {
-                            form.setError("whatsapp", { type: "validate", message: "Digite um whatsapp válido" });
+                          const validation = validatePhoneByCountry(countryWhatsapp.code, digits);
+                          if (!validation.valid) {
+                            form.setError("whatsapp", { type: "validate", message: validation.error || "Digite um whatsapp válido" });
                             return;
                           }
                           form.clearErrors("whatsapp");

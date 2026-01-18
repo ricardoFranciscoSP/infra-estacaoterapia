@@ -35,7 +35,7 @@ export default function PainelWelcomeCard() {
         <p className="text-white text-sm md:text-base">Você ainda não possui nenhuma consulta conosco, aproveite para comprar sua primeira consulta agora</p>
         <motion.button
           className="bg-white text-[#232A5C] font-semibold px-4 py-2 rounded-lg w-fit md:w-fit hover:bg-[#E6E9FF] cursor-pointer self-start"
-          onClick={() => router.push(`/painel/comprar-consulta/321719`)}
+          onClick={() => router.push(`/painel/comprar-consulta/1977083`)}
           whileHover={{ scale: 1.07 }}
           whileTap={{ scale: 0.97 }}
           id="consulta-card"

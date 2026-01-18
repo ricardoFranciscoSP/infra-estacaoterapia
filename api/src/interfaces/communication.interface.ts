@@ -2,6 +2,7 @@ export interface IEmailService {
     sendWelcomeEmail(email: string, nome: string): Promise<void>;
     sendWelcomePsicologoEmail(email: string, nome: string): Promise<void>;
     sendAprovacaoPsicologoEmail(email: string, nome: string): Promise<void>;
+    sendStatusAtualizadoPsicologoEmail(email: string, nome: string, statusLabel: string): Promise<void>;
     sendCompletePerfilPsicologoEmail(email: string, nome: string): Promise<void>;
     sendConfirmationEmail(user: any, reservation: any): Promise<void>;
     sendAppointmentConfirmationEmailPaciente(email: string, nome: string, psicologoNome: string, data: string, horario: string): Promise<void>;

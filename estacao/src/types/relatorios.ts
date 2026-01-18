@@ -1,5 +1,17 @@
 export type Role = "Admin" | "Patient" | "Psychologist" | "Management" | "Finance";
-export type UserStatus = "Ativo" | "Inativo" | "Bloqueado" | "Pendente" | "Deletado" | "EmAnalise" | "EmAnaliseContrato";
+export type UserStatus =
+    | "Ativo"
+    | "EmAnalise"
+    | "PendenteDocumentacao"
+    | "AnaliseContrato"
+    | "Inativo"
+    | "Reprovado"
+    | "DescredenciadoVoluntario"
+    | "DescredenciadoInvoluntario"
+    | "Bloqueado"
+    | "Pendente"
+    | "Deletado"
+    | "EmAnaliseContrato";
 export type ConsultaStatus = 
     | "Agendada"
     | "EmAndamento"

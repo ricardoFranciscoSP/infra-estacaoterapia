@@ -1436,21 +1436,62 @@ export class AuthService implements IAuthService {
         }
         const { Password: _, ...userWithoutPassword } = user;
 
-        const normalizeStatus = (status: string): "Ativo" | "Inativo" | "Bloqueado" | "Pendente" | "Deletado" | "Em Análise" => {
-            const map: { [key: string]: "Ativo" | "Inativo" | "Bloqueado" | "Pendente" | "Deletado" | "Em Análise" } = {
+        const normalizeStatus = (status: string):
+            | "Ativo"
+            | "Em Análise"
+            | "Pendente Documentação"
+            | "Análise Contrato"
+            | "Inativo"
+            | "Reprovado"
+            | "Descredenciado Voluntário"
+            | "Descredenciado Involuntário"
+            | "Bloqueado"
+            | "Pendente"
+            | "Deletado"
+            | "Em Análise Contrato" => {
+            const map: { [key: string]:
+                | "Ativo"
+                | "Em Análise"
+                | "Pendente Documentação"
+                | "Análise Contrato"
+                | "Inativo"
+                | "Reprovado"
+                | "Descredenciado Voluntário"
+                | "Descredenciado Involuntário"
+                | "Bloqueado"
+                | "Pendente"
+                | "Deletado"
+                | "Em Análise Contrato" } = {
                 'ATIVO': 'Ativo',
                 'Ativo': 'Ativo',
+                'EM_ANALISE': 'Em Análise',
+                'EmAnalise': 'Em Análise',
+                'Em Análise': 'Em Análise',
+                'PENDENTE_DOCUMENTACAO': 'Pendente Documentação',
+                'PendenteDocumentacao': 'Pendente Documentação',
+                'Pendente Documentação': 'Pendente Documentação',
+                'ANALISE_CONTRATO': 'Análise Contrato',
+                'AnaliseContrato': 'Análise Contrato',
+                'Análise Contrato': 'Análise Contrato',
                 'INATIVO': 'Inativo',
                 'Inativo': 'Inativo',
+                'REPROVADO': 'Reprovado',
+                'Reprovado': 'Reprovado',
+                'DESCREDENCIADOVOLUNTARIO': 'Descredenciado Voluntário',
+                'DescredenciadoVoluntario': 'Descredenciado Voluntário',
+                'Descredenciado Voluntário': 'Descredenciado Voluntário',
+                'DESCREDENCIADOINVOLUNTARIO': 'Descredenciado Involuntário',
+                'DescredenciadoInvoluntario': 'Descredenciado Involuntário',
+                'Descredenciado Involuntário': 'Descredenciado Involuntário',
                 'BLOQUEADO': 'Bloqueado',
                 'Bloqueado': 'Bloqueado',
                 'PENDENTE': 'Pendente',
                 'Pendente': 'Pendente',
                 'DELETADO': 'Deletado',
                 'Deletado': 'Deletado',
-                'EM_ANALISE': 'Em Análise',
-                'EmAnalise': 'Em Análise',
-                'Em Análise': 'Em Análise'
+                'EM_ANALISE_CONTRATO': 'Em Análise Contrato',
+                'EmAnaliseContrato': 'Em Análise Contrato',
+                'Em Análise Contrato': 'Em Análise Contrato'
             };
             return map[status] || 'Pendente';
         };

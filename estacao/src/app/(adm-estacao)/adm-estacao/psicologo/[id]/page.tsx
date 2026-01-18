@@ -181,7 +181,10 @@ function statusNota(nota: number) {
 
 function formatarStatus(status: string) {
   if (status === "EmAnalise") return "Em Análise";
-  if (status === "EmAnaliseContrato") return "Análise Contrato";
+  if (status === "PendenteDocumentacao") return "Pendente Documentação";
+  if (status === "AnaliseContrato" || status === "EmAnaliseContrato") return "Análise Contrato";
+  if (status === "DescredenciadoVoluntario") return "Descredenciado Voluntário";
+  if (status === "DescredenciadoInvoluntario") return "Descredenciado Involuntário";
   return status;
 }
 
@@ -1387,12 +1390,13 @@ export default function PsicologoDetalhePage() {
                 onChange={e => setStatusEdit(e.target.value)}
               >
                 <option value="Ativo">Ativo</option>
+                <option value="EmAnalise">Em Análise</option>
+                <option value="PendenteDocumentacao">Pendente Documentação</option>
+                <option value="AnaliseContrato">Análise Contrato</option>
                 <option value="Inativo">Inativo</option>
-                <option value="Bloqueado">Bloqueado</option>
-                <option value="Pendente">Pendente</option>
-                <option value="Deletado">Deletado</option>
-                <option value="Em Análise">Em Análise</option>
-                <option value="Em Análise Contrato">Em Análise Contrato</option>
+                <option value="Reprovado">Reprovado</option>
+                <option value="DescredenciadoVoluntario">Descredenciado Voluntário</option>
+                <option value="DescredenciadoInvoluntario">Descredenciado Involuntário</option>
               </select>
             ) : (
               <span className={`px-4 py-2 rounded-full font-semibold text-white whitespace-nowrap

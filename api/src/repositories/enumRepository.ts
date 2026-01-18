@@ -34,7 +34,20 @@ export function getControleFinanceiroStatus(): string[] {
 }
 
 export function getUserStatus(): string[] {
-    return ["Ativo", "Inativo", "Bloqueado", "Pendente", "Deletado", "EmAnalise", "EmAnaliseContrato"];
+    return [
+        "Ativo",
+        "EmAnalise",
+        "PendenteDocumentacao",
+        "AnaliseContrato",
+        "Inativo",
+        "Reprovado",
+        "DescredenciadoVoluntario",
+        "DescredenciadoInvoluntario",
+        "Bloqueado",
+        "Pendente",
+        "Deletado",
+        "EmAnaliseContrato"
+    ];
 }
 
 export function getAgendaStatus(): string[] {

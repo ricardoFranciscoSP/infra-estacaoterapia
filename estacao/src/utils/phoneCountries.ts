@@ -226,6 +226,25 @@ export function validateBrazilianPhone(phone: string): { valid: boolean; error?:
     return { valid: true };
 }
 
+// Valida telefone por país (BR com regra de DDD; demais com tamanho E.164)
+export function validatePhoneByCountry(countryCode: string, phone: string): { valid: boolean; error?: string } {
+    const digits = onlyDigits(phone);
+
+    if (!digits) {
+        return { valid: false, error: "Telefone é obrigatório" };
+    }
+
+    if (countryCode === "BR") {
+        return validateBrazilianPhone(digits);
+    }
+
+    if (digits.length < 6 || digits.length > 15) {
+        return { valid: false, error: "Digite um telefone válido" };
+    }
+
+    return { valid: true };
+}
+
 // Limpa o número de telefone removendo o código do país se presente
 export function cleanPhoneNumber(digits: string, countryCode: string): string {
     const d = onlyDigits(digits);
@@ -289,7 +308,8 @@ export function maskTelefoneByCountry(countryCode: string, digits: string): stri
             const a = d.slice(0, 3);
             const b = d.slice(3, 6);
             const c = d.slice(6, 10);
-            return [a, b, c].filter(Boolean).join(" ");
+            const rest = d.slice(10, 15);
+            return [a, b, c, rest].filter(Boolean).join(" ").trim();
         }
     }
 }

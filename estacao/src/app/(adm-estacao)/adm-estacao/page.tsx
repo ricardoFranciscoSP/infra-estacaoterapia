@@ -27,7 +27,18 @@ interface Psicologo {
   Id: string | number;
   Nome: string;
   CreatedAt?: string;
-  Status: "EmAnalise" | "Ativo" | "Inativo" | "Pendente" | "Reprovado" | string;
+  Status:
+    | "Ativo"
+    | "EmAnalise"
+    | "PendenteDocumentacao"
+    | "AnaliseContrato"
+    | "Inativo"
+    | "Reprovado"
+    | "DescredenciadoVoluntario"
+    | "DescredenciadoInvoluntario"
+    | "Bloqueado"
+    | "Pendente"
+    | string;
   // Adicione outros campos conforme necessário
 }
 
@@ -75,19 +86,28 @@ export default function AdminDashboard() {
     .sort((a: Psicologo, b: Psicologo) => new Date(b.CreatedAt ?? "").getTime() - new Date(a.CreatedAt ?? "").getTime())
     .slice(0, 5);
 
-  // Quantidade de psicólogos pendentes (Status === "EmAnalise" ou "Pendente")
+  // Quantidade de psicólogos pendentes
   const qtdPendentes = psicologosArr.filter(
-    (p: Psicologo) => p.Status === "EmAnalise" || p.Status === "Pendente"
+    (p: Psicologo) =>
+      p.Status === "EmAnalise" ||
+      p.Status === "Pendente" ||
+      p.Status === "PendenteDocumentacao" ||
+      p.Status === "AnaliseContrato"
   ).length;
 
   // Mapeamento dos status para exibição amigável
   const statusLabels: Record<string, string> = {
     EMANALISE: "Em análise",
     EM_ANALISE: "Em análise",
+    PENDENTEDOCUMENTACAO: "Pendente Documentação",
+    ANALISECONTRATO: "Análise Contrato",
     ATIVO: "Ativo",
     INATIVO: "Inativo",
-    PENDENTE: "Pendente",
     REPROVADO: "Reprovado",
+    DESCREDENCIADOVOLUNTARIO: "Descredenciado Voluntário",
+    DESCREDENCIADOINVOLUNTARIO: "Descredenciado Involuntário",
+    BLOQUEADO: "Bloqueado",
+    PENDENTE: "Pendente",
   };
 
   // Função para normalizar e formatar status
@@ -113,8 +133,13 @@ export default function AdminDashboard() {
       .replace(/\s|_/g, '');
     
     if (normalized === "ativo") return "bg-green-100 text-green-700";
-    if (normalized === "emanalise" || normalized === "pendente") return "bg-yellow-100 text-yellow-700";
-    if (normalized === "reprovado" || normalized === "inativo") return "bg-red-100 text-red-700";
+    if (normalized === "emanalise" || normalized === "pendentedocumentacao" || normalized === "analisecontrato" || normalized === "pendente") {
+      return "bg-yellow-100 text-yellow-700";
+    }
+    if (normalized === "reprovado" || normalized === "inativo" || normalized === "descredenciadovoluntario" || normalized === "descredenciadoinvoluntario") {
+      return "bg-red-100 text-red-700";
+    }
+    if (normalized === "bloqueado") return "bg-red-100 text-red-700";
     return "bg-gray-100 text-gray-700";
   };
 

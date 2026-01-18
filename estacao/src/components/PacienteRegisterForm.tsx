@@ -3,7 +3,7 @@ import { FormProvider, UseFormReturn, useWatch } from "react-hook-form";
 import { FormInput } from "@/components/FormInput";
 import { DatePickerTailwind } from "@/components/DatePickerMaterial";
 import { maskCpf } from "@/utils/masks";
-import { PHONE_COUNTRIES, PhoneCountry, onlyDigits, maskTelefoneByCountry, getFlagUrl, validateBrazilianPhone } from "@/utils/phoneCountries";
+import { PHONE_COUNTRIES, PhoneCountry, onlyDigits, maskTelefoneByCountry, getFlagUrl, validatePhoneByCountry } from "@/utils/phoneCountries";
 import Image from "next/image";
 import { pacienteRegisterSchema } from "@/app/(auth)/register/schemas";
 import toast from "react-hot-toast";
@@ -92,7 +92,7 @@ export const PacienteRegisterForm: React.FC<PacienteRegisterFormProps> = ({ form
             return;
           }
 
-          const phoneError = validatePhone(data.telefone || "");
+          const phoneError = validatePhone(data.telefone || "", country.code);
           if (phoneError) {
             toast.error(phoneError);
             form.setError("telefone", { type: "validate", message: phoneError });
@@ -238,7 +238,7 @@ export const PacienteRegisterForm: React.FC<PacienteRegisterFormProps> = ({ form
                   
                   // Validação em tempo real para Brasil
                   if (country.code === 'BR' && digits.length >= 10) {
-                    const validation = validateBrazilianPhone(digits);
+                    const validation = validatePhoneByCountry(country.code, digits);
                     if (!validation.valid) {
                       form.setError("telefone", { 
                         type: "validate", 
@@ -251,6 +251,11 @@ export const PacienteRegisterForm: React.FC<PacienteRegisterFormProps> = ({ form
                     form.setError("telefone", { 
                       type: "validate", 
                       message: "Digite o DDD e o número completo" 
+                    });
+                  } else if (country.code !== 'BR' && digits.length > 0 && digits.length < 6) {
+                    form.setError("telefone", { 
+                      type: "validate", 
+                      message: "Digite um telefone válido" 
                     });
                   } else if (digits.length > 0) {
                     form.clearErrors("telefone");
@@ -266,7 +271,7 @@ export const PacienteRegisterForm: React.FC<PacienteRegisterFormProps> = ({ form
                     form.setError("telefone", { type: "required", message: "Telefone é obrigatório" });
                   } else if (country.code === 'BR') {
                     // Validação específica para Brasil
-                    const validation = validateBrazilianPhone(digits);
+                    const validation = validatePhoneByCountry(country.code, digits);
                     if (!validation.valid) {
                       form.setError("telefone", { 
                         type: "validate", 
@@ -275,7 +280,7 @@ export const PacienteRegisterForm: React.FC<PacienteRegisterFormProps> = ({ form
                     } else {
                       form.clearErrors("telefone");
                     }
-                  } else if (digits.length < 10) {
+                  } else if (digits.length < 6 || digits.length > 15) {
                     form.setError("telefone", { type: "validate", message: "Digite um telefone válido" });
                   } else {
                     form.clearErrors("telefone");

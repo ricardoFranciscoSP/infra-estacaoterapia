@@ -10,7 +10,7 @@ const PlataformaBeneficios: React.FC = () => {
         },
         {
             title: 'Praticidade na sua rotina:',
-            description: 'Aqui é você escolhe qual dia e horário são melhores para realizar sua sessão e adaptar a sua rotina.',
+            description: 'Aqui é você quem escolhe qual dia e horário são melhores para realizar sua sessão e adaptar a sua rotina.',
         },
         {
             title: 'Privacidade garantida:',
@@ -34,7 +34,7 @@ const PlataformaBeneficios: React.FC = () => {
                     {/* Imagem à esquerda */}
                     <div className="order-1 md:order-1 flex-shrink-0 flex justify-center items-center w-full md:w-auto">
                         <Image
-                            src="/assets/blob.png"
+                            src="/assets/blob.svg"
                             alt="Paciente usando plataforma online"
                             width={320}
                             height={480}

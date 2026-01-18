@@ -6,7 +6,7 @@ import { UploadModal } from "./UploadModal";
 import { z } from "zod";
 import { getPasswordRequirements, validateEmail } from "@/utils/validation";
 import { maskCpf, maskCep, maskCrp } from "@/utils/masks";
-import { PHONE_COUNTRIES, PhoneCountry, onlyDigits, maskTelefoneByCountry, getFlagUrl } from "@/utils/phoneCountries";
+import { PHONE_COUNTRIES, PhoneCountry, onlyDigits, maskTelefoneByCountry, getFlagUrl, validatePhoneByCountry } from "@/utils/phoneCountries";
 import { fillFormAddressByCep } from "@/utils/cepUtils";
 import { psicologoAutonomoRegisterSchema } from "@/app/(auth)/register/schemas";
 import { ModalCancelaUpload } from "./ModalCancelaUpload";
@@ -546,8 +546,9 @@ export const PsicologoRegisterFormAutonomo: React.FC<PsicologoRegisterFormProps>
                             form.setError("telefone", { type: "validate", message: "Telefone é obrigatório" });
                             return;
                           }
-                          if (digits.length < 10) {
-                            form.setError("telefone", { type: "validate", message: "Digite um telefone válido" });
+                          const validation = validatePhoneByCountry(country.code, digits);
+                          if (!validation.valid) {
+                            form.setError("telefone", { type: "validate", message: validation.error || "Digite um telefone válido" });
                             return;
                           }
                           form.clearErrors("telefone");
@@ -624,8 +625,9 @@ export const PsicologoRegisterFormAutonomo: React.FC<PsicologoRegisterFormProps>
                             form.setError("whatsapp", { type: "validate", message: "Whatsapp é obrigatório" });
                             return;
                           }
-                          if (digits.length < 10) {
-                            form.setError("whatsapp", { type: "validate", message: "Digite um whatsapp válido" });
+                          const validation = validatePhoneByCountry(countryWhatsapp.code, digits);
+                          if (!validation.valid) {
+                            form.setError("whatsapp", { type: "validate", message: validation.error || "Digite um whatsapp válido" });
                             return;
                           }
                           form.clearErrors("whatsapp");

@@ -1033,10 +1033,15 @@ enum RacaCor {
 enum UserStatus {
   Ativo
   Inativo
+  EmAnalise
+  PendenteDocumentacao
+  AnaliseContrato
+  Reprovado
+  DescredenciadoVoluntario
+  DescredenciadoInvoluntario
   Bloqueado
   Pendente
   Deletado
-  EmAnalise
   EmAnaliseContrato
 }
 

@@ -1,0 +1,41 @@
+
+# ============================================
+# Override LOCAL/DEV
+# - Redis sem senha
+# - Apps conectam sem REDIS_PASSWORD/REDIS_URL
+# ============================================
+
+services:
+  redis:
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+      - --appendfsync
+      - everysec
+      - --maxmemory
+      - 512mb
+      - --maxmemory-policy
+      - allkeys-lru
+      - --save
+      - "900 1"
+      - --save
+      - "300 10"
+      - --save
+      - "60 10000"
+      - --tcp-backlog
+      - "511"
+      - --timeout
+      - "300"
+      - --tcp-keepalive
+      - "300"
+
+  api:
+    environment:
+      REDIS_PASSWORD: ""
+      REDIS_URL: ""
+
+  socket-server:
+    environment:
+      REDIS_PASSWORD: ""
+      REDIS_URL: ""

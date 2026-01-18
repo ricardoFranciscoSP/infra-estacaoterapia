@@ -13,7 +13,19 @@ export interface Psicologo {
     PessoalJuridica?: PessoalJuridica | null;
     Review?: any;
     PlanoCompra?: any;
-    Status: 'Ativo' | 'Inativo' | 'Bloqueado' | 'Pendente' | 'Deletado' | 'Em Análise';
+    Status:
+        | 'Ativo'
+        | 'Em Análise'
+        | 'Pendente Documentação'
+        | 'Análise Contrato'
+        | 'Inativo'
+        | 'Reprovado'
+        | 'Descredenciado Voluntário'
+        | 'Descredenciado Involuntário'
+        | 'Bloqueado'
+        | 'Pendente'
+        | 'Deletado'
+        | 'Em Análise Contrato';
     VindiCustomerId?: string | null;
     Sexo?: 'Masculino' | 'Feminino' | 'Não Binário' | 'Prefiro Não Declarar' | null;
     DataNascimento?: Date | string | null;

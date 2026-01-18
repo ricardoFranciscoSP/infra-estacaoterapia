@@ -81,7 +81,7 @@ export default function ParaPsicologosPage() {
 						{/* Imagem à esquerda */}
 						<div className="order-1 md:order-1 flex-shrink-0 flex justify-center items-center w-full md:w-auto">
 							<Image
-								src="/assets/blob.png"
+								src="/assets/blob.svg"
 								alt="Psicóloga atendendo online"
 								width={320}
 								height={480}

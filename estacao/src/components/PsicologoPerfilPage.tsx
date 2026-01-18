@@ -927,9 +927,17 @@ export default function PsicologoPerfilPage() {
     return (
       <div className="w-full max-w-[1350px] mx-auto px-4 sm:px-6 lg:px-20 mb-40 sm:mb-0 mt-8 py-4 bg-[#FCFBF6]">
         <BreadcrumbsVoltar />
-        <div className="flex flex-col items-center justify-center min-h-[400px]">
-          <p className="text-red-500 mb-4">Erro ao carregar dados do psicólogo.</p>
-          <p className="text-gray-500 text-sm">ID do psicólogo não encontrado ou inválido.</p>
+        <div className="flex flex-col items-center justify-center min-h-[400px] text-center">
+          <p className="text-lg font-semibold text-[#23253A] mb-2">Psicólogo indisponível</p>
+          <p className="text-gray-500 text-sm mb-6">
+            Este perfil não está disponível no momento. Verifique o link ou volte para a lista de psicólogos.
+          </p>
+          <Link
+            href="/psicologos"
+            className="px-5 py-2 rounded-md bg-[#6D75C0] text-white font-semibold hover:bg-[#5A62A8] transition"
+          >
+            Ver psicólogos disponíveis
+          </Link>
         </div>
       </div>
     );
@@ -939,8 +947,17 @@ export default function PsicologoPerfilPage() {
     return (
       <div className="w-full max-w-[1350px] mx-auto px-4 sm:px-6 lg:px-20 mb-40 sm:mb-0 mt-8 py-4 bg-[#FCFBF6]">
         <BreadcrumbsVoltar />
-        <div className="flex items-center justify-center min-h-[400px]">
-          <p className="text-gray-500">Psicólogo não encontrado.</p>
+        <div className="flex flex-col items-center justify-center min-h-[400px] text-center">
+          <p className="text-lg font-semibold text-[#23253A] mb-2">Psicólogo não encontrado</p>
+          <p className="text-gray-500 text-sm mb-6">
+            O perfil solicitado não foi localizado. Volte para a lista e escolha outro profissional.
+          </p>
+          <Link
+            href="/psicologos"
+            className="px-5 py-2 rounded-md bg-[#6D75C0] text-white font-semibold hover:bg-[#5A62A8] transition"
+          >
+            Voltar para a lista
+          </Link>
         </div>
       </div>
     );

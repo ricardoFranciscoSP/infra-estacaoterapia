@@ -1,6 +1,5 @@
 import { z } from "zod";
 import { isValidCPF, isValidCNPJ, isValidCRP } from "@/utils/validateDocuments";
-import { validateBrazilianPhone } from "@/utils/phoneCountries";
 
 // Evitar z.any(): utilitários para arquivos (FileList)
 const isFileList = (val: unknown): val is FileList =>
@@ -16,11 +15,9 @@ const telefoneSchema = z.string()
     .refine(
         (val) => {
             const digits = val.replace(/\D/g, "");
-            if (digits.length < 10 || digits.length > 11) return false;
-            const validation = validateBrazilianPhone(digits);
-            return validation.valid;
+            return digits.length >= 6 && digits.length <= 15;
         },
-        { message: "Telefone inválido. Verifique o DDD e o número" }
+        { message: "Telefone inválido. Verifique o número" }
     );
 
 export const pacienteRegisterSchema = z.object({

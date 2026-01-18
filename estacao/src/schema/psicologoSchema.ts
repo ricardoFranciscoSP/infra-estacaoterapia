@@ -3,7 +3,13 @@ import { z } from "zod";
 export const psicologoSchema = z.object({
     responsavel: z.string().min(3, "Nome obrigatório"),
     emailEmpresa: z.string().email("Digite um e-mail válido"),
-    telefoneEmpresa: z.string().min(10, "Digite um telefone válido"),
+    telefoneEmpresa: z.string().refine(
+        (val) => {
+            const digits = val.replace(/\D/g, "");
+            return digits.length >= 6 && digits.length <= 15;
+        },
+        { message: "Digite um telefone válido" }
+    ),
     cnpj: z.string().min(14, "CNPJ obrigatório"),
     crp: z.string().min(1, "CRP obrigatório").max(12, "CRP deve ter no máximo 12 caracteres"),
     razaoSocial: z.string().min(3, "Razão social obrigatória"),

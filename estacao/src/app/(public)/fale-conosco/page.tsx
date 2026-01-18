@@ -6,12 +6,21 @@ import BreadcrumbsVoltar from "@/components/BreadcrumbsVoltar";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { maskTelefone } from "@/utils/masks";
+import { PHONE_COUNTRIES, onlyDigits, maskTelefoneByCountry } from "@/utils/phoneCountries";
 
 const schema = z.object({
   nome: z.string().min(2, "Nome obrigatório"),
   email: z.string().email("Digite um e-mail válido"),
   telefone: z.string().min(1, "Telefone é obrigatório").refine(
-    (val) => val.replace(/\D/g, "").length >= 10,
+    (val) => {
+      const digits = val.replace(/\D/g, "");
+      const hasPlus = val.trim().startsWith("+");
+      if (hasPlus) {
+        return digits.length >= 6 && digits.length <= 15;
+      }
+      return digits.length >= 10 && digits.length <= 11;
+    },
     { message: "Digite um telefone válido" }
   ),
   assunto: z.string().min(1, "Assunto obrigatório"),
@@ -20,13 +29,23 @@ const schema = z.object({
 
 type FormData = z.infer<typeof schema>;
 
-// Função simples de máscara para telefone brasileiro
-function maskTelefone(value: string) {
-  return value
-    .replace(/\D/g, "")
-    .replace(/^(\d{2})(\d)/g, "($1) $2")
-    .replace(/(\d{5})(\d)/, "$1-$2")
-    .slice(0, 15);
+function maskTelefoneInput(value: string) {
+  const trimmed = value.trim();
+  const digits = onlyDigits(value).slice(0, 15);
+
+  if (trimmed.startsWith("+")) {
+    const withPlus = `+${digits}`;
+    const detected = PHONE_COUNTRIES.find((c) => withPlus.startsWith(c.dial));
+    if (!detected) {
+      return withPlus;
+    }
+    const dialDigits = onlyDigits(detected.dial);
+    const localDigits = digits.slice(dialDigits.length);
+    const localMasked = maskTelefoneByCountry(detected.code, localDigits);
+    return localMasked ? `${detected.dial} ${localMasked}` : detected.dial;
+  }
+
+  return maskTelefone(digits);
 }
 
 export default function FaleConosco() {
@@ -66,7 +85,7 @@ export default function FaleConosco() {
   const mensagemValue = watch("mensagem", "");
   React.useEffect(() => {
     if (telefoneValue !== undefined) {
-      const masked = maskTelefone(telefoneValue);
+      const masked = maskTelefoneInput(telefoneValue);
       if (masked !== telefoneValue) {
         setValue("telefone", masked, { shouldValidate: false });
       }
@@ -140,9 +159,9 @@ export default function FaleConosco() {
               id="telefone"
               type="text"
               {...register("telefone")}
-              placeholder="(99) 99999-9999"
+              placeholder="(99) 99999-9999 ou +1 234 567 890"
               className={getInputClass("telefone") + " w-full h-12 bg-[#f7f8fc] focus:bg-white font-fira-sans"}
-              maxLength={15}
+              maxLength={20}
               inputMode="tel"
             />
             {errors.telefone && touchedFields.telefone && (

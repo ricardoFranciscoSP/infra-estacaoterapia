@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { PrismaClient, Sexo as SexoEnum, TipoPessoaJuridica, TipoAtendimento, Queixa, Abordagem, Languages, Pronome, ExperienciaClinica, TipoFormacao } from "../../generated/prisma/client";
+import { PrismaClient, Sexo as SexoEnum, TipoPessoaJuridica, TipoAtendimento, Queixa, Abordagem, Languages, Pronome, ExperienciaClinica, TipoFormacao, ProfessionalProfileStatus } from "../../generated/prisma/client";
 import { UserStatus } from "../../types/userStatus.enum";
 import { AuthorizationService } from "../../services/authorization.service";
 import dayjs from "dayjs";
@@ -271,6 +271,11 @@ export class PsicologoController {
                 where: {
                     Role: UserRole.Psychologist as unknown as Role,
                     Status: UserStatus.Ativo,
+                    ProfessionalProfiles: {
+                        some: {
+                            Status: ProfessionalProfileStatus.Preenchido
+                        }
+                    },
                 },
                 select: {
                     ...this.getCommonSelectFields(true),
@@ -352,8 +357,16 @@ export class PsicologoController {
                 };
             }>;
 
-            const psychologist = await this.prisma.user.findUnique({
-                where: { Id: id, Status: UserStatus.Ativo },
+            const psychologist = await this.prisma.user.findFirst({
+                where: {
+                    Id: id,
+                    Status: UserStatus.Ativo,
+                    ProfessionalProfiles: {
+                        some: {
+                            Status: ProfessionalProfileStatus.Preenchido
+                        }
+                    }
+                },
                 include: {
                     Address: true,
                     Images: true,
@@ -557,6 +570,7 @@ export class PsicologoController {
                     Status: UserStatus.Ativo,
                     ProfessionalProfiles: {
                         some: {
+                            Status: ProfessionalProfileStatus.Preenchido,
                             Documents: { some: {} },
                             Formacoes: { some: {} }
                         }
@@ -812,7 +826,14 @@ export class PsicologoController {
     ): Prisma.UserWhereInput => {
         const andConditions: Prisma.UserWhereInput[] = [
             { Role: UserRole.Psychologist as unknown as Role },
-            { Status: UserStatus.Ativo }
+            { Status: UserStatus.Ativo },
+            {
+                ProfessionalProfiles: {
+                    some: {
+                        Status: ProfessionalProfileStatus.Preenchido
+                    }
+                }
+            }
         ];
 
         if (queixas) {
@@ -966,6 +987,11 @@ export class PsicologoController {
             where: {
                 Role: UserRole.Psychologist as unknown as Role,
                 Status: UserStatus.Ativo,
+                ProfessionalProfiles: {
+                    some: {
+                        Status: ProfessionalProfileStatus.Preenchido
+                    }
+                }
             },
             select: this.getPsychologistSelectFields(),
             skip: (pageNumber - 1) * size,

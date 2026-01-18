@@ -16,7 +16,7 @@ import PublicProviders from '@/provider/PublicProviders';
 // Isso garante que o Header não bloqueie a renderização inicial
 const Header = dynamic(() => import('@/components/Header'), {
   loading: () => <HeaderSkeleton />,
-  ssr: true, // Mantém SSR para SEO e primeira renderização
+  ssr: process.env.NODE_ENV === 'production', // Evita HMR instável no dev
 });
 
 export default function RootLayout({
