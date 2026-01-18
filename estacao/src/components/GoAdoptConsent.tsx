@@ -48,7 +48,12 @@ export default function GoAdoptConsent() {
     window.addEventListener('keydown', triggerLoad, listenerOptions);
     window.addEventListener('scroll', triggerLoad, listenerOptions);
 
-    const canLoadOnIdle = !navigator?.connection?.saveData;
+    const navigatorWithConnection = navigator as Navigator & {
+      connection?: {
+        saveData?: boolean;
+      };
+    };
+    const canLoadOnIdle = !navigatorWithConnection?.connection?.saveData;
     const requestIdle = (
       callback: () => void,
       timeoutMs: number
