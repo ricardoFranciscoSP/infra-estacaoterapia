@@ -8,7 +8,6 @@ export const metadata: Metadata = {
   title: 'Boas-vindas | Estação Terapia',
   description: 'Plataforma de terapia online',
 };
-import '@/globals.css';
 
 export default function BoasVindasLayout({
   children,

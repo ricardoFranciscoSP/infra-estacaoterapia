@@ -1,6 +1,5 @@
 import React from 'react';
 import { CustomToastProvider } from '@/components/CustomToastProvider';
- import '@/globals.css';
 
 export const metadata = {
   title: 'Estação terapia - Cadastro',

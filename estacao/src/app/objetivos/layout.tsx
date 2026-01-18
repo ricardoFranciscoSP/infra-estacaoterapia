@@ -11,8 +11,6 @@ export const metadata: Metadata = {
   description: 'Plataforma de terapia online',
 };
 
-
-import '@/globals.css';
 const ObjetivosLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return (
         <div className="flex flex-col min-h-screen">

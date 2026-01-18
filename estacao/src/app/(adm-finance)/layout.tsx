@@ -1,7 +1,6 @@
 import React from 'react';
 import type { Metadata, Viewport } from 'next';
 import { CustomToastProvider } from '@/components/CustomToastProvider';
-import '@/globals.css';
 import PainelLayout from './PainelLayout';
 import ThemeClientProvider from './ThemeClientProvider';
 

@@ -2,6 +2,7 @@ import prisma from "../prisma/client";
 import { ActionType, Module } from "../generated/prisma/client";
 import ExcelJS from "exceljs";
 import puppeteer from "puppeteer";
+import { getPuppeteerLaunchOptions } from "../utils/puppeteer";
 
 export interface AuditLogData {
     userId: string;
@@ -715,10 +716,7 @@ export class AuditService {
             const html = this.generatePDFHTML(audits, filters);
 
             // Converter HTML para PDF usando Puppeteer
-            const browser = await puppeteer.launch({
-                headless: true,
-                args: ["--no-sandbox", "--disable-setuid-sandbox"],
-            });
+            const browser = await puppeteer.launch(getPuppeteerLaunchOptions());
 
             const page = await browser.newPage();
             await page.setContent(html, { waitUntil: "networkidle0" });

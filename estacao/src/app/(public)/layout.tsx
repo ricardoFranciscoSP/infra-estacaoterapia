@@ -7,7 +7,6 @@ export const metadata: Metadata = {
   description: 'Plataforma de terapia online',
 };
 
-import '@/globals.css';
 import HeaderSkeleton from '@/components/HeaderSkeleton';
 import Footer from '@/components/Footer';
 import ClientPublicLayout from './ClientPublicLayout';

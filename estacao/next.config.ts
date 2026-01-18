@@ -131,6 +131,7 @@ const nextConfig: NextConfig = {
     // ⚡ OTIMIZAÇÃO: Otimiza e minifica CSS automaticamente
     optimizeCss: true,
     scrollRestoration: true,
+    disableOptimizedLoading: false,
     serverActions: {
       bodySizeLimit: "1mb",
     },

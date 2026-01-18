@@ -4,6 +4,7 @@
 
 import ExcelJS from "exceljs";
 import puppeteer from "puppeteer";
+import { getPuppeteerLaunchOptions } from "../../utils/puppeteer";
 import { Response } from "express";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
@@ -104,10 +105,7 @@ export class ReportExportService {
         filename: string,
         res: Response
     ): Promise<void> {
-        const browser = await puppeteer.launch({
-            headless: true,
-            args: ["--no-sandbox", "--disable-setuid-sandbox"],
-        });
+        const browser = await puppeteer.launch(getPuppeteerLaunchOptions());
 
         try {
             const page = await browser.newPage();

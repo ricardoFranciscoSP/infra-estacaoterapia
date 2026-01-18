@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import Handlebars from "handlebars";
 import puppeteer from "puppeteer";
+import { getPuppeteerLaunchOptions } from "../utils/puppeteer";
 import { EmailService } from "./email.service";
 import { Plano } from "../interfaces/user.interface";
 import prisma from "../prisma/client";
@@ -677,18 +678,12 @@ export class ContratoService {
             console.log(`[htmlToPdfBuffer] Iniciando conversão HTML para PDF com Puppeteer`);
             console.log(`[htmlToPdfBuffer] Tamanho do HTML: ${html.length} caracteres`);
 
-            browser = await puppeteer.launch({
-                headless: true,
-                args: [
-                    "--no-sandbox",
-                    "--disable-setuid-sandbox",
-                    "--disable-dev-shm-usage",
-                    "--disable-accelerated-2d-canvas",
-                    "--disable-gpu",
-                    "--window-size=1280x1024"
-                ],
-                timeout: 10000
-            });
+            browser = await puppeteer.launch(
+                getPuppeteerLaunchOptions({
+                    args: ["--window-size=1280x1024"],
+                    timeout: 10000,
+                })
+            );
             console.log(`[htmlToPdfBuffer] Navegador Puppeteer iniciado com sucesso`);
 
             page = await browser.newPage();

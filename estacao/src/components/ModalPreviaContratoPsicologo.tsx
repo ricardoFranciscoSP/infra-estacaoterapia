@@ -60,7 +60,7 @@ const ModalPreviaContratoPsicologo: React.FC<ModalPreviaContratoPsicologoProps> 
       {/* Modal */}
       <div
         ref={modalRef}
-        className="fixed inset-0 z-50 flex items-center justify-center p-4"
+        className="fixed inset-0 z-50 flex items-center justify-center p-5"
         onClick={(e) => {
           // Fecha apenas se clicar no overlay, não no conteúdo do modal
           if (e.target === e.currentTarget) {
@@ -70,8 +70,8 @@ const ModalPreviaContratoPsicologo: React.FC<ModalPreviaContratoPsicologoProps> 
       >
         <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[85vh] flex flex-col relative animate-in fade-in zoom-in duration-200">
           {/* Header */}
-          <div className="flex items-center justify-between px-5 py-3.5 border-b border-[#5f5bd6] bg-[#6f6ce7] rounded-t-2xl">
-            <div className="flex items-center gap-3">
+          <div className="flex items-center justify-between gap-4 p-5 border-b border-[#5f5bd6] bg-[#6f6ce7] rounded-t-2xl">
+            <div className="flex items-start gap-3">
               <div className="w-10 h-10 bg-white/15 rounded-lg flex items-center justify-center">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -88,7 +88,7 @@ const ModalPreviaContratoPsicologo: React.FC<ModalPreviaContratoPsicologoProps> 
                   />
                 </svg>
               </div>
-              <div>
+              <div className="leading-tight">
                 <h2 className="text-xl font-bold text-white">
                   Prévia do Contrato de Parceria
                 </h2>
@@ -122,7 +122,7 @@ const ModalPreviaContratoPsicologo: React.FC<ModalPreviaContratoPsicologoProps> 
           {/* Content */}
           <div
             ref={contentRef}
-            className="flex-1 overflow-y-auto px-5 py-5 bg-gray-50"
+            className="flex-1 overflow-y-auto p-5 bg-gray-50"
             style={{
               scrollbarWidth: "thin",
               scrollbarColor: "#cbd5e1 #f1f5f9",
@@ -175,7 +175,7 @@ const ModalPreviaContratoPsicologo: React.FC<ModalPreviaContratoPsicologoProps> 
           </div>
 
           {/* Footer com botão de ação */}
-          <div className="px-5 py-3.5 border-t border-gray-200 bg-white rounded-b-2xl flex flex-wrap items-center justify-end gap-2.5">
+          <div className="p-5 border-t border-gray-200 bg-white rounded-b-2xl flex flex-wrap items-center justify-end gap-2.5">
             <button
               onClick={onClose}
               className="px-5 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 font-medium rounded-lg transition-colors shadow-sm border border-gray-200"

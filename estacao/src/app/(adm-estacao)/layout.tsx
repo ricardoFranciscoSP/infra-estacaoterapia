@@ -11,7 +11,6 @@ export const metadata: Metadata = {
   description: 'Plataforma de terapia online',
 };
 
-import '@/globals.css';
 import PainelLayout from './PainelLayout';
 import ThemeClientProvider from './ThemeClientProvider';
 

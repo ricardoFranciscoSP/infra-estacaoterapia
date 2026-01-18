@@ -10,7 +10,6 @@ export const metadata: Metadata = {
   description: 'Plataforma de terapia online',
 };
 
-import '@/globals.css';
 import ClientPainelLayout from './ClientPainelLayout';  
 
 const PainelLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
