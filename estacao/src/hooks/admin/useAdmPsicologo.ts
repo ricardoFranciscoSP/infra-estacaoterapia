@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Psicologo } from '@/types/psicologoTypes';
+import { Psicologo, PsicologoUpdate } from '@/types/psicologoTypes';
 import { deletePsicologo, getPsicologos, getPsicologosId, updatePsicologo, useAdmPsicologoStore, previaContrato, gerarContrato } from '@/store/admin/admPsicologoStore';
 
 export function useAdmPsicologo() {
@@ -51,7 +51,7 @@ export function useAdmPsicologoById(id: string | undefined) {
 export function useUpdateAdmPsicologo() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: async (data: { id: string, update: Psicologo }) => {
+        mutationFn: async (data: { id: string, update: PsicologoUpdate }) => {
             return await updatePsicologo(data.id, data.update);
         },
         onSuccess: (_, variables) => {

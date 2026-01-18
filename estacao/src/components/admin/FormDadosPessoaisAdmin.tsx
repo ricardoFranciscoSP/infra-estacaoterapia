@@ -189,17 +189,16 @@ export default function FormDadosPessoaisAdmin({ psicologo, enums, onSuccess }: 
     updatePsicologoMutation.mutate({
       id,
       update: {
-        ...psicologo,
         Nome: dadosPessoais.Nome,
         Email: dadosPessoais.Email || undefined,
-        Telefone: telefoneCompleto ? `${country.dial}${onlyDigits(telefoneCompleto)}` : psicologo.Telefone,
+        Telefone: telefoneCompleto ? `${country.dial}${onlyDigits(telefoneCompleto)}` : undefined,
         Sexo: dadosPessoais.Sexo || undefined,
         Pronome: dadosPessoais.Pronome || undefined,
         RacaCor: dadosPessoais.RacaCor || undefined,
         Rg: dadosPessoais.Rg || undefined,
         Cpf: dadosPessoais.Cpf || undefined,
         DataNascimento: dadosPessoais.DataNascimento || undefined,
-      } as Psicologo,
+      },
     }, {
       onSuccess: () => {
         toast.success("Dados pessoais atualizados com sucesso!");

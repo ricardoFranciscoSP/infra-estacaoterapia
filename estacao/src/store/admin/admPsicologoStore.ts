@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { admPsicologoService } from '@/services/admPsicologoService';
-import { Psicologo } from '@/types/psicologoTypes';
+import { Psicologo, PsicologoUpdate } from '@/types/psicologoTypes';
 
 interface AdmPsicologoStoreState {
     psicologos: Psicologo[] | null;
@@ -43,7 +43,7 @@ export const getPsicologosId = async (id: string) => {
 };
 
 // Função para atualizar psicólogo
-export const updatePsicologo = async (id: string, update: Psicologo) => {
+export const updatePsicologo = async (id: string, update: PsicologoUpdate) => {
     try {
         const response = await admPsicologoService().updatePsicologo(id, update);
         // Atualiza o psicologoSelecionado se for o mesmo id

@@ -90,25 +90,23 @@ export default function FormProfissionaisAdmin({ psicologo, enums, onSuccess }: 
 
     const id = psicologo.id || psicologo.Id;
 
-    // Atualiza o psicólogo com os novos dados profissionais
-    const updatedPsicologo = {
-      ...psicologo,
-      Crp: profissionais.Crp,
-      ProfessionalProfiles: [
-        {
-          ...psicologo.ProfessionalProfiles?.[0],
-          ExperienciaClinica: profissionais.ExperienciaClinica || undefined,
-          Idiomas: profissionais.Idiomas.map((opt: SelectOption) => opt.value),
-          Abordagens: profissionais.Abordagens.map((opt: SelectOption) => opt.value),
-          Queixas: profissionais.Queixas.map((opt: SelectOption) => opt.value),
-          SobreMim: profissionais.SobreMim || undefined,
-        },
-      ],
-    } as Psicologo;
+    const profileId = psicologo.ProfessionalProfiles?.[0]?.Id;
 
     updatePsicologoMutation.mutate({
       id,
-      update: updatedPsicologo,
+      update: {
+        Crp: profissionais.Crp,
+        ProfessionalProfiles: [
+          {
+            ...(profileId ? { Id: profileId } : {}),
+            ExperienciaClinica: profissionais.ExperienciaClinica || undefined,
+            Idiomas: profissionais.Idiomas.map((opt: SelectOption) => opt.value),
+            Abordagens: profissionais.Abordagens.map((opt: SelectOption) => opt.value),
+            Queixas: profissionais.Queixas.map((opt: SelectOption) => opt.value),
+            SobreMim: profissionais.SobreMim || undefined,
+          },
+        ],
+      },
     }, {
       onSuccess: () => {
         toast.success("Dados profissionais atualizados com sucesso!");

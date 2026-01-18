@@ -1,4 +1,4 @@
-import { Psicologo, DadosBancarios } from "@/types/psicologoTypes";
+import { Psicologo, PsicologoUpdate, DadosBancarios } from "@/types/psicologoTypes";
 import React from "react";
 import { useUpdateAdmPsicologo } from "@/hooks/admin/useAdmPsicologo";
 import toast from 'react-hot-toast';
@@ -66,63 +66,55 @@ export default function FormBancarioAdmin({ psicologo, onSuccess }: FormBancario
 
     const id = psicologo.id || psicologo.Id;
 
-    const updatedPsicologo = { ...psicologo };
+    let updatePayload: PsicologoUpdate = {};
 
     if (isAutonomo) {
-      // Atualiza PIX no ProfessionalProfile
-      if (updatedPsicologo.ProfessionalProfiles?.[0]) {
-        const existingDadosBancarios = updatedPsicologo.ProfessionalProfiles[0].DadosBancarios;
-        // Só inclui DadosBancarios se já existir (com Id válido)
-        if (existingDadosBancarios && existingDadosBancarios.Id) {
-          const dadosBancarios: DadosBancarios = {
-            ...existingDadosBancarios,
-            ChavePix: chavePix.trim(),
-          };
-          updatedPsicologo.ProfessionalProfiles = [
-            {
-              ...updatedPsicologo.ProfessionalProfiles[0],
-              DadosBancarios: dadosBancarios,
-            },
-          ];
-        } else {
-          // Se não existir, não incluímos DadosBancarios - o backend precisará criar
-          // Por enquanto, enviamos apenas o ChavePix no payload e o backend deve lidar
-          updatedPsicologo.ProfessionalProfiles = [
-            {
-              ...updatedPsicologo.ProfessionalProfiles[0],
-            },
-          ];
-        }
-      }
+      const profile = psicologo.ProfessionalProfiles?.[0];
+      const existingDadosBancarios = profile?.DadosBancarios;
+      const dadosBancarios: Partial<DadosBancarios> = {
+        ...(existingDadosBancarios?.Id ? { Id: existingDadosBancarios.Id } : {}),
+        ...existingDadosBancarios,
+        ChavePix: chavePix.trim(),
+      };
+      updatePayload = {
+        ProfessionalProfiles: [
+          {
+            ...(profile?.Id ? { Id: profile.Id } : {}),
+            DadosBancarios: dadosBancarios,
+          },
+        ],
+      };
     } else {
-      // Atualiza PIX no PessoalJuridica
-      const existingDadosBancarios = updatedPsicologo.PessoalJuridica?.DadosBancarios;
-      if (existingDadosBancarios && existingDadosBancarios.Id && updatedPsicologo.PessoalJuridica) {
-        const dadosBancarios: DadosBancarios = {
+      const existingDadosBancarios = psicologo.PessoalJuridica?.DadosBancarios;
+      if (psicologo.PessoalJuridica) {
+        const dadosBancarios: Partial<DadosBancarios> = {
+          ...(existingDadosBancarios?.Id ? { Id: existingDadosBancarios.Id } : {}),
           ...existingDadosBancarios,
           ChavePix: chavePix.trim(),
         };
-        const pessoalJuridica = updatedPsicologo.PessoalJuridica;
-        updatedPsicologo.PessoalJuridica = {
-          CNPJ: pessoalJuridica.CNPJ,
-          RazaoSocial: pessoalJuridica.RazaoSocial,
-          NomeFantasia: pessoalJuridica.NomeFantasia,
-          InscricaoEstadual: pessoalJuridica.InscricaoEstadual,
-          SimplesNacional: pessoalJuridica.SimplesNacional,
-          ...(pessoalJuridica.EnderecoEmpresa && {
-            EnderecoEmpresa: pessoalJuridica.EnderecoEmpresa,
-          }),
-          ...(pessoalJuridica.DescricaoExtenso !== undefined && {
-            DescricaoExtenso: pessoalJuridica.DescricaoExtenso,
-          }),
-          DadosBancarios: dadosBancarios,
+        const pessoalJuridica = psicologo.PessoalJuridica;
+        updatePayload = {
+          PessoalJuridica: {
+            CNPJ: pessoalJuridica.CNPJ,
+            RazaoSocial: pessoalJuridica.RazaoSocial,
+            NomeFantasia: pessoalJuridica.NomeFantasia,
+            InscricaoEstadual: pessoalJuridica.InscricaoEstadual,
+            SimplesNacional: pessoalJuridica.SimplesNacional,
+            ...(pessoalJuridica.EnderecoEmpresa && {
+              EnderecoEmpresa: pessoalJuridica.EnderecoEmpresa,
+            }),
+            ...(pessoalJuridica.DescricaoExtenso !== undefined && {
+              DescricaoExtenso: pessoalJuridica.DescricaoExtenso,
+            }),
+            DadosBancarios: dadosBancarios,
+          },
         };
       }
     }
 
     updatePsicologoMutation.mutate({
       id,
-      update: updatedPsicologo,
+      update: updatePayload,
     }, {
       onSuccess: () => {
         toast.success("Chave PIX atualizada com sucesso!");

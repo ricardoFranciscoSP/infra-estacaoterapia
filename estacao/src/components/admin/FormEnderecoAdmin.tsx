@@ -100,21 +100,16 @@ export default function FormEnderecoAdmin({ psicologo, isBillingAddress = false,
 
     const id = psicologo.id || psicologo.Id;
 
-    const updatedPsicologo = { ...psicologo };
-    
-    if (isBillingAddress) {
-      updatedPsicologo.BillingAddress = {
-        ...endereco,
-      } as typeof psicologo.BillingAddress;
-    } else {
-      updatedPsicologo.Address = {
-        ...endereco,
-      } as typeof psicologo.Address;
+    if (!endereco.Rua || !endereco.Bairro || !endereco.Cidade || !endereco.Estado || !endereco.Cep) {
+      toast.error("Preencha os campos obrigatórios do endereço (Rua, Bairro, Cidade, Estado e CEP).");
+      return;
     }
 
     updatePsicologoMutation.mutate({
       id,
-      update: updatedPsicologo,
+      update: isBillingAddress
+        ? { BillingAddress: { ...endereco } }
+        : { Address: { ...endereco } },
     }, {
       onSuccess: () => {
         toast.success(isBillingAddress ? "Endereço da empresa atualizado com sucesso!" : "Endereço atualizado com sucesso!");

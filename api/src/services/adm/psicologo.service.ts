@@ -264,34 +264,49 @@ export class PsicologoService {
         // Atualiza endereços se fornecidos
         if (data.Address && typeof data.Address === 'object') {
             const addressData = data.Address as Record<string, unknown>;
+            const addressPayload: Record<string, string | null> = {
+                Rua: (addressData.Rua as string) ?? undefined,
+                Numero: (addressData.Numero as string | null) ?? undefined,
+                Complemento: (addressData.Complemento as string | null) ?? undefined,
+                Bairro: (addressData.Bairro as string) ?? undefined,
+                Cidade: (addressData.Cidade as string) ?? undefined,
+                Estado: (addressData.Estado as string) ?? undefined,
+                Cep: (addressData.Cep as string) ?? undefined,
+            };
+            Object.keys(addressPayload).forEach((key) => {
+                if (addressPayload[key] === undefined) {
+                    delete addressPayload[key];
+                }
+            });
+            const hasRequiredAddressFields =
+                !!addressPayload.Rua &&
+                !!addressPayload.Bairro &&
+                !!addressPayload.Cidade &&
+                !!addressPayload.Estado &&
+                !!addressPayload.Cep;
+
             const existingAddress = await prisma.address.findFirst({
                 where: { UserId: id }
             });
 
-            if (existingAddress) {
+            if (existingAddress && Object.keys(addressPayload).length > 0) {
                 await prisma.address.update({
                     where: { Id: existingAddress.Id },
-                    data: {
-                        Rua: addressData.Rua as string,
-                        Numero: addressData.Numero as string | null,
-                        Complemento: addressData.Complemento as string | null,
-                        Bairro: addressData.Bairro as string,
-                        Cidade: addressData.Cidade as string,
-                        Estado: addressData.Estado as string,
-                        Cep: addressData.Cep as string,
-                    }
+                    data: addressPayload
                 });
-            } else {
+            } else if (!existingAddress && hasRequiredAddressFields) {
                 await prisma.address.create({
                     data: {
                         UserId: id,
-                        Rua: addressData.Rua as string,
-                        Numero: addressData.Numero as string | null,
-                        Complemento: addressData.Complemento as string | null,
-                        Bairro: addressData.Bairro as string,
-                        Cidade: addressData.Cidade as string,
-                        Estado: addressData.Estado as string,
-                        Cep: addressData.Cep as string,
+                        ...(addressPayload as {
+                            Rua: string;
+                            Bairro: string;
+                            Cidade: string;
+                            Estado: string;
+                            Cep: string;
+                            Numero?: string | null;
+                            Complemento?: string | null;
+                        })
                     }
                 });
             }
@@ -300,34 +315,49 @@ export class PsicologoService {
         // Atualiza endereço de cobrança se fornecido
         if (data.BillingAddress && typeof data.BillingAddress === 'object') {
             const billingData = data.BillingAddress as Record<string, unknown>;
+            const billingPayload: Record<string, string | null> = {
+                Rua: (billingData.Rua as string) ?? undefined,
+                Numero: (billingData.Numero as string | null) ?? undefined,
+                Complemento: (billingData.Complemento as string | null) ?? undefined,
+                Bairro: (billingData.Bairro as string) ?? undefined,
+                Cidade: (billingData.Cidade as string) ?? undefined,
+                Estado: (billingData.Estado as string) ?? undefined,
+                Cep: (billingData.Cep as string) ?? undefined,
+            };
+            Object.keys(billingPayload).forEach((key) => {
+                if (billingPayload[key] === undefined) {
+                    delete billingPayload[key];
+                }
+            });
+            const hasRequiredBillingFields =
+                !!billingPayload.Rua &&
+                !!billingPayload.Bairro &&
+                !!billingPayload.Cidade &&
+                !!billingPayload.Estado &&
+                !!billingPayload.Cep;
+
             const existingBilling = await prisma.billingAddress.findFirst({
                 where: { UserId: id }
             });
 
-            if (existingBilling) {
+            if (existingBilling && Object.keys(billingPayload).length > 0) {
                 await prisma.billingAddress.update({
                     where: { Id: existingBilling.Id },
-                    data: {
-                        Rua: billingData.Rua as string,
-                        Numero: billingData.Numero as string | null,
-                        Complemento: billingData.Complemento as string | null,
-                        Bairro: billingData.Bairro as string,
-                        Cidade: billingData.Cidade as string,
-                        Estado: billingData.Estado as string,
-                        Cep: billingData.Cep as string,
-                    }
+                    data: billingPayload
                 });
-            } else {
+            } else if (!existingBilling && hasRequiredBillingFields) {
                 await prisma.billingAddress.create({
                     data: {
                         UserId: id,
-                        Rua: billingData.Rua as string,
-                        Numero: billingData.Numero as string | null,
-                        Complemento: billingData.Complemento as string | null,
-                        Bairro: billingData.Bairro as string,
-                        Cidade: billingData.Cidade as string,
-                        Estado: billingData.Estado as string,
-                        Cep: billingData.Cep as string,
+                        ...(billingPayload as {
+                            Rua: string;
+                            Bairro: string;
+                            Cidade: string;
+                            Estado: string;
+                            Cep: string;
+                            Numero?: string | null;
+                            Complemento?: string | null;
+                        })
                     }
                 });
             }
@@ -472,11 +502,7 @@ export class PsicologoService {
     }
 
 
-    async gerarContrato(psicologo: ContratoPsicologoData, templateName: string): Promise<{ urlContrato: string }> {
-        // Valida que o template é o correto
-        if (templateName !== 'contrato-parceria-psicologo.html') {
-            console.warn(`[PsicologoService] ATENÇÃO: Template recebido (${templateName}) não é o esperado (contrato-parceria-psicologo.html)`);
-        }
+    async gerarContrato(psicologo: ContratoPsicologoData, templateName?: string): Promise<{ urlContrato: string }> {
         // Gera o contrato usando o serviço e retorna o resultado
         const resultado = await this.contratoService.gerarContrato(psicologo, templateName);
         return resultado;
@@ -577,15 +603,14 @@ export class PsicologoService {
             }
 
             // Usa o serviço de contrato para gerar a prévia (mesma lógica da geração)
-            const templateName = 'contrato-parceria-psicologo.html';
             console.log(`[Previa Contrato] ==========================================`);
             console.log(`[Previa Contrato] INICIANDO PRÉVIA DO CONTRATO DE PARCERIA`);
-            console.log(`[Previa Contrato] Template: ${templateName}`);
+            console.log(`[Previa Contrato] Template: (auto)`);
             console.log(`[Previa Contrato] ID do psicólogo: ${idUser}`);
             console.log(`[Previa Contrato] ==========================================`);
 
             // Usa o método renderHtml do ContratoService para garantir consistência
-            const html = await this.contratoService.renderHtmlForPreview(psicologoData, templateName);
+            const html = await this.contratoService.renderHtmlForPreview(psicologoData);
 
             // Validações rigorosas do HTML gerado
             console.log(`[Previa Contrato] HTML gerado. Tamanho: ${html.length} caracteres`);

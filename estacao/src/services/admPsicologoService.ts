@@ -1,11 +1,11 @@
 import { api } from "@/lib/axios";
-import { Psicologo } from "@/types/psicologoTypes";
+import { PsicologoUpdate } from "@/types/psicologoTypes";
 
 export const admPsicologoService = () => {
     return {
         getPsicologos: () => api.get('/admin/psicologos'),
         getPsicologoById: (id: string) => api.get(`/admin/psicologos/${id}`),
-        updatePsicologo: (id: string, psicologo: Psicologo) => api.put(`/admin/psicologos/${id}`, psicologo),
+        updatePsicologo: (id: string, psicologo: PsicologoUpdate) => api.put(`/admin/psicologos/${id}`, psicologo),
         deletePsicologo: (id: string) => api.delete(`/admin/psicologos/${id}`),
         previaContrato: (id: string) => api.post(`/admin/psicologos/previa-contrato`, { id }, {
             responseType: 'text', // Importante: recebe HTML como texto

@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import { useSearchParams, useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import { useAdmPsicologoById, useDeleteAdmPsicologo, usePreviaContrato, useGerarContrato, useUpdateAdmPsicologo } from "@/hooks/admin/useAdmPsicologo";
-import type { Psicologo } from "@/types/psicologoTypes";
+import type { Psicologo, PsicologoUpdate } from "@/types/psicologoTypes";
 import { useDocuments } from "@/hooks/useDocuments";
 import { documentsFilesService } from "@/services/documentsFiles";
 import { formatDateBR } from "@/utils/formatarDataHora";
@@ -576,7 +576,7 @@ export default function PsicologoDetalhePage() {
   // Estado para controlar se deve carregar a prévia do contrato
   const [shouldLoadPrevia, setShouldLoadPrevia] = useState(false);
   
-  const { data: previaContratoData, isLoading: isLoadingPrevContrato, refetch: refetchPreviaContrato } = usePreviaContrato(idStr, shouldLoadPrevia);
+  const { data: previaContratoData, isLoading: isLoadingPrevContrato } = usePreviaContrato(idStr, shouldLoadPrevia);
   const gerarContratoMutation = useGerarContrato();
   const updatePsicologoMutation = useUpdateAdmPsicologo();
   const deletePsicologoMutation = useDeleteAdmPsicologo();
@@ -1147,24 +1147,40 @@ export default function PsicologoDetalhePage() {
     if (!idStr || !psicologo) return;
     
     try {
-      const updateData: Partial<Psicologo> = {
-        ...psicologo,
+      const updateData: PsicologoUpdate = {
         Nome: nomeEdit,
-        Email: emailEdit,
-        Telefone: telefoneEdit,
-        Cpf: cpfEdit,
-        Rg: rgEdit,
-        DataNascimento: dataNascimentoEdit ? new Date(dataNascimentoEdit).toISOString() : psicologo.DataNascimento,
+        Email: emailEdit || undefined,
+        Telefone: telefoneEdit || undefined,
+        Cpf: cpfEdit || undefined,
+        Rg: rgEdit || undefined,
+        DataNascimento: dataNascimentoEdit ? new Date(dataNascimentoEdit).toISOString() : undefined,
         Sexo: sexoEdit || undefined,
         Pronome: pronomeEdit || undefined,
         RacaCor: racaCorEdit || undefined,
         Status: statusEdit,
-        Address: enderecoEdit,
-        BillingAddress: billingAddressEdit,
-        // Não enviar DataAprovacao e CreatedAt
-        DataAprovacao: undefined,
-        CreatedAt: undefined,
       };
+
+      const hasEnderecoRequired =
+        !!enderecoEdit.Rua &&
+        !!enderecoEdit.Bairro &&
+        !!enderecoEdit.Cidade &&
+        !!enderecoEdit.Estado &&
+        !!enderecoEdit.Cep;
+
+      if (hasEnderecoRequired) {
+        updateData.Address = enderecoEdit;
+      }
+
+      const hasBillingRequired =
+        !!billingAddressEdit.Rua &&
+        !!billingAddressEdit.Bairro &&
+        !!billingAddressEdit.Cidade &&
+        !!billingAddressEdit.Estado &&
+        !!billingAddressEdit.Cep;
+
+      if (hasBillingRequired) {
+        updateData.BillingAddress = billingAddressEdit;
+      }
       
       // Adiciona PessoalJuridica se for pessoa jurídica
       if (isPessoaJuridica && pessoaJuridicaEdit) {

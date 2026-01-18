@@ -172,6 +172,13 @@ export type Psicologo = {
     BillingAddress?: EnderecoCobranca | EnderecoCobranca[];
 };
 
+export type PsicologoUpdate = Partial<Omit<Psicologo, "Address" | "BillingAddress" | "ProfessionalProfiles" | "PessoalJuridica">> & {
+    Address?: Partial<Address> | Address;
+    BillingAddress?: Partial<EnderecoCobranca> | EnderecoCobranca | EnderecoCobranca[];
+    ProfessionalProfiles?: Array<Partial<Omit<ProfessionalProfiles, "DadosBancarios">> & { DadosBancarios?: Partial<DadosBancarios> }>;
+    PessoalJuridica?: Partial<Omit<PessoalJuridica, "DadosBancarios">> & { DadosBancarios?: Partial<DadosBancarios> };
+};
+
 export type EnderecoCobranca = {
     Id: string;
     UserId: string;

@@ -308,11 +308,8 @@ export class PsicologoController implements IPsicologoController {
                 anexoI: {}
             };
 
-            // Define o template - usando o novo template de parceria
-            const templateName = 'contrato-parceria-psicologo.html';
-
             // Gera o contrato usando o serviço (que agora faz upload automático)
-            const { urlContrato } = await this.service.gerarContrato(psicologo, templateName);
+            const { urlContrato } = await this.service.gerarContrato(psicologo);
 
             console.log('[Contrato] Contrato gerado com sucesso:', urlContrato);
 
@@ -382,7 +379,7 @@ export class PsicologoController implements IPsicologoController {
             if (hasPacienteTitle(htmlContrato)) {
                 console.error('[Previa Contrato Controller] ❌ ERRO CRÍTICO: Template de PACIENTE detectado no HTML!');
                 return res.status(500).json({
-                    error: 'Template incorreto: O sistema retornou o template de paciente. Deve usar contrato-parceria-psicologo.html para psicólogos.'
+                    error: 'Template incorreto: O sistema retornou o template de paciente. Deve usar um template de psicólogo válido.'
                 });
             }
 

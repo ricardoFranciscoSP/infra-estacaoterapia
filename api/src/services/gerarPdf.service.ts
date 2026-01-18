@@ -28,6 +28,15 @@ const hasParceriaTitle = (text: string) => {
 const hasPacienteTitle = (text: string) =>
     normalizeContratoText(text).includes("CONTRATO DE PRESTACAO DE SERVICOS PSICOLOGICOS VIA PLATAFORMA VIRTUAL");
 
+const PSICOLOGO_TEMPLATES = new Set([
+    'contrato-parceria-psicologo.html',
+    'contrato-psicologo-limpo.html'
+]);
+
+const getTemplateBasename = (templateName: string) => path.basename(templateName);
+
+const isPsicologoTemplate = (templateName: string) => PSICOLOGO_TEMPLATES.has(getTemplateBasename(templateName));
+
 // Replace static TEMPLATES_DIR with a resolver that checks common locations
 function resolveTemplatesDir(): string {
     // Ordem de preferência: src/templates primeiro (desenvolvimento), depois dist/templates (produção)
@@ -63,14 +72,15 @@ const TEMPLATES_DIR = resolveTemplatesDir();
 // <<< Nova função: resolveTemplatePath >>> 
 function resolveTemplatePath(templateName: string): string {
     const tried: string[] = [];
+    const templateBasename = getTemplateBasename(templateName);
 
     console.log(`[resolveTemplatePath] ==========================================`);
     console.log(`[resolveTemplatePath] Resolvendo template: ${templateName}`);
 
-    // Validação crítica: se for template de psicólogo, DEVE ser contrato-parceria-psicologo.html
-    if (templateName.includes('psicologo') && !templateName.includes('parceria')) {
-        console.error(`[resolveTemplatePath] ❌ ERRO: Template de psicólogo sem 'parceria' detectado: ${templateName}`);
-        throw new Error(`Template incorreto: ${templateName}. Para psicólogos, deve ser 'contrato-parceria-psicologo.html'`);
+    // Validação crítica: se for template de psicólogo, deve estar na lista de templates permitidos
+    if (templateBasename.includes('psicologo') && !isPsicologoTemplate(templateBasename)) {
+        console.error(`[resolveTemplatePath] ❌ ERRO: Template de psicólogo não permitido: ${templateName}`);
+        throw new Error(`Template incorreto: ${templateName}. Para psicólogos, use um dos templates válidos: ${Array.from(PSICOLOGO_TEMPLATES).join(', ')}`);
     }
 
     // 1) Se o usuário passou caminho absoluto ou relativo: testar diretamente
@@ -80,7 +90,7 @@ function resolveTemplatePath(templateName: string): string {
         console.info(`[resolveTemplatePath] Template resolvido diretamente: ${directCandidate}`);
         // Validação adicional: verifica se o arquivo contém o conteúdo correto
         const content = fs.readFileSync(directCandidate, 'utf8').substring(0, 500);
-        if (templateName.includes('parceria') && !hasParceriaTitle(content)) {
+        if (isPsicologoTemplate(templateName) && !hasParceriaTitle(content)) {
             console.error(`[resolveTemplatePath] ❌ ERRO: Arquivo encontrado não é o template de parceria!`);
             throw new Error(`Template incorreto: O arquivo ${directCandidate} não contém o título de parceria.`);
         }
@@ -94,7 +104,7 @@ function resolveTemplatePath(templateName: string): string {
         console.info(`[resolveTemplatePath] Template encontrado em src/templates: ${srcTemplatesPath}`);
         // Validação adicional: verifica se o arquivo contém o conteúdo correto
         const content = fs.readFileSync(srcTemplatesPath, 'utf8').substring(0, 500);
-        if (templateName.includes('parceria') && !hasParceriaTitle(content)) {
+        if (isPsicologoTemplate(templateName) && !hasParceriaTitle(content)) {
             console.error(`[resolveTemplatePath] ❌ ERRO: Arquivo encontrado não é o template de parceria!`);
             console.error(`[resolveTemplatePath] Primeiros 500 caracteres:`, content);
             throw new Error(`Template incorreto: O arquivo ${srcTemplatesPath} não contém o título de parceria.`);
@@ -110,12 +120,12 @@ function resolveTemplatePath(templateName: string): string {
         console.info(`[resolveTemplatePath] Template encontrado relativo ao compilado: ${relativeToCompiled}`);
         // Validação adicional: verifica se o arquivo contém o conteúdo correto
         const content = fs.readFileSync(relativeToCompiled, 'utf8').substring(0, 500);
-        if (templateName.includes('parceria') && !hasParceriaTitle(content)) {
+        if (isPsicologoTemplate(templateName) && !hasParceriaTitle(content)) {
             console.error(`[resolveTemplatePath] ❌ ERRO: Arquivo encontrado não é o template de parceria!`);
             console.error(`[resolveTemplatePath] Primeiros 500 caracteres:`, content);
             throw new Error(`Template incorreto: O arquivo ${relativeToCompiled} não contém o título de parceria.`);
         }
-        if (templateName.includes('parceria') && hasPacienteTitle(content)) {
+        if (isPsicologoTemplate(templateName) && hasPacienteTitle(content)) {
             console.error(`[resolveTemplatePath] ❌ ERRO: Template de PACIENTE encontrado em caminho relativo!`);
             throw new Error(`Template incorreto: O arquivo ${relativeToCompiled} contém o template de paciente, não o de parceria.`);
         }
@@ -130,12 +140,12 @@ function resolveTemplatePath(templateName: string): string {
         console.info(`[resolveTemplatePath] Template encontrado em src/templates (relativo): ${relativeSrcTemplates}`);
         // Validação adicional: verifica se o arquivo contém o conteúdo correto
         const content = fs.readFileSync(relativeSrcTemplates, 'utf8').substring(0, 500);
-        if (templateName.includes('parceria') && !hasParceriaTitle(content)) {
+        if (isPsicologoTemplate(templateName) && !hasParceriaTitle(content)) {
             console.error(`[resolveTemplatePath] ❌ ERRO: Arquivo encontrado não é o template de parceria!`);
             console.error(`[resolveTemplatePath] Primeiros 500 caracteres:`, content);
             throw new Error(`Template incorreto: O arquivo ${relativeSrcTemplates} não contém o título de parceria.`);
         }
-        if (templateName.includes('parceria') && hasPacienteTitle(content)) {
+        if (isPsicologoTemplate(templateName) && hasPacienteTitle(content)) {
             console.error(`[resolveTemplatePath] ❌ ERRO: Template de PACIENTE encontrado em src/templates relativo!`);
             throw new Error(`Template incorreto: O arquivo ${relativeSrcTemplates} contém o template de paciente, não o de parceria.`);
         }
@@ -150,7 +160,7 @@ function resolveTemplatePath(templateName: string): string {
         console.info(`[resolveTemplatePath] Template encontrado em TEMPLATES_DIR: ${joinWithTemplatesDir}`);
         // Validação adicional: verifica se o arquivo contém o conteúdo correto
         const content = fs.readFileSync(joinWithTemplatesDir, 'utf8').substring(0, 500);
-        if (templateName.includes('parceria') && !hasParceriaTitle(content)) {
+        if (isPsicologoTemplate(templateName) && !hasParceriaTitle(content)) {
             console.error(`[resolveTemplatePath] ❌ ERRO: Arquivo encontrado não é o template de parceria!`);
             console.error(`[resolveTemplatePath] Primeiros 500 caracteres:`, content);
             throw new Error(`Template incorreto: O arquivo ${joinWithTemplatesDir} não contém o título de parceria.`);
@@ -166,12 +176,12 @@ function resolveTemplatePath(templateName: string): string {
         console.info(`[resolveTemplatePath] Template encontrado por basename em TEMPLATES_DIR: ${basenameCandidate}`);
         // Validação adicional: verifica se o arquivo contém o conteúdo correto
         const content = fs.readFileSync(basenameCandidate, 'utf8').substring(0, 500);
-        if (templateName.includes('parceria') && !hasParceriaTitle(content)) {
+        if (isPsicologoTemplate(templateName) && !hasParceriaTitle(content)) {
             console.error(`[resolveTemplatePath] ❌ ERRO: Arquivo encontrado não é o template de parceria!`);
             console.error(`[resolveTemplatePath] Primeiros 500 caracteres:`, content);
             throw new Error(`Template incorreto: O arquivo ${basenameCandidate} não contém o título de parceria.`);
         }
-        if (templateName.includes('parceria') && hasPacienteTitle(content)) {
+        if (isPsicologoTemplate(templateName) && hasPacienteTitle(content)) {
             console.error(`[resolveTemplatePath] ❌ ERRO: Template de PACIENTE encontrado por basename!`);
             throw new Error(`Template incorreto: O arquivo ${basenameCandidate} contém o template de paciente, não o de parceria.`);
         }
@@ -186,11 +196,11 @@ function resolveTemplatePath(templateName: string): string {
         console.info(`[resolveTemplatePath] Template encontrado em dist/templates: ${distTemplatesPath}`);
         // Validação adicional: verifica se o arquivo contém o conteúdo correto
         const content = fs.readFileSync(distTemplatesPath, 'utf8').substring(0, 500);
-        if (templateName.includes('parceria') && !hasParceriaTitle(content)) {
+        if (isPsicologoTemplate(templateName) && !hasParceriaTitle(content)) {
             console.error(`[resolveTemplatePath] ❌ ERRO: Arquivo encontrado não é o template de parceria!`);
             throw new Error(`Template incorreto: O arquivo ${distTemplatesPath} não contém o título de parceria.`);
         }
-        if (templateName.includes('parceria') && hasPacienteTitle(content)) {
+        if (isPsicologoTemplate(templateName) && hasPacienteTitle(content)) {
             console.error(`[resolveTemplatePath] ❌ ERRO: Template de PACIENTE encontrado em dist/templates!`);
             throw new Error(`Template incorreto: O arquivo ${distTemplatesPath} contém o template de paciente, não o de parceria.`);
         }
@@ -204,11 +214,11 @@ function resolveTemplatePath(templateName: string): string {
         console.info(`[resolveTemplatePath] Template encontrado em /dist: ${distCandidate}`);
         // Validação adicional
         const content = fs.readFileSync(distCandidate, 'utf8').substring(0, 500);
-        if (templateName.includes('parceria') && !hasParceriaTitle(content)) {
+        if (isPsicologoTemplate(templateName) && !hasParceriaTitle(content)) {
             console.error(`[resolveTemplatePath] ❌ ERRO: Arquivo encontrado não é o template de parceria!`);
             throw new Error(`Template incorreto: O arquivo ${distCandidate} não contém o título de parceria.`);
         }
-        if (templateName.includes('parceria') && hasPacienteTitle(content)) {
+        if (isPsicologoTemplate(templateName) && hasPacienteTitle(content)) {
             console.error(`[resolveTemplatePath] ❌ ERRO: Template de PACIENTE encontrado em /dist!`);
             throw new Error(`Template incorreto: O arquivo ${distCandidate} contém o template de paciente, não o de parceria.`);
         }
@@ -220,11 +230,11 @@ function resolveTemplatePath(templateName: string): string {
         console.info(`[resolveTemplatePath] Template encontrado em /dist por basename: ${distBasename}`);
         // Validação adicional
         const content = fs.readFileSync(distBasename, 'utf8').substring(0, 500);
-        if (templateName.includes('parceria') && !hasParceriaTitle(content)) {
+        if (isPsicologoTemplate(templateName) && !hasParceriaTitle(content)) {
             console.error(`[resolveTemplatePath] ❌ ERRO: Arquivo encontrado não é o template de parceria!`);
             throw new Error(`Template incorreto: O arquivo ${distBasename} não contém o título de parceria.`);
         }
-        if (templateName.includes('parceria') && hasPacienteTitle(content)) {
+        if (isPsicologoTemplate(templateName) && hasPacienteTitle(content)) {
             console.error(`[resolveTemplatePath] ❌ ERRO: Template de PACIENTE encontrado em /dist por basename!`);
             throw new Error(`Template incorreto: O arquivo ${distBasename} contém o template de paciente, não o de parceria.`);
         }
@@ -238,12 +248,12 @@ function resolveTemplatePath(templateName: string): string {
         console.info(`[resolveTemplatePath] Template encontrado em src/templates (basename): ${finalSrcPath}`);
         // Validação adicional: verifica se o arquivo contém o conteúdo correto
         const content = fs.readFileSync(finalSrcPath, 'utf8').substring(0, 500);
-        if (templateName.includes('parceria') && !hasParceriaTitle(content)) {
+        if (isPsicologoTemplate(templateName) && !hasParceriaTitle(content)) {
             console.error(`[resolveTemplatePath] ❌ ERRO: Arquivo encontrado não é o template de parceria!`);
             console.error(`[resolveTemplatePath] Primeiros 500 caracteres:`, content);
             throw new Error(`Template incorreto: O arquivo ${finalSrcPath} não contém o título de parceria.`);
         }
-        if (templateName.includes('parceria') && hasPacienteTitle(content)) {
+        if (isPsicologoTemplate(templateName) && hasPacienteTitle(content)) {
             console.error(`[resolveTemplatePath] ❌ ERRO: Template de PACIENTE encontrado em src/templates (basename)!`);
             throw new Error(`Template incorreto: O arquivo ${finalSrcPath} contém o template de paciente, não o de parceria.`);
         }
@@ -338,6 +348,35 @@ interface TemplateDataPsicologo {
     data_assinatura: string;
 }
 
+interface TemplateDataPsicologoFlat {
+    cnpj_intermediador: string;
+    endereco_intermediador: string;
+    numero_intermediador: string;
+    complemento_intermediador: string;
+    bairro_intermediador: string;
+    cidade_intermediador: string;
+    uf_intermediador: string;
+    representante_intermediador: string;
+    rg_representante_intermediador: string;
+    cpf_representante_intermediador: string;
+    razao_social_psicologo: string;
+    tipo_psicologo: string;
+    documento_psicologo: string;
+    numero_documento_psicologo: string;
+    crp_psicologo: string;
+    endereco_psicologo: string;
+    numero_psicologo: string;
+    complemento_psicologo: string;
+    bairro_psicologo: string;
+    cidade_psicologo: string;
+    uf_psicologo: string;
+    diaAssinatura: string;
+    mesAssinatura: string;
+    anoAssinatura: string;
+    assinaturaIntermediador: string;
+    assinaturaPsicologo: string;
+}
+
 interface ContratanteData {
     nome: string;
     rg: string;
@@ -379,7 +418,7 @@ interface TemplateDataPaciente {
     assinatura: string;
 }
 
-type TemplateData = TemplateDataPsicologo | TemplateDataPaciente | Record<string, never>;
+type TemplateData = TemplateDataPsicologo | TemplateDataPsicologoFlat | TemplateDataPaciente | Record<string, never>;
 
 function isTemplateDataPsicologo(data: TemplateData): data is TemplateDataPsicologo {
     return typeof data === 'object' && data !== null && 'psicologo' in data;
@@ -434,7 +473,7 @@ export class ContratoService {
                     console.info(`[renderHtml] Template encontrado em caminho alternativo: ${altPath}`);
 
                     // Validação crítica: se estamos procurando template de parceria, o arquivo encontrado DEVE ser de parceria
-                    if (templatePath.includes('parceria') || templatePath.includes('contrato-parceria-psicologo')) {
+                    if (isPsicologoTemplate(templatePath)) {
                         const content = fs.readFileSync(altPath, 'utf8').substring(0, 500);
                         if (!hasParceriaTitle(content)) {
                             console.error(`[renderHtml] ❌ ERRO: Arquivo encontrado em caminho alternativo não é o template de parceria!`);
@@ -464,8 +503,8 @@ export class ContratoService {
             html = fs.readFileSync(templatePath, "utf-8");
             console.log(`[renderHtml] Arquivo lido com sucesso. Tamanho: ${html.length} caracteres`);
 
-            // Validação crítica: se o template path contém 'parceria', o HTML DEVE conter o título de parceria
-            if (templatePath.includes('parceria') || templatePath.includes('contrato-parceria-psicologo')) {
+            // Validação crítica: se o template for de psicólogo, o HTML DEVE conter o título de parceria
+            if (isPsicologoTemplate(templatePath)) {
                 console.log(`[renderHtml] Validando template de parceria...`);
                 console.log(`[renderHtml] Primeiros 500 caracteres do HTML lido:`, html.substring(0, 500));
 
@@ -477,7 +516,7 @@ export class ContratoService {
                     if (hasPacienteTitle(html)) {
                         console.error(`[renderHtml] ❌ ERRO: Template de PACIENTE detectado no arquivo lido!`);
                         console.error(`[renderHtml] O arquivo ${templatePath} contém o template ERRADO!`);
-                        throw new Error(`Template incorreto: O arquivo ${templatePath} contém o template de paciente, não o de parceria do psicólogo. Verifique se o arquivo 'contrato-parceria-psicologo.html' existe e está correto.`);
+                        throw new Error(`Template incorreto: O arquivo ${templatePath} contém o template de paciente, não o de parceria do psicólogo. Verifique se o template de psicólogo correto está configurado.`);
                     }
 
                     throw new Error(`Template incorreto: O HTML lido de ${templatePath} não contém o título 'CONTRATO DE PARCERIA E INTERMEDIAÇÃO'.`);
@@ -485,7 +524,7 @@ export class ContratoService {
 
                 if (hasPacienteTitle(html)) {
                     console.error(`[renderHtml] ❌ ERRO CRÍTICO: Template de PACIENTE detectado no arquivo lido!`);
-                    throw new Error(`Template incorreto: O arquivo ${templatePath} contém o template de paciente. Deve usar 'contrato-parceria-psicologo.html'.`);
+                    throw new Error(`Template incorreto: O arquivo ${templatePath} contém o template de paciente. Deve usar um template de psicólogo válido.`);
                 }
 
                 console.log(`[renderHtml] ✅ HTML lido validado: Contém título de PARCERIA`);
@@ -523,7 +562,7 @@ export class ContratoService {
 
         try {
             // Validação adicional: verifica se o HTML lido contém o título correto ANTES de compilar
-            if (templatePath.includes('contrato-parceria-psicologo') || templatePath.includes('parceria')) {
+            if (isPsicologoTemplate(templatePath)) {
                 console.log(`[renderHtml] ==========================================`);
                 console.log(`[renderHtml] VALIDANDO TEMPLATE DE PARCERIA`);
                 console.log(`[renderHtml] Template path: ${templatePath}`);
@@ -538,7 +577,7 @@ export class ContratoService {
                     if (hasPacienteTitle(html)) {
                         console.error(`[renderHtml] ❌ ERRO: Template de PACIENTE detectado no HTML lido!`);
                         console.error(`[renderHtml] Isso indica que o arquivo ERRADO está sendo usado!`);
-                        throw new Error(`Template incorreto: O arquivo ${templatePath} contém o template de paciente, não o de parceria do psicólogo. Verifique se o arquivo 'contrato-parceria-psicologo.html' existe e está correto.`);
+                        throw new Error(`Template incorreto: O arquivo ${templatePath} contém o template de paciente, não o de parceria do psicólogo. Verifique se o template de psicólogo correto está configurado.`);
                     }
 
                     throw new Error(`Template incorreto: O HTML lido de ${templatePath} não contém o título 'CONTRATO DE PARCERIA E INTERMEDIAÇÃO'.`);
@@ -548,7 +587,7 @@ export class ContratoService {
                 if (hasPacienteTitle(html)) {
                     console.error(`[renderHtml] ❌ ERRO CRÍTICO: Template de PACIENTE detectado no HTML lido!`);
                     console.error(`[renderHtml] Template path: ${templatePath}`);
-                    throw new Error(`Template incorreto: O arquivo ${templatePath} contém o template de paciente. Deve usar 'contrato-parceria-psicologo.html'.`);
+                    throw new Error(`Template incorreto: O arquivo ${templatePath} contém o template de paciente. Deve usar um template de psicólogo válido.`);
                 }
 
                 console.log(`[renderHtml] ✅ HTML lido validado: Contém título de PARCERIA`);
@@ -778,33 +817,161 @@ export class ContratoService {
         return psicologoData;
     }
 
+    private getTemplateNameForPsicologo(psicologo: ContratoPsicologoData): string {
+        // Usa o mesmo template base, mas os dados variam conforme o tipo (autônomo x pessoa jurídica)
+        if (psicologo.pessoaJuridica) {
+            return 'contrato-psicologo-limpo.html';
+        }
+        return 'contrato-psicologo-limpo.html';
+    }
+
+    private buildContratoPsicologoFlatData(psicologo: ContratoPsicologoData): TemplateDataPsicologoFlat {
+        const now = new Date();
+        const diaAssinatura = now.toLocaleDateString('pt-BR', { day: '2-digit' });
+        const mesAssinatura = now.toLocaleDateString('pt-BR', { month: 'long' });
+        const anoAssinatura = now.toLocaleDateString('pt-BR', { year: 'numeric' });
+
+        const contratante = psicologo.contratante || {
+            nome: '',
+            rg: '',
+            cpf: '',
+            logradouro: '',
+            numero: '',
+            bairro: '',
+            cidade: '',
+            uf: '',
+            complemento: ''
+        };
+
+        const enderecoEmpresa = psicologo.pessoaJuridica?.enderecoEmpresa;
+        const enderecoPrincipal = enderecoEmpresa
+            ? {
+                logradouro: enderecoEmpresa.rua || '',
+                numero: enderecoEmpresa.numero || '',
+                complemento: enderecoEmpresa.complemento || '',
+                bairro: enderecoEmpresa.bairro || '',
+                cidade: enderecoEmpresa.cidade || '',
+                uf: enderecoEmpresa.estado || ''
+            }
+            : {
+                logradouro: contratante.logradouro || '',
+                numero: contratante.numero || '',
+                complemento: contratante.complemento || '',
+                bairro: contratante.bairro || '',
+                cidade: contratante.cidade || '',
+                uf: contratante.uf || ''
+            };
+
+        const isPessoaJuridica = !!psicologo.pessoaJuridica;
+        const razaoSocialPsicologo = isPessoaJuridica
+            ? (psicologo.pessoaJuridica?.razaoSocial || '')
+            : (psicologo.nome || '');
+
+        const documentoPsicologo = isPessoaJuridica ? 'CNPJ' : 'CPF';
+        const numeroDocumentoPsicologo = isPessoaJuridica
+            ? (psicologo.pessoaJuridica?.cnpj || '')
+            : (psicologo.cpf || '');
+
+        const tipoPsicologo = isPessoaJuridica
+            ? 'pessoa jurídica de direito privado'
+            : 'psicólogo(a) autônomo(a), pessoa física';
+
+        const assinaturaPsicologo = isPessoaJuridica
+            ? (psicologo.pessoaJuridica?.representanteLegalNome || psicologo.nome || razaoSocialPsicologo)
+            : (psicologo.nome || '');
+
+        const intermediador = {
+            cnpj: "54.222.003/0001-07",
+            endereco: "Al. Rio Negro",
+            numero: "503",
+            complemento: "Sala 2020",
+            bairro: "Alphaville Industrial",
+            cidade: "Barueri",
+            uf: "SP",
+            representante: "seus documentos societários",
+            rgRepresentante: "N/A",
+            cpfRepresentante: "N/A",
+            assinatura: "MINDFLUENCE PSICOLOGIA LTDA."
+        };
+
+        return {
+            cnpj_intermediador: intermediador.cnpj,
+            endereco_intermediador: intermediador.endereco,
+            numero_intermediador: intermediador.numero,
+            complemento_intermediador: intermediador.complemento,
+            bairro_intermediador: intermediador.bairro,
+            cidade_intermediador: intermediador.cidade,
+            uf_intermediador: intermediador.uf,
+            representante_intermediador: intermediador.representante,
+            rg_representante_intermediador: intermediador.rgRepresentante,
+            cpf_representante_intermediador: intermediador.cpfRepresentante,
+            razao_social_psicologo: razaoSocialPsicologo,
+            tipo_psicologo: tipoPsicologo,
+            documento_psicologo: documentoPsicologo,
+            numero_documento_psicologo: numeroDocumentoPsicologo,
+            crp_psicologo: psicologo.crp || '',
+            endereco_psicologo: enderecoPrincipal.logradouro,
+            numero_psicologo: enderecoPrincipal.numero,
+            complemento_psicologo: enderecoPrincipal.complemento,
+            bairro_psicologo: enderecoPrincipal.bairro,
+            cidade_psicologo: enderecoPrincipal.cidade,
+            uf_psicologo: enderecoPrincipal.uf,
+            diaAssinatura,
+            mesAssinatura,
+            anoAssinatura,
+            assinaturaIntermediador: intermediador.assinatura,
+            assinaturaPsicologo: assinaturaPsicologo
+        };
+    }
+
+    private buildContratoPsicologoTemplateData(psicologo: ContratoPsicologoData, templateName: string): TemplateData {
+        const templateBasename = getTemplateBasename(templateName);
+        if (templateBasename === 'contrato-psicologo-limpo.html') {
+            return this.buildContratoPsicologoFlatData(psicologo);
+        }
+
+        const psicologoData = this.preparePsicologoData(psicologo);
+        return {
+            empresa: {
+                nome: "MINDFLUENCE PSICOLOGIA LTDA.",
+                cnpj: "54.222.003/0001-07",
+                endereco: "Al. Rio Negro, 503 – Sala 2020, Alphaville Industrial – Barueri/SP",
+                cep: "06454-000"
+            },
+            plataforma: { nome: "ESTAÇÃO TERAPIA", prazo_analise_horas: 72 },
+            psicologo: psicologoData,
+            data_assinatura: new Date().toLocaleDateString("pt-BR")
+        };
+    }
+
     /**
      * Renderiza HTML para prévia do contrato do psicólogo (sem gerar PDF).
      * @param psicologo Dados do psicólogo.
      * @param templateName Nome do template.
      * @returns HTML preenchido como string.
      */
-    async renderHtmlForPreview(psicologo: ContratoPsicologoData, templateName: string): Promise<string> {
+    async renderHtmlForPreview(psicologo: ContratoPsicologoData, templateName?: string): Promise<string> {
+        const resolvedTemplateName = templateName || this.getTemplateNameForPsicologo(psicologo);
         console.log(`[renderHtmlForPreview] ==========================================`);
         console.log(`[renderHtmlForPreview] INICIANDO RENDERIZAÇÃO DE PRÉVIA`);
-        console.log(`[renderHtmlForPreview] Template recebido: ${templateName}`);
+        console.log(`[renderHtmlForPreview] Template recebido: ${resolvedTemplateName}`);
         console.log(`[renderHtmlForPreview] Psicólogo: ${psicologo.nome} (ID: ${psicologo.id})`);
 
         // Valida que o template é o correto ANTES de resolver o caminho
-        if (templateName !== 'contrato-parceria-psicologo.html') {
-            console.error(`[renderHtmlForPreview] ❌ ERRO CRÍTICO: Template incorreto recebido: ${templateName}`);
-            console.error(`[renderHtmlForPreview] Esperado: contrato-parceria-psicologo.html`);
-            throw new Error(`Template incorreto: ${templateName}. Para psicólogos, deve ser usado 'contrato-parceria-psicologo.html'`);
+        if (!isPsicologoTemplate(resolvedTemplateName)) {
+            console.error(`[renderHtmlForPreview] ❌ ERRO CRÍTICO: Template incorreto recebido: ${resolvedTemplateName}`);
+            console.error(`[renderHtmlForPreview] Templates válidos: ${Array.from(PSICOLOGO_TEMPLATES).join(', ')}`);
+            throw new Error(`Template incorreto: ${resolvedTemplateName}. Para psicólogos, use um template válido.`);
         }
 
-        const templatePath = resolveTemplatePath(templateName);
+        const templatePath = resolveTemplatePath(resolvedTemplateName);
         console.log(`[renderHtmlForPreview] Template resolvido para: ${templatePath}`);
 
         // Verifica se o template é realmente o de parceria
-        if (!templatePath.includes('contrato-parceria-psicologo')) {
-            console.error(`[renderHtmlForPreview] ❌ ERRO: Template resolvido não é o de parceria!`);
+        if (!isPsicologoTemplate(templatePath)) {
+            console.error(`[renderHtmlForPreview] ❌ ERRO: Template resolvido não é válido para psicólogo!`);
             console.error(`[renderHtmlForPreview] Caminho resolvido: ${templatePath}`);
-            throw new Error(`Template incorreto resolvido: ${templatePath}. Esperado template de parceria.`);
+            throw new Error(`Template incorreto resolvido: ${templatePath}. Esperado template de psicólogo.`);
         }
 
         // Verifica se o arquivo existe
@@ -835,28 +1002,13 @@ export class ContratoService {
         // Verifica se NÃO contém o título ERRADO (de paciente)
         if (hasPacienteTitle(templateContent)) {
             console.error(`[renderHtmlForPreview] ❌ ERRO CRÍTICO: Template de PACIENTE detectado no arquivo!`);
-            throw new Error(`Template incorreto: O arquivo ${templatePath} contém o template de paciente. Deve usar 'contrato-parceria-psicologo.html'.`);
+            throw new Error(`Template incorreto: O arquivo ${templatePath} contém o template de paciente. Deve usar um template de psicólogo válido.`);
         }
 
         console.log(`[renderHtmlForPreview] ✅ Template validado: Contém título de PARCERIA`);
         console.log(`[renderHtmlForPreview] ✅ Template validado: NÃO contém título de PACIENTE`);
 
-        // Prepara os dados usando a função compartilhada
-        const psicologoData = this.preparePsicologoData(psicologo);
-        console.log(`[renderHtmlForPreview] Dados do psicólogo preparados. Pessoa jurídica: ${psicologoData.pessoa_juridica}`);
-        console.log(`[renderHtmlForPreview] Dados completos do psicólogo:`, JSON.stringify(psicologoData, null, 2).substring(0, 1000));
-
-        const data: TemplateDataPsicologo = {
-            empresa: {
-                nome: "MINDFLUENCE PSICOLOGIA LTDA.",
-                cnpj: "54.222.003/0001-07",
-                endereco: "Al. Rio Negro, 503 – Sala 2020, Alphaville Industrial – Barueri/SP",
-                cep: "06454-000"
-            },
-            plataforma: { nome: "ESTAÇÃO TERAPIA", prazo_analise_horas: 72 },
-            psicologo: psicologoData,
-            data_assinatura: new Date().toLocaleDateString("pt-BR")
-        };
+        const data = this.buildContratoPsicologoTemplateData(psicologo, resolvedTemplateName);
 
         console.log(`[renderHtmlForPreview] Renderizando HTML com Handlebars...`);
         console.log(`[renderHtmlForPreview] Dados completos enviados para template:`, JSON.stringify(data, null, 2).substring(0, 2000));
@@ -882,7 +1034,7 @@ export class ContratoService {
             if (hasPacienteTitle(html)) {
                 console.error(`[renderHtmlForPreview] ❌ ERRO CRÍTICO: HTML renderizado contém título de PACIENTE!`);
                 console.error(`[renderHtmlForPreview] Isso indica que o template ERRADO foi usado!`);
-                throw new Error(`HTML renderizado contém o template de paciente. O template correto não foi usado. Verifique se o arquivo 'contrato-parceria-psicologo.html' existe e está correto.`);
+                throw new Error(`HTML renderizado contém o template de paciente. O template correto não foi usado. Verifique se o template de psicólogo está correto.`);
             }
 
             throw new Error(`HTML renderizado não contém o título esperado do contrato de parceria.`);
@@ -902,25 +1054,26 @@ export class ContratoService {
     /**
      * Preenche o contrato do psicólogo, gera PDF e HTML, salva localmente e retorna a URL.
      * @param psicologo Dados do psicólogo.
-     * @param templateName Nome do arquivo de template (ex: 'contrato-parceria-psicologo.html').
+     * @param templateName Nome do arquivo de template (ex: 'contrato-psicologo-limpo.html').
      * @returns URL do contrato e buffer do PDF.
      */
-    async fillAndStoreContrato(psicologo: ContratoPsicologoData, templateName: string): Promise<ContratoGeradoResult> {
-        console.log(`[Contrato Psicólogo] Iniciando geração com template: ${templateName}`);
+    async fillAndStoreContrato(psicologo: ContratoPsicologoData, templateName?: string): Promise<ContratoGeradoResult> {
+        const resolvedTemplateName = templateName || this.getTemplateNameForPsicologo(psicologo);
+        console.log(`[Contrato Psicólogo] Iniciando geração com template: ${resolvedTemplateName}`);
 
         // Valida que o template é o correto ANTES de resolver o caminho
-        if (templateName !== 'contrato-parceria-psicologo.html') {
-            console.error(`[Contrato Psicólogo] ERRO: Template incorreto recebido: ${templateName}. Esperado: contrato-parceria-psicologo.html`);
-            throw new Error(`Template incorreto: ${templateName}. Para psicólogos, deve ser usado 'contrato-parceria-psicologo.html'`);
+        if (!isPsicologoTemplate(resolvedTemplateName)) {
+            console.error(`[Contrato Psicólogo] ERRO: Template incorreto recebido: ${resolvedTemplateName}.`);
+            throw new Error(`Template incorreto: ${resolvedTemplateName}. Para psicólogos, use um template válido.`);
         }
 
-        const templatePath = resolveTemplatePath(templateName);
+        const templatePath = resolveTemplatePath(resolvedTemplateName);
         console.log(`[Contrato Psicólogo] Template resolvido para: ${templatePath}`);
 
         // Verifica se o template é realmente o de parceria
-        if (!templatePath.includes('contrato-parceria-psicologo')) {
-            console.error(`[Contrato Psicólogo] ERRO: Template resolvido não é o de parceria! Caminho: ${templatePath}`);
-            throw new Error(`Template incorreto resolvido: ${templatePath}. Esperado template de parceria.`);
+        if (!isPsicologoTemplate(templatePath)) {
+            console.error(`[Contrato Psicólogo] ERRO: Template resolvido não é válido para psicólogo! Caminho: ${templatePath}`);
+            throw new Error(`Template incorreto resolvido: ${templatePath}. Esperado template de psicólogo.`);
         }
 
         // Verifica se o arquivo existe e contém o título correto
@@ -939,35 +1092,35 @@ export class ContratoService {
 
         console.log(`[Contrato Psicólogo] ✅ Template validado corretamente: ${templatePath}`);
 
-        // Prepara os dados do psicólogo usando a função compartilhada
-        const psicologoData = this.preparePsicologoData(psicologo);
-
-        const data: TemplateDataPsicologo = {
-            empresa: {
-                nome: "MINDFLUENCE PSICOLOGIA LTDA.",
-                cnpj: "54.222.003/0001-07",
-                endereco: "Al. Rio Negro, 503 – Sala 2020, Alphaville Industrial – Barueri/SP",
-                cep: "06454-000"
-            },
-            plataforma: { nome: "ESTAÇÃO TERAPIA", prazo_analise_horas: 72 },
-            psicologo: psicologoData,
-            data_assinatura: new Date().toLocaleDateString("pt-BR")
-        };
+        const data = this.buildContratoPsicologoTemplateData(psicologo, resolvedTemplateName);
+        const templateBasename = getTemplateBasename(resolvedTemplateName);
 
         // Log detalhado dos dados para debug
-        console.log(`[Contrato Psicólogo] Dados preparados para template:`, JSON.stringify({
-            pessoa_juridica: psicologoData.pessoa_juridica,
-            nome: psicologoData.nome,
-            crp: psicologoData.crp,
-            cpf: psicologoData.cpf,
-            rg: psicologoData.rg,
-            tem_razao_social: !!psicologoData.razao_social,
-            tem_cnpj: !!psicologoData.cnpj,
-            logradouro: psicologoData.logradouro,
-            cidade: psicologoData.cidade,
-            uf: psicologoData.uf,
-            data_assinatura: data.data_assinatura
-        }, null, 2));
+        if (templateBasename === 'contrato-psicologo-limpo.html') {
+            const flatData = data as TemplateDataPsicologoFlat;
+            console.log(`[Contrato Psicólogo] Dados preparados para template (flat):`, JSON.stringify({
+                nome: flatData.razao_social_psicologo,
+                crp: flatData.crp_psicologo,
+                documento: `${flatData.documento_psicologo} ${flatData.numero_documento_psicologo}`,
+                endereco: `${flatData.endereco_psicologo}, ${flatData.numero_psicologo} - ${flatData.cidade_psicologo}/${flatData.uf_psicologo}`,
+                data_assinatura: `${flatData.diaAssinatura}/${flatData.mesAssinatura}/${flatData.anoAssinatura}`
+            }, null, 2));
+        } else {
+            const nestedData = data as TemplateDataPsicologo;
+            console.log(`[Contrato Psicólogo] Dados preparados para template:`, JSON.stringify({
+                pessoa_juridica: nestedData.psicologo.pessoa_juridica,
+                nome: nestedData.psicologo.nome,
+                crp: nestedData.psicologo.crp,
+                cpf: nestedData.psicologo.cpf,
+                rg: nestedData.psicologo.rg,
+                tem_razao_social: !!nestedData.psicologo.razao_social,
+                tem_cnpj: !!nestedData.psicologo.cnpj,
+                logradouro: nestedData.psicologo.logradouro,
+                cidade: nestedData.psicologo.cidade,
+                uf: nestedData.psicologo.uf,
+                data_assinatura: nestedData.data_assinatura
+            }, null, 2));
+        }
 
         console.log(`[Contrato Psicólogo] Renderizando HTML com template: ${templatePath}`);
         const html = await this.renderHtml(templatePath, data);
@@ -985,7 +1138,7 @@ export class ContratoService {
             if (hasPacienteTitle(html)) {
                 console.error(`[Contrato Psicólogo] ❌ ERRO: Template de PACIENTE detectado no HTML gerado!`);
                 console.error(`[Contrato Psicólogo] Isso indica que o template ERRADO foi usado!`);
-                throw new Error(`Template incorreto: O HTML gerado contém o template de paciente, não o de parceria do psicólogo. Verifique se o arquivo 'contrato-parceria-psicologo.html' existe e está correto.`);
+                throw new Error(`Template incorreto: O HTML gerado contém o template de paciente, não o de parceria do psicólogo. Verifique se o template de psicólogo está correto.`);
             }
 
             throw new Error(`HTML gerado não contém o título esperado do contrato de parceria.`);
@@ -1010,8 +1163,11 @@ export class ContratoService {
         }
 
         // Verifica se dados do psicólogo aparecem no HTML
-        if (psicologoData.nome && !html.includes(psicologoData.nome)) {
-            console.warn(`[Contrato Psicólogo] ATENÇÃO: Nome do psicólogo (${psicologoData.nome}) não encontrado no HTML gerado!`);
+        const nomeParaCheck = templateBasename === 'contrato-psicologo-limpo.html'
+            ? (data as TemplateDataPsicologoFlat).razao_social_psicologo
+            : (data as TemplateDataPsicologo).psicologo.nome;
+        if (nomeParaCheck && !html.includes(nomeParaCheck)) {
+            console.warn(`[Contrato Psicólogo] ATENÇÃO: Nome do psicólogo (${nomeParaCheck}) não encontrado no HTML gerado!`);
         }
 
         const buffer = await this.htmlToPdfBuffer(html);
@@ -1211,10 +1367,10 @@ export class ContratoService {
     /**
      * Gera contrato para psicólogo, faz upload para o storage, salva no banco e envia e-mail.
      * @param psicologo Dados do psicólogo.
-     * @param templateName Nome do template (ex: 'contrato-parceria-psicologo.html').
+     * @param templateName Nome do template (ex: 'contrato-psicologo-limpo.html').
      * @returns URL do contrato gerado no storage.
      */
-    async gerarContrato(psicologo: ContratoPsicologoData, templateName: string): Promise<{ urlContrato: string }> {
+    async gerarContrato(psicologo: ContratoPsicologoData, templateName?: string): Promise<{ urlContrato: string }> {
         const { urlContrato: localPath, buffer } = await this.fillAndStoreContrato(psicologo, templateName);
 
         // Faz upload do contrato para o storage

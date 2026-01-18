@@ -54,21 +54,18 @@ export default function FormJuridicoAdmin({ psicologo, onSuccess }: Props) {
 
     const id = psicologo.id || psicologo.Id;
 
-    const updatedPsicologo = {
-      ...psicologo,
-      PessoalJuridica: {
-        ...psicologo.PessoalJuridica,
-        RazaoSocial: juridico.RazaoSocial,
-        NomeFantasia: juridico.NomeFantasia,
-        CNPJ: juridico.CNPJ,
-        InscricaoEstadual: juridico.InscricaoEstadual,
-        SimplesNacional: juridico.SimplesNacional,
-      },
-    } as Psicologo;
-
     updatePsicologoMutation.mutate({
       id,
-      update: updatedPsicologo,
+      update: {
+        PessoalJuridica: {
+          ...psicologo.PessoalJuridica,
+          RazaoSocial: juridico.RazaoSocial,
+          NomeFantasia: juridico.NomeFantasia,
+          CNPJ: juridico.CNPJ,
+          InscricaoEstadual: juridico.InscricaoEstadual,
+          SimplesNacional: juridico.SimplesNacional,
+        },
+      },
     }, {
       onSuccess: () => {
         toast.success("Dados da empresa atualizados com sucesso!");
