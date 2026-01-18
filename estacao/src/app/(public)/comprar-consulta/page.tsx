@@ -27,6 +27,7 @@ function ComprarConsultaRedirectPageInner() {
   
   // Busca o planoId da query string ou tenta buscar o plano da primeira consulta
   const planoIdFromQuery = searchParams?.get("planoId");
+  const productIdFromQuery = searchParams?.get("productId");
   const psicologoId = searchParams?.get("psicologoId"); // Para fluxo do marketplace
   
   // Busca o plano da primeira consulta se não tiver planoId na query
@@ -49,6 +50,12 @@ function ComprarConsultaRedirectPageInner() {
       .replace(/[\u0300-\u036f]/g, "")
       .toLowerCase();
 
+  const planoPorProductId = planosData?.find((plano) => {
+    if (!productIdFromQuery) return false;
+    const tipo = normalize(plano.Tipo);
+    return String(plano.ProductId || "") === String(productIdFromQuery) && tipo === "unica";
+  });
+
   // Encontra o plano da primeira consulta
   const primeiraConsultaPlano = planosData?.find((plano) => {
     const tipo = normalize(plano.Tipo);
@@ -56,7 +63,7 @@ function ComprarConsultaRedirectPageInner() {
   });
 
   // Determina o planoId final
-  const planoIdFinal = planoIdFromQuery || primeiraConsultaPlano?.Id;
+  const planoIdFinal = planoIdFromQuery || planoPorProductId?.Id || primeiraConsultaPlano?.Id;
 
   useEffect(() => {
     if (!planoIdFinal && !planosData) {

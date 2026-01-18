@@ -93,6 +93,10 @@ const CallToAction: React.FC = () => {
     return primeiraConsultaPlano?.Id ?? planoTyped?.Id ?? '';
   }, [primeiraConsultaPlano, planoTyped]);
 
+  const planoPrimeiraConsultaProductId = React.useMemo(() => {
+    return primeiraConsultaPlano?.ProductId ?? planoTyped?.ProductId ?? '';
+  }, [primeiraConsultaPlano, planoTyped]);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 30 }}
@@ -152,8 +156,11 @@ const CallToAction: React.FC = () => {
           "
           onClick={() => {
             // Todos os caminhos convergem para /comprar-consulta
-            const params = planoPrimeiraConsultaId ? `?planoId=${planoPrimeiraConsultaId}` : '';
-            router.push(`/comprar-consulta${params}`);
+            const params = new URLSearchParams();
+            if (planoPrimeiraConsultaProductId) params.set("productId", planoPrimeiraConsultaProductId);
+            if (planoPrimeiraConsultaId) params.set("planoId", planoPrimeiraConsultaId);
+            const query = params.toString();
+            router.push(`/comprar-consulta${query ? `?${query}` : ""}`);
           }}
         >
           Fazer minha sessão experimental agora!

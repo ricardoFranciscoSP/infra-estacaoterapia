@@ -1,8 +1,58 @@
+"use client";
+import React from "react";
 import { motion } from "framer-motion";
 import Image from "next/image";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
+import { planoService } from "@/services/planoService";
+import type { PlanoAssinatura } from "@/services/planoService";
+import { usePlanoById } from "@/hooks/planosHook";
+import type { Planos } from "@/types/planosVendaTypes";
 
 const CallToActionPaciente: React.FC = () => {
+  const router = useRouter();
+  const normalize = React.useCallback((value?: string) =>
+    (value || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase(),
+    []
+  );
+
+  const { data: planosData } = useQuery({
+    queryKey: ["planos-cta-paciente"],
+    queryFn: async () => {
+      const response = await planoService().getPlanos();
+      const planos = Array.isArray(response.data)
+        ? response.data
+        : ((response.data as { plano?: unknown[] })?.plano || []);
+      return planos as PlanoAssinatura[];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const { planos: planoAvulso } = usePlanoById("Unica");
+  const planoTyped = React.useMemo(() => planoAvulso as Planos | undefined, [planoAvulso]);
+
+  const primeiraConsultaPlano = React.useMemo(() => {
+    if (!planosData) return undefined;
+    let plano = planosData.find((plano) => normalize(plano.Tipo) === "primeiraconsulta");
+    if (!plano) {
+      plano = planosData.find((plano) => {
+        const tipo = normalize(plano.Tipo);
+        return tipo === "unica" || tipo === "unico";
+      });
+    }
+    return plano;
+  }, [planosData, normalize]);
+
+  const planoPrimeiraConsultaId = React.useMemo(() => {
+    return primeiraConsultaPlano?.Id ?? planoTyped?.Id ?? "";
+  }, [primeiraConsultaPlano, planoTyped]);
+
+  const planoPrimeiraConsultaProductId = React.useMemo(() => {
+    return primeiraConsultaPlano?.ProductId ?? planoTyped?.ProductId ?? "";
+  }, [primeiraConsultaPlano, planoTyped]);
   return (
     <motion.div
       initial={{ opacity: 0, y: 30 }}
@@ -36,12 +86,19 @@ const CallToActionPaciente: React.FC = () => {
               <p className="fira-sans font-normal text-[16px] md:text-[17px] lg:text-[18px] leading-[24px] md:leading-[26px] lg:leading-[28px] mb-4 md:mb-5 lg:mb-6 text-[#26220D]">
                 Aqui você se cuida com profissionais preparados e qualificados, disponíveis para te atender no melhor dia e horário que se encaixa em sua rotina.
               </p>
-              <Link 
-                href="/comprar-consulta" 
+              <button
+                type="button"
+                onClick={() => {
+                  const params = new URLSearchParams();
+                  if (planoPrimeiraConsultaProductId) params.set("productId", planoPrimeiraConsultaProductId);
+                  if (planoPrimeiraConsultaId) params.set("planoId", planoPrimeiraConsultaId);
+                  const query = params.toString();
+                  router.push(`/comprar-consulta${query ? `?${query}` : ""}`);
+                }}
                 className="inline-flex items-center justify-center py-2 px-6 rounded-[8px] bg-[#8494E9] w-full md:w-auto md:min-w-[280px] h-[48px] fira-sans text-bold text-[18px] text-secondary hover:bg-[#6B7DD8] transition-colors duration-200 whitespace-nowrap"
               >
                 Começar minha terapia agora!
-              </Link>
+              </button>
             </div>
           </div>
         </div>
