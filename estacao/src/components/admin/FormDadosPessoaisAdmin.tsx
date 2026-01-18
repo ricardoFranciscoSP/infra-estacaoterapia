@@ -424,7 +424,7 @@ export default function FormDadosPessoaisAdmin({ psicologo, enums, onSuccess }: 
             }
             placeholder="Selecione..."
             isClearable
-            menuPlacement="auto"
+            menuPlacement="top"
             isDisabled={updatePsicologoMutation.isPending}
           />
         </label>

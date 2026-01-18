@@ -101,6 +101,13 @@ function PsicologosPage() {
     
     const map: { [key: string]: number } = {
       'Nenhuma': 0,
+      'Ano1': 1,
+      'Entre1_5Anos': 3,
+      'Entre6_10Anos': 8,
+      'Entre11_15Anos': 13,
+      'Entre15_20Anos': 18,
+      'Mais20Anos': 20,
+      // Compatibilidade com formatos anteriores
       'Menos1Ano': 0.5,
       'Entre1_3Anos': 2,
       'Entre3_5Anos': 4,

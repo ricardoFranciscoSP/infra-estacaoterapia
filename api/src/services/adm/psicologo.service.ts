@@ -363,6 +363,116 @@ export class PsicologoService {
             }
         }
 
+        // Atualiza dados profissionais (ProfessionalProfile) se fornecidos
+        if (data.ProfessionalProfiles && Array.isArray(data.ProfessionalProfiles) && data.ProfessionalProfiles[0]) {
+            const profileData = data.ProfessionalProfiles[0] as Record<string, unknown>;
+            const profileId = typeof profileData.Id === 'string' ? profileData.Id : undefined;
+            const existingProfile = profileId
+                ? await prisma.professionalProfile.findUnique({ where: { Id: profileId } })
+                : await prisma.professionalProfile.findFirst({ where: { UserId: id } });
+
+            if (existingProfile) {
+                const profileUpdate: Record<string, unknown> = {};
+                if (profileData.ExperienciaClinica !== undefined) profileUpdate.ExperienciaClinica = profileData.ExperienciaClinica;
+                if (profileData.Idiomas !== undefined) profileUpdate.Idiomas = profileData.Idiomas;
+                if (profileData.Abordagens !== undefined) profileUpdate.Abordagens = profileData.Abordagens;
+                if (profileData.Queixas !== undefined) profileUpdate.Queixas = profileData.Queixas;
+                if (profileData.SobreMim !== undefined) profileUpdate.SobreMim = profileData.SobreMim;
+                if (profileData.TipoAtendimento !== undefined) profileUpdate.TipoAtendimento = profileData.TipoAtendimento;
+                if (profileData.TipoPessoaJuridico !== undefined) profileUpdate.TipoPessoaJuridico = profileData.TipoPessoaJuridico;
+                if (profileData.AreasAtuacao !== undefined) profileUpdate.AreasAtuacao = profileData.AreasAtuacao;
+
+                if (Object.keys(profileUpdate).length > 0) {
+                    await prisma.professionalProfile.update({
+                        where: { Id: existingProfile.Id },
+                        data: profileUpdate,
+                    });
+                }
+
+                const dadosBancarios = profileData.DadosBancarios as Record<string, unknown> | undefined;
+                const chavePix = typeof dadosBancarios?.ChavePix === 'string' ? dadosBancarios.ChavePix.trim() : '';
+                if (chavePix) {
+                    const existingDb = await prisma.dadosBancarios.findFirst({
+                        where: { PsicologoAutonomoId: existingProfile.Id }
+                    });
+                    if (existingDb) {
+                        await prisma.dadosBancarios.update({
+                            where: { Id: existingDb.Id },
+                            data: { ChavePix: chavePix }
+                        });
+                    } else {
+                        await prisma.dadosBancarios.create({
+                            data: {
+                                ChavePix: chavePix,
+                                PsicologoAutonomoId: existingProfile.Id,
+                            }
+                        });
+                    }
+                }
+            }
+        }
+
+        // Atualiza dados de Pessoa Jurídica se fornecidos
+        if (data.PessoalJuridica && typeof data.PessoalJuridica === 'object') {
+            const pjData = data.PessoalJuridica as Record<string, unknown>;
+            const existingPj = await prisma.pessoalJuridica.findUnique({
+                where: { PsicologoId: id },
+                include: { DadosBancarios: true }
+            });
+
+            const pjPayload: Record<string, unknown> = {};
+            if (pjData.RazaoSocial !== undefined) pjPayload.RazaoSocial = pjData.RazaoSocial;
+            if (pjData.NomeFantasia !== undefined) pjPayload.NomeFantasia = pjData.NomeFantasia;
+            if (pjData.CNPJ !== undefined) pjPayload.CNPJ = pjData.CNPJ;
+            if (pjData.InscricaoEstadual !== undefined) pjPayload.InscricaoEstadual = pjData.InscricaoEstadual;
+            if (pjData.SimplesNacional !== undefined) pjPayload.SimplesNacional = pjData.SimplesNacional;
+            if (pjData.DescricaoExtenso !== undefined) pjPayload.DescricaoExtenso = pjData.DescricaoExtenso;
+
+            let pjId = existingPj?.Id;
+            if (existingPj) {
+                if (Object.keys(pjPayload).length > 0) {
+                    await prisma.pessoalJuridica.update({
+                        where: { Id: existingPj.Id },
+                        data: pjPayload,
+                    });
+                }
+            } else if (Object.keys(pjPayload).length > 0) {
+                const created = await prisma.pessoalJuridica.create({
+                    data: {
+                        PsicologoId: id,
+                        ...(pjPayload as {
+                            RazaoSocial?: string;
+                            NomeFantasia?: string | null;
+                            CNPJ?: string;
+                            InscricaoEstadual?: string | null;
+                            SimplesNacional?: boolean | null;
+                            DescricaoExtenso?: string | null;
+                        })
+                    }
+                });
+                pjId = created.Id;
+            }
+
+            const pjDadosBancarios = pjData.DadosBancarios as Record<string, unknown> | undefined;
+            const pjChavePix = typeof pjDadosBancarios?.ChavePix === 'string' ? pjDadosBancarios.ChavePix.trim() : '';
+            if (pjId && pjChavePix) {
+                const existingDb = existingPj?.DadosBancarios;
+                if (existingDb) {
+                    await prisma.dadosBancarios.update({
+                        where: { Id: existingDb.Id },
+                        data: { ChavePix: pjChavePix }
+                    });
+                } else {
+                    await prisma.dadosBancarios.create({
+                        data: {
+                            ChavePix: pjChavePix,
+                            PessoalJuridicaId: pjId,
+                        }
+                    });
+                }
+            }
+        }
+
         const resultado = await prisma.user.update({
             where: { Id: id, Role: "Psychologist" },
             data: updateData,

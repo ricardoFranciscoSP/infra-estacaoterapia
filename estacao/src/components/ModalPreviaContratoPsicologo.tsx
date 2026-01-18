@@ -52,7 +52,7 @@ const ModalPreviaContratoPsicologo: React.FC<ModalPreviaContratoPsicologoProps> 
     <>
       {/* Overlay com backdrop */}
       <div
-        className="fixed inset-0 z-50 bg-transparent transition-opacity"
+        className="fixed inset-0 z-50 bg-black/40 transition-opacity"
         onClick={onClose}
         aria-hidden="true"
       />
@@ -70,12 +70,12 @@ const ModalPreviaContratoPsicologo: React.FC<ModalPreviaContratoPsicologoProps> 
       >
         <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[95vh] flex flex-col relative animate-in fade-in zoom-in duration-200">
           {/* Header */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-t-2xl">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-[#5f5bd6] bg-[#6f6ce7] rounded-t-2xl">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center">
+              <div className="w-10 h-10 bg-white/15 rounded-lg flex items-center justify-center">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
-                  className="w-6 h-6 text-indigo-600"
+                  className="w-6 h-6 text-white"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -89,17 +89,17 @@ const ModalPreviaContratoPsicologo: React.FC<ModalPreviaContratoPsicologoProps> 
                 </svg>
               </div>
               <div>
-                <h2 className="text-xl font-bold text-gray-900">
+                <h2 className="text-xl font-bold text-white">
                   Prévia do Contrato de Parceria
                 </h2>
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-white/90">
                   CONTRATO DE PARCERIA E INTERMEDIAÇÃO DE PRESTAÇÃO DE SERVIÇOS DE PSICOLOGIA
                 </p>
               </div>
             </div>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 transition-colors p-2 hover:bg-gray-100 rounded-lg"
+              className="text-white/80 hover:text-white transition-colors p-2 hover:bg-white/10 rounded-lg"
               aria-label="Fechar modal"
             >
               <svg
@@ -122,7 +122,7 @@ const ModalPreviaContratoPsicologo: React.FC<ModalPreviaContratoPsicologoProps> 
           {/* Content */}
           <div
             ref={contentRef}
-            className="flex-1 overflow-y-auto px-6 py-4 bg-gray-50"
+            className="flex-1 overflow-y-auto px-6 py-6 bg-gray-50"
             style={{
               scrollbarWidth: "thin",
               scrollbarColor: "#cbd5e1 #f1f5f9",
@@ -136,7 +136,7 @@ const ModalPreviaContratoPsicologo: React.FC<ModalPreviaContratoPsicologoProps> 
               </div>
             ) : contratoHtml ? (
               <div
-                className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 md:p-8"
+                className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 md:p-10"
                 style={{
                   minHeight: "100%",
                 }}
@@ -175,7 +175,7 @@ const ModalPreviaContratoPsicologo: React.FC<ModalPreviaContratoPsicologoProps> 
           </div>
 
           {/* Footer com botão de ação */}
-          <div className="px-6 py-4 border-t border-gray-200 bg-white rounded-b-2xl flex items-center justify-between gap-4">
+          <div className="px-6 py-4 border-t border-gray-200 bg-white rounded-b-2xl flex flex-wrap items-center justify-end gap-3">
             <button
               onClick={onClose}
               className="px-6 py-2.5 text-gray-700 bg-gray-100 hover:bg-gray-200 font-medium rounded-lg transition-colors"
@@ -187,7 +187,7 @@ const ModalPreviaContratoPsicologo: React.FC<ModalPreviaContratoPsicologoProps> 
               <button
                 onClick={onEmitirContrato}
                 disabled={isLoading || !contratoHtml || emitirLoading}
-                className="px-8 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-indigo-500/30"
+                className="px-8 py-2.5 bg-[#6f6ce7] hover:bg-[#5f5bd6] text-white font-semibold rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-indigo-500/30"
               >
                 {emitirLoading ? (
                   <>
@@ -242,6 +242,25 @@ const ModalPreviaContratoPsicologo: React.FC<ModalPreviaContratoPsicologoProps> 
         .contrato-content strong {
           color: #000000 !important;
           font-weight: bold !important;
+        }
+        /* Formatação ABNT2 para contratos */
+        .contrato-content {
+          font-family: "Times New Roman", Times, serif !important;
+          font-size: 12pt !important;
+          line-height: 1.5 !important;
+        }
+        .contrato-content p {
+          text-align: justify !important;
+          text-indent: 1.25cm !important;
+          margin: 0 0 1em 0 !important;
+        }
+        .contrato-content h1,
+        .contrato-content h2,
+        .contrato-content h3 {
+          text-align: center !important;
+          font-weight: bold !important;
+          margin: 1.25em 0 0.75em 0 !important;
+          text-transform: uppercase !important;
         }
         @keyframes fade-in {
           from {

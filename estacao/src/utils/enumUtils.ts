@@ -504,12 +504,18 @@ export function normalizeExperienciaClinica(experiencia: string | null | undefin
 
   const map: { [key: string]: string } = {
     'Nenhuma': 'Nenhuma',
+    'Ano1': '1 ano',
+    'Entre1_5Anos': '1 a 5 anos',
+    'Entre6_10Anos': '6 a 10 anos',
+    'Entre11_15Anos': '11 a 15 anos',
+    'Entre15_20Anos': '15 a 20 anos',
+    'Mais20Anos': 'Mais de 20 anos',
+    // Compatibilidade com formatos anteriores
     'Menos1Ano': 'Menos de 1 ano',
     'Entre1_3Anos': '1 a 3 anos',
     'Entre3_5Anos': '3 a 5 anos',
     'Entre5_10Anos': '5 a 10 anos',
     'Mais10Anos': 'Mais de 10 anos',
-    // Compatibilidade com formatos antigos
     'ENTRE_1_2_ANOS': '1 a 2 anos',
     'ENTRE_3_5_ANOS': '3 a 5 anos',
     'ENTRE_5_10_ANOS': '5 a 10 anos',

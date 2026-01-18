@@ -114,8 +114,6 @@ model User {
   UserPermissions             UserPermission[]         @relation("UserPermissions")
   WorkSchedules               WorkSchedule[]           @relation("UserWorkSchedule")
   PlanoAssinaturas            PlanoAssinatura[]        @relation("UserPlanoAssinatura")
-  PolicyDocumentsCreated      PolicyDocument[]         @relation("PolicyDocumentCreatedBy")
-  PolicyDocumentsUpdated      PolicyDocument[]         @relation("PolicyDocumentUpdatedBy")
 
   @@map("User")
 }
@@ -384,8 +382,6 @@ model Financeiro {
   AssinaturaPlano   AssinaturaPlano[]        @relation("AssinaturaPlanoFinanceiro")
 
   @@index([CicloPlanoId])
-  @@index([FaturaId, Status])
-  @@index([Status])
 }
 
 /// Faturas para cobrança e controle de pagamento
@@ -402,9 +398,6 @@ model Fatura {
   CreatedAt      DateTime     @default(now())
   UpdatedAt      DateTime     @updatedAt
   Financeiros    Financeiro?  @relation("FaturaFinanceiro")
-
-  @@index([CodigoFatura, Status])
-  @@index([Status])
 }
 
 /// Seed para consultas avulsas
@@ -609,9 +602,6 @@ model ReservaSessao {
   UidPsychologist        Int?
   Consulta               Consulta              @relation("ConsultaToReservaSessao", fields: [ConsultaId], references: [Id], onDelete: Cascade)
   FinanceiroPsicologo    FinanceiroPsicologo[] @relation("ReservaSessaoFinanceiroPsicologo")
-
-  @@index([ScheduledAt, Status])
-  @@index([Status])
 }
 
 model ControleConsultaMensal {
@@ -659,9 +649,6 @@ model Job {
   LastError   String?
   CreatedAt   DateTime @default(now())
   UpdatedAt   DateTime @updatedAt
-
-  @@index([Status, RunAt])
-  @@index([Type, Status])
 }
 
 model ConsultaParticipacao {
@@ -1072,7 +1059,6 @@ enum Module {
   Faq
   Configuracoes
   Permission
-  PolicyDocuments
 }
 
 enum TipoPessoaJuridica {
@@ -1558,26 +1544,4 @@ enum WebhookStatus {
   PENDING
   SUCCESS
   FAILED
-}
-
-/// Documentos de Políticas e Termos
-model PolicyDocument {
-  Id          String   @id @default(uuid())
-  Titulo      String
-  Descricao   String?
-  Url         String
-  Tipo        String   @default("pdf") // pdf, texto
-  PublicoPara String   @default("todos") // paciente, psicologo, todos
-  Ordem       Int      @default(0)
-  Ativo       Boolean  @default(true)
-  CreatedAt   DateTime @default(now())
-  UpdatedAt   DateTime @updatedAt
-  CreatedById String?
-  UpdatedById String?
-  CreatedBy   User?    @relation("PolicyDocumentCreatedBy", fields: [CreatedById], references: [Id])
-  UpdatedBy   User?    @relation("PolicyDocumentUpdatedBy", fields: [UpdatedById], references: [Id])
-
-  @@index([PublicoPara])
-  @@index([Ativo])
-  @@map("PolicyDocument")
 }
