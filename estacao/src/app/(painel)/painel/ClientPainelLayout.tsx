@@ -1,7 +1,6 @@
 // components/ClientPainelLayout.tsx
 "use client";
 import React, { Suspense } from 'react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useUserBasic } from '@/hooks/user/userHook';
 import dynamic from 'next/dynamic';
 import PainelHeaderSkeleton from '@/components/PainelHeaderSkeleton';
@@ -22,8 +21,6 @@ const PainelHeader = dynamic(() => import('@/components/PainelHeader'), {
   loading: () => <PainelHeaderSkeleton isPainelPsicologo={false} />,
   ssr: true, // Mantém SSR para SEO e primeira renderização
 });
-
-const queryClient = new QueryClient();
 
 const ClientPainelLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Protege o painel para apenas pacientes
@@ -68,32 +65,30 @@ const ClientPainelLayout: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [user, router]);
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <LoggedErrorBoundary>
-        <SocketProvider userId={user?.Id}>
-          <div className="flex flex-col min-h-screen">
-            <Suspense fallback={<PainelHeaderSkeleton isPainelPsicologo={false} />}>
-              <PainelHeader user={user} />
+    <LoggedErrorBoundary>
+      <SocketProvider userId={user?.Id}>
+        <div className="flex flex-col min-h-screen">
+          <Suspense fallback={<PainelHeaderSkeleton isPainelPsicologo={false} />}>
+            <PainelHeader user={user} />
+          </Suspense>
+          <div className="flex-1 pb-20 md:pb-0">
+            <Suspense fallback={<PainelLoadingSkeleton />}>
+              {children}
             </Suspense>
-            <div className="flex-1 pb-20 md:pb-0">
-              <Suspense fallback={<PainelLoadingSkeleton />}>
-                {children}
-              </Suspense>
-            </div>
-            <PainelFooter />
-            <CustomToastProvider />
-            {/* Botão flutuante do WhatsApp - renderizado apenas após hidratação */}
-            {mounted && (
-              <WhatsAppFloatingButton 
-                phoneNumber="5511960892131"
-                message="Olá, preciso de suporte na Estação Terapia."
-                position="bottom-right"
-              />
-            )}
           </div>
-        </SocketProvider>
-      </LoggedErrorBoundary>
-    </QueryClientProvider>
+          <PainelFooter />
+          <CustomToastProvider />
+          {/* Botão flutuante do WhatsApp - renderizado apenas após hidratação */}
+          {mounted && (
+            <WhatsAppFloatingButton 
+              phoneNumber="5511960892131"
+              message="Olá, preciso de suporte na Estação Terapia."
+              position="bottom-right"
+            />
+          )}
+        </div>
+      </SocketProvider>
+    </LoggedErrorBoundary>
   );
 };
 

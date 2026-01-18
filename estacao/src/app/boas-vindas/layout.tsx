@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import PublicProviders from '@/provider/PublicProviders';
 
 // Desabilita cache em áreas logadas (onboarding é parte do fluxo logado)
 export const dynamic = 'force-dynamic';
@@ -15,6 +16,6 @@ export default function BoasVindasLayout({
   children: React.ReactNode
 }) {
   return (
-      <div>{children}</div>
+      <PublicProviders>{children}</PublicProviders>
   )
 }

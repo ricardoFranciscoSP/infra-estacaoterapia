@@ -1,6 +1,6 @@
 import React from 'react';
 import type { Metadata } from 'next';
-import { CustomToastProvider } from '@/components/CustomToastProvider';
+import PublicProviders from '@/provider/PublicProviders';
 
 // Desabilita cache em áreas logadas (onboarding é parte do fluxo logado)
 export const dynamic = 'force-dynamic';
@@ -13,10 +13,11 @@ export const metadata: Metadata = {
 
 const ObjetivosLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return (
-        <div className="flex flex-col min-h-screen">
-          <main className="flex-1">{children}</main>
-          <CustomToastProvider />
-        </div>
+        <PublicProviders>
+          <div className="flex flex-col min-h-screen">
+            <main className="flex-1">{children}</main>
+          </div>
+        </PublicProviders>
   );
 };
 

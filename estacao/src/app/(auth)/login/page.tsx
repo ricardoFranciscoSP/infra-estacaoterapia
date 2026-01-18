@@ -156,6 +156,25 @@ const LoginPage = () => {
         });
       }
 
+      // Paciente: verifica se onboarding já foi concluído
+      if (user?.Role === 'Patient') {
+        const completedOnboarding = Array.isArray(user.Onboardings)
+          ? user.Onboardings.some((onboarding) => {
+              if (typeof onboarding.Completed === 'string') {
+                return onboarding.Completed === 'true';
+              }
+              return Boolean(onboarding.Completed);
+            })
+          : false;
+
+        const redirectRoute = completedOnboarding ? '/painel' : '/boas-vindas';
+        console.log('[LOGIN] Redirecionando paciente para:', redirectRoute, {
+          completedOnboarding,
+        });
+        router.push(redirectRoute);
+        return;
+      }
+
       // Redireciona para a rota apropriada baseada no role e status do usuário
       const redirectRoute = getRedirectRouteByRole(user) || '/painel';
       console.log('[LOGIN] Redirecionando para:', redirectRoute, {

@@ -29,6 +29,14 @@ export function CustomToastProvider() {
             >
               {icon}
               <span className="break-words whitespace-pre-line">{message}</span>
+              <button
+                type="button"
+                onClick={() => toast.dismiss(t.id)}
+                className="ml-2 inline-flex h-6 w-6 items-center justify-center rounded-full opacity-60 transition-opacity hover:opacity-100"
+                aria-label="Fechar notificação"
+              >
+                <span aria-hidden="true">×</span>
+              </button>
             </div>
           )}
         </ToastBar>

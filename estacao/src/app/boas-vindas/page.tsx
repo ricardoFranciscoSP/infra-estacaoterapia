@@ -7,7 +7,6 @@ import { useEffect } from "react";
 import { useAuthStore } from "@/store/authStore";
 import { useUserBasic } from "@/hooks/user/userHook";
 import Script from "next/script";
-import PublicProviders from "@/provider/PublicProviders";
 
 export default function BoasVindasPage() {
   const router = useRouter();
@@ -72,7 +71,7 @@ export default function BoasVindasPage() {
   };
 
   return (
-    <PublicProviders>
+    <>
       {/* Script de tracking - ProTrack */}
       <Script
         id="protrack-boas-vindas"
@@ -135,6 +134,6 @@ export default function BoasVindasPage() {
         </motion.div>
       </div>
     </motion.div>
-    </PublicProviders>
+    </>
   );
 }

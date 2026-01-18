@@ -1,5 +1,6 @@
 import React from 'react';
 import type { Metadata } from 'next';
+import ReactQueryProvider from '@/app/ReactQueryProvider';
 
 // Desabilita cache em áreas logadas
 export const dynamic = 'force-dynamic';
@@ -15,7 +16,9 @@ import ClientPainelLayout from './ClientPainelLayout';
 const PainelLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   
   return (
-    <ClientPainelLayout>{children}</ClientPainelLayout>
+    <ReactQueryProvider>
+      <ClientPainelLayout>{children}</ClientPainelLayout>
+    </ReactQueryProvider>
   );
 };
 
