@@ -48,7 +48,7 @@ const Header: React.FC = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
-  const [currentHash, setCurrentHash] = useState<string>(typeof window !== "undefined" ? window.location.hash : "");
+  const [currentHash, setCurrentHash] = useState<string>("");
   const [mounted, setMounted] = useState(false);
   
   // ⚡ OTIMIZAÇÃO: Carrega dados do usuário de forma não-bloqueante
@@ -242,6 +242,7 @@ const Header: React.FC = () => {
 
   useEffect(() => {
     const updateHash = () => setCurrentHash(window.location.hash);
+    updateHash();
     window.addEventListener("hashchange", updateHash);
     return () => window.removeEventListener("hashchange", updateHash);
   }, []);

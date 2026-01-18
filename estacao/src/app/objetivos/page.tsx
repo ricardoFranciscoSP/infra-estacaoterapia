@@ -9,6 +9,7 @@ import { createOnboarding } from '@/store/api/userStore';
 import Image from "next/image";
 import { useUserBasic } from '@/hooks/user/userHook';
 import { recuperarDadosPrimeiraCompra } from '@/utils/primeiraCompraStorage';
+import PublicProviders from "@/provider/PublicProviders";
 
 export default function ObjetivosPage() {
   const [selectedObjectives, setSelectedObjectives] = useState<string[]>([]);
@@ -70,7 +71,7 @@ export default function ObjetivosPage() {
   };
 
   return (
-    <>
+    <PublicProviders>
       <motion.div
         className="flex flex-col min-h-screen bg-[#1A2A44] text-white md:justify-center md:min-h-screen"
         initial={{ opacity: 0, y: 40 }}
@@ -577,6 +578,6 @@ export default function ObjetivosPage() {
           </motion.div>
         </div>
       </motion.div>
-    </>
+    </PublicProviders>
   );
 }

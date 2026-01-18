@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from 'next';
 import { CustomToastProvider } from '@/components/CustomToastProvider';
 import PainelLayout from './PainelLayout';
 import ThemeClientProvider from './ThemeClientProvider';
+import AdminProviders from '@/provider/AdminProviders';
 
 // Desabilita cache em áreas logadas
 export const dynamic = 'force-dynamic';
@@ -21,12 +22,14 @@ export const viewport: Viewport = {
 
 const RootDashboardLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return (
-    <ThemeClientProvider>
-      <PainelLayout>
-        {children}
-      </PainelLayout>
-      <CustomToastProvider />
-    </ThemeClientProvider>
+    <AdminProviders>
+      <ThemeClientProvider>
+        <PainelLayout>
+          {children}
+        </PainelLayout>
+        <CustomToastProvider />
+      </ThemeClientProvider>
+    </AdminProviders>
   );
 };
 
