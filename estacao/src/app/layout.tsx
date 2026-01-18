@@ -2,6 +2,7 @@ import React from 'react';
 import { Fira_Sans } from 'next/font/google';
 import type { Metadata, Viewport } from 'next';
 import { getSEOMetaTags, isPreEnvironment } from '@/lib/maintenance';
+import { asTrustedHTML } from '@/utils/trustedTypes';
 
 const firaSans = Fira_Sans({ 
   subsets: ['latin'], 
@@ -33,6 +34,19 @@ const getMetadataBase = (): string => {
     return websiteUrl;
   } catch {
     return 'https://estacaoterapia.com.br';
+  }
+};
+
+// Helper para extrair origem da API com fallback seguro
+const getApiOrigin = (): string | null => {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (!apiUrl || apiUrl.includes("__PLACEHOLDER") || apiUrl.startsWith("__") || apiUrl.endsWith("__")) {
+    return null;
+  }
+  try {
+    return new URL(apiUrl).origin;
+  } catch {
+    return null;
   }
 };
 
@@ -78,6 +92,8 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   // Adiciona indicador visual no ambiente PRE
   const isPreEnv = isPreEnvironment();
+  const apiOrigin = getApiOrigin();
+  const metadataBase = getMetadataBase();
   
   return (
     <html lang="pt-BR" className={firaSans.className}>
@@ -96,15 +112,19 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="apple-touch-icon" sizes="512x512" href="/app-icon-512x512.png" />
         {/* Resource hints otimizados - Preconnect para origens críticas (economia estimada: ~1150ms) */}
         {/* ⚡ CRÍTICO: Preconnect para o próprio domínio (reduz latência do caminho crítico de CSS) */}
-        <link rel="preconnect" href={getMetadataBase()} crossOrigin="anonymous" />
-        <link rel="dns-prefetch" href={getMetadataBase()} />
+        <link rel="preconnect" href={metadataBase} crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href={metadataBase} />
         {/* ⚡ CRÍTICO: Preconnect para GoAdopt (economia estimada: 530ms) */}
         <link rel="preconnect" href="https://tag.goadopt.io" />
         {/* ⚡ CRÍTICO: Preconnect para Supabase (economia estimada: 320ms) */}
         <link rel="preconnect" href="https://mktmsurbxszuisgxjnkq.supabase.co" crossOrigin="anonymous" />
         {/* ⚡ CRÍTICO: Preconnect para API (economia estimada: 300ms) */}
-        <link rel="preconnect" href="https://api-prd.estacaoterapia.com.br" />
-        <link rel="dns-prefetch" href="https://api-prd.estacaoterapia.com.br" />
+        {apiOrigin && (
+          <>
+            <link rel="preconnect" href={apiOrigin} />
+            <link rel="dns-prefetch" href={apiOrigin} />
+          </>
+        )}
         {/* ⚡ CRÍTICO: Preconnect para Reclame Aqui (economia estimada: 310ms) */}
         <link rel="preconnect" href="https://api.reclameaqui.com.br" />
         <link rel="dns-prefetch" href="https://api.reclameaqui.com.br" />
@@ -131,7 +151,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             type="application/ld+json"
             async
             dangerouslySetInnerHTML={{
-              __html: JSON.stringify([
+              __html: asTrustedHTML(JSON.stringify([
                 {
                   "@context": "https://schema.org",
                   "@type": "LocalBusiness",
@@ -164,7 +184,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                     url: "https://estacaoterapia.com.br",
                   },
                 }
-              ]),
+              ])),
             }}
           />
         )}

@@ -6,6 +6,7 @@ import { Check } from 'lucide-react';
 import { Plano } from '@/store/planoStore';
 import { usePrimeiraCompra } from '@/hooks/primeiraConsultaHook';
 import { useUserPlano } from '@/hooks/useHook';
+import { asTrustedHTML } from '@/utils/trustedTypes';
 
 interface PlanosSectionProps {
   planos: Plano[];
@@ -234,7 +235,7 @@ export default function PlanosPacienteSection({ planos = [], loading }: PlanosSe
     <ul className="fira-sans text-[16px] md:text-base text-[#49525A] flex flex-col gap-3 mb-6 pl-2">
       {descricao?.map((desc: string, i: number) => (
         <li key={i} className="flex items-start gap-2">
-          <span dangerouslySetInnerHTML={{ __html: desc }} />
+          <span dangerouslySetInnerHTML={{ __html: asTrustedHTML(desc) }} />
         </li>
       ))}
       {extra}
@@ -413,7 +414,7 @@ export default function PlanosPacienteSection({ planos = [], loading }: PlanosSe
                                       <Check className="w-5 h-5 md:w-6 md:h-6" strokeWidth="2.5" />
                                     </div>
                                   )}
-                                  <span className={`leading-relaxed flex-1 ${isTudoSobre ? 'ml-0' : ''}`} dangerouslySetInnerHTML={{ __html: desc }} />
+                                  <span className={`leading-relaxed flex-1 ${isTudoSobre ? 'ml-0' : ''}`} dangerouslySetInnerHTML={{ __html: asTrustedHTML(desc) }} />
                                 </motion.li>
                               );
                             })}

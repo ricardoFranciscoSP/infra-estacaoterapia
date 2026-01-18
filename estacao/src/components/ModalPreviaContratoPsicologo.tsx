@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef } from "react";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
+import { asTrustedHTML } from "@/utils/trustedTypes";
 
 interface ModalPreviaContratoPsicologoProps {
   open: boolean;
@@ -143,7 +144,7 @@ const ModalPreviaContratoPsicologo: React.FC<ModalPreviaContratoPsicologoProps> 
               >
                 <div
                   className="contrato-content"
-                  dangerouslySetInnerHTML={{ __html: contratoHtml }}
+                  dangerouslySetInnerHTML={{ __html: asTrustedHTML(contratoHtml) }}
                 />
               </div>
             ) : (

@@ -7,7 +7,7 @@ import { HorarioAgendamento } from '@/types/agendamentoTypes';
 import { agendamentoService } from '@/services/agendamentoService';
 import { useQueryClient } from '@tanstack/react-query';
 import VideoPIP from './VideoPIP';
-import { IRemoteVideoTrack } from "agora-rtc-sdk-ng";
+import type { IRemoteVideoTrack } from "agora-rtc-sdk-ng";
 import BreadcrumbsVoltar from './BreadcrumbsVoltar';
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 

@@ -5,6 +5,7 @@ import { Check } from 'lucide-react';
 import { Plano } from '@/store/planoStore';
 import { usePlanoById } from '@/hooks/planosHook';
 import type { Planos } from '@/types/planosVendaTypes';
+import { asTrustedHTML } from '@/utils/trustedTypes';
 
 interface PlanosSectionProps {
   planos: Plano[];
@@ -142,7 +143,7 @@ export default function PlanosSection({ planos = [], loading }: PlanosSectionPro
                               <Check className="w-5 h-5 md:w-6 md:h-6" strokeWidth="2.5" />
                             </div>
                           )}
-                          <span className={`leading-relaxed flex-1 ${isTudoSobre ? 'ml-0' : ''}`} dangerouslySetInnerHTML={{ __html: desc }} />
+                          <span className={`leading-relaxed flex-1 ${isTudoSobre ? 'ml-0' : ''}`} dangerouslySetInnerHTML={{ __html: asTrustedHTML(desc) }} />
                         </motion.li>
                       );
                     })}

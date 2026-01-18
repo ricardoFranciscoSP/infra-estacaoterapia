@@ -3,6 +3,7 @@
 import React, { useRef, useState } from "react";
 import SignatureCanvas from "react-signature-canvas";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
+import { asTrustedHTML } from "@/utils/trustedTypes";
 
 interface ModalContratoProps {
     show: boolean;
@@ -51,7 +52,7 @@ const ModalContrato: React.FC<ModalContratoProps> = ({
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-transparent p-4">
             <style dangerouslySetInnerHTML={{
-                __html: `
+                __html: asTrustedHTML(`
                     .contrato-content,
                     .contrato-content *,
                     .contrato-content p,
@@ -84,7 +85,7 @@ const ModalContrato: React.FC<ModalContratoProps> = ({
                     .btn-confirmar-enviar span {
                         color: #ffffff !important;
                     }
-                `
+                `)
             }} />
             <div className="bg-white rounded-lg shadow-lg max-w-3xl w-full max-h-[95vh] p-0 relative flex flex-col overflow-hidden">
                 <button
@@ -115,7 +116,7 @@ const ModalContrato: React.FC<ModalContratoProps> = ({
                             </div>
                         ) : contratoUrl ? (
                             <div 
-                                dangerouslySetInnerHTML={{ __html: contratoUrl }} 
+                                dangerouslySetInnerHTML={{ __html: asTrustedHTML(contratoUrl) }} 
                                 className="contrato-content"
                                 style={{
                                     color: "#1a1a1a",

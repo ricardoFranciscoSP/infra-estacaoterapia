@@ -18,6 +18,20 @@ export function AuthRestoreProvider({ children }: { children: React.ReactNode })
         // Se não há token, não há usuário logado
         return;
       }
+
+      if (typeof window !== "undefined") {
+        try {
+          const { default: Cookies } = await import("js-cookie");
+          Cookies.set("auth", "1", {
+            expires: 7,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "lax",
+            path: "/",
+          });
+        } catch {
+          // silencioso
+        }
+      }
       
       try {
         // Tenta buscar do cookie primeiro (mais rápido)

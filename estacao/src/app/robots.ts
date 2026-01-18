@@ -29,30 +29,42 @@ export default function robots(): MetadataRoute.Robots {
   // Se for ambiente PRE, bloqueia tudo
   if (isPreEnvironment()) {
     return {
-      rules: {
-        userAgent: '*',
-        disallow: '/',
-      },
+      rules: [
+        {
+          userAgent: '*',
+          disallow: '/',
+        },
+      ],
       // Não inclui sitemap no ambiente PRE para evitar indexação
     };
   }
 
   // Configuração para produção
   return {
-    rules: {
-      userAgent: '*',
-      allow: ['/'],
-      disallow: [
-        '/painel',
-        '/painel-psicologo',
-        '/adm-estacao',
-        '/consulta',
-        '/api',
-        '/login',
-        '/checkout',
-        '/manutencao',
-      ],
-    },
+    rules: [
+      {
+        userAgent: '*',
+        allow: '/',
+        disallow: [
+          '/painel',
+          '/painel-psicologo',
+          '/adm-estacao',
+          '/consulta',
+          '/api',
+          '/login',
+          '/checkout',
+          '/manutencao',
+        ],
+      },
+      { userAgent: 'Amazonbot', disallow: '/' },
+      { userAgent: 'Applebot-Extended', disallow: '/' },
+      { userAgent: 'Bytespider', disallow: '/' },
+      { userAgent: 'CCBot', disallow: '/' },
+      { userAgent: 'ClaudeBot', disallow: '/' },
+      { userAgent: 'Google-Extended', disallow: '/' },
+      { userAgent: 'GPTBot', disallow: '/' },
+      { userAgent: 'meta-externalagent', disallow: '/' },
+    ],
     sitemap: `${websiteUrl}/sitemap.xml`,
     host: websiteUrl,
   };

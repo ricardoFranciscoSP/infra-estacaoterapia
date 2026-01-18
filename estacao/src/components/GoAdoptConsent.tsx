@@ -51,53 +51,56 @@ export default function GoAdoptConsent() {
       }
     }
 
-    // Carrega o script GoAdopt com controle total sobre o protocolo
+    // Carrega o script GoAdopt de forma segura e só se não houver erro de rede
     const loadGoAdoptScript = () => {
       if (document.querySelector('script[src*="tag.goadopt.io"]')) {
         // Script já está carregado
         return;
       }
 
-      const script = document.createElement('script');
-      script.src = 'https://tag.goadopt.io/injector.js?website_code=29ac98d9-078c-42d7-844f-8e9f0de2dc46';
-      script.async = true;
-      script.defer = true;
-      script.className = 'adopt-injector';
-      
-      // Callback quando o script carregar com sucesso
-      script.onload = () => {
-        if (typeof window !== 'undefined') {
-          const windowWithGoAdopt = window as WindowWithGoAdopt;
-          if (windowWithGoAdopt.adopt) {
-            try {
-              const hostname = window.location.hostname;
-              if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
-                const parts = hostname.split('.');
-                if (parts.length >= 2) {
-                  const baseDomain = '.' + parts.slice(-2).join('.');
-                  // Tenta configurar o domínio se a API do GoAdopt permitir
-                  if (windowWithGoAdopt.adopt.setCookieDomain) {
-                    windowWithGoAdopt.adopt.setCookieDomain(baseDomain);
+      fetch('https://tag.goadopt.io/injector.js?website_code=29ac98d9-078c-42d7-844f-8e9f0de2dc46', { method: 'HEAD' })
+        .then(resp => {
+          if (!resp.ok) throw new Error('Script GoAdopt não disponível');
+          const script = document.createElement('script');
+          script.src = 'https://tag.goadopt.io/injector.js?website_code=29ac98d9-078c-42d7-844f-8e9f0de2dc46';
+          script.async = true;
+          script.defer = true;
+          script.className = 'adopt-injector';
+          script.onload = () => {
+            if (typeof window !== 'undefined') {
+              const windowWithGoAdopt = window as WindowWithGoAdopt;
+              if (windowWithGoAdopt.adopt) {
+                try {
+                  const hostname = window.location.hostname;
+                  if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
+                    const parts = hostname.split('.');
+                    if (parts.length >= 2) {
+                      const baseDomain = '.' + parts.slice(-2).join('.');
+                      if (windowWithGoAdopt.adopt.setCookieDomain) {
+                        windowWithGoAdopt.adopt.setCookieDomain(baseDomain);
+                      }
+                    }
+                  }
+                } catch (error) {
+                  if (process.env.NODE_ENV === 'development') {
+                    console.warn('[GoAdopt] Não foi possível configurar o domínio dos cookies:', error);
                   }
                 }
               }
-            } catch (error) {
-              if (process.env.NODE_ENV === 'development') {
-                console.warn('[GoAdopt] Não foi possível configurar o domínio dos cookies:', error);
-              }
             }
+          };
+          script.onerror = (error) => {
+            if (process.env.NODE_ENV === 'development') {
+              console.warn('[GoAdopt] Erro ao carregar script:', error);
+            }
+          };
+          document.head.appendChild(script);
+        })
+        .catch(error => {
+          if (process.env.NODE_ENV === 'development') {
+            console.warn('[GoAdopt] Script não carregado:', error);
           }
-        }
-      };
-
-      // Callback em caso de erro
-    script.onerror = (error) => {
-      if (process.env.NODE_ENV === 'development') {
-        console.warn('[GoAdopt] Erro ao carregar script:', error);
-      }
-    };
-
-      document.head.appendChild(script);
+        });
     };
 
     // Carrega com um pequeno delay para garantir que o DOM está pronto

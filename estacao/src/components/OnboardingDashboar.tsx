@@ -73,7 +73,7 @@ export default function OnboardingDashboard() {
     return allSteps;
   }, [user?.Role]);
   const { mutate: updateUser, isPending } = useUpdateIsOnboardingComplete();
-  const { step, nextStep, prevStep } = useOnboardingStore();
+  const { step, nextStep, prevStep, reset } = useOnboardingStore();
   const router = useRouter();
   const cardRef = useRef<HTMLDivElement>(null);
   const [cardPosition, setCardPosition] = useState<Position>({ top: 0, left: 0, placement: 'top' });
@@ -91,8 +91,15 @@ export default function OnboardingDashboard() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  const safeStep = Math.min(Math.max(step, 0), steps.length - 1);
   const cardWidth = isMobile ? MOBILE_CARD_WIDTH : CARD_WIDTH;
-  const cardHeight = isMobile ? MOBILE_CARD_HEIGHT : (step === 5 ? SESSAO_CARD_HEIGHT : CARD_HEIGHT);
+  const cardHeight = isMobile ? MOBILE_CARD_HEIGHT : (safeStep === 5 ? SESSAO_CARD_HEIGHT : CARD_HEIGHT);
+
+  useEffect(() => {
+    if (step !== safeStep) {
+      reset();
+    }
+  }, [reset, safeStep, step]);
 
   // Refatorado: handleFinish como função normal
   function handleFinish() {
@@ -118,7 +125,7 @@ export default function OnboardingDashboard() {
 
     // NOVA LÓGICA: sempre usar proporções baseadas em 1366x768 para todos os tamanhos de tela
     const calculateCardPosition = (): Position => {
-      const selectors = steps[step].selector.split(', ');
+      const selectors = steps[safeStep].selector.split(', ');
       let element = null;
       for (const selector of selectors) {
         element = document.querySelector(selector.trim());
@@ -141,7 +148,7 @@ export default function OnboardingDashboard() {
       let placement: Position['placement'] = 'bottom';
 
       // Todos os steps usam proporções baseadas em 1366x768
-      const currentStepTitle = steps[step]?.title;
+      const currentStepTitle = steps[safeStep]?.title;
       switch (currentStepTitle) {
         case 'Agendamento rápido':
           // Mobile: 100px acima do ícone e move um pouco para direita
@@ -272,7 +279,7 @@ export default function OnboardingDashboard() {
     setIsVisible(true);
 
     // Para o step "Notificações", busca qualquer elemento com id="notificacao"
-    if (steps[step]?.title === 'Notificações') {
+    if (steps[safeStep]?.title === 'Notificações') {
       // Busca todos os elementos com id="notificacao" e pega o primeiro visível
       const notificationElements = document.querySelectorAll('#notificacao');
       let notificationElement = null;
@@ -293,7 +300,7 @@ export default function OnboardingDashboard() {
       }
     }
 
-    const selectors = steps[step].selector.split(', ');
+    const selectors = steps[safeStep].selector.split(', ');
     let element = null;
     
     for (const selector of selectors) {
@@ -305,7 +312,7 @@ export default function OnboardingDashboard() {
       const rect = element.getBoundingClientRect();
       setHighlightRect(rect);
     }
-  }, [step, cardWidth, cardHeight, isMobile, steps]);
+  }, [safeStep, cardWidth, cardHeight, isMobile, steps]);
 
   const getHighlightStyle = (): React.CSSProperties => {
     if (!highlightRect) return { display: 'none' };
@@ -330,14 +337,14 @@ export default function OnboardingDashboard() {
     setTimeout(() => {
       if (cardRef.current) {
         // Para o step "Psicólogos favoritos" no mobile, rola para o final da página para garantir visibilidade
-        if (steps[step]?.title === 'Psicólogos favoritos' && isMobile) {
+        if (steps[safeStep]?.title === 'Psicólogos favoritos' && isMobile) {
           window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
         } else {
           cardRef.current.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
         }
       } else {
         // fallback: scroll para o elemento do step
-        const selectors = steps[step].selector.split(', ');
+        const selectors = steps[safeStep].selector.split(', ');
         let element = null;
         for (const selector of selectors) {
           element = document.querySelector(selector.trim());
@@ -353,7 +360,7 @@ export default function OnboardingDashboard() {
       updatePositions();
     }, 600);
     return () => clearTimeout(timer);
-  }, [step, cardWidth, cardHeight, updatePositions, isMobile, steps]);
+  }, [safeStep, cardWidth, cardHeight, updatePositions, isMobile, steps]);
 
   // Atualiza ao redimensionar ou rolar
   useLayoutEffect(() => {
@@ -365,7 +372,7 @@ export default function OnboardingDashboard() {
       window.removeEventListener('resize', handle);
       window.removeEventListener('scroll', handle, true);
     };
-  }, [step, updatePositions]);
+  }, [safeStep, updatePositions]);
 
   return (
     showOnboarding && (
@@ -399,21 +406,21 @@ export default function OnboardingDashboard() {
               visibility: isVisible ? 'visible' : 'hidden',
             }}
           >
-            {step === 0 ? (
+            {safeStep === 0 ? (
               <FirstStepContent
-                text={steps[step].description}
+                text={steps[safeStep].description}
                 onNext={nextStep}
                 onClose={handleFinish}
                 isLoading={isPending || finishRequested}
               />
             ) : (
               <DefaultStepContent
-                text={steps[step].description}
+                text={steps[safeStep].description}
                 onNext={nextStep}
                 onPrevious={prevStep}
                 onClose={handleFinish}
                 isLoading={isPending || finishRequested}
-                currentStep={step}
+                currentStep={safeStep}
                 totalSteps={steps.length}
               />
             )}

@@ -11,6 +11,6 @@ interface OnboardingStore {
 export const useOnboardingStore = create<OnboardingStore>((set) => ({
     step: 0,
     nextStep: () => set((state) => ({ step: state.step + 1 })),
-    prevStep: () => set((state) => ({ step: state.step - 1 })),
+    prevStep: () => set((state) => ({ step: Math.max(state.step - 1, 0) })),
     reset: () => set({ step: 0 }),
 }));

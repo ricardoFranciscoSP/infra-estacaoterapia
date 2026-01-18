@@ -249,6 +249,12 @@ export const useAuthStore = create<AuthState>((set) => ({
                         sameSite: 'lax',
                         path: '/',
                     });
+                    Cookies.set('auth', '1', {
+                        expires: 7,
+                        secure: process.env.NODE_ENV === 'production',
+                        sameSite: 'lax',
+                        path: '/',
+                    });
                     // Aguarda um ciclo para garantir que cookies do backend foram processados
                     await new Promise(resolve => setTimeout(resolve, 100));
                 } catch {
@@ -331,6 +337,7 @@ export const useAuthStore = create<AuthState>((set) => ({
                 try {
                     Cookies.remove('user-data-client', { path: '/' });
                     Cookies.remove('onboarding-data-client', { path: '/' });
+                    Cookies.remove('auth', { path: '/' });
                 } catch {
                     // silencioso
                 }

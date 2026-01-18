@@ -464,12 +464,18 @@
   
   html {
     font-family: 'Fira Sans', Arial, sans-serif !important;
+    overflow-x: hidden !important;
+    width: 100vw;
+    box-sizing: border-box;
   }
   
   body {
     @apply bg-background text-foreground;
     background-color: #FCFBF6;
     font-family: 'Fira Sans', Arial, sans-serif !important;
+    overflow-x: hidden !important;
+    width: 100vw;
+    box-sizing: border-box;
   }
   
   /* Garante que todos os elementos de texto usem Fira Sans */

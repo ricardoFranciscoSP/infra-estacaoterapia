@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef } from "react";
-import { IRemoteVideoTrack } from "agora-rtc-sdk-ng";
+import type { IRemoteVideoTrack } from "agora-rtc-sdk-ng";
 
 interface VideoPIPProps {
   videoTrack: IRemoteVideoTrack | null;
