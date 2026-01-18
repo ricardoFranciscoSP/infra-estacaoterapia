@@ -513,6 +513,7 @@ const Header: React.FC = () => {
                 priority
                 fetchPriority="high"
                 sizes="100px"
+                quality={70}
               />
             </button>
             {/* Avatar ou Botões Cadastro/Login + Menu hamburguer à direita */}
@@ -563,6 +564,7 @@ const Header: React.FC = () => {
                 priority
                 fetchPriority="high"
                 sizes="190px"
+                quality={70}
               />
             </button>
             {/* Links de navegação */}
@@ -677,6 +679,7 @@ const Header: React.FC = () => {
                       priority
                       fetchPriority="high"
                       sizes="140px"
+                      quality={70}
                     />
                   </button>
                   <button

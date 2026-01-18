@@ -68,41 +68,6 @@ export default function BannerRotativo() {
         }
     }, [banners.length, current]);
 
-    // ⚡ OTIMIZAÇÃO: Preload da primeira imagem para melhorar LCP (otimizado)
-    useEffect(() => {
-        if (!banners || banners.length === 0) return;
-        
-        const firstBanner = banners[0];
-        if (!firstBanner) return;
-
-        // ⚡ OTIMIZAÇÃO: Detecta mobile usando media query para evitar layout shift
-        const isMobileScreen = window.matchMedia('(max-width: 768px)').matches;
-        const imageUrl = isMobileScreen ? firstBanner.UrlImagemMobile : firstBanner.UrlImagemDesktop;
-        
-        if (!imageUrl) return;
-        
-        // Remove preloads anteriores se existirem
-        const existingPreloads = document.querySelectorAll('link[rel="preload"][as="image"][data-banner-preload]');
-        existingPreloads.forEach(link => link.remove());
-        
-        // Cria link de preload para acelerar carregamento do LCP
-        const link = document.createElement('link');
-        link.rel = 'preload';
-        link.as = 'image';
-        link.href = imageUrl;
-        link.setAttribute('fetchpriority', 'high');
-        link.setAttribute('data-banner-preload', 'true');
-        document.head.appendChild(link);
-
-        return () => {
-            // Remove preload ao desmontar
-            const linkToRemove = document.querySelector('link[data-banner-preload="true"]');
-            if (linkToRemove) {
-                linkToRemove.remove();
-            }
-        };
-    }, [banners]);
-
     // Auto-rotate dos banners
     useEffect(() => {
         if (isPaused || banners.length <= 1) return;

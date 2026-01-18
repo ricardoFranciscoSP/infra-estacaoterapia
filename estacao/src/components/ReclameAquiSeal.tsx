@@ -1,7 +1,7 @@
 'use client';
 
 import Script from 'next/script';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 /**
  * Componente para renderizar o selo verificado do Reclame Aqui
@@ -22,6 +22,7 @@ interface WindowWithRaichu extends Window {
 
 export default function ReclameAquiSeal() {
   const containerRef = useRef<HTMLDivElement>(null);
+  const [shouldLoadScript, setShouldLoadScript] = useState(false);
 
   // Função para recarregar o widget se necessário
   const reloadWidget = () => {
@@ -47,14 +48,35 @@ export default function ReclameAquiSeal() {
     });
   };
 
-  // Fallback para recarregar após um tempo
+  // Carrega o script apenas quando o selo entra em viewport
   useEffect(() => {
+    if (shouldLoadScript) return;
+    const element = containerRef.current;
+    if (!element || typeof window === 'undefined') return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setShouldLoadScript(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: '200px' }
+    );
+
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [shouldLoadScript]);
+
+  // Fallback para recarregar após um tempo (após carregar script)
+  useEffect(() => {
+    if (!shouldLoadScript) return;
     const timer = setTimeout(() => {
       reloadWidget();
     }, 500);
 
     return () => clearTimeout(timer);
-  }, []);
+  }, [shouldLoadScript]);
 
   return (
     <div className="flex justify-start w-full mt-1">
@@ -68,20 +90,22 @@ export default function ReclameAquiSeal() {
         <div className="inline-block bg-gray-100 rounded animate-pulse w-32 h-12" />
         
         {/* Script do Reclame Aqui - otimizado para Next.js */}
-        <Script
-          id="ra-embed-verified-seal"
-          src="https://s3.amazonaws.com/raichu-beta/ra-verified/bundle.js"
-          data-id="RUtTNlgtN1VLWEpoRGkzbTplc3RhY2FvLXRlcmFwaWEx"
-          data-target="ra-verified-seal"
-          data-model="compact_1"
-          strategy="afterInteractive"
-          onLoad={handleScriptLoad}
-          onError={() => {
-            if (process.env.NODE_ENV === 'development') {
-              console.warn('[ReclameAquiSeal] Erro ao carregar script do Reclame Aqui');
-            }
-          }}
-        />
+        {shouldLoadScript && (
+          <Script
+            id="ra-embed-verified-seal"
+            src="/api/reclame-aqui/ra-verified/bundle.js"
+            data-id="RUtTNlgtN1VLWEpoRGkzbTplc3RhY2FvLXRlcmFwaWEx"
+            data-target="ra-verified-seal"
+            data-model="compact_1"
+            strategy="lazyOnload"
+            onLoad={handleScriptLoad}
+            onError={() => {
+              if (process.env.NODE_ENV === 'development') {
+                console.warn('[ReclameAquiSeal] Erro ao carregar script do Reclame Aqui');
+              }
+            }}
+          />
+        )}
       </div>
     </div>
   );

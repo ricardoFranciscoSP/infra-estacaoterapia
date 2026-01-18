@@ -92,6 +92,7 @@ export default function Footer() {
                 style={{ width: 110, height: 38 }} 
                 priority
                 sizes="110px"
+                quality={70}
                 onError={(e) => {
                   const target = e.target as HTMLImageElement;
                   if (target.src !== '/logo.png') {

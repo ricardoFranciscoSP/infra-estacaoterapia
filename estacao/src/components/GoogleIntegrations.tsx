@@ -69,34 +69,62 @@ export default function GoogleIntegrations() {
   const [shouldLoadScripts, setShouldLoadScripts] = useState(false);
 
   useEffect(() => {
-    // Aguarda interação do usuário ou 3 segundos após carregamento
-    const loadAfterInteraction = () => {
-      setShouldLoadScripts(true);
-      // Remove listeners após carregar (sem options, pois once já remove automaticamente)
-      window.removeEventListener('mousedown', loadAfterInteraction);
-      window.removeEventListener('touchstart', loadAfterInteraction);
-      window.removeEventListener('keydown', loadAfterInteraction);
-      window.removeEventListener('scroll', loadAfterInteraction);
+    let didLoad = false;
+    const removeListeners = () => {
+      window.removeEventListener('mousedown', triggerLoad);
+      window.removeEventListener('touchstart', triggerLoad);
+      window.removeEventListener('keydown', triggerLoad);
+      window.removeEventListener('scroll', triggerLoad);
     };
 
-    // Opções para event listeners
-    const listenerOptions: AddEventListenerOptions = { once: true, passive: true };
-
-    // Carrega após interação do usuário (melhor para performance)
-    window.addEventListener('mousedown', loadAfterInteraction, listenerOptions);
-    window.addEventListener('touchstart', loadAfterInteraction, listenerOptions);
-    window.addEventListener('keydown', loadAfterInteraction, listenerOptions);
-    window.addEventListener('scroll', loadAfterInteraction, listenerOptions);
-
-    // Fallback: carrega após 3 segundos se não houver interação
-    const timeout = setTimeout(() => {
+    const triggerLoad = () => {
+      if (didLoad) return;
+      didLoad = true;
       setShouldLoadScripts(true);
-      loadAfterInteraction();
-    }, 3000);
+      removeListeners();
+    };
+
+    const listenerOptions: AddEventListenerOptions = { once: true, passive: true };
+    window.addEventListener('mousedown', triggerLoad, listenerOptions);
+    window.addEventListener('touchstart', triggerLoad, listenerOptions);
+    window.addEventListener('keydown', triggerLoad, listenerOptions);
+    window.addEventListener('scroll', triggerLoad, listenerOptions);
+
+    const canLoadOnIdle = !navigator?.connection?.saveData;
+    const requestIdle = (
+      callback: () => void,
+      timeoutMs: number
+    ) => {
+      const w = window as Window & {
+        requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+        cancelIdleCallback?: (id: number) => void;
+      };
+      if (w.requestIdleCallback) {
+        return w.requestIdleCallback(callback, { timeout: timeoutMs });
+      }
+      return window.setTimeout(callback, timeoutMs);
+    };
+
+    const cancelIdle = (id: number) => {
+      const w = window as Window & {
+        cancelIdleCallback?: (idleId: number) => void;
+      };
+      if (w.cancelIdleCallback) {
+        w.cancelIdleCallback(id);
+      } else {
+        clearTimeout(id);
+      }
+    };
+
+    const idleId = requestIdle(() => {
+      if (canLoadOnIdle) {
+        triggerLoad();
+      }
+    }, 5000);
 
     return () => {
-      clearTimeout(timeout);
-      loadAfterInteraction(); // Remove listeners
+      cancelIdle(idleId);
+      removeListeners();
     };
   }, []);
 
@@ -107,7 +135,7 @@ export default function GoogleIntegrations() {
         <>
           <Script
             id="gtm-script"
-            strategy="afterInteractive"
+            strategy="lazyOnload"
             dangerouslySetInnerHTML={{
               __html: `
                 (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
@@ -136,12 +164,12 @@ export default function GoogleIntegrations() {
         <>
           <Script
             src={`https://www.googletagmanager.com/gtag/js?id=${integrations.googleAnalytics}`}
-            strategy="afterInteractive"
+            strategy="lazyOnload"
             id="ga-external-script"
           />
           <Script
             id="ga-script"
-            strategy="afterInteractive"
+            strategy="lazyOnload"
             dangerouslySetInnerHTML={{
               __html: `
                 window.dataLayer = window.dataLayer || [];

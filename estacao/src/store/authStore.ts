@@ -69,6 +69,7 @@ export interface User {
     PrivacyAccepted: boolean;
     Status: UserStatus;
     Role: Role;
+    IsOnboard?: boolean;
     ResetPasswordToken: string | null;
     ResetPasswordExpires: string | null;
     CreatedAt: string;

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 /**
  * Tipos para a API do GoAdopt
@@ -26,7 +26,71 @@ interface WindowWithGoAdopt extends Window {
  * O script é carregado via useEffect para melhor controle do protocolo HTTPS
  */
 export default function GoAdoptConsent() {
+  const [shouldLoadScript, setShouldLoadScript] = useState(false);
+
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    let didLoad = false;
+    const triggerLoad = () => {
+      if (didLoad) return;
+      didLoad = true;
+      setShouldLoadScript(true);
+      window.removeEventListener('mousedown', triggerLoad);
+      window.removeEventListener('touchstart', triggerLoad);
+      window.removeEventListener('keydown', triggerLoad);
+      window.removeEventListener('scroll', triggerLoad);
+    };
+
+    const listenerOptions: AddEventListenerOptions = { once: true, passive: true };
+    window.addEventListener('mousedown', triggerLoad, listenerOptions);
+    window.addEventListener('touchstart', triggerLoad, listenerOptions);
+    window.addEventListener('keydown', triggerLoad, listenerOptions);
+    window.addEventListener('scroll', triggerLoad, listenerOptions);
+
+    const canLoadOnIdle = !navigator?.connection?.saveData;
+    const requestIdle = (
+      callback: () => void,
+      timeoutMs: number
+    ) => {
+      const w = window as Window & {
+        requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+        cancelIdleCallback?: (id: number) => void;
+      };
+      if (w.requestIdleCallback) {
+        return w.requestIdleCallback(callback, { timeout: timeoutMs });
+      }
+      return window.setTimeout(callback, timeoutMs);
+    };
+
+    const cancelIdle = (id: number) => {
+      const w = window as Window & {
+        cancelIdleCallback?: (idleId: number) => void;
+      };
+      if (w.cancelIdleCallback) {
+        w.cancelIdleCallback(id);
+      } else {
+        clearTimeout(id);
+      }
+    };
+
+    const idleId = requestIdle(() => {
+      if (canLoadOnIdle) {
+        triggerLoad();
+      }
+    }, 5000);
+
+    return () => {
+      cancelIdle(idleId);
+      window.removeEventListener('mousedown', triggerLoad);
+      window.removeEventListener('touchstart', triggerLoad);
+      window.removeEventListener('keydown', triggerLoad);
+      window.removeEventListener('scroll', triggerLoad);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!shouldLoadScript) return;
     if (typeof window !== 'undefined') {
       const pathname = window.location.pathname;
       if (pathname.startsWith('/adm-finance') || pathname.startsWith('/adm-estacao') || pathname.startsWith('/adm-login')) {
@@ -107,7 +171,7 @@ export default function GoAdoptConsent() {
     const timer = setTimeout(loadGoAdoptScript, 100);
 
     return () => clearTimeout(timer);
-  }, []);
+  }, [shouldLoadScript]);
 
   return null;
 }

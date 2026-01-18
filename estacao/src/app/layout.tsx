@@ -113,15 +113,21 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* ⚡ CRÍTICO: Preconnect para o próprio domínio (reduz latência do caminho crítico de CSS) */}
         <link rel="preconnect" href={metadataBase} crossOrigin="anonymous" />
         <link rel="dns-prefetch" href={metadataBase} />
-        {/* ⚡ CRÍTICO: Preconnect para GoAdopt (economia estimada: 530ms) */}
-        <link rel="preconnect" href="https://tag.goadopt.io" />
+        {/* ⚡ CRÍTICO: Preconnect para GoAdopt (economia estimada: 320ms) */}
+        <link rel="preconnect" href="https://tag.goadopt.io" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://tag.goadopt.io" />
         {/* ⚡ CRÍTICO: Preconnect para Supabase (economia estimada: 320ms) */}
         <link rel="preconnect" href="https://mktmsurbxszuisgxjnkq.supabase.co" crossOrigin="anonymous" />
         {/* ⚡ CRÍTICO: Preconnect para API (economia estimada: 300ms) */}
-        {apiOrigin && (
+        {apiOrigin ? (
           <>
-            <link rel="preconnect" href={apiOrigin} />
+            <link rel="preconnect" href={apiOrigin} crossOrigin="anonymous" />
             <link rel="dns-prefetch" href={apiOrigin} />
+          </>
+        ) : (
+          <>
+            <link rel="preconnect" href="https://api-prd.estacaoterapia.com.br" crossOrigin="anonymous" />
+            <link rel="dns-prefetch" href="https://api-prd.estacaoterapia.com.br" />
           </>
         )}
         {/* ⚡ CRÍTICO: Preconnect para Reclame Aqui (economia estimada: 310ms) */}
