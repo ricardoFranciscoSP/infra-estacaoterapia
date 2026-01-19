@@ -142,7 +142,7 @@ export default function PsicologosPage() {
   }).sort((a, b) => {
     const dataA = a.CreatedAt ? new Date(a.CreatedAt).getTime() : 0;
     const dataB = b.CreatedAt ? new Date(b.CreatedAt).getTime() : 0;
-    return dataB - dataA;
+    return dataA - dataB;
   });
 
   const total = psicologosFiltrados.length;

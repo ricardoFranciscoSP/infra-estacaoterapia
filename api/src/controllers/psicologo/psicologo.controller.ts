@@ -581,9 +581,17 @@ export class PsicologoController {
                     Id: true,
                     Nome: true,
                     Crp: true,
-                    Images: true,
-                    ReviewsMade: true,
-                    ReviewsReceived: true,
+                    Images: {
+                        select: {
+                            Id: true,
+                            Url: true,
+                        },
+                    },
+                    ReviewsReceived: {
+                        select: {
+                            Rating: true,
+                        },
+                    },
                     ProfessionalProfiles: {
                         select: {
                             Documents: true,
@@ -592,7 +600,8 @@ export class PsicologoController {
                             Queixas: true,
                             Abordagens: true,
                             TipoAtendimento: true,
-                            Idiomas: true
+                            Idiomas: true,
+                            ExperienciaClinica: true,
                         }
                     },
                     Address: true,
@@ -630,14 +639,11 @@ export class PsicologoController {
             });
 
             if (!psicologosCompletos || psicologosCompletos.length === 0) {
-                return this.sendErrorResponse(res, 200, "Nenhum psicólogo ativo encontrado.");
+                return res.status(200).json([]);
             }
             return res.status(200).json(psicologosCompletos);
         } catch (error) {
-            return res.status(200).json({
-                success: false,
-                message: 'Erro ao listar psicólogos ativos.',
-            });
+            return res.status(200).json([]);
         }
     }
 
@@ -646,11 +652,15 @@ export class PsicologoController {
             const psicologoService = new PsicologoService();
             const filtrosNormalizados = {
                 queixas: normalizeQueryArray(req.query.queixas),
-                abordagem: normalizeQueryArray(req.query.abordagem),
+                abordagem: normalizeQueryArray(req.query.abordagem ?? req.query.abordagens),
                 sexo: typeof req.query.sexo === 'string' ? req.query.sexo : undefined,
-                atende: normalizeQueryArray(req.query.atende),
+                atende: normalizeQueryArray(req.query.atende ?? req.query.atendimentos),
                 idiomas: normalizeQueryArray(req.query.idiomas),
-                dataDisponivel: typeof req.query.dataDisponivel === 'string' ? req.query.dataDisponivel : undefined,
+                dataDisponivel: typeof req.query.dataDisponivel === 'string'
+                    ? req.query.dataDisponivel
+                    : typeof req.query.data === 'string'
+                        ? req.query.data
+                        : undefined,
                 periodo: normalizeQueryArray(req.query.periodo),
                 nome: typeof req.query.nome === 'string' ? req.query.nome : undefined,
             };

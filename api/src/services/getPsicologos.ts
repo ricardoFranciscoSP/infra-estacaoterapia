@@ -36,9 +36,12 @@ export class PsicologoService {
             Role: 'Psychologist',
             ProfessionalProfiles: {
                 some: {
-                    Status: ProfessionalProfileStatus.Preenchido
+                    Status: ProfessionalProfileStatus.Preenchido,
+                    Documents: { some: {} },
+                    Formacoes: { some: {} },
                 }
-            }
+            },
+            Address: { some: {} },
         };
 
         if (nome) {
@@ -126,10 +129,29 @@ export class PsicologoService {
             noite: ['18:00', '23:59'],
         };
 
+        const nowDate = new Date();
+        const nowDateOnly = new Date(nowDate.getFullYear(), nowDate.getMonth(), nowDate.getDate());
+        const nowTime = nowDate.toTimeString().slice(0, 5);
+        const filtroData = dataDisponivel ? new Date(dataDisponivel) : null;
+
+        const baseAgendaWhere: Prisma.AgendaWhereInput = {
+            Status: 'Disponivel',
+            OR: [
+                { Data: { gt: nowDateOnly } },
+                {
+                    AND: [
+                        { Data: nowDateOnly },
+                        { Horario: { gte: nowTime } },
+                    ],
+                },
+            ],
+        };
+
         const horariosWhere: Prisma.AgendaListRelationFilter | undefined = periodo?.length
             ? {
                 some: {
-                    Data: dataDisponivel ? new Date(dataDisponivel) : undefined,
+                    ...baseAgendaWhere,
+                    ...(filtroData ? { Data: filtroData } : {}),
                     Horario: {
                         in: periodo
                             .flatMap((p) => {
@@ -154,14 +176,13 @@ export class PsicologoService {
                                 return lastRange ? h <= lastRange[1] : true;
                             }),
                     },
-                    Status: 'Disponivel',
                 },
             }
-            : dataDisponivel
+            : filtroData
                 ? {
                     some: {
-                        Data: new Date(dataDisponivel),
-                        Status: 'Disponivel',
+                        ...baseAgendaWhere,
+                        Data: filtroData,
                     },
                 }
                 : undefined;
@@ -173,9 +194,43 @@ export class PsicologoService {
 
         const psicologos = await this.prisma.user.findMany({
             where,
-            include: {
-                ProfessionalProfiles: true,
-                PsychologistAgendas: true,
+            select: {
+                Id: true,
+                Nome: true,
+                Crp: true,
+                Images: {
+                    select: {
+                        Id: true,
+                        Url: true,
+                    },
+                },
+                ReviewsReceived: {
+                    select: {
+                        Rating: true,
+                    },
+                },
+                ProfessionalProfiles: {
+                    select: {
+                        Documents: true,
+                        Formacoes: true,
+                        SobreMim: true,
+                        Queixas: true,
+                        Abordagens: true,
+                        TipoAtendimento: true,
+                        Idiomas: true,
+                        ExperienciaClinica: true,
+                    },
+                },
+                Address: true,
+                PsychologistAgendas: {
+                    where: baseAgendaWhere,
+                    select: {
+                        Id: true,
+                        Data: true,
+                        Horario: true,
+                        Status: true,
+                    },
+                },
             },
         });
 

@@ -66,37 +66,65 @@ export class PsicologoService {
                 deletedAt: null,
                 Status: { not: "Deletado" },
             },
-            include: {
+            orderBy: {
+                CreatedAt: "asc",
+            },
+            select: {
+                Id: true,
+                Nome: true,
+                Email: true,
+                Crp: true,
+                Status: true,
+                CreatedAt: true,
+                Telefone: true,
+                Sexo: true,
+                Pronome: true,
+                Address: {
+                    select: {
+                        Id: true,
+                        Rua: true,
+                        Numero: true,
+                        Complemento: true,
+                        Bairro: true,
+                        Cidade: true,
+                        Estado: true,
+                        Cep: true,
+                    },
+                },
                 ProfessionalProfiles: {
-                    include: {
-                        Documents: true,
-                        Formacoes: true,
-                    }
+                    select: {
+                        Id: true,
+                        SobreMim: true,
+                        ExperienciaClinica: true,
+                        Idiomas: true,
+                        TipoAtendimento: true,
+                        Abordagens: true,
+                        Queixas: true,
+                        TipoPessoaJuridico: true,
+                        Status: true,
+                        Formacoes: {
+                            select: {
+                                Id: true,
+                                TipoFormacao: true,
+                                Instituicao: true,
+                                Curso: true,
+                                DataInicio: true,
+                                DataConclusao: true,
+                                Status: true,
+                            },
+                        },
+                    },
                 },
-                PsychologistAgendas: true,
-                ReviewsReceived: true,
-                FavoritesGiven: true,
-                Images: true,
-                BillingAddress: true,
-                PlanoAssinaturas: true,
-                FinanceiroEntries: true,
-                Onboardings: true,
-                Commissions: true,
-                CreditosAvulsos: true,
-                WorkSchedules: true,
-                RefreshTokens: true,
-                NotificationStatus: true,
-                ConsultaPsicologos: {
-                    include: {
-                        ReservaSessao: true
-                    }
+                PessoalJuridica: {
+                    select: {
+                        InscricaoEstadual: true,
+                    },
                 },
-                Address: true
-            }
+            },
         });
 
         // Retorna todos os psicólogos, independentemente de estarem completos
-        return psicologos.map(({ Password, ...rest }) => rest);
+        return psicologos;
     }
 
     async delete(user: User, id: string) {
