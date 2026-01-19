@@ -347,7 +347,7 @@ export class PsicologoController {
             type PsychologistWithProfiles = Prisma.UserGetPayload<{
                 include: {
                     Address: true;
-                    Images: true;
+                    Images: { select: { Id: true, Url: true } };
                     ReviewsMade: { include: { Psicologo: true } };
                     ReviewsReceived: { include: { User: true } };
                     ProfessionalProfiles: { include: { Formacoes: true; Documents: true } };
@@ -369,7 +369,7 @@ export class PsicologoController {
                 },
                 include: {
                     Address: true,
-                    Images: true,
+                    Images: { select: { Id: true, Url: true } },
                     ReviewsMade: {
                         include: {
                             Psicologo: true,
@@ -1035,8 +1035,12 @@ export class PsicologoController {
                     UpdatedAt: true,
                 },
             },
-            Images: true,
-            ReviewsMade: true,
+            Images: { select: { Id: true, Url: true } },
+            ReviewsReceived: {
+                select: {
+                    Rating: true,
+                },
+            },
             ProfessionalProfiles: {
                 select: {
                     Id: true,

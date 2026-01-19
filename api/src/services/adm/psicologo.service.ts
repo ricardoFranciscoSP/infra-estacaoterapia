@@ -577,7 +577,12 @@ export class PsicologoService {
                 PsychologistAgendas: true,
                 ReviewsReceived: true,
                 FavoritesReceived: true,
-                Images: true,
+                Images: {
+                    select: {
+                        Id: true,
+                        Url: true,
+                    },
+                },
                 Address: true,
                 BillingAddress: true,
                 PlanoAssinaturas: true,
@@ -699,7 +704,12 @@ export class PsicologoService {
                 PsychologistAgendas: true,
                 ReviewsReceived: true,
                 FavoritesReceived: true,
-                Images: true,
+                Images: {
+                    select: {
+                        Id: true,
+                        Url: true,
+                    },
+                },
                 Address: true,
                 BillingAddress: true,
                 Commissions: true,
