@@ -4,6 +4,10 @@ import React, { useEffect, useState } from "react";
 import { useSearchParams, useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import { useAdmPsicologoById, useDeleteAdmPsicologo, usePreviaContrato, useGerarContrato, useUpdateAdmPsicologo } from "@/hooks/admin/useAdmPsicologo";
+import dynamic from "next/dynamic";
+
+const PhoneInput = dynamic(() => import('react-phone-input-2'), { ssr: false });
+import 'react-phone-input-2/lib/style.css';
 import type { Psicologo, PsicologoUpdate } from "@/types/psicologoTypes";
 import { useDocuments, type Document as DocumentItem } from "@/hooks/useDocuments";
 import { documentsFilesService } from "@/services/documentsFiles";
@@ -682,6 +686,7 @@ export default function PsicologoDetalhePage() {
   const [nomeEdit, setNomeEdit] = useState("");
   const [emailEdit, setEmailEdit] = useState("");
   const [telefoneEdit, setTelefoneEdit] = useState("");
+  const [whatsappEdit, setWhatsappEdit] = useState("");
   const [cpfEdit, setCpfEdit] = useState("");
   const [rgEdit, setRgEdit] = useState("");
   const [dataNascimentoEdit, setDataNascimentoEdit] = useState("");
@@ -743,6 +748,7 @@ export default function PsicologoDetalhePage() {
       setSexoEdit(psicologo.Sexo || "");
       setPronomeEdit(psicologo.Pronome || "");
       setRacaCorEdit(psicologo.RacaCor || "");
+      setWhatsappEdit(psicologo.WhatsApp || (psicologo as { Whatsapp?: string | null }).Whatsapp || "");
       
       const addressRaw = psicologo?.Address;
       const addressCurrent = Array.isArray(addressRaw) ? addressRaw[0] : addressRaw;
@@ -1298,6 +1304,7 @@ export default function PsicologoDetalhePage() {
         Nome: nomeEdit,
         Email: emailEdit || undefined,
         Telefone: telefoneEdit || undefined,
+        WhatsApp: whatsappEdit || undefined,
         Cpf: cpfEdit || undefined,
         Rg: rgEdit || undefined,
         DataNascimento: dataNascimentoEdit ? new Date(dataNascimentoEdit).toISOString() : undefined,
@@ -1621,12 +1628,34 @@ export default function PsicologoDetalhePage() {
                   onChange={(e) => setEmailEdit(e.target.value)}
                   disabled={!editMode} 
                 />
-                <Input 
-                  label="Telefone" 
-                  value={telefoneEdit} 
-                  onChange={(e) => setTelefoneEdit(e.target.value)}
-                  disabled={!editMode} 
-                />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="mb-4">
+                    <label className="block text-xs font-semibold text-[#6C757D] uppercase tracking-wider mb-2">Telefone</label>
+                    <PhoneInput
+                      country={'br'}
+                      value={telefoneEdit}
+                      onChange={setTelefoneEdit}
+                      inputProps={{
+                        disabled: !editMode,
+                        name: 'telefone',
+                        className: `w-full px-4 py-3 border rounded-lg shadow-sm text-sm font-medium transition-all ${!editMode ? "bg-[#F9FAFB] text-[#212529] border-[#E5E9FA] cursor-not-allowed" : "bg-white text-[#212529] border-[#E5E9FA] focus:ring-2 focus:ring-[#8494E9] focus:border-[#8494E9]"}`
+                      }}
+                    />
+                  </div>
+                  <div className="mb-4">
+                    <label className="block text-xs font-semibold text-[#6C757D] uppercase tracking-wider mb-2">WhatsApp</label>
+                    <PhoneInput
+                      country={'br'}
+                      value={whatsappEdit}
+                      onChange={setWhatsappEdit}
+                      inputProps={{
+                        disabled: !editMode,
+                        name: 'whatsapp',
+                        className: `w-full px-4 py-3 border rounded-lg shadow-sm text-sm font-medium transition-all ${!editMode ? "bg-[#F9FAFB] text-[#212529] border-[#E5E9FA] cursor-not-allowed" : "bg-white text-[#212529] border-[#E5E9FA] focus:ring-2 focus:ring-[#8494E9] focus:border-[#8494E9]"}`
+                      }}
+                    />
+                  </div>
+                </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <Input 
                     label="CPF" 
@@ -1686,19 +1715,39 @@ export default function PsicologoDetalhePage() {
                   />
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <Input 
-                    label="Telefone" 
-                    value={telefoneEdit} 
-                    onChange={(e) => setTelefoneEdit(e.target.value)}
-                    disabled={!editMode} 
-                  />
-                  <Input 
-                    label="E-mail" 
-                    value={emailEdit} 
-                    onChange={(e) => setEmailEdit(e.target.value)}
-                    disabled={!editMode} 
-                  />
+                  <div className="mb-4">
+                    <label className="block text-xs font-semibold text-[#6C757D] uppercase tracking-wider mb-2">Telefone</label>
+                    <PhoneInput
+                      country={'br'}
+                      value={telefoneEdit}
+                      onChange={setTelefoneEdit}
+                      inputProps={{
+                        disabled: !editMode,
+                        name: 'telefone',
+                        className: `w-full px-4 py-3 border rounded-lg shadow-sm text-sm font-medium transition-all ${!editMode ? "bg-[#F9FAFB] text-[#212529] border-[#E5E9FA] cursor-not-allowed" : "bg-white text-[#212529] border-[#E5E9FA] focus:ring-2 focus:ring-[#8494E9] focus:border-[#8494E9]"}`
+                      }}
+                    />
+                  </div>
+                  <div className="mb-4">
+                    <label className="block text-xs font-semibold text-[#6C757D] uppercase tracking-wider mb-2">WhatsApp</label>
+                    <PhoneInput
+                      country={'br'}
+                      value={whatsappEdit}
+                      onChange={setWhatsappEdit}
+                      inputProps={{
+                        disabled: !editMode,
+                        name: 'whatsapp',
+                        className: `w-full px-4 py-3 border rounded-lg shadow-sm text-sm font-medium transition-all ${!editMode ? "bg-[#F9FAFB] text-[#212529] border-[#E5E9FA] cursor-not-allowed" : "bg-white text-[#212529] border-[#E5E9FA] focus:ring-2 focus:ring-[#8494E9] focus:border-[#8494E9]"}`
+                      }}
+                    />
+                  </div>
                 </div>
+                <Input 
+                  label="E-mail" 
+                  value={emailEdit} 
+                  onChange={(e) => setEmailEdit(e.target.value)}
+                  disabled={!editMode} 
+                />
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <Input 
                     label="Gênero" 

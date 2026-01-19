@@ -12,6 +12,8 @@ type PsicologoListItem = {
   Status: string;
   CreatedAt?: string;
   Telefone?: string;
+  WhatsApp?: string | null;
+  Whatsapp?: string | null;
   Sexo?: string;
   Pronome?: string | null;
   RacaCor?: string | null;
@@ -275,6 +277,7 @@ export default function PsicologosPage() {
               <tr>
                 <th className="py-4 px-6 text-left text-xs font-semibold text-[#8494E9] uppercase tracking-wider">Psicólogo</th>
                 <th className="py-4 px-6 text-left text-xs font-semibold text-[#8494E9] uppercase tracking-wider">CRP</th>
+                <th className="py-4 px-6 text-left text-xs font-semibold text-[#8494E9] uppercase tracking-wider">WhatsApp</th>
                 <th className="py-4 px-6 text-left text-xs font-semibold text-[#8494E9] uppercase tracking-wider">Data Cadastro</th>
                 <th className="py-4 px-6 text-left text-xs font-semibold text-[#8494E9] uppercase tracking-wider whitespace-nowrap">Nota perfil</th>
                 <th className="py-4 px-6 text-left text-xs font-semibold text-[#8494E9] uppercase tracking-wider whitespace-nowrap">Status</th>
@@ -284,7 +287,7 @@ export default function PsicologosPage() {
             <tbody className="divide-y divide-gray-100">
               {isPsicologosLoading ? (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center">
+                  <td colSpan={7} className="py-12 text-center">
                     <div className="flex flex-col items-center justify-center gap-3">
                       <div className="w-10 h-10 border-4 border-[#8494E9] border-t-transparent rounded-full animate-spin"></div>
                       <span className="text-gray-500 text-sm">Carregando psicólogos...</span>
@@ -293,7 +296,7 @@ export default function PsicologosPage() {
                 </tr>
               ) : psicologosPaginados.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center">
+                  <td colSpan={7} className="py-12 text-center">
                     <div className="flex flex-col items-center justify-center gap-2">
                       <span className="text-gray-400 text-4xl">🔍</span>
                       <span className="text-gray-500 font-medium">Nenhum psicólogo encontrado</span>
@@ -320,6 +323,9 @@ export default function PsicologosPage() {
                         <span className="font-medium text-gray-800">{p.Nome}</span>
                       </td>
                       <td className="py-4 px-6 text-sm text-gray-600 font-mono">{p.Crp || "-"}</td>
+                      <td className="py-4 px-6 text-sm text-gray-600 font-mono">
+                        {p.WhatsApp || p.Whatsapp || "-"}
+                      </td>
                       <td className="py-4 px-6 text-sm text-gray-600">
                         {p.CreatedAt ? new Date(p.CreatedAt).toLocaleDateString("pt-BR") : "-"}
                       </td>
@@ -413,6 +419,10 @@ export default function PsicologosPage() {
                   <div className="flex justify-between">
                     <span className="text-gray-500">CRP:</span>
                     <span className="font-medium font-mono">{p.Crp || "-"}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">WhatsApp:</span>
+                    <span className="font-medium font-mono">{p.WhatsApp || p.Whatsapp || "-"}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-500">Cadastro:</span>

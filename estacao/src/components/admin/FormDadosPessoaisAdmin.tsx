@@ -30,6 +30,26 @@ type ApiError = {
   message?: string;
 };
 
+function detectCountryByValue(value: string, fallback: PhoneCountry): PhoneCountry {
+  const digits = onlyDigits(value);
+  for (const c of PHONE_COUNTRIES) {
+    const dialDigits = c.dial.replace("+", "");
+    if (digits.startsWith(dialDigits)) {
+      return c;
+    }
+  }
+  return fallback;
+}
+
+function stripCountryDial(value: string, country: PhoneCountry): string {
+  const digits = onlyDigits(value);
+  const dialDigits = country.dial.replace("+", "");
+  if (digits.startsWith(dialDigits)) {
+    return digits.slice(dialDigits.length);
+  }
+  return digits;
+}
+
 type Props = {
   psicologo: Psicologo;
   enums: EnumsResponse;
@@ -41,11 +61,22 @@ export default function FormDadosPessoaisAdmin({ psicologo, enums, onSuccess }: 
   
   // Estados para telefone com país
   const [telefoneCompleto, setTelefoneCompleto] = React.useState<string>("");
-  const [country, setCountry] = React.useState<PhoneCountry>(PHONE_COUNTRIES.find(c => c.code === "BR") || PHONE_COUNTRIES[0]);
+  const defaultCountry = React.useMemo(
+    () => PHONE_COUNTRIES.find(c => c.code === "BR") || PHONE_COUNTRIES[0],
+    []
+  );
+  const [country, setCountry] = React.useState<PhoneCountry>(defaultCountry);
   const [openCountry, setOpenCountry] = React.useState(false);
   const countryBoxRef = React.useRef<HTMLDivElement>(null);
   const countryDropdownRef = React.useRef<HTMLUListElement>(null);
   
+  // Estados para WhatsApp com país
+  const [whatsappCompleto, setWhatsappCompleto] = React.useState<string>("");
+  const [countryWhatsapp, setCountryWhatsapp] = React.useState<PhoneCountry>(defaultCountry);
+  const [openCountryWhatsapp, setOpenCountryWhatsapp] = React.useState(false);
+  const countryWhatsappBoxRef = React.useRef<HTMLDivElement>(null);
+  const countryWhatsappDropdownRef = React.useRef<HTMLUListElement>(null);
+
   const [dadosPessoais, setDadosPessoais] = React.useState<{
     Nome: string;
     Email: string;
@@ -110,23 +141,27 @@ export default function FormDadosPessoaisAdmin({ psicologo, enums, onSuccess }: 
   React.useEffect(() => {
     const telefoneValue = psicologo?.Telefone || "";
     if (telefoneValue) {
-      if (telefoneValue.startsWith("+")) {
-        const detected = PHONE_COUNTRIES.find(c => telefoneValue.startsWith(c.dial));
-        if (detected) {
-          setCountry(detected);
-          const digits = onlyDigits(telefoneValue.replace(detected.dial, "").trim());
-          setTelefoneCompleto(maskTelefoneByCountry(detected.code, digits));
-        } else {
-          setCountry(PHONE_COUNTRIES.find(c => c.code === "BR") || PHONE_COUNTRIES[0]);
-          const digits = onlyDigits(telefoneValue);
-          setTelefoneCompleto(maskTelefoneByCountry("BR", digits));
-        }
-      } else {
-        const digits = onlyDigits(telefoneValue);
-        setTelefoneCompleto(maskTelefoneByCountry("BR", digits));
-      }
+      const detected = detectCountryByValue(telefoneValue, defaultCountry);
+      setCountry(detected);
+      const digits = stripCountryDial(telefoneValue, detected);
+      setTelefoneCompleto(maskTelefoneByCountry(detected.code, digits));
+    } else {
+      setTelefoneCompleto("");
     }
-  }, [psicologo]);
+  }, [psicologo, defaultCountry]);
+
+  // Carrega WhatsApp do psicologo
+  React.useEffect(() => {
+    const whatsappValue = psicologo?.WhatsApp || (psicologo as { Whatsapp?: string | null }).Whatsapp || "";
+    if (whatsappValue) {
+      const detected = detectCountryByValue(whatsappValue, defaultCountry);
+      setCountryWhatsapp(detected);
+      const digits = stripCountryDial(whatsappValue, detected);
+      setWhatsappCompleto(maskTelefoneByCountry(detected.code, digits));
+    } else {
+      setWhatsappCompleto("");
+    }
+  }, [psicologo, defaultCountry]);
 
   // Ajusta posição do dropdown de país quando abre
   React.useEffect(() => {
@@ -151,11 +186,37 @@ export default function FormDadosPessoaisAdmin({ psicologo, enums, onSuccess }: 
     }
   }, [openCountry]);
 
+  React.useEffect(() => {
+    if (openCountryWhatsapp && countryWhatsappDropdownRef.current) {
+      const rect = countryWhatsappBoxRef.current?.getBoundingClientRect();
+      if (rect) {
+        const viewportHeight = window.innerHeight;
+        const spaceBelow = viewportHeight - rect.bottom;
+        const spaceAbove = rect.top;
+        if (spaceBelow < 200 && spaceAbove > spaceBelow) {
+          countryWhatsappDropdownRef.current.style.bottom = "100%";
+          countryWhatsappDropdownRef.current.style.top = "auto";
+          countryWhatsappDropdownRef.current.style.marginBottom = "0.25rem";
+          countryWhatsappDropdownRef.current.style.marginTop = "0";
+        } else {
+          countryWhatsappDropdownRef.current.style.bottom = "auto";
+          countryWhatsappDropdownRef.current.style.top = "100%";
+          countryWhatsappDropdownRef.current.style.marginTop = "0.25rem";
+          countryWhatsappDropdownRef.current.style.marginBottom = "0";
+        }
+      }
+    }
+  }, [openCountryWhatsapp]);
+
   // Fecha dropdown de país ao clicar fora
   React.useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (countryBoxRef.current && !countryBoxRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      const clickedOutsidePhone = countryBoxRef.current && !countryBoxRef.current.contains(target);
+      const clickedOutsideWhatsapp = countryWhatsappBoxRef.current && !countryWhatsappBoxRef.current.contains(target);
+      if (clickedOutsidePhone && clickedOutsideWhatsapp) {
         setOpenCountry(false);
+        setOpenCountryWhatsapp(false);
       }
     };
     document.addEventListener("mousedown", handler);
@@ -192,6 +253,7 @@ export default function FormDadosPessoaisAdmin({ psicologo, enums, onSuccess }: 
         Nome: dadosPessoais.Nome,
         Email: dadosPessoais.Email || undefined,
         Telefone: telefoneCompleto ? `${country.dial}${onlyDigits(telefoneCompleto)}` : undefined,
+        WhatsApp: whatsappCompleto ? `${countryWhatsapp.dial}${onlyDigits(whatsappCompleto)}` : undefined,
         Sexo: dadosPessoais.Sexo || undefined,
         Pronome: dadosPessoais.Pronome || undefined,
         RacaCor: dadosPessoais.RacaCor || undefined,
@@ -318,80 +380,156 @@ export default function FormDadosPessoaisAdmin({ psicologo, enums, onSuccess }: 
             disabled={updatePsicologoMutation.isPending}
           />
         </label>
-        <label className="flex flex-col text-sm font-medium">
-          Telefone
-          <div ref={countryBoxRef} className="relative">
-            <div className="flex items-center w-full h-[40px] rounded-[6px] border border-[#75838F] bg-[#FCFBF6] px-4 py-2 text-sm focus-within:outline-none focus-within:ring-2 focus-within:ring-[#8494E9]">
-              <button
-                type="button"
-                onClick={() => setOpenCountry(v => !v)}
-                className="flex items-center gap-2 h-full px-2 rounded-l-[6px] border-r border-[#d1d5db]"
-                aria-haspopup="listbox"
-                aria-expanded={openCountry}
-                disabled={updatePsicologoMutation.isPending}
-              >
-                <Image
-                  src={getFlagUrl(country.code)}
-                  alt=""
-                  width={20}
-                  height={20}
-                  unoptimized
-                  className="w-5 h-5 object-contain"
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:col-span-2">
+          <label className="flex flex-col text-sm font-medium">
+            Telefone
+            <div ref={countryBoxRef} className="relative">
+              <div className="flex items-center w-full h-[40px] rounded-[6px] border border-[#75838F] bg-[#FCFBF6] px-4 py-2 text-sm focus-within:outline-none focus-within:ring-2 focus-within:ring-[#8494E9]">
+                <button
+                  type="button"
+                  onClick={() => setOpenCountry(v => !v)}
+                  className="flex items-center gap-2 h-full px-2 rounded-l-[6px] border-r border-[#d1d5db]"
+                  aria-haspopup="listbox"
+                  aria-expanded={openCountry}
+                  disabled={updatePsicologoMutation.isPending}
+                >
+                  <Image
+                    src={getFlagUrl(country.code)}
+                    alt=""
+                    width={20}
+                    height={20}
+                    unoptimized
+                    className="w-5 h-5 object-contain"
+                  />
+                  <span className="text-sm uppercase text-[#23253a]">{country.code}</span>
+                  <span className="text-sm leading-none text-[#d1d5db]">▼</span>
+                </button>
+                <span className="px-2 text-sm text-[#23253a] border-r border-[#d1d5db]">{country.dial}</span>
+                <input
+                  type="text"
+                  inputMode="tel"
+                  autoComplete="off"
+                  placeholder="Telefone com DDD"
+                  className="flex-1 bg-transparent outline-none text-sm px-3 text-[#23253a]"
+                  value={telefoneCompleto}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                    const masked = maskTelefoneByCountry(country.code, onlyDigits(e.target.value));
+                    setTelefoneCompleto(masked);
+                  }}
+                  disabled={updatePsicologoMutation.isPending}
                 />
-                <span className="text-sm uppercase text-[#23253a]">{country.code}</span>
-                <span className="text-sm leading-none text-[#d1d5db]">▼</span>
-              </button>
-              <span className="px-2 text-sm text-[#23253a] border-r border-[#d1d5db]">{country.dial}</span>
-              <input
-                type="text"
-                inputMode="tel"
-                autoComplete="off"
-                placeholder="Telefone com DDD"
-                className="flex-1 bg-transparent outline-none text-sm px-3 text-[#23253a]"
-                value={telefoneCompleto}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                  const masked = maskTelefoneByCountry(country.code, onlyDigits(e.target.value));
-                  setTelefoneCompleto(masked);
-                }}
-                disabled={updatePsicologoMutation.isPending}
-              />
+              </div>
+              {openCountry && (
+                <ul
+                  ref={countryDropdownRef}
+                  role="listbox"
+                  className="absolute z-20 mt-1 w-full max-h-60 overflow-auto bg-white border border-[#e2e8f0] rounded-md shadow"
+                >
+                  {PHONE_COUNTRIES.map((c) => (
+                    <li
+                      key={c.code}
+                      role="option"
+                      aria-selected={country.code === c.code}
+                      onClick={() => {
+                        setCountry(c);
+                        const rawDigits = onlyDigits(telefoneCompleto);
+                        const masked = maskTelefoneByCountry(c.code, rawDigits);
+                        setTelefoneCompleto(masked);
+                        setOpenCountry(false);
+                      }}
+                      className={`flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-[#f3f4f6] ${country.code === c.code ? "bg-[#eef2ff]" : ""}`}
+                    >
+                      <Image
+                        src={getFlagUrl(c.code)}
+                        alt=""
+                        width={20}
+                        height={20}
+                        unoptimized
+                        className="w-5 h-5 object-contain"
+                      />
+                      <span className="text-sm uppercase text-[#23253a]">{c.code}</span>
+                      <span className="text-xs text-[#667085]">{c.dial}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
-            {openCountry && (
-              <ul
-                ref={countryDropdownRef}
-                role="listbox"
-                className="absolute z-20 mt-1 w-full max-h-60 overflow-auto bg-white border border-[#e2e8f0] rounded-md shadow"
-              >
-                {PHONE_COUNTRIES.map((c) => (
-                  <li
-                    key={c.code}
-                    role="option"
-                    aria-selected={country.code === c.code}
-                    onClick={() => {
-                      setCountry(c);
-                      const rawDigits = onlyDigits(telefoneCompleto);
-                      const masked = maskTelefoneByCountry(c.code, rawDigits);
-                      setTelefoneCompleto(masked);
-                      setOpenCountry(false);
-                    }}
-                    className={`flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-[#f3f4f6] ${country.code === c.code ? "bg-[#eef2ff]" : ""}`}
-                  >
-                    <Image
-                      src={getFlagUrl(c.code)}
-                      alt=""
-                      width={20}
-                      height={20}
-                      unoptimized
-                      className="w-5 h-5 object-contain"
-                    />
-                    <span className="text-sm uppercase text-[#23253a]">{c.code}</span>
-                    <span className="text-xs text-[#667085]">{c.dial}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        </label>
+          </label>
+          <label className="flex flex-col text-sm font-medium">
+            WhatsApp
+            <div ref={countryWhatsappBoxRef} className="relative">
+              <div className="flex items-center w-full h-[40px] rounded-[6px] border border-[#75838F] bg-[#FCFBF6] px-4 py-2 text-sm focus-within:outline-none focus-within:ring-2 focus-within:ring-[#8494E9]">
+                <button
+                  type="button"
+                  onClick={() => setOpenCountryWhatsapp(v => !v)}
+                  className="flex items-center gap-2 h-full px-2 rounded-l-[6px] border-r border-[#d1d5db]"
+                  aria-haspopup="listbox"
+                  aria-expanded={openCountryWhatsapp}
+                  disabled={updatePsicologoMutation.isPending}
+                >
+                  <Image
+                    src={getFlagUrl(countryWhatsapp.code)}
+                    alt=""
+                    width={20}
+                    height={20}
+                    unoptimized
+                    className="w-5 h-5 object-contain"
+                  />
+                  <span className="text-sm uppercase text-[#23253a]">{countryWhatsapp.code}</span>
+                  <span className="text-sm leading-none text-[#d1d5db]">▼</span>
+                </button>
+                <span className="px-2 text-sm text-[#23253a] border-r border-[#d1d5db]">{countryWhatsapp.dial}</span>
+                <input
+                  type="text"
+                  inputMode="tel"
+                  autoComplete="off"
+                  placeholder="WhatsApp"
+                  className="flex-1 bg-transparent outline-none text-sm px-3 text-[#23253a]"
+                  value={whatsappCompleto}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                    const masked = maskTelefoneByCountry(countryWhatsapp.code, onlyDigits(e.target.value));
+                    setWhatsappCompleto(masked);
+                  }}
+                  disabled={updatePsicologoMutation.isPending}
+                />
+              </div>
+              {openCountryWhatsapp && (
+                <ul
+                  ref={countryWhatsappDropdownRef}
+                  role="listbox"
+                  className="absolute z-20 mt-1 w-full max-h-60 overflow-auto bg-white border border-[#e2e8f0] rounded-md shadow"
+                >
+                  {PHONE_COUNTRIES.map((c) => (
+                    <li
+                      key={c.code}
+                      role="option"
+                      aria-selected={countryWhatsapp.code === c.code}
+                      onClick={() => {
+                        setCountryWhatsapp(c);
+                        const rawDigits = onlyDigits(whatsappCompleto);
+                        const masked = maskTelefoneByCountry(c.code, rawDigits);
+                        setWhatsappCompleto(masked);
+                        setOpenCountryWhatsapp(false);
+                      }}
+                      className={`flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-[#f3f4f6] ${countryWhatsapp.code === c.code ? "bg-[#eef2ff]" : ""}`}
+                    >
+                      <Image
+                        src={getFlagUrl(c.code)}
+                        alt=""
+                        width={20}
+                        height={20}
+                        unoptimized
+                        className="w-5 h-5 object-contain"
+                      />
+                      <span className="text-sm uppercase text-[#23253a]">{c.code}</span>
+                      <span className="text-xs text-[#667085]">{c.dial}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </label>
+        </div>
         <label className="flex flex-col text-sm font-medium">
           Pronome
           <Select

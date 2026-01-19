@@ -165,6 +165,7 @@ export class PsicologoService {
                 Status: true,
                 CreatedAt: true,
                 Telefone: true,
+                WhatsApp: true,
                 Sexo: true,
                 Pronome: true,
                 RacaCor: true,
@@ -354,6 +355,11 @@ export class PsicologoService {
         // Permite editar TODOS os campos do modelo User (exceto Password que é tratado separadamente)
         const updateData: Record<string, unknown> = {};
         for (const key in data) {
+            // Normaliza o campo Whatsapp para o nome correto no schema
+            if (key === 'Whatsapp') {
+                updateData['WhatsApp'] = data[key];
+                continue;
+            }
             // Permite todos os campos do User, exceto relações e Password
             if (!relationFields.includes(key) && key !== 'Password') {
                 updateData[key] = data[key];
