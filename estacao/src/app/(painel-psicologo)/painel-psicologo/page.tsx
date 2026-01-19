@@ -61,6 +61,11 @@ function getNomePacienteSeguro(paciente: string | undefined | null): string {
   return nome;
 }
 
+function getReviewRating(review: { Rating?: unknown }) {
+  const ratingValue = Number(review?.Rating);
+  return Number.isFinite(ratingValue) ? ratingValue : null;
+}
+
 export default function PainelPsicologoPage() {
   const [loading, setLoading] = useState(true);
   const [currentDateTime, setCurrentDateTime] = useState("");
@@ -80,6 +85,21 @@ export default function PainelPsicologoPage() {
   const userPsicologo = useUserPsicologo();
   const profilePercent = useProfilePercent();
   const firstName = userBasic.user?.Nome?.split(" ")[0] || "";
+
+  const reviewsReceived = Array.isArray(userPsicologo?.psicologo?.user?.[0]?.ReviewsReceived)
+    ? userPsicologo?.psicologo?.user?.[0]?.ReviewsReceived
+    : [];
+
+  const ratingSummary = useMemo(() => {
+    const avaliadas = reviewsReceived
+      .map(getReviewRating)
+      .filter((rating): rating is number => typeof rating === "number");
+
+    const count = avaliadas.length;
+    const average = count > 0 ? avaliadas.reduce((acc, rating) => acc + rating, 0) / count : 0;
+
+    return { average, count };
+  }, [reviewsReceived]);
 
   // Verifica status do perfil profissional
   const professionalStatus = useMemo(() => {
@@ -738,6 +758,9 @@ export default function PainelPsicologoPage() {
                 consultasPendentes={consultasPendentes}
                 taxaOcupacao={taxaOcupacao}
                 consultasNoMes={totalConsultasNoMes}
+                ratingAverage={ratingSummary.average}
+                ratingCount={ratingSummary.count}
+                ratingLoading={userPsicologo?.isLoading}
               />
             </motion.div>
           </AnimatePresence>

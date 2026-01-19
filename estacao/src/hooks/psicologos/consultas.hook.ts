@@ -29,20 +29,21 @@ export function useObterConsultasRealizadas() {
     };
 }
 
+import dayjs from 'dayjs';
+
 export function useObterTaxaOcupacao() {
-    const obterTaxaOcupacao = useConsultasPsicologoStore(state => state.fetchTaxaOcupacao);
+    // Calcula o primeiro e último dia do mês atual
+    const dataInicio = dayjs().startOf('month').format('YYYY-MM-DD');
+    const dataFim = dayjs().endOf('month').format('YYYY-MM-DD');
+
     const query = useQuery<taxaOcupacao>({
-        queryKey: ['taxaOcupacao'], // <-- ajuste aqui!
+        queryKey: ['taxaOcupacao', dataInicio, dataFim],
         queryFn: async () => {
-            await obterTaxaOcupacao();
-            // Buscar o valor atualizado do store após o await
-            const taxaOcupacaoAtual = useConsultasPsicologoStore.getState().taxaOcupacao;
-            if (taxaOcupacaoAtual && typeof taxaOcupacaoAtual.percentualOcupacao === 'number') {
-                return taxaOcupacaoAtual;
+            const { data } = await admPsicologoService().taxaOcupacao(dataInicio, dataFim);
+            if (data && typeof data.percentualOcupacao === 'number') {
+                return data;
             }
-            return {
-                percentualOcupacao: 0
-            };
+            return { percentualOcupacao: 0 };
         },
         enabled: true,
         retry: 1,
@@ -50,9 +51,7 @@ export function useObterTaxaOcupacao() {
     });
 
     return {
-        taxaOcupacao: query.data ?? {
-            percentualOcupacao: 0
-        },
+        taxaOcupacao: query.data ?? { percentualOcupacao: 0 },
         isLoading: query.isLoading,
         isError: query.isError,
         refetch: query.refetch,

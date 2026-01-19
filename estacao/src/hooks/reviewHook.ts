@@ -80,6 +80,7 @@ export function useAverageRating(psicologoId: string) {
     };
 }
 
+
 // Criar avaliação
 export function useCreateReview() {
     const { createReview } = useReviewStore();

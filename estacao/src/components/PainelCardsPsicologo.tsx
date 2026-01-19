@@ -2,20 +2,21 @@
 import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import ModalAvaliacoesPsicologo from "./ModalAvaliacoesPsicologo";
 import ModalConsultasPendentes from "./ModalConsultasPendentes";
 import ModalOcupacaoAgenda from "./ModalOcupacaoAgenda";
 import ModalConsultasMes from "./ModalConsultasMes";
 import { useObterTaxaOcupacao } from "@/hooks/psicologos/consultas.hook";
-import { useAverageRating } from "@/hooks/reviewHook";
-import { useAuthStore } from "@/store/authStore";
 
 type Props = {
   calculoPagamento: { totalPagamento?: number } | null;
   consultasPendentes: { totalPendentes?: number } | null;
   taxaOcupacao: { percentualOcupacao?: number };
   consultasNoMes?: number;
+  ratingAverage?: number;
+  ratingCount?: number;
+  ratingLoading?: boolean;
 };
 
 export default function PainelCardsPsicologo({
@@ -23,23 +24,20 @@ export default function PainelCardsPsicologo({
   consultasPendentes,
   taxaOcupacao: taxaOcupacaoProp,
   consultasNoMes = 0,
+  ratingAverage = 0,
+  ratingCount = 0,
+  ratingLoading = false,
 }: Props) {
   const [modalAvaliacoes, setModalAvaliacoes] = useState(false);
   const [modalConsultasPendentes, setModalConsultasPendentes] = useState(false);
   const [modalOcupacao, setModalOcupacao] = useState(false);
   const [modalConsultasMes, setModalConsultasMes] = useState(false);
-  
-  // Obtém o ID do psicólogo logado
-  const loggedUser = useAuthStore((state) => state.user);
-  const psicologoId = loggedUser?.Id ? String(loggedUser.Id) : "";
-  
-  // Busca a média das avaliações
-  const { averageRating, isLoading: isLoadingRating } = useAverageRating(psicologoId);
-  
-  // Formata a média para exibição (1 casa decimal)
-  const mediaFormatada = averageRating !== null && averageRating !== undefined 
-    ? averageRating.toFixed(1) 
-    : "0.0";
+
+  const mediaFormatada = useMemo(() => ratingAverage.toFixed(1), [ratingAverage]);
+  const ratingCountLabel = useMemo(
+    () => (ratingLoading ? "..." : ratingCount.toLocaleString("pt-BR")),
+    [ratingCount, ratingLoading]
+  );
   
   // Busca taxa de ocupação atualizada para garantir que o percentual esteja sempre atualizado
   const { taxaOcupacao: taxaOcupacaoHook, refetch: refetchTaxaOcupacao } = useObterTaxaOcupacao();
@@ -114,9 +112,14 @@ export default function PainelCardsPsicologo({
             <h2 className="text-xs font-medium text-[#26220D] font-fira-sans">Suas avaliações</h2>
           </div>
           <div className="flex items-center justify-between">
-            <p className="text-xl sm:text-2xl font-semibold text-yellow-500 font-fira-sans">
-              {isLoadingRating ? "..." : mediaFormatada}
-            </p>
+            <div className="flex flex-col">
+              <p className="text-xl sm:text-2xl font-semibold text-yellow-500 font-fira-sans">
+                {ratingLoading ? "..." : mediaFormatada}
+              </p>
+              <span className="text-xs text-gray-500 font-fira-sans">
+                {ratingCountLabel} avaliações
+              </span>
+            </div>
             <button
               onClick={() => setModalAvaliacoes(true)}
               className="flex items-center gap-1 text-xs text-[#6D75C0] ml-2 font-fira-sans hover:underline cursor-pointer flex-shrink-0"
@@ -235,8 +238,11 @@ export default function PainelCardsPsicologo({
           <Image src="/icons/estrela.svg" alt="Avaliações" width={32} height={32} className="mx-auto mb-2" />
           <h2 className="text-xs font-medium text-[#26220D] font-fira-sans">Suas avaliações</h2>
           <p className="text-2xl font-semibold text-yellow-500 font-fira-sans">
-            {isLoadingRating ? "..." : mediaFormatada}
+            {ratingLoading ? "..." : mediaFormatada}
           </p>
+          <span className="text-xs text-gray-500 font-fira-sans">
+            {ratingCountLabel} avaliações
+          </span>
           <button
             onClick={() => setModalAvaliacoes(true)}
             className="mt-2 flex items-center gap-1 text-xs text-[#6D75C0] font-fira-sans font-bold hover:text-[#6B7DD8] hover:underline cursor-pointer transition"

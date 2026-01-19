@@ -41,7 +41,15 @@ export const admPsicologoService = () => {
         getSaldoRetido: () => api.get(`/adm-psicologos/financeiro/saldo-retido`),
         getFaturaPeriodo: () => api.get(`/adm-psicologos/financeiro/fatura-periodo`),
         consultasRealizadas: () => api.get(`/adm-psicologos/consultas/consultas-realizadas`),
-        taxaOcupacao: () => api.get(`/adm-psicologos/consultas/taxa-ocupacao-agenda`),
+        /**
+         * Busca a taxa de ocupação da agenda do psicólogo para um intervalo de datas (ex: mês atual)
+         * @param dataInicio string (YYYY-MM-DD)
+         * @param dataFim string (YYYY-MM-DD)
+         */
+        taxaOcupacao: (dataInicio: string, dataFim: string) =>
+            api.get(`/adm-psicologos/consultas/taxa-ocupacao-agenda`, {
+                params: { dataInicio, dataFim }
+            }),
         consultasPendentes: () => api.get(`/adm-psicologos/consultas/consultas-pendentes`),
         proximasConsultas: () => api.get(`/adm-psicologos/consultas/proximas-consultas`),
         proximaConsulta: () => api.get(`/adm-psicologos/consultas/proxima-consulta`),
