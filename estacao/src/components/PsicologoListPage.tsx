@@ -193,76 +193,62 @@ function PsicologosPage() {
   };
 
   /**
-   * Calcula a taxa de ocupação dos próximos 7 dias
-   * Taxa = (horários ocupados / total de horários publicados) * 100
-   */
-  const calcularTaxaOcupacao = (psicologo: PsicologoAtivo): number => {
-    const agendas = psicologo.PsychologistAgendas || [];
-    if (agendas.length === 0) return 0;
-
-    const hoje = new Date();
-    hoje.setHours(0, 0, 0, 0);
-    const proximos7Dias = new Date(hoje);
-    proximos7Dias.setDate(hoje.getDate() + 7);
-
-    // Filtra agendas dos próximos 7 dias (exceto bloqueadas)
-    const agendasProximos7Dias = agendas.filter(agenda => {
-      const dataAgenda = new Date(agenda.Data);
-      dataAgenda.setHours(0, 0, 0, 0);
-      return dataAgenda >= hoje && 
-             dataAgenda < proximos7Dias && 
-             agenda.Status !== 'Bloqueado';
-    });
-
-    if (agendasProximos7Dias.length === 0) return 0;
-
-    // Horários ocupados: Reservado, Andamento, Concluído
-    const horariosOcupados = agendasProximos7Dias.filter(a => {
-      const status = a.Status || '';
-      return status === 'Reservado' || status === 'Andamento' || status === 'Concluído';
-    }).length;
-
-    // Total de horários publicados (todos exceto Bloqueado)
-    const totalHorarios = agendasProximos7Dias.length;
-
-    return totalHorarios > 0 
-      ? Math.round((horariosOcupados / totalHorarios) * 100)
-      : 0;
-  };
-
-  /**
    * Ordena psicólogos conforme critérios de priorização:
    * 1. Compatibilidade com filtros (100% → 0%, decrescente)
    * 2. Taxa de ocupação (menor é melhor, crescente)
    * 3. Experiência clínica (maior é melhor, decrescente) - critério de desempate
    */
+  const calcularNotaMedia = (psicologo: PsicologoAtivo): number => {
+    const reviews = psicologo.ReviewsReceived || [];
+    if (reviews.length === 0) return 0;
+    const soma = reviews.reduce((acc, r) => acc + (r.Rating || 0), 0);
+    return soma / reviews.length;
+  };
+
+  const temHorariosDisponiveis = (psicologo: PsicologoAtivo): boolean => {
+    return Array.isArray(psicologo.PsychologistAgendas) && psicologo.PsychologistAgendas.length > 0;
+  };
+
   const ordenarPsicologos = (psicologosList: PsicologoAtivo[]): PsicologoAtivo[] => {
+    // 1º: Filtros selecionados (compatibilidade)
+    // 2º: Quem tem mais horários livres (agenda disponível)
+    // 3º: Maior tempo de experiência
+    // 4º: Maior nota média
+    // Psicólogos sem horários disponíveis sempre por último
     return [...psicologosList].sort((a, b) => {
+      // 1. Compatibilidade com filtros
       const compatibilidadeA = calcularCompatibilidade(a);
       const compatibilidadeB = calcularCompatibilidade(b);
-      
-      // 1. Ordena por compatibilidade (decrescente: 100% → 0%)
       if (compatibilidadeA !== compatibilidadeB) {
         return compatibilidadeB - compatibilidadeA;
       }
 
-      // 2. Se compatibilidade igual, ordena por taxa de ocupação (crescente: menor é melhor)
-      const taxaOcupacaoA = calcularTaxaOcupacao(a);
-      const taxaOcupacaoB = calcularTaxaOcupacao(b);
-      
-      if (taxaOcupacaoA !== taxaOcupacaoB) {
-        return taxaOcupacaoA - taxaOcupacaoB;
+      // 2. Disponibilidade de horários (quem tem agenda vem antes)
+      const horariosA = temHorariosDisponiveis(a);
+      const horariosB = temHorariosDisponiveis(b);
+      if (horariosA !== horariosB) {
+        return horariosB ? 1 : -1;
+      }
+      // Se ambos têm horários, prioriza quem tem mais horários livres
+      if (horariosA && horariosB) {
+        const livresA = a.PsychologistAgendas?.filter(h => h.Status === 'Disponível').length || 0;
+        const livresB = b.PsychologistAgendas?.filter(h => h.Status === 'Disponível').length || 0;
+        if (livresA !== livresB) {
+          return livresB - livresA;
+        }
       }
 
-      // 3. Se taxa de ocupação igual, ordena por experiência (decrescente: maior é melhor)
-      const experienciaA = experienciaClinicaParaAnos(
-        a.ProfessionalProfiles?.[0]?.ExperienciaClinica
-      );
-      const experienciaB = experienciaClinicaParaAnos(
-        b.ProfessionalProfiles?.[0]?.ExperienciaClinica
-      );
-      
-      return experienciaB - experienciaA;
+      // 3. Maior tempo de experiência
+      const experienciaA = experienciaClinicaParaAnos(a.ProfessionalProfiles?.[0]?.ExperienciaClinica);
+      const experienciaB = experienciaClinicaParaAnos(b.ProfessionalProfiles?.[0]?.ExperienciaClinica);
+      if (experienciaA !== experienciaB) {
+        return experienciaB - experienciaA;
+      }
+
+      // 4. Maior nota média
+      const notaA = calcularNotaMedia(a);
+      const notaB = calcularNotaMedia(b);
+      return notaB - notaA;
     });
   };
 
