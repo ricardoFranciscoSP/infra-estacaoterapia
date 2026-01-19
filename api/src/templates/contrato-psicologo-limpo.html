@@ -142,7 +142,14 @@
         }
 
         .quebra-pagina {
-            page-break-after: always;
+            page-break-before: always;
+            page-break-after: auto;
+            break-before: page;
+            break-after: auto;
+        }
+        .quebra-pagina:last-of-type {
+            page-break-after: auto;
+            break-after: auto;
         }
 
         table {
@@ -183,6 +190,10 @@
 
             .quebra-pagina {
                 page-break-before: always;
+                page-break-after: auto;
+            }
+            .quebra-pagina:last-of-type {
+                page-break-after: auto;
             }
         }
     </style>

@@ -32,7 +32,6 @@ const idiomaOptions = [
   { value: "portugues", label: "Português" },
   { value: "ingles", label: "Inglês" },
   { value: "espanhol", label: "Espanhol" },
-  { value: "libras", label: "Libras" },
 ];
 
 // Opções para Período

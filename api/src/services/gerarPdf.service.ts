@@ -1501,11 +1501,22 @@ export class ContratoService {
                 console.log('[Contrato Psicólogo] Arquivo temporário removido:', localPath);
             }
 
+            let linkContratoEmail = urlContrato;
+            const { data: signedData, error: signedError } = storageClient.storage
+                .from(bucketName)
+                .createSignedUrl(filePath, 60 * 60 * 24 * 7, { download: fileName });
+
+            if (signedError) {
+                console.warn('[Contrato Psicólogo] Não foi possível gerar URL de download assinada:', signedError.message);
+            } else if (signedData?.signedUrl) {
+                linkContratoEmail = signedData.signedUrl;
+            }
+
             // Envia e-mail com o link do contrato e anexo do PDF
             await emailService.sendContratoGeradoEmail({
                 to: psicologo.email,
                 nome: psicologo.nome,
-                linkContrato: urlContrato,
+                linkContrato: linkContratoEmail,
                 pdfBuffer: buffer
             });
 
