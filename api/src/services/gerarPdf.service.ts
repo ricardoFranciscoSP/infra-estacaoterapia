@@ -421,6 +421,12 @@ interface TemplateDataPaciente {
 
 type TemplateData = TemplateDataPsicologo | TemplateDataPsicologoFlat | TemplateDataPaciente | Record<string, never>;
 
+const BRAZIL_TIME_ZONE = "America/Sao_Paulo";
+
+const formatPtBrDate = (date: Date, options: Intl.DateTimeFormatOptions): string => {
+    return new Intl.DateTimeFormat("pt-BR", { timeZone: BRAZIL_TIME_ZONE, ...options }).format(date);
+};
+
 function isTemplateDataPsicologo(data: TemplateData): data is TemplateDataPsicologo {
     return typeof data === 'object' && data !== null && 'psicologo' in data;
 }
@@ -754,8 +760,8 @@ export class ContratoService {
 
         // Gera data e hora do contrato
         const now = new Date();
-        const dataContrato = now.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
-        const horaContrato = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        const dataContrato = formatPtBrDate(now, { day: '2-digit', month: '2-digit', year: 'numeric' });
+        const horaContrato = formatPtBrDate(now, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
         const psicologoData: PsicologoTemplateData = {
             nome: psicologo.nome || '',
@@ -822,9 +828,9 @@ export class ContratoService {
 
     private buildContratoPsicologoFlatData(psicologo: ContratoPsicologoData): TemplateDataPsicologoFlat {
         const now = new Date();
-        const diaAssinatura = now.toLocaleDateString('pt-BR', { day: '2-digit' });
-        const mesAssinatura = now.toLocaleDateString('pt-BR', { month: 'long' });
-        const anoAssinatura = now.toLocaleDateString('pt-BR', { year: 'numeric' });
+        const diaAssinatura = formatPtBrDate(now, { day: '2-digit' });
+        const mesAssinatura = formatPtBrDate(now, { month: 'long' });
+        const anoAssinatura = formatPtBrDate(now, { year: 'numeric' });
 
         const contratante = psicologo.contratante || {
             nome: '',
@@ -935,7 +941,7 @@ export class ContratoService {
             },
             plataforma: { nome: "ESTAÇÃO TERAPIA", prazo_analise_horas: 72 },
             psicologo: psicologoData,
-            data_assinatura: new Date().toLocaleDateString("pt-BR")
+            data_assinatura: formatPtBrDate(new Date(), { day: "2-digit", month: "2-digit", year: "numeric" })
         };
     }
 
@@ -1253,7 +1259,7 @@ export class ContratoService {
             rescisao: pacienteData.rescisao,
             privacidade: { prazo_prontuario_anos: 5 },
             anexoI: pacienteData.anexoI,
-            data_assinatura: new Date().toLocaleDateString("pt-BR"),
+            data_assinatura: formatPtBrDate(new Date(), { day: "2-digit", month: "2-digit", year: "numeric" }),
             assinatura: assinaturaBase64
                 ? `<img src="${assinaturaBase64}" alt="Assinatura do paciente" style="max-height:100px"/>`
                 : ""

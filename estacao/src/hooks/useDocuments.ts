@@ -21,7 +21,7 @@ export interface UseDocumentsReturn {
     error: string | null;
     psychologistName: string | null;
     refetch: () => Promise<void>;
-    refreshDocumentUrl: (documentId: string) => Promise<void>;
+    refreshDocumentUrl: (documentId: string) => Promise<{ url: string | null; expiresAt: string | null } | null>;
     downloadDocument: (documentId: string) => Promise<void>;
     deleteDocument: (documentId: string) => Promise<void>;
     getDocumentThumbnail: (documentId: string, size?: number) => Promise<string | null>;
@@ -89,6 +89,7 @@ export function useDocuments(profileId: string | undefined): UseDocumentsReturn 
                     }
                     : doc
             ));
+            return { url: response.data.url ?? null, expiresAt: response.data.expiresAt ?? null };
         } catch (err: unknown) {
             console.error('Erro ao atualizar URL do documento:', err);
 
@@ -98,6 +99,7 @@ export function useDocuments(profileId: string | undefined): UseDocumentsReturn 
                     ? { ...doc, error: 'Erro ao renovar URL', fileExists: false }
                     : doc
             ));
+            return null;
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);

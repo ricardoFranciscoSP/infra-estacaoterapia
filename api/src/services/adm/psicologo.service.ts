@@ -214,6 +214,21 @@ export class PsicologoService {
             return map[normalized];
         };
 
+        const normalizeProfessionalProfileStatus = (status: string): string | undefined => {
+            const normalized = status
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "")
+                .toUpperCase()
+                .replace(/[^A-Z]/g, "");
+
+            const map: Record<string, string> = {
+                PREENCHIDO: "Preenchido",
+                INCOMPLETO: "Incompleto",
+            };
+
+            return map[normalized];
+        };
+
         // Filtra os dados removendo apenas campos de relação
         // Permite editar TODOS os campos do modelo User (exceto Password que é tratado separadamente)
         const updateData: Record<string, unknown> = {};
@@ -415,6 +430,14 @@ export class PsicologoService {
                 if (profileData.TipoAtendimento !== undefined) profileUpdate.TipoAtendimento = profileData.TipoAtendimento;
                 if (profileData.TipoPessoaJuridico !== undefined) profileUpdate.TipoPessoaJuridico = profileData.TipoPessoaJuridico;
                 if (profileData.AreasAtuacao !== undefined) profileUpdate.AreasAtuacao = profileData.AreasAtuacao;
+                if (typeof profileData.Status === "string") {
+                    const normalizedProfileStatus = normalizeProfessionalProfileStatus(profileData.Status);
+                    if (normalizedProfileStatus) {
+                        profileUpdate.Status = normalizedProfileStatus;
+                    } else {
+                        throw new Error("Status de preenchimento inválido. Use Preenchido ou Incompleto.");
+                    }
+                }
 
                 if (Object.keys(profileUpdate).length > 0) {
                     await prisma.professionalProfile.update({

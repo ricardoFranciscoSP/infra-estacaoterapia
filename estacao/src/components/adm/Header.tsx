@@ -19,6 +19,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSidebarMobile }) => {
   const [avatarSrc, setAvatarSrc] = useState<string>("/assets/Profile.svg");
   const buttonRef = useRef<HTMLButtonElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
+  const basePath = useMemo(() => (user?.Role === "Finance" ? "/adm-finance" : "/adm-estacao"), [user?.Role]);
 
   // Hook de notificações
   const {
@@ -101,7 +102,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSidebarMobile }) => {
             <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
           </svg>
         </button>
-        <a href="/adm-finance" className="flex-shrink-0">
+        <a href={basePath} className="flex-shrink-0">
           <Image
             src="/assets/logo/logo-escuro.svg"
             alt="Logo"

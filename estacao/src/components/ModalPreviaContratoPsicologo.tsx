@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef } from "react";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 
@@ -72,23 +73,16 @@ const ModalPreviaContratoPsicologo: React.FC<ModalPreviaContratoPsicologoProps> 
         <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[85vh] flex flex-col relative animate-in fade-in zoom-in duration-200">
           {/* Header */}
           <div className="flex items-center justify-between gap-4 p-6 border-b border-[#5f5bd6] bg-[#6f6ce7] rounded-t-2xl">
-            <div className="flex items-start gap-3">
-              <div className="w-10 h-10 bg-white/15 rounded-lg flex items-center justify-center">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="w-6 h-6 text-white"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                  />
-                </svg>
-              </div>
+            <div className="flex items-center gap-4">
+              <Image
+                src="/assets/logo/logo-estacao.svg"
+                alt="Estação Terapia"
+                width={150}
+                height={40}
+                className="h-8 w-auto"
+                priority
+              />
+              <div className="h-8 w-px bg-white/30" aria-hidden="true" />
               <div className="leading-tight">
                 <h2 className="text-xl font-bold text-white">
                   Prévia do Contrato de Parceria
@@ -138,12 +132,7 @@ const ModalPreviaContratoPsicologo: React.FC<ModalPreviaContratoPsicologoProps> 
                 <p className="text-sm text-gray-500 mt-2">Aguarde enquanto preparamos o documento</p>
               </div>
             ) : contratoHtml ? (
-              <div
-                className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 sm:p-8 md:p-10"
-                style={{
-                  minHeight: "100%",
-                }}
-              >
+              <div className="contrato-page">
                 <div
                   className="contrato-content"
                   dangerouslySetInnerHTML={{ __html: contratoHtml }}
@@ -227,6 +216,15 @@ const ModalPreviaContratoPsicologo: React.FC<ModalPreviaContratoPsicologoProps> 
 
       {/* Estilos globais para animação */}
       <style jsx global>{`
+        .contrato-page {
+          max-width: 820px;
+          margin: 0 auto;
+          background: #ffffff;
+          border: 1px solid #e5e7eb;
+          box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12);
+          border-radius: 12px;
+          padding: 40px 48px;
+        }
         .contrato-content,
         .contrato-content *,
         .contrato-content p,
@@ -253,12 +251,13 @@ const ModalPreviaContratoPsicologo: React.FC<ModalPreviaContratoPsicologoProps> 
         .contrato-content {
           font-family: "Times New Roman", Times, serif !important;
           font-size: 12pt !important;
-          line-height: 1.5 !important;
+          line-height: 1.6 !important;
+          text-align: justify !important;
         }
         .contrato-content p {
           text-align: justify !important;
           text-indent: 1.25cm !important;
-          margin: 0 0 1em 0 !important;
+          margin: 0 0 0.45cm 0 !important;
         }
         .contrato-content h1,
         .contrato-content h2,
@@ -267,6 +266,10 @@ const ModalPreviaContratoPsicologo: React.FC<ModalPreviaContratoPsicologoProps> 
           font-weight: bold !important;
           margin: 1.25em 0 0.75em 0 !important;
           text-transform: uppercase !important;
+        }
+        .contrato-content ul,
+        .contrato-content ol {
+          margin: 0 0 0.4cm 1.2cm !important;
         }
         @keyframes fade-in {
           from {

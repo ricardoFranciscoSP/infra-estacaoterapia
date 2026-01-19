@@ -1,4 +1,6 @@
 import type { LaunchOptions } from "puppeteer";
+import puppeteer from "puppeteer";
+import fs from "fs";
 
 const defaultArgs = [
   "--no-sandbox",
@@ -16,13 +18,28 @@ const getEnvExecutablePath = (): string | undefined => {
   );
 };
 
+const resolveExecutablePath = (): string | undefined => {
+  const envPath = getEnvExecutablePath();
+  const candidates = [
+    envPath,
+    puppeteer.executablePath(),
+    "/usr/bin/google-chrome",
+    "/usr/bin/google-chrome-stable",
+    "/usr/bin/chromium",
+    "/usr/bin/chromium-browser",
+    "/snap/bin/chromium",
+  ].filter((candidate): candidate is string => typeof candidate === "string" && candidate.length > 0);
+
+  return candidates.find((candidate) => fs.existsSync(candidate));
+};
+
 export const getPuppeteerLaunchOptions = (
   options: LaunchOptions = {}
 ): LaunchOptions => {
   const mergedArgs = options.args
     ? Array.from(new Set([...defaultArgs, ...options.args]))
     : defaultArgs;
-  const executablePath = options.executablePath || getEnvExecutablePath();
+  const executablePath = options.executablePath || resolveExecutablePath();
 
   return {
     headless: true,

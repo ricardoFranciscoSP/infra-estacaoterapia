@@ -81,6 +81,7 @@ export interface ProfessionalProfiles {
     SobreMim: string;
     Abordagens: string[];
     Queixas: string[];
+    Status?: "Preenchido" | "Incompleto";
     CreatedAt: string;
     UpdatedAt: string;
     Documents: PsychologistDocument[];

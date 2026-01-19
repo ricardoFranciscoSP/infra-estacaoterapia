@@ -87,7 +87,8 @@ WORKDIR /app
 
 ENV NODE_ENV=production \
     NODE_OPTIONS="--dns-result-order=ipv4first --max-old-space-size=2048" \
-    PUPPETEER_CACHE_DIR=/home/deploy/.cache/puppeteer
+    PUPPETEER_CACHE_DIR=/home/deploy/.cache/puppeteer \
+    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
 RUN apk add --no-cache \
     bash \
@@ -96,6 +97,7 @@ RUN apk add --no-cache \
     netcat-openbsd \
     postgresql-client \
     redis \
+    chromium \
     nss \
     freetype \
     harfbuzz \

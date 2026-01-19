@@ -5,7 +5,7 @@ import { useSearchParams, useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import { useAdmPsicologoById, useDeleteAdmPsicologo, usePreviaContrato, useGerarContrato, useUpdateAdmPsicologo } from "@/hooks/admin/useAdmPsicologo";
 import type { Psicologo, PsicologoUpdate } from "@/types/psicologoTypes";
-import { useDocuments } from "@/hooks/useDocuments";
+import { useDocuments, type Document as DocumentItem } from "@/hooks/useDocuments";
 import { documentsFilesService } from "@/services/documentsFiles";
 import { formatDateBR } from "@/utils/formatarDataHora";
 import { normalizeConsulta, type GenericObject } from "@/utils/normalizarConsulta";
@@ -179,6 +179,8 @@ function statusNota(nota: number) {
   return "Ruim";
 }
 
+type ProfessionalProfileStatus = "Preenchido" | "Incompleto";
+
 function formatarStatus(status: string) {
   if (status === "EmAnalise") return "Em Análise";
   if (status === "PendenteDocumentacao") return "Pendente Documentação";
@@ -186,6 +188,74 @@ function formatarStatus(status: string) {
   if (status === "DescredenciadoVoluntario") return "Descredenciado Voluntário";
   if (status === "DescredenciadoInvoluntario") return "Descredenciado Involuntário";
   return status;
+}
+
+function normalizeProfileStatus(status?: string | null): ProfessionalProfileStatus {
+  return status === "Preenchido" ? "Preenchido" : "Incompleto";
+}
+
+function calcularPercentualPerfil(psicologo?: Psicologo | null): number {
+  if (!psicologo) return 48;
+
+  const profile = psicologo.ProfessionalProfiles?.[0];
+  const addressRaw = psicologo.Address;
+  const address = Array.isArray(addressRaw) ? addressRaw[0] : addressRaw;
+
+  const percentualBase = 48;
+  const tipoPessoaJuridico = profile?.TipoPessoaJuridico;
+  const tiposArray = Array.isArray(tipoPessoaJuridico)
+    ? tipoPessoaJuridico
+    : tipoPessoaJuridico
+      ? [tipoPessoaJuridico]
+      : [];
+
+  const isAutonomo = tiposArray.some((t) => t === "Autonomo") &&
+    !tiposArray.some((t) => t === "Juridico" || t === "PjAutonomo" || t === "Ei" || t === "Mei" || t === "SociedadeLtda" || t === "Eireli" || t === "Slu");
+  const isPJ = !isAutonomo && tiposArray.some((t) => t === "Juridico" || t === "PjAutonomo" || t === "Ei" || t === "Mei" || t === "SociedadeLtda" || t === "Eireli" || t === "Slu");
+  const totalCamposEditaveis = isAutonomo ? 17 : 19;
+
+  let camposPreenchidos = 0;
+
+  if (psicologo.Telefone && psicologo.Telefone.trim() !== "") camposPreenchidos++;
+  if (psicologo.Sexo && psicologo.Sexo.trim() !== "") camposPreenchidos++;
+  if (psicologo.Pronome && psicologo.Pronome.trim() !== "") camposPreenchidos++;
+  if (psicologo.RacaCor && psicologo.RacaCor.trim() !== "") camposPreenchidos++;
+
+  if (isPJ && psicologo.PessoalJuridica?.InscricaoEstadual && psicologo.PessoalJuridica.InscricaoEstadual.trim() !== "") {
+    camposPreenchidos++;
+  }
+
+  if (address?.Cep && address.Cep.trim() !== "") camposPreenchidos++;
+  if (address?.Rua && address.Rua.trim() !== "") camposPreenchidos++;
+  if (address?.Numero && address.Numero.trim() !== "") camposPreenchidos++;
+  if (!isAutonomo && address?.Complemento && address.Complemento.trim() !== "") camposPreenchidos++;
+  if (address?.Bairro && address.Bairro.trim() !== "") camposPreenchidos++;
+  if (address?.Cidade && address.Cidade.trim() !== "") camposPreenchidos++;
+  if (address?.Estado && address.Estado.trim() !== "") camposPreenchidos++;
+
+  if (profile?.SobreMim && profile.SobreMim.trim() !== "") camposPreenchidos++;
+
+  if (profile?.ExperienciaClinica && profile.ExperienciaClinica.trim() !== "") camposPreenchidos++;
+  if (profile?.Idiomas && profile.Idiomas.length > 0) camposPreenchidos++;
+  if (profile?.TipoAtendimento && profile.TipoAtendimento.length > 0) camposPreenchidos++;
+  if (profile?.Abordagens && profile.Abordagens.length > 0) camposPreenchidos++;
+  if (profile?.Queixas && profile.Queixas.length > 0) camposPreenchidos++;
+
+  if (profile?.Formacoes && profile.Formacoes.length > 0) {
+    const formacaoCompleta = profile.Formacoes.some((f) => {
+      const tipoFormacao = f.TipoFormacao || f.Tipo || "";
+      return tipoFormacao.trim() !== "" &&
+        (f.Curso || "").trim() !== "" &&
+        (f.Instituicao || "").trim() !== "";
+    });
+    if (formacaoCompleta) camposPreenchidos++;
+  }
+
+  const percentualAdicional = totalCamposEditaveis > 0
+    ? Math.round((camposPreenchidos / totalCamposEditaveis) * 52)
+    : 0;
+
+  return Math.min(100, percentualBase + percentualAdicional);
 }
 
 function DocumentoModal({
@@ -586,6 +656,7 @@ export default function PsicologoDetalhePage() {
   const searchParams = useSearchParams();
   const editMode = searchParams?.get("edit") === "1";
   const [statusEdit, setStatusEdit] = useState(psicologo?.Status || "");
+  const [profileStatusEdit, setProfileStatusEdit] = useState<ProfessionalProfileStatus>("Incompleto");
   const { enums } = useEnums();
   const [modal, setModal] = useState<null | string>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -735,6 +806,44 @@ export default function PsicologoDetalhePage() {
   const isUrlExpired = documentsHook.isUrlExpired;
   const formatExpirationTime = documentsHook.formatExpirationTime;
   const refetchDocuments = documentsHook.refetch;
+  const abrirDocumento = async (doc: DocumentItem) => {
+    if (!doc.id) return;
+
+    const expired = isUrlExpired(doc.expiresAt);
+    const needsRefresh = expired || !doc.url;
+    let url = doc.url ?? null;
+    let expiresAt = doc.expiresAt ?? null;
+
+    if (needsRefresh) {
+      try {
+        const refreshed = await refreshDocumentUrl(doc.id);
+        if (!refreshed) {
+          toast.error("Não foi possível renovar a URL do documento.");
+          return;
+        }
+        url = refreshed.url;
+        expiresAt = refreshed.expiresAt;
+      } catch (error) {
+        console.error("[Admin Psicologo] Erro ao renovar URL no visualizar:", error);
+        toast.error("Erro ao renovar a URL do documento.");
+        return;
+      }
+    }
+
+    if (!url) {
+      toast.error("Documento sem URL disponível.");
+      return;
+    }
+
+    setModalDoc({
+      id: doc.id,
+      nome: doc.fileName,
+      status: doc.fileExists ? "Recebido" : "Pendente",
+      url,
+      descricao: doc.description,
+      expiresAt,
+    });
+  };
   const [reuploadDoc, setReuploadDoc] = useState<Documento | null>(null);
   const [reuploadFile, setReuploadFile] = useState<File | null>(null);
   const [reuploadLoading, setReuploadLoading] = useState(false);
@@ -793,7 +902,10 @@ export default function PsicologoDetalhePage() {
 
   useEffect(() => {
     setStatusEdit(psicologo?.Status || "");
-  }, [psicologo?.Status]);
+    setProfileStatusEdit(normalizeProfileStatus(psicologo?.ProfessionalProfiles?.[0]?.Status));
+  }, [psicologo?.Status, psicologo?.ProfessionalProfiles]);
+
+  const profilePercent = React.useMemo(() => calcularPercentualPerfil(psicologo), [psicologo]);
 
   // Normaliza consultas vindas da API para obter Data/Hora/Paciente de forma consistente
   // Primeiro tenta Consultas, depois ConsultaPsicologos
@@ -1189,10 +1301,20 @@ export default function PsicologoDetalhePage() {
       if (isPessoaJuridica && pessoaJuridicaEdit) {
         updateData.PessoalJuridica = pessoaJuridicaEdit;
       }
+
+      const profileId = psicologo.ProfessionalProfiles?.[0]?.Id;
+      if (profileId) {
+        updateData.ProfessionalProfiles = [
+          {
+            Id: profileId,
+            Status: profileStatusEdit,
+          },
+        ];
+      }
       
       await updatePsicologoMutation.mutateAsync({
         id: idStr,
-        update: updateData as Psicologo,
+        update: updateData,
       });
       
       // Recarregar dados
@@ -1411,6 +1533,21 @@ export default function PsicologoDetalhePage() {
             <Input label="Data de Cadastro" value={formatDateBR(dataCadastro?.split("T")[0] || "")} disabled />
             <Input label="Aprovação" value={dataAprovacao ? formatDateBR(dataAprovacao?.split("T")[0]) : "-"} disabled />
             <Input label="Último Acesso" value={formatDateBR(ultimoAcesso?.split("T")[0] || "")} disabled />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+            <Input label="Nota de preenchimento" value={`${profilePercent}%`} disabled />
+            <div className="mb-4">
+              <label className="block text-xs font-semibold text-[#6C757D] uppercase tracking-wider mb-2">Status Preenchimento</label>
+              <select
+                className="w-full px-4 py-3 border rounded-lg shadow-sm text-sm font-medium transition-all bg-white text-[#212529] border-[#E5E9FA] focus:ring-2 focus:ring-[#8494E9] focus:border-[#8494E9] disabled:bg-[#F9FAFB] disabled:text-[#212529] disabled:cursor-not-allowed"
+                value={profileStatusEdit}
+                onChange={(e) => setProfileStatusEdit(normalizeProfileStatus(e.target.value))}
+                disabled={!editMode}
+              >
+                <option value="Preenchido">Preenchido</option>
+                <option value="Incompleto">Incompleto</option>
+              </select>
+            </div>
           </div>
           {editMode && (
             <button
@@ -1877,37 +2014,21 @@ export default function PsicologoDetalhePage() {
                       {/* Botões de Ação */}
                       <div className="flex flex-col items-center gap-2 mt-3 w-full">
                         {/* Botões principais: Visualizar e Baixar */}
-                        {doc.fileExists && (
-                          <div className="flex flex-row items-center justify-center gap-3 w-full">
-                            <button
-                              type="button"
-                              onClick={async () => {
-                                if (!doc.id) return;
-                                if (expired || !doc.url) {
-                                  try {
-                                    await refreshDocumentUrl(doc.id);
-                                  } catch (error) {
-                                    console.error("[Admin Psicologo] Erro ao renovar URL no visualizar:", error);
-                                  }
-                                }
-                                setModalDoc({
-                                  id: doc.id,
-                                  nome: doc.fileName,
-                                  status: doc.fileExists ? "Recebido" : "Pendente",
-                                  url: doc.url ?? undefined,
-                                  descricao: doc.description,
-                                  expiresAt: doc.expiresAt ?? null,
-                                });
-                              }}
-                              className="flex items-center justify-center gap-1.5 text-[#8494E9] hover:text-[#6B7FD7] text-xs font-semibold transition-colors px-3 py-1.5 rounded-lg hover:bg-[#8494E9]/5"
-                              title="Visualizar documento"
-                            >
-                              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                              </svg>
-                              Visualizar
-                            </button>
+                        <div className="flex flex-row items-center justify-center gap-3 w-full">
+                          <button
+                            type="button"
+                            onClick={() => abrirDocumento(doc)}
+                            className="flex items-center justify-center gap-1.5 text-[#8494E9] hover:text-[#6B7FD7] text-xs font-semibold transition-colors px-3 py-1.5 rounded-lg hover:bg-[#8494E9]/5"
+                            title="Visualizar documento"
+                            disabled={!doc.id}
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                            Ver
+                          </button>
+                          {doc.fileExists && (
                             <button
                               type="button"
                               onClick={async () => {
@@ -1926,13 +2047,11 @@ export default function PsicologoDetalhePage() {
                               </svg>
                               Baixar
                             </button>
-                          </div>
-                        )}
+                          )}
+                        </div>
                         
                         {/* Separador visual (linha divisória) */}
-                        {doc.fileExists && (
-                          <div className="w-full border-t border-gray-200 my-1"></div>
-                        )}
+                        <div className="w-full border-t border-gray-200 my-1"></div>
                         
                         {/* Botão Excluir (sempre visível, destacado) */}
                         <button
