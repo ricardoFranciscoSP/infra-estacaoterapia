@@ -12,6 +12,13 @@ const gerarProtocol = (): string => `PRT-${Date.now().toString(36)}-${Math.rando
 
 type SolicitacaoWithDocs = Prisma.SolicitacoesGetPayload<{
     include: {
+        User: {
+            select: {
+                Id: true;
+                Nome: true;
+                Email: true;
+            };
+        };
         Documents: {
             select: {
                 Id: true;
@@ -20,6 +27,18 @@ type SolicitacaoWithDocs = Prisma.SolicitacoesGetPayload<{
                 Description: true;
                 CreatedAt: true;
                 UpdatedAt: true;
+            };
+        };
+    };
+}>;
+
+type SolicitacaoWithUser = Prisma.SolicitacoesGetPayload<{
+    include: {
+        User: {
+            select: {
+                Id: true;
+                Nome: true;
+                Email: true;
             };
         };
     };
@@ -35,10 +54,11 @@ type Thread = {
     }>;
 };
 
-const mapSolicitacaoBase = (s: Prisma.SolicitacoesGetPayload<{}>): ISolicitacao & { Documents: [] } => ({
+const mapSolicitacaoBase = (s: Prisma.SolicitacoesGetPayload<{}> & { User?: SolicitacaoWithUser['User'] }): ISolicitacao & { Documents: [] } => ({
     Id: s.Id,
     Title: s.Title,
     UserId: s.UserId,
+    User: s.User ? { Id: s.User.Id, Nome: s.User.Nome, Email: s.User.Email } : undefined,
     Tipo: s.Tipo,
     Status: s.Status,
     Protocol: s.Protocol,
@@ -55,6 +75,7 @@ const mapSolicitacaoWithDocs = (s: SolicitacaoWithDocs): ISolicitacao & { Docume
     Id: s.Id,
     Title: s.Title,
     UserId: s.UserId,
+    User: s.User ? { Id: s.User.Id, Nome: s.User.Nome, Email: s.User.Email } : undefined,
     Tipo: s.Tipo,
     Status: s.Status,
     Protocol: s.Protocol,
@@ -277,6 +298,13 @@ export class SolicitacoesService implements ISolicitacoesService {
             const solicitacoesRaw = await prisma.solicitacoes.findMany({
                 where: { UserId: userId },
                 include: {
+                    User: {
+                        select: {
+                            Id: true,
+                            Nome: true,
+                            Email: true
+                        }
+                    },
                     Documents: {
                         select: {
                             Id: true,
@@ -322,6 +350,15 @@ export class SolicitacoesService implements ISolicitacoesService {
 
             const solicitacoesRaw = await prisma.solicitacoes.findMany({
                 where,
+                include: {
+                    User: {
+                        select: {
+                            Id: true,
+                            Nome: true,
+                            Email: true
+                        }
+                    }
+                },
                 orderBy: {
                     CreatedAt: 'desc'
                 }
@@ -344,6 +381,15 @@ export class SolicitacoesService implements ISolicitacoesService {
     async getFinanceSolicitacoes(): Promise<{ success: boolean; solicitacoes?: ISolicitacao[]; message?: string }> {
         try {
             const solicitacoesRaw = await prisma.solicitacoes.findMany({
+                include: {
+                    User: {
+                        select: {
+                            Id: true,
+                            Nome: true,
+                            Email: true
+                        }
+                    }
+                },
                 orderBy: { CreatedAt: 'desc' },
             });
 
@@ -392,6 +438,13 @@ export class SolicitacoesService implements ISolicitacoesService {
             const solicitacoesRaw = await prisma.solicitacoes.findMany({
                 where,
                 include: {
+                    User: {
+                        select: {
+                            Id: true,
+                            Nome: true,
+                            Email: true
+                        }
+                    },
                     Documents: {
                         select: {
                             Id: true,

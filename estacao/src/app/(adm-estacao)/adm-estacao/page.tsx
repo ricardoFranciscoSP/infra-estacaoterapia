@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useAdmPsicologo } from "@/hooks/admin/useAdmPsicologo";
 import { useAdmPaciente } from "@/hooks/admin/useAdmPaciente";
 import { useAdmConsultasPorMesTodas, useAdmConsultasCanceladas, useAdmConsultasMesAtual } from "@/hooks/admin/useAdmConsultas";
+import { useAdmReviews } from "@/hooks/admin/useReviews";
 import { useUserBasic } from "@/hooks/user/userHook";
 import ModalCancelamentos from "@/components/ModalCancelamentos";
 import ModalConsultasMesAtual from "@/components/ModalConsultasMesAtual";
@@ -59,6 +60,7 @@ export default function AdminDashboard() {
   // Hook para buscar psicólogos
   const { psicologos, isLoading: isPsicologosLoading, refetch } = useAdmPsicologo();
   const { pacientes, isLoading: isPacientesLoading, refetch: refetchPacientes } = useAdmPaciente();
+  const { reviews, isLoading: isReviewsLoading } = useAdmReviews();
   
   // Buscar consultas canceladas da tabela Consulta (todos os status de cancelamento)
   const { total: canceladasCount, isLoading: isCancelamentosLoading, refetch: refetchCancelamentos } = useAdmConsultasCanceladas();
@@ -69,6 +71,20 @@ export default function AdminDashboard() {
   // Garante arrays válidos para evitar erros de runtime quando a API retorna objeto
   const psicologosArr: Psicologo[] = Array.isArray(psicologos) ? psicologos : [];
   const pacientesArr: Paciente[] = Array.isArray(pacientes) ? pacientes : [];
+
+  const reviewsArr = Array.isArray(reviews) ? reviews : [];
+  const validRatings = reviewsArr.filter((r) => typeof r.Rating === "number");
+  const averageRating = validRatings.length > 0
+    ? validRatings.reduce((acc, r) => acc + (r.Rating ?? 0), 0) / validRatings.length
+    : 0;
+
+  const ratingStatus = (nota: number) => {
+    if (nota >= 4.5) return "Ótimo";
+    if (nota >= 3.5) return "Bom";
+    if (nota >= 2.5) return "Regular";
+    return "Ruim";
+  };
+  const averageLabel = ratingStatus(averageRating);
 
   // Dados dinâmicos para gráficos de consultas (últimos 12 meses - TODAS as consultas)
   const { labels: consultasLabels, data: consultasDataArr, refetch: refetchConsultas } = useAdmConsultasPorMesTodas();
@@ -350,7 +366,7 @@ export default function AdminDashboard() {
           </div>
 
           {/* Cards de Métricas */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 sm:gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -412,6 +428,28 @@ export default function AdminDashboard() {
               >
                 Ver mais →
               </button>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.35 }}
+              className="bg-white rounded-xl shadow-md p-4 sm:p-5 border border-[#E5E9FA] hover:shadow-lg transition-all duration-300"
+            >
+              <div className="flex items-center gap-3 mb-3">
+                <div className="bg-purple-50 rounded-lg p-2">
+                  <svg className="w-5 h-5 sm:w-6 sm:h-6 text-purple-600" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.967a1 1 0 00.95.69h4.175c.969 0 1.371 1.24.588 1.81l-3.38 2.455a1 1 0 00-.364 1.118l1.287 3.967c.3.921-.755 1.688-1.54 1.118l-3.38-2.455a1 1 0 00-1.175 0l-3.38 2.455c-.784.57-1.838-.197-1.539-1.118l1.287-3.967a1 1 0 00-.364-1.118L2.05 9.394c-.783-.57-.38-1.81.588-1.81h4.175a1 1 0 00.95-.69l1.286-3.967z" />
+                  </svg>
+                </div>
+                <p className="text-xs sm:text-sm font-medium text-[#6C757D]">Avaliação média</p>
+              </div>
+              <p className="text-2xl sm:text-3xl font-bold text-[#212529] mb-2">
+                {isReviewsLoading ? "..." : averageRating.toFixed(1)}
+              </p>
+              <span className="text-xs text-[#8494E9] font-semibold">
+                {averageLabel}
+              </span>
             </motion.div>
 
             <motion.div

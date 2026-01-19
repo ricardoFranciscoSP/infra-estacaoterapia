@@ -1,5 +1,5 @@
 import { useAdmReviewsStore } from '@/store/admin/admReviewsStore';
-import { Reviews, ReviewUpdate } from '@/types/admReviews.types';
+import { ReviewCreate, Reviews, ReviewUpdate } from '@/types/admReviews.types';
 import { useQuery } from '@tanstack/react-query';
 import { useCallback } from 'react';
 
@@ -22,6 +22,13 @@ export function useAdmReviews() {
         return await store.getReviewById(id);
     }, [store]);
 
+    // Criar review - usando useCallback para estabilizar a referência
+    const createReview = useCallback(async (review: ReviewCreate) => {
+        const created = await store.createReview(review);
+        await query.refetch();
+        return created;
+    }, [store, query]);
+
     // Atualizar review - usando useCallback para estabilizar a referência
     const updateReview = useCallback(async (id: string, review: ReviewUpdate) => {
         await store.updateReview(id, review);
@@ -40,6 +47,7 @@ export function useAdmReviews() {
         isError: query.isError || store.isError,
         refetch: query.refetch,
         getReviewById,
+        createReview,
         updateReview,
         deleteReview,
     };

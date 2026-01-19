@@ -10,6 +10,11 @@ export interface SolicitacaoDocument {
 export interface Solicitacao {
     Id: string;
     UserId: string;
+    User?: {
+        Id: string;
+        Nome: string;
+        Email: string;
+    };
     Title: string;
     Tipo: string;
     Status: string;

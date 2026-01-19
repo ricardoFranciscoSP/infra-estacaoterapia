@@ -70,11 +70,12 @@ export class ReviewsService implements IReviewsService {
 
     async update(req: Request, res: Response): Promise<Response> {
         const id = normalizeParamString(req.params.id);
-        const { Rating, Comentario, Status, MostrarNaHome, MostrarNaPsicologo } = req.body;
+        const { Rating, Titulo, Comentario, Status, MostrarNaHome, MostrarNaPsicologo } = req.body;
 
         // Atualiza apenas os campos permitidos
         const updateData: {
             Rating?: number;
+            Titulo?: string;
             Comentario?: string;
             Status?: string;
             MostrarNaHome?: boolean;
@@ -82,6 +83,7 @@ export class ReviewsService implements IReviewsService {
         } = {};
 
         if (Rating !== undefined) updateData.Rating = Rating;
+        if (Titulo !== undefined) updateData.Titulo = Titulo;
         if (Comentario !== undefined) updateData.Comentario = Comentario;
         if (Status !== undefined) updateData.Status = Status;
         if (MostrarNaHome !== undefined) updateData.MostrarNaHome = MostrarNaHome;

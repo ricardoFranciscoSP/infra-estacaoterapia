@@ -71,7 +71,7 @@ const ModalPreviaContratoPsicologo: React.FC<ModalPreviaContratoPsicologoProps> 
       >
         <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[85vh] flex flex-col relative animate-in fade-in zoom-in duration-200">
           {/* Header */}
-          <div className="flex items-center justify-between gap-4 p-6 border-b border-[#5f5bd6] bg-[#6f6ce7] rounded-t-2xl">
+          <div className="flex items-center justify-between gap-4 px-8 py-6 border-b border-[#5f5bd6] bg-[#6f6ce7] rounded-t-2xl">
             <div className="leading-tight">
               <h2 className="text-xl font-bold text-white">
                 Prévia do Contrato de Parceria
@@ -155,7 +155,7 @@ const ModalPreviaContratoPsicologo: React.FC<ModalPreviaContratoPsicologoProps> 
           </div>
 
           {/* Footer com botão de ação */}
-          <div className="px-8 py-6 border-t border-gray-200 bg-white rounded-b-2xl flex flex-wrap items-center justify-end gap-3">
+          <div className="px-8 py-8 border-t border-gray-200 bg-white rounded-b-2xl flex flex-wrap items-center justify-end gap-3">
             <Button
               onClick={onClose}
               variant="outline"

@@ -1222,6 +1222,16 @@ export class AuthService implements IAuthService {
                 return { success: false, message };
             }
 
+            const statusKey = String(user.Status || '')
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "")
+                .toUpperCase()
+                .replace(/[^A-Z]/g, "");
+            if (statusKey === "INATIVO") {
+                message = "Você não tem acesso à plataforma. Entre em contato com o suporte.";
+                return { success: false, message };
+            }
+
             const { Password: _password, ...userWithoutPassword } = user;
 
             // 2. Atualizar último login

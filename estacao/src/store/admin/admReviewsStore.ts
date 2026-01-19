@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Reviews, ReviewUpdate } from '@/types/admReviews.types';
+import type { ReviewCreate, Reviews, ReviewUpdate } from '@/types/admReviews.types';
 import { admReviewsService } from '@/services/admReviewsServices';
 
 type State = {
@@ -12,6 +12,7 @@ type Actions = {
     setReviews: (reviews: Reviews[]) => void;
     fetchReviews: () => Promise<Reviews[]>;
     getReviewById: (id: string) => Promise<Reviews | null>;
+    createReview: (review: ReviewCreate) => Promise<Reviews | null>;
     updateReview: (id: string, review: ReviewUpdate) => Promise<Reviews[]>;
     deleteReview: (id: string) => Promise<Reviews[]>;
 };
@@ -45,6 +46,21 @@ export const useAdmReviewsStore = create<State & Actions>((set, get) => ({
         } catch (error) {
             set({ isError: true, isLoading: false });
             console.error('Erro ao buscar avaliação por ID:', error);
+            return null;
+        }
+    },
+
+    createReview: async (review: ReviewCreate) => {
+        set({ isLoading: true, isError: false });
+        try {
+            const response = await admReviewsService().createReview(review);
+            const created = response.data;
+            const updated = [created, ...get().reviews];
+            set({ reviews: updated, isLoading: false });
+            return created;
+        } catch (error) {
+            set({ isError: true, isLoading: false });
+            console.error('Erro ao criar avaliação:', error);
             return null;
         }
     },

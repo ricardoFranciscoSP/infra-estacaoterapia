@@ -81,6 +81,7 @@ export default function DepoimentoDetalhePage() {
   }, [review, id, isLoading]);
 
   const [comentarioEdit, setComentarioEdit] = useState("");
+  const [tituloEdit, setTituloEdit] = useState("");
   const [statusEdit, setStatusEdit] = useState("");
   const [ratingEdit, setRatingEdit] = useState(0);
   const [showHome, setShowHome] = useState(false);
@@ -89,6 +90,7 @@ export default function DepoimentoDetalhePage() {
   // Atualiza os campos de edição quando o review é carregado
   useEffect(() => {
     if (review) {
+      setTituloEdit(review.Titulo ?? "");
       setComentarioEdit(review.Comentario ?? "");
       setStatusEdit(review.Status ?? "");
       setRatingEdit(review.Rating ?? 0);
@@ -173,6 +175,12 @@ export default function DepoimentoDetalhePage() {
         </div>
         {/* Card Comentário e Status */}
         <div className="bg-gray-50 rounded-xl shadow-lg p-6 border border-blue-200 w-full">
+          <Input
+            label="Título"
+            value={editMode ? tituloEdit : (review.Titulo ?? "")}
+            onChange={editMode ? (e) => setTituloEdit(e.target.value) : undefined}
+            disabled={!editMode}
+          />
           <TextArea
             label="Comentário"
             value={editMode ? comentarioEdit : (review.Comentario ?? "")}
@@ -277,6 +285,7 @@ export default function DepoimentoDetalhePage() {
                 await updateReview(id, {
                   Id: id,
                   Rating: ratingEdit,
+                  Titulo: tituloEdit,
                   Comentario: comentarioEdit,
                   Status: statusEdit,
                   MostrarNaHome: showHome,

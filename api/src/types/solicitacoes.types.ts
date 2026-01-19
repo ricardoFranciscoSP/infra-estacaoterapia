@@ -2,6 +2,11 @@ export interface ISolicitacao {
     Id: string;
     Title: string;
     UserId: string;
+    User?: {
+        Id: string;
+        Nome: string;
+        Email: string;
+    };
     Tipo: string;
     Status: string;
     Protocol: string;

@@ -201,6 +201,7 @@ model Review {
   UserId             String?
   PsicologoId        String
   Rating             Int
+  Titulo             String?
   Comentario         String?
   Status             String   @default("Pendente")
   MostrarNaHome      Boolean? @default(false)

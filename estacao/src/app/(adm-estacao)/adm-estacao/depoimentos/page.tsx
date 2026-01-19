@@ -3,6 +3,10 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { useAdmReviews } from "@/hooks/admin/useReviews";
+import { useAdmPaciente } from "@/hooks/admin/useAdmPaciente";
+import { useAdmPsicologo } from "@/hooks/admin/useAdmPsicologo";
+import Select from "react-select";
+import toast from "react-hot-toast";
 
 const EyeIcon = () => (
 	<svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
@@ -30,19 +34,42 @@ const FilterIcon = () => (
 );
 
 export default function DepoimentosPage() {
-	const { reviews, isLoading, getReviewById } = useAdmReviews();
+	const { reviews, isLoading, getReviewById, createReview } = useAdmReviews();
+	const { pacientes, isLoading: isLoadingPacientes } = useAdmPaciente();
+	const { psicologos, isLoading: isLoadingPsicologos } = useAdmPsicologo();
 	const [modalOpen, setModalOpen] = useState(false);
+	const [createModalOpen, setCreateModalOpen] = useState(false);
+	const [isCreating, setIsCreating] = useState(false);
 	const [modalReview, setModalReview] = useState<null | {
 		Id?: string;
+		Titulo?: string;
 		Comentario?: string;
 		User?: { Nome?: string };
 		Psicologo?: { Nome?: string };
 		Rating?: number;
 	}>(null);
+	const [novoDepoimento, setNovoDepoimento] = useState({
+		pacienteId: "",
+		psicologoId: "",
+		titulo: "",
+		descricao: "",
+		rating: 0,
+		status: "Pendente",
+	});
 	const [busca, setBusca] = useState("");
 	const [filtroStatus, setFiltroStatus] = useState("Todos");
 	const [pagina, setPagina] = useState(1);
 	const porPagina = 10;
+
+	const pacienteOptions = (pacientes ?? []).map((p) => ({
+		value: p.Id,
+		label: p.Nome || p.Email || p.Id,
+	}));
+
+	const psicologoOptions = (psicologos ?? []).map((p) => ({
+		value: p.Id,
+		label: p.Nome || p.Email || p.Id,
+	}));
 
 	const handleOpenModal = async (id: string) => {
 		const review = await getReviewById(id);
@@ -55,11 +82,65 @@ export default function DepoimentosPage() {
 		setModalReview(null);
 	};
 
+	const resetCreateForm = () => {
+		setNovoDepoimento({
+			pacienteId: "",
+			psicologoId: "",
+			titulo: "",
+			descricao: "",
+			rating: 0,
+			status: "Pendente",
+		});
+	};
+
+	const handleCloseCreateModal = () => {
+		setCreateModalOpen(false);
+		resetCreateForm();
+	};
+
+	const handleCreateReview = async () => {
+		if (!novoDepoimento.pacienteId || !novoDepoimento.psicologoId) {
+			toast.error("Selecione paciente e psicólogo.");
+			return;
+		}
+		if (!novoDepoimento.titulo.trim() || !novoDepoimento.descricao.trim()) {
+			toast.error("Preencha título e descrição.");
+			return;
+		}
+		if (novoDepoimento.rating <= 0) {
+			toast.error("Selecione a quantidade de estrelas.");
+			return;
+		}
+
+		setIsCreating(true);
+		try {
+			const created = await createReview({
+				UserId: novoDepoimento.pacienteId,
+				PsicologoId: novoDepoimento.psicologoId,
+				Titulo: novoDepoimento.titulo.trim(),
+				Comentario: novoDepoimento.descricao.trim(),
+				Rating: novoDepoimento.rating,
+				Status: novoDepoimento.status,
+			});
+			if (!created) {
+				throw new Error("Não foi possível criar o depoimento.");
+			}
+			toast.success("Depoimento criado com sucesso!");
+			handleCloseCreateModal();
+		} catch (error) {
+			console.error(error);
+			toast.error("Erro ao criar depoimento.");
+		} finally {
+			setIsCreating(false);
+		}
+	};
+
 	// Filtros
 	const depoimentosFiltrados = (reviews || []).filter((d) => {
 		const buscaMatch = 
 			d.User?.Nome?.toLowerCase().includes(busca.toLowerCase()) ||
 			d.Psicologo?.Nome?.toLowerCase().includes(busca.toLowerCase()) ||
+			d.Titulo?.toLowerCase().includes(busca.toLowerCase()) ||
 			d.Comentario?.toLowerCase().includes(busca.toLowerCase());
 		const statusMatch = filtroStatus === "Todos" || d.Status === filtroStatus;
 		return buscaMatch && statusMatch;
@@ -77,8 +158,18 @@ export default function DepoimentosPage() {
 				animate={{ opacity: 1, y: 0 }}
 				className="mb-6"
 			>
-				<h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">Depoimentos</h1>
-				<p className="text-sm text-gray-500">Gerencie e visualize todas as avaliações dos pacientes</p>
+				<div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+					<div>
+						<h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">Depoimentos</h1>
+						<p className="text-sm text-gray-500">Gerencie e visualize todas as avaliações dos pacientes</p>
+					</div>
+					<button
+						onClick={() => setCreateModalOpen(true)}
+						className="px-4 py-2.5 bg-[#8494E9] text-white rounded-lg hover:bg-[#6B7DE0] transition-all text-sm font-semibold"
+					>
+						Criar depoimento
+					</button>
+				</div>
 			</motion.div>
 
 			{/* Filtros */}
@@ -368,6 +459,11 @@ export default function DepoimentosPage() {
 						<h2 className="text-xl font-semibold mb-4 text-gray-800">
 							Depoimento de {modalReview.User?.Nome ?? '-'}
 						</h2>
+						{modalReview.Titulo && (
+							<p className="text-sm font-semibold text-gray-800 mb-2">
+								{modalReview.Titulo}
+							</p>
+						)}
 						<div className="space-y-3 mb-4">
 							<p className="text-sm text-gray-600">
 								<span className="font-medium">Profissional:</span>{' '}
@@ -405,6 +501,146 @@ export default function DepoimentosPage() {
 						>
 							Fechar
 						</button>
+					</motion.div>
+				</div>
+			)}
+
+			{/* Modal de Criação */}
+			{createModalOpen && (
+				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
+					<motion.div
+						initial={{ scale: 0.95, opacity: 0 }}
+						animate={{ scale: 1, opacity: 1 }}
+						transition={{ duration: 0.2 }}
+						className="bg-white rounded-xl shadow-lg max-w-lg w-full mx-4 p-6 relative"
+					>
+						<button
+							onClick={handleCloseCreateModal}
+							className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 transition-colors"
+							disabled={isCreating}
+						>
+							<svg
+								className="w-6 h-6"
+								fill="none"
+								stroke="currentColor"
+								strokeWidth={2}
+								viewBox="0 0 24 24"
+							>
+								<path
+									strokeLinecap="round"
+									strokeLinejoin="round"
+									d="M6 18L18 6M6 6l12 12"
+								/>
+							</svg>
+						</button>
+
+						<h2 className="text-xl font-semibold mb-4 text-gray-800">Criar depoimento</h2>
+
+						<div className="space-y-4">
+							<div>
+								<label className="block text-sm font-semibold text-gray-700 mb-2">Paciente</label>
+								<Select
+									options={pacienteOptions}
+									value={pacienteOptions.find((o) => o.value === novoDepoimento.pacienteId) ?? null}
+									onChange={(option) =>
+										setNovoDepoimento((prev) => ({ ...prev, pacienteId: option?.value ?? "" }))
+									}
+									placeholder="Selecione o paciente..."
+									isLoading={isLoadingPacientes}
+									isClearable
+									classNamePrefix="react-select"
+								/>
+							</div>
+
+							<div>
+								<label className="block text-sm font-semibold text-gray-700 mb-2">Psicólogo</label>
+								<Select
+									options={psicologoOptions}
+									value={psicologoOptions.find((o) => o.value === novoDepoimento.psicologoId) ?? null}
+									onChange={(option) =>
+										setNovoDepoimento((prev) => ({ ...prev, psicologoId: option?.value ?? "" }))
+									}
+									placeholder="Selecione o psicólogo..."
+									isLoading={isLoadingPsicologos}
+									isClearable
+									classNamePrefix="react-select"
+								/>
+							</div>
+
+							<div>
+								<label className="block text-sm font-semibold text-gray-700 mb-2">Título</label>
+								<input
+									type="text"
+									className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#8494E9] focus:border-transparent transition-all outline-none"
+									value={novoDepoimento.titulo}
+									onChange={(e) => setNovoDepoimento((prev) => ({ ...prev, titulo: e.target.value }))}
+									placeholder="Ex: Excelente atendimento"
+								/>
+							</div>
+
+							<div>
+								<label className="block text-sm font-semibold text-gray-700 mb-2">Descrição</label>
+								<textarea
+									className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#8494E9] focus:border-transparent transition-all outline-none min-h-[110px]"
+									value={novoDepoimento.descricao}
+									onChange={(e) => setNovoDepoimento((prev) => ({ ...prev, descricao: e.target.value }))}
+									placeholder="Descreva a experiência do paciente..."
+								/>
+							</div>
+
+							<div>
+								<label className="block text-sm font-semibold text-gray-700 mb-2">Quantidade de estrelas</label>
+								<div className="flex items-center gap-2">
+									{[1, 2, 3, 4, 5].map((star) => (
+										<button
+											key={star}
+											type="button"
+											onClick={() => setNovoDepoimento((prev) => ({ ...prev, rating: star }))}
+											className="focus:outline-none"
+										>
+											<svg
+												className={`w-6 h-6 ${star <= novoDepoimento.rating ? "text-yellow-400" : "text-gray-300"}`}
+												fill="currentColor"
+												viewBox="0 0 20 20"
+											>
+												<path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.967a1 1 0 00.95.69h4.175c.969 0 1.371 1.24.588 1.81l-3.38 2.455a1 1 0 00-.364 1.118l1.287 3.967c.3.921-.755 1.688-1.54 1.118l-3.38-2.455a1 1 0 00-1.175 0l-3.38 2.455c-.784.57-1.838-.197-1.539-1.118l1.287-3.967a1 1 0 00-.364-1.118L2.05 9.394c-.783-.57-.38-1.81.588-1.81h4.175a1 1 0 00.95-.69l1.286-3.967z" />
+											</svg>
+										</button>
+									))}
+									<span className="text-sm text-gray-600 ml-1">({novoDepoimento.rating})</span>
+								</div>
+							</div>
+
+							<div>
+								<label className="block text-sm font-semibold text-gray-700 mb-2">Status</label>
+								<select
+									className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#8494E9] focus:border-transparent transition-all outline-none bg-white"
+									value={novoDepoimento.status}
+									onChange={(e) => setNovoDepoimento((prev) => ({ ...prev, status: e.target.value }))}
+								>
+									<option value="Aprovado">Aprovado</option>
+									<option value="Pendente">Pendente</option>
+									<option value="Reprovado">Reprovado</option>
+								</select>
+							</div>
+						</div>
+
+						<div className="flex justify-end gap-3 mt-6">
+							<button
+								onClick={handleCloseCreateModal}
+								className="px-4 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-all text-sm font-medium"
+								disabled={isCreating}
+							>
+								Cancelar
+							</button>
+							<button
+								onClick={handleCreateReview}
+								className="px-4 py-2.5 bg-[#8494E9] text-white rounded-lg hover:bg-[#6B7DE0] transition-all text-sm font-semibold disabled:opacity-60"
+								disabled={isCreating}
+							>
+								{isCreating ? "Salvando..." : "Criar depoimento"}
+							</button>
+						</div>
 					</motion.div>
 				</div>
 			)}

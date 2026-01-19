@@ -540,10 +540,10 @@ export default function SolicitacoesPage() {
           <motion.div 
             initial={{ scale: 0.95, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+            className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col"
           >
             {/* Header */}
-            <div className="sticky top-0 rounded-t-xl bg-[#8494E9] px-6 py-4 flex items-center justify-between z-10">
+            <div className="rounded-t-xl bg-[#8494E9] px-6 py-4 flex items-center justify-between flex-shrink-0">
               <h2 className="text-xl font-bold text-white">
                 {modal.modo === "edit" ? "Editar Solicitação" : "Detalhes da Solicitação"}
               </h2>
@@ -560,9 +560,19 @@ export default function SolicitacoesPage() {
             </div>
 
             {/* Conteúdo */}
-            <div className="p-6">
+            <div className="p-6 overflow-y-auto flex-1 bg-white">
               {/* Informações da solicitação - Cards */}
               <div className="p-5 border-b border-gray-200 flex-shrink-0 bg-gradient-to-r from-gray-50 to-gray-100 mb-6">
+                {/* Solicitante */}
+                <div className="bg-white rounded-lg p-3 shadow-sm border border-gray-200 mb-4">
+                  <p className="text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Solicitante</p>
+                  <p className="text-sm font-semibold text-gray-900">
+                    {solicitacaoAtual.User?.Nome || "Não informado"}
+                  </p>
+                  <p className="text-xs text-gray-600 mt-1">
+                    {solicitacaoAtual.User?.Email || "Email não informado"}
+                  </p>
+                </div>
                 {/* Protocolo, Tipo e Status inline */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                   <div className="bg-white rounded-lg p-3 shadow-sm border border-gray-200">

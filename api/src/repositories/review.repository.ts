@@ -19,14 +19,26 @@ export class ReviewRepository implements IReviewRepository {
             // Se já existe, atualiza a avaliação existente
             if (existingReview) {
                 console.log(`[ReviewRepository.createReview] Atualizando review existente: ${existingReview.Id}`);
+                const updateData: {
+                    Rating: number;
+                    Comentario: string;
+                    Status: string;
+                    UpdatedAt: Date;
+                    Titulo?: string;
+                } = {
+                    Rating: data.rating,
+                    Comentario: data.comment,
+                    Status: "Pendente",
+                    UpdatedAt: new Date()
+                };
+
+                if (data.title !== undefined) {
+                    updateData.Titulo = data.title;
+                }
+
                 const updated = await prisma.review.update({
                     where: { Id: existingReview.Id },
-                    data: {
-                        Rating: data.rating,
-                        Comentario: data.comment,
-                        Status: "Pendente", // Reseta o status para pendente quando atualiza
-                        UpdatedAt: new Date()
-                    },
+                    data: updateData,
                 });
                 console.log(`✅ [ReviewRepository.createReview] Review atualizada com sucesso:`, updated.Id);
                 return updated;
@@ -34,16 +46,31 @@ export class ReviewRepository implements IReviewRepository {
 
             // Se não existe, cria uma nova avaliação com Status "Pendente" (requer aprovação do admin)
             console.log(`[ReviewRepository.createReview] Criando nova review para userId=${data.userId}, psicologoId=${data.psicologoId}`);
+            const createData = {
+                Rating: data.rating,
+                Comentario: data.comment,
+                PsicologoId: data.psicologoId,
+                UserId: data.userId,
+                Status: "Pendente", // Explicitamente define como Pendente para aprovação do admin
+                MostrarNaHome: false,
+                MostrarNaPsicologo: false
+            } as {
+                Rating: number;
+                Comentario?: string;
+                PsicologoId: string;
+                UserId: string;
+                Status: string;
+                MostrarNaHome: boolean;
+                MostrarNaPsicologo: boolean;
+                Titulo?: string | null;
+            };
+
+            if (data.title !== undefined) {
+                createData.Titulo = data.title;
+            }
+
             const created = await prisma.review.create({
-                data: {
-                    Rating: data.rating,
-                    Comentario: data.comment,
-                    PsicologoId: data.psicologoId,
-                    UserId: data.userId,
-                    Status: "Pendente", // Explicitamente define como Pendente para aprovação do admin
-                    MostrarNaHome: false,
-                    MostrarNaPsicologo: false
-                },
+                data: createData,
             });
             console.log(`✅ [ReviewRepository.createReview] Review criada com sucesso:`, created.Id, `| Status: ${created.Status}`);
             return created;

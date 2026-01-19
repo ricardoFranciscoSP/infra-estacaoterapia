@@ -14,6 +14,7 @@ export type Reviews = {
     UserId?: string; // Paciente que avaliou
     PsicologoId: string; // Psicólogo avaliado
     Rating: number;
+    Titulo?: string;
     Comentario?: string;
     Status: string;
     CreatedAt: string; // DateTime em formato ISO
@@ -33,11 +34,23 @@ export type ReviewsResponse = {
 export type ReviewUpdate = {
     Id: string;
     Rating?: number;
+    Titulo?: string;
     Comentario?: string;
     Status?: string;
     MostrarNaHome?: boolean;
     MostrarNaPsicologo?: boolean;
     Reviews?: Reviews[];
+}
+
+export type ReviewCreate = {
+    UserId?: string;
+    PsicologoId: string;
+    Rating: number;
+    Titulo?: string;
+    Comentario?: string;
+    Status?: string;
+    MostrarNaHome?: boolean;
+    MostrarNaPsicologo?: boolean;
 }
 
 export interface ReviewsStoreState {
