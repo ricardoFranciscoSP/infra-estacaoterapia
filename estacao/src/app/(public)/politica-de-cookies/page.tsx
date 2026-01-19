@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function PoliticaPage() {
   return (
     <div className="min-h-screen bg-gray-50 py-8 md:py-12 px-4 sm:px-6 lg:px-8">
@@ -226,9 +228,9 @@ export default function PoliticaPage() {
               <div className="space-y-2 text-gray-700">
                 <p>
                   <strong>E-mail:</strong>{' '}
-                  <a href="mailto:privacidade@estacaoterapia.com.br" className="text-blue-600 hover:underline">
-                    privacidade@estacaoterapia.com.br
-                  </a>
+                  <Link href="mailto:contato@estacaoterapia.com.br" className="text-blue-600 hover:underline">
+                    contato@estacaoterapia.com.br
+                  </Link>
                 </p>
                 <p>
                   <strong>Empresa:</strong> Estação Terapia

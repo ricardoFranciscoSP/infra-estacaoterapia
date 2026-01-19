@@ -43,7 +43,7 @@ export default function PoliticaPage() {
                 </tr>
                 <tr className="border-b border-gray-300">
                   <td className="py-3 px-3 sm:px-4 font-semibold bg-gray-50 text-gray-900">Canal de Privacidade / Encarregado (DPO)</td>
-                  <td className="py-3 px-3 sm:px-4 text-gray-700"><a href="mailto:privacidade@estacaoterapia.com.br" className="text-blue-600 break-all">privacidade@estacaoterapia.com.br</a></td>
+                  <td className="py-3 px-3 sm:px-4 text-gray-700"><a href="mailto:contato@estacaoterapia.com.br" className="text-blue-600 break-all">contato@estacaoterapia.com.br</a></td>
                 </tr>
                 <tr className="border-b border-gray-300">
                   <td className="py-3 px-3 sm:px-4 font-semibold bg-gray-50 text-gray-900">Atendimento ao Cliente</td>
@@ -204,7 +204,7 @@ export default function PoliticaPage() {
             <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4">10. Direitos do titular e consentimento</h2>
             <p className="mb-4">Ao utilizar os serviços e fornecer dados pessoais, o Usuário declara estar ciente desta Política. Quando o tratamento depender de consentimento, o Usuário poderá revogá-lo a qualquer tempo, sem afetar a legalidade do tratamento realizado anteriormente.</p>
             <p className="mb-4">Nos termos da LGPD, o titular pode solicitar, entre outros: confirmação da existência de tratamento; acesso; correção; anonimização, bloqueio ou eliminação; portabilidade; informações sobre compartilhamentos; e revisão de decisões automatizadas, quando aplicável.</p>
-            <p>Para exercer direitos, o Usuário deve contatar o canal de privacidade/Encarregado (DPO): <a href="mailto:privacidade@estacaoterapia.com.br" className="text-blue-600">privacidade@estacaoterapia.com.br</a> ou via ferramenta de abertura de solicitações ou por correspondência ao endereço da Controladora indicado na capa. Poderemos solicitar informações adicionais para confirmar a identidade do solicitante e prevenir fraudes.</p>
+            <p>Para exercer direitos, o Usuário deve contatar o canal de privacidade/Encarregado (DPO): <a href="mailto:contato@estacaoterapia.com.br" className="text-blue-600">contato@estacaoterapia.com.br</a> ou via ferramenta de abertura de solicitações ou por correspondência ao endereço da Controladora indicado na capa. Poderemos solicitar informações adicionais para confirmar a identidade do solicitante e prevenir fraudes.</p>
           </section>
 
           {/* Seção 11 */}
@@ -274,7 +274,7 @@ export default function PoliticaPage() {
           {/* Rodapé */}
           <div className="mt-12 pt-8 border-t border-gray-300">
             <p className="text-xs sm:text-sm text-gray-600 text-center">
-              Para dúvidas ou solicitações sobre privacidade, entre em contato através do email <a href="mailto:privacidade@estacaoterapia.com.br" className="text-blue-600">privacidade@estacaoterapia.com.br</a>
+              Para dúvidas ou solicitações sobre privacidade, entre em contato através do email <a href="mailto:contato@estacaoterapia.com.br" className="text-blue-600">contato@estacaoterapia.com.br</a>
             </p>
           </div>
         </div>

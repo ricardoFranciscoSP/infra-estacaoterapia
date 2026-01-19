@@ -2,21 +2,22 @@
 import { useAdmPsicologo } from "@/hooks/admin/useAdmPsicologo";
 import React, { useState } from "react";
 import { motion } from "framer-motion";
+import type { Address, ProfessionalProfiles, PessoalJuridica } from "@/types/psicologoTypes";
 
-// Definição do tipo explícito para psicólogo (ajustada para incluir ProfessionalProfiles)
-type ProfessionalProfiles = {
-  Id: string;
-  Documents?: { Id: string }[];
-};
-
-type Psicologo = {
+type PsicologoListItem = {
   Id: number | string;
   Nome: string;
   Email?: string;
   Crp?: string;
   Status: string;
   CreatedAt?: string;
+  Telefone?: string;
+  Sexo?: string;
+  Pronome?: string | null;
+  RacaCor?: string | null;
+  Address?: Address | Address[];
   ProfessionalProfiles?: ProfessionalProfiles[];
+  PessoalJuridica?: PessoalJuridica;
 };
 
 const EyeIcon = () => (
@@ -69,7 +70,68 @@ export default function PsicologosPage() {
     }
   };
 
-  const psicologosFiltrados = (psicologos || []).filter((p: Psicologo) => {
+  const calcularPercentualPerfil = (psicologo: PsicologoListItem): number => {
+    const profile = psicologo.ProfessionalProfiles?.[0];
+    const address = Array.isArray(psicologo.Address) ? psicologo.Address[0] : psicologo.Address;
+    const percentualBase = 48;
+
+    const tipoPessoaJuridico = profile?.TipoPessoaJuridico;
+    const tiposArray = Array.isArray(tipoPessoaJuridico)
+      ? tipoPessoaJuridico
+      : tipoPessoaJuridico
+        ? [tipoPessoaJuridico]
+        : [];
+
+    const isAutonomo = tiposArray.some((t) => t === "Autonomo") &&
+      !tiposArray.some((t) => t === "Juridico" || t === "PjAutonomo" || t === "Ei" || t === "Mei" || t === "SociedadeLtda" || t === "Eireli" || t === "Slu");
+    const isPJ = !isAutonomo && tiposArray.some((t) => t === "Juridico" || t === "PjAutonomo" || t === "Ei" || t === "Mei" || t === "SociedadeLtda" || t === "Eireli" || t === "Slu");
+    const totalCamposEditaveis = isAutonomo ? 17 : 19;
+
+    let camposPreenchidos = 0;
+
+    if (psicologo.Telefone && psicologo.Telefone.trim() !== "") camposPreenchidos++;
+    if (psicologo.Sexo && psicologo.Sexo.trim() !== "") camposPreenchidos++;
+    if (psicologo.Pronome && psicologo.Pronome.trim() !== "") camposPreenchidos++;
+    if (psicologo.RacaCor && psicologo.RacaCor.trim() !== "") camposPreenchidos++;
+
+    if (isPJ && psicologo.PessoalJuridica?.InscricaoEstadual && psicologo.PessoalJuridica.InscricaoEstadual.trim() !== "") {
+      camposPreenchidos++;
+    }
+
+    if (address?.Cep && address.Cep.trim() !== "") camposPreenchidos++;
+    if (address?.Rua && address.Rua.trim() !== "") camposPreenchidos++;
+    if (address?.Numero && address.Numero.trim() !== "") camposPreenchidos++;
+    if (!isAutonomo && address?.Complemento && address.Complemento.trim() !== "") camposPreenchidos++;
+    if (address?.Bairro && address.Bairro.trim() !== "") camposPreenchidos++;
+    if (address?.Cidade && address.Cidade.trim() !== "") camposPreenchidos++;
+    if (address?.Estado && address.Estado.trim() !== "") camposPreenchidos++;
+
+    if (profile?.SobreMim && profile.SobreMim.trim() !== "") camposPreenchidos++;
+
+    if (profile?.ExperienciaClinica && profile.ExperienciaClinica.trim() !== "") camposPreenchidos++;
+    if (profile?.Idiomas && profile.Idiomas.length > 0) camposPreenchidos++;
+    if (profile?.TipoAtendimento && profile.TipoAtendimento.length > 0) camposPreenchidos++;
+    if (profile?.Abordagens && profile.Abordagens.length > 0) camposPreenchidos++;
+    if (profile?.Queixas && profile.Queixas.length > 0) camposPreenchidos++;
+
+    if (profile?.Formacoes && profile.Formacoes.length > 0) {
+      const formacaoCompleta = profile.Formacoes.some((f) => {
+        const tipoFormacao = f.TipoFormacao || f.Tipo || "";
+        return tipoFormacao.trim() !== "" &&
+          (f.Curso || "").trim() !== "" &&
+          (f.Instituicao || "").trim() !== "";
+      });
+      if (formacaoCompleta) camposPreenchidos++;
+    }
+
+    const percentualAdicional = totalCamposEditaveis > 0
+      ? Math.round((camposPreenchidos / totalCamposEditaveis) * 52)
+      : 0;
+
+    return Math.min(100, percentualBase + percentualAdicional);
+  };
+
+  const psicologosFiltrados = (psicologos || []).filter((p: PsicologoListItem) => {
     if (p.Status === "Deletado") return false;
     const buscaMatch =
       (p.Nome?.toLowerCase().includes(busca.toLowerCase()) ||
@@ -209,6 +271,7 @@ export default function PsicologosPage() {
                 <th className="py-4 px-6 text-left text-xs font-semibold text-[#8494E9] uppercase tracking-wider">Psicólogo</th>
                 <th className="py-4 px-6 text-left text-xs font-semibold text-[#8494E9] uppercase tracking-wider">CRP</th>
                 <th className="py-4 px-6 text-left text-xs font-semibold text-[#8494E9] uppercase tracking-wider">Data Cadastro</th>
+                <th className="py-4 px-6 text-left text-xs font-semibold text-[#8494E9] uppercase tracking-wider whitespace-nowrap">Nota perfil</th>
                 <th className="py-4 px-6 text-left text-xs font-semibold text-[#8494E9] uppercase tracking-wider whitespace-nowrap">Status</th>
                 <th className="py-4 px-6 text-center text-xs font-semibold text-[#8494E9] uppercase tracking-wider">Ações</th>
               </tr>
@@ -216,7 +279,7 @@ export default function PsicologosPage() {
             <tbody className="divide-y divide-gray-100">
               {isPsicologosLoading ? (
                 <tr>
-                  <td colSpan={5} className="py-12 text-center">
+                  <td colSpan={6} className="py-12 text-center">
                     <div className="flex flex-col items-center justify-center gap-3">
                       <div className="w-10 h-10 border-4 border-[#8494E9] border-t-transparent rounded-full animate-spin"></div>
                       <span className="text-gray-500 text-sm">Carregando psicólogos...</span>
@@ -225,7 +288,7 @@ export default function PsicologosPage() {
                 </tr>
               ) : psicologosPaginados.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="py-12 text-center">
+                  <td colSpan={6} className="py-12 text-center">
                     <div className="flex flex-col items-center justify-center gap-2">
                       <span className="text-gray-400 text-4xl">🔍</span>
                       <span className="text-gray-500 font-medium">Nenhum psicólogo encontrado</span>
@@ -234,8 +297,9 @@ export default function PsicologosPage() {
                   </td>
                 </tr>
               ) : (
-                psicologosPaginados.map((p: Psicologo, i: number) => {
+                psicologosPaginados.map((p: PsicologoListItem, i: number) => {
                   const statusFmt = formatarStatus(p.Status);
+                  const profilePercent = calcularPercentualPerfil(p);
                   
                   return (
                     <motion.tr 
@@ -251,6 +315,9 @@ export default function PsicologosPage() {
                       <td className="py-4 px-6 text-sm text-gray-600 font-mono">{p.Crp || "-"}</td>
                       <td className="py-4 px-6 text-sm text-gray-600">
                         {p.CreatedAt ? new Date(p.CreatedAt).toLocaleDateString("pt-BR") : "-"}
+                      </td>
+                      <td className="py-4 px-6 text-sm text-gray-700 font-semibold whitespace-nowrap">
+                        {profilePercent}%
                       </td>
                       <td className="py-4 px-6 whitespace-nowrap">
                         <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${statusClasses[p.Status] || "bg-gray-100 text-gray-700"}`}>
@@ -308,9 +375,10 @@ export default function PsicologosPage() {
             <span className="text-gray-500 font-medium block">Nenhum psicólogo encontrado</span>
           </div>
         ) : (
-          psicologosPaginados.map((p: Psicologo, i: number) => {
+          psicologosPaginados.map((p: PsicologoListItem, i: number) => {
             const statusFmt = formatarStatus(p.Status);
             const iniciais = p.Nome?.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || '??';
+            const profilePercent = calcularPercentualPerfil(p);
             
             return (
               <motion.div
@@ -340,6 +408,10 @@ export default function PsicologosPage() {
                   <div className="flex justify-between">
                     <span className="text-gray-500">Cadastro:</span>
                     <span className="font-medium">{p.CreatedAt ? new Date(p.CreatedAt).toLocaleDateString("pt-BR") : "-"}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Nota perfil:</span>
+                    <span className="font-medium">{profilePercent}%</span>
                   </div>
                 </div>
                 <div className="flex gap-2">

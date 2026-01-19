@@ -233,7 +233,7 @@ export default function ParaPsicologosPage() {
 									Análise e aprovação
 								</span>
 								<span className="fira-sans font-normal text-[16px] leading-[24px] text-[#49525A]">
-									Sua cadastro passa por uma etapa de análise, onde nosso time
+									Seu cadastro passa por uma etapa de análise, onde nosso time
 									irá revisar e analisar os dados e informações. Após aprovado o
 									cadastro você terá acesso completo à plataforma.
 								</span>

@@ -959,10 +959,10 @@ export class UserPsicologoService implements IUserPsicologoService {
                     const isPJ = !isAutonomo && tiposArray.some((t: string) => t === "Juridico" || t === "PjAutonomo" || t === "Ei" || t === "Mei" || t === "SociedadeLtda" || t === "Eireli" || t === "Slu");
 
                     let camposPreenchidos = 0;
-                    // Contagem correta de campos editáveis:
-                    // Autônomo: 4 (dados pessoais) + 6 (endereço sem complemento) + 1 (sobre mim) + 5 (atendimento) + 1 (formação) + 1 (PIX) = 18 campos
-                    // PJ: 4 (dados pessoais) + 1 (inscrição municipal) + 7 (endereço com complemento) + 1 (sobre mim) + 5 (atendimento) + 1 (formação) + 1 (PIX) = 20 campos
-                    const totalCamposEditaveis = isAutonomo ? 18 : 20;
+                    // Contagem correta de campos editáveis (PIX não conta para percentual):
+                    // Autônomo: 4 (dados pessoais) + 6 (endereço sem complemento) + 1 (sobre mim) + 5 (atendimento) + 1 (formação) = 17 campos
+                    // PJ: 4 (dados pessoais) + 1 (inscrição municipal) + 7 (endereço com complemento) + 1 (sobre mim) + 5 (atendimento) + 1 (formação) = 19 campos
+                    const totalCamposEditaveis = isAutonomo ? 17 : 19;
                     const percentualBase = 48;
 
                     // Dados pessoais (4 campos - Telefone, Sexo, Pronome, Raça/Cor)
@@ -1004,20 +1004,13 @@ export class UserPsicologoService implements IUserPsicologoService {
                         if (formacaoCompleta) camposPreenchidos++;
                     }
 
-                    // Dados bancários (1 campo)
-                    const chavePixPJ = updatedUser.PessoalJuridica?.DadosBancarios?.ChavePix;
-                    const chavePixProfile = profile.DadosBancarios?.ChavePix;
-                    if ((chavePixPJ && chavePixPJ.trim() !== "") || (chavePixProfile && chavePixProfile.trim() !== "")) {
-                        camposPreenchidos++;
-                    }
+                    // Dados bancários (PIX) - NÃO conta para percentual de preenchimento
 
                     // Calcula o percentual
                     // Se todos os campos estão preenchidos, garante 100%
-                    const percentualAdicional = camposPreenchidos === totalCamposEditaveis
-                        ? 52
-                        : totalCamposEditaveis > 0
-                            ? Math.round((camposPreenchidos / totalCamposEditaveis) * 52)
-                            : 0;
+                    const percentualAdicional = totalCamposEditaveis > 0
+                        ? Math.round((camposPreenchidos / totalCamposEditaveis) * 52)
+                        : 0;
                     const percentualTotal = Math.min(100, percentualBase + percentualAdicional);
 
                     // Se atingiu 100%, atualiza o Status para "Preenchido"

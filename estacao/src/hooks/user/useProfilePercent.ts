@@ -24,11 +24,11 @@ export function useProfilePercent(): number {
       !tiposArray.some((t: string) => t === "Juridico" || t === "PjAutonomo" || t === "Ei" || t === "Mei" || t === "SociedadeLtda" || t === "Eireli" || t === "Slu");
     
     let camposPreenchidos = 0;
-    // Contagem correta de campos editáveis:
-    // Autônomo: 4 (dados pessoais) + 6 (endereço sem complemento) + 1 (sobre mim) + 5 (atendimento) + 1 (formação) + 1 (PIX) = 18 campos
-    // PJ: 4 (dados pessoais) + 1 (inscrição municipal) + 7 (endereço com complemento) + 1 (sobre mim) + 5 (atendimento) + 1 (formação) + 1 (PIX) = 20 campos
+    // Contagem correta de campos editáveis (PIX não conta para percentual):
+    // Autônomo: 4 (dados pessoais) + 6 (endereço sem complemento) + 1 (sobre mim) + 5 (atendimento) + 1 (formação) = 17 campos
+    // PJ: 4 (dados pessoais) + 1 (inscrição municipal) + 7 (endereço com complemento) + 1 (sobre mim) + 5 (atendimento) + 1 (formação) = 19 campos
     const isPJ = !isAutonomo && tiposArray.some((t: string) => t === "Juridico" || t === "PjAutonomo" || t === "Ei" || t === "Mei" || t === "SociedadeLtda" || t === "Eireli" || t === "Slu");
-    const totalCamposEditaveis = isAutonomo ? 18 : 20;
+    const totalCamposEditaveis = isAutonomo ? 17 : 19;
     const percentualBase = 48; // Percentual dos campos bloqueados (Nome, CPF, CNPJ, Nome Fantasia)
 
     // Dados pessoais (4 campos - Telefone, Sexo, Pronome, Raça/Cor)
@@ -72,21 +72,13 @@ export function useProfilePercent(): number {
       if (formacaoCompleta) camposPreenchidos++;
     }
 
-    // Dados bancários (1 campo) - verifica tanto PessoalJuridica quanto ProfessionalProfile
-    const chavePixPJ = user.PessoalJuridica?.DadosBancarios?.ChavePix;
-    const chavePixProfile = profile?.DadosBancarios?.ChavePix;
-    if ((chavePixPJ && chavePixPJ.trim() !== "") || (chavePixProfile && chavePixProfile.trim() !== "")) {
-      camposPreenchidos++;
-    }
+    // Dados bancários (PIX) - NÃO conta para percentual de preenchimento
 
     // Calcular percentual: 48% base (campos bloqueados) + percentual dos campos editáveis
     // Se todos os campos editáveis estiverem preenchidos = 52% adicional = 100% total
-    // Se todos os campos estão preenchidos, garante 100%
-    const percentualAdicional = camposPreenchidos === totalCamposEditaveis
-      ? 52
-      : totalCamposEditaveis > 0 
-        ? Math.round((camposPreenchidos / totalCamposEditaveis) * 52)
-        : 0;
+    const percentualAdicional = totalCamposEditaveis > 0 
+      ? Math.round((camposPreenchidos / totalCamposEditaveis) * 52)
+      : 0;
     
     return Math.min(100, percentualBase + percentualAdicional);
   }, [psicologo]);
