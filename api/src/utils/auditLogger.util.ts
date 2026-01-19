@@ -1,6 +1,6 @@
 import { Request } from 'express';
 import { AuditService } from '../services/audit.service';
-import { ActionType, Module } from '../generated/prisma/client';
+import { ActionType, Module } from '../generated/prisma';
 import { createAuditMetadata } from './auditHelper.util';
 import { getClientIp } from './getClientIp.util';
 

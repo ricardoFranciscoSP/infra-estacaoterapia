@@ -1,7 +1,7 @@
 import { prismaUserRepository } from '../repositories/prismaUser.repository';
 import { IAgendaService } from '../interfaces/IAgenda.interface';
 import { prismaAgendaRepository } from '../repositories/prismaAgenda.repository';
-import { Agenda } from '../generated/prisma/client';
+import { Agenda } from '../generated/prisma';
 import prisma from '../prisma/client';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';

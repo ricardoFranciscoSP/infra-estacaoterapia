@@ -3,7 +3,7 @@ import { Request, Response } from 'express';
 import { IAgoraService } from '../interfaces/IAgoraService';
 import { AuthorizationService } from '../services/authorization.service';
 import prisma from "../prisma/client";
-import { PrismaClient, CommissionStatus, CommissionTipoPlano, ReservaSessao } from "../generated/prisma/client";
+import { PrismaClient, CommissionStatus, CommissionTipoPlano, ReservaSessao } from "../generated/prisma";
 import { deriveUidFromUuid } from '../utils/uid.util';
 import { getRepassePercentForPsychologist } from '../utils/repasse.util';
 import { ConsultaStatusService } from '../services/consultaStatus.service';

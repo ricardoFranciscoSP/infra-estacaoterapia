@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { AdmFinanceiroService } from '../../services/adm/financeiro.service';
 import { AuthorizationService } from '../../services/authorization.service';
-import { FinanceiroPsicologoStatus, ControleFinanceiroStatus } from '../../generated/prisma/client';
+import { FinanceiroPsicologoStatus, ControleFinanceiroStatus } from '../../generated/prisma';
 import { logAuditFromRequest } from '../../utils/auditLogger.util';
 import { ActionType, Module } from '../../types/permissions.types';
 import { getClientIp } from '../../utils/getClientIp.util';

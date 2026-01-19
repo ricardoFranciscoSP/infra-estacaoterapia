@@ -1,6 +1,6 @@
-import { Sexo, Pronome, UserStatus, Role, Prisma, PrismaClient } from "../generated/prisma/client";
-import { ExperienciaClinica, ProfessionalProfileStatus } from "../generated/prisma/client";
-import { Languages, TipoAtendimento, Abordagem, Queixa, TipoPessoaJuridica } from "../generated/prisma/client";
+import { Sexo, Pronome, UserStatus, Role, Prisma, PrismaClient } from "../generated/prisma";
+import { ExperienciaClinica, ProfessionalProfileStatus } from "../generated/prisma";
+import { Languages, TipoAtendimento, Abordagem, Queixa, TipoPessoaJuridica } from "../generated/prisma";
 // RacaCor e GrauInstrucao são tipos de enum do Prisma
 // Definir localmente baseado nos valores do enum
 export type RacaCor = 'Branca' | 'Preta' | 'Parda' | 'Amarela' | 'Indigena' | 'PrefiroNaoInformar';

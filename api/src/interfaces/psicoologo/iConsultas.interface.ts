@@ -1,4 +1,4 @@
-import { AgendaStatus } from "../../generated/prisma/client";
+import { AgendaStatus } from "../../generated/prisma";
 import { ConsultaRealizadaPsicologoResponse } from "../../services/psicologo/consultas.service";
 
 export interface IConsultasService {

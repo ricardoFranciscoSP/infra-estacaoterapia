@@ -6,7 +6,7 @@ import { IEmailService } from "../interfaces/email.interface";
 import { ProximaConsultaService } from "./proximaConsulta.service";
 import { WebSocketNotificationService } from "./websocketNotification.service";
 import { STATUS } from "../constants/status.constants";
-import { ConsultaAvulsaStatus, Prisma, AgendaStatus } from "../generated/prisma/client";
+import { ConsultaAvulsaStatus, Prisma, AgendaStatus } from "../generated/prisma";
 import { NewReservaBody } from "../interfaces/consultasPsicologo.interface";
 import dayjs from "dayjs";
 import timezone from 'dayjs/plugin/timezone';

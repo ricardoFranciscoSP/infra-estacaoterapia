@@ -92,13 +92,9 @@ export default function Footer() {
                 style={{ width: 110, height: 38 }} 
                 priority
                 sizes="110px"
-                quality={70}
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  if (target.src !== '/logo.png') {
-                    target.src = '/logo.png';
-                  }
-                }}
+                quality={75}
+                unoptimized={false}
+                onError={undefined}
               />
             </Link>
             {/* Coluna direita: Frase e redes sociais */}
@@ -106,64 +102,60 @@ export default function Footer() {
               <span className="text-[#22223B] font-medium mb-2 text-xs leading-4 text-left w-full">Nos siga nas redes sociais:</span>
         <div className="flex gap-3 justify-start w-full mb-3">
           <Link href="https://www.instagram.com/estacaoterapia" target="_blank" rel="noopener noreferrer" aria-label="Instagram">
-            <Image 
-              src="/assets/icons/instagram.webp" 
-              alt="Instagram" 
-              className="w-6 h-6" 
-              width={24} 
-              height={24}
-              sizes="24px"
-              quality={80}
-              loading="lazy"
-              onError={() => {
-                console.warn('Erro ao carregar ícone do Instagram');
-              }}
-            />
+              <Image 
+                src="/assets/icons/instagram.webp" 
+                alt="Instagram" 
+                className="w-6 h-6" 
+                width={24} 
+                height={24}
+                sizes="24px"
+                quality={80}
+                loading="lazy"
+                unoptimized={false}
+                onError={undefined}
+              />
           </Link>
           <Link href="https://www.facebook.com/profile.php?id=61582287230956" target="_blank" rel="noopener noreferrer" aria-label="Facebook">
-            <Image 
-              src="/assets/icons/facebook.webp" 
-              alt="Facebook" 
-              className="w-6 h-6" 
-              width={24} 
-              height={24}
-              sizes="24px"
-              quality={80}
-              loading="lazy"
-              onError={() => {
-                console.warn('Erro ao carregar ícone do Facebook');
-              }}
-            />
+              <Image 
+                src="/assets/icons/facebook.webp" 
+                alt="Facebook" 
+                className="w-6 h-6" 
+                width={24} 
+                height={24}
+                sizes="24px"
+                quality={80}
+                loading="lazy"
+                unoptimized={false}
+                onError={undefined}
+              />
           </Link>
           <Link href="https://www.linkedin.com/in/estacaoterapia" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn">
-            <Image 
-              src="/assets/icons/linkedin.webp" 
-              alt="LinkedIn" 
-              className="w-6 h-6" 
-              width={24} 
-              height={24}
-              sizes="24px"
-              quality={80}
-              loading="lazy"
-              onError={() => {
-                console.warn('Erro ao carregar ícone do LinkedIn');
-              }}
-            />
+              <Image 
+                src="/assets/icons/linkedin.webp" 
+                alt="LinkedIn" 
+                className="w-6 h-6" 
+                width={24} 
+                height={24}
+                sizes="24px"
+                quality={80}
+                loading="lazy"
+                unoptimized={false}
+                onError={undefined}
+              />
           </Link>
           <Link href="http://tiktok.com/@estacaoterapia" target="_blank" rel="noopener noreferrer" aria-label="TikTok">
-            <Image 
-              src="/assets/icons/tiktok.webp" 
-              alt="TikTok" 
-              className="w-6 h-6" 
-              width={24} 
-              height={24}
-              sizes="24px"
-              quality={80}
-              loading="lazy"
-              onError={() => {
-                console.warn('Erro ao carregar ícone do TikTok');
-              }}
-            />
+              <Image 
+                src="/assets/icons/tiktok.webp" 
+                alt="TikTok" 
+                className="w-6 h-6" 
+                width={24} 
+                height={24}
+                sizes="24px"
+                quality={80}
+                loading="lazy"
+                unoptimized={false}
+                onError={undefined}
+              />
           </Link>
           {/* <Link href="#" target="_blank" rel="noopener noreferrer" aria-label="YouTube"><Image src="/assets/icons/youtube.webp" alt="YouTube" className="w-6 h-6" width={24} height={24} /></Link> */}
         </div>
@@ -196,6 +188,8 @@ export default function Footer() {
                 height={65}
                 className="h-[65px] w-[180px] object-contain"
                 priority
+                quality={75}
+                unoptimized={false}
               />
             </Link>
           </motion.div>
@@ -307,7 +301,7 @@ export default function Footer() {
           </div>
           <div className="w-full mt-6">
             <p className="text-xs text-[#22223B] font-normal leading-relaxed">
-              © {new Date().getFullYear()} MINDFLUENCE PSICOLOGIA LTDA - CNPJ: 54.222.003/0001-07 | Endereço: Al. Rio Negro, 503 - Sala 2020, CEP: 06454-000 - Alphaville Industrial - Barueri, SP - Brasil - Todos os direitos reservados.
+              © {typeof window === 'undefined' ? '2026' : new Date().getFullYear()} MINDFLUENCE PSICOLOGIA LTDA - CNPJ: 54.222.003/0001-07 | Endereço: Al. Rio Negro, 503 - Sala 2020, CEP: 06454-000 - Alphaville Industrial - Barueri, SP - Brasil - Todos os direitos reservados.
             </p>
           </div>
         </div>

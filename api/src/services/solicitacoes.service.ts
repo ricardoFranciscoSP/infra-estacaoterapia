@@ -1,5 +1,5 @@
 import prisma from '../prisma/client';
-import { Prisma } from '../generated/prisma/client';
+import { Prisma } from '../generated/prisma';
 import { ISolicitacoesService } from '../interfaces/solicitacoes.interface';
 import { ISolicitacao } from '../types/solicitacoes.types';
 import { supabaseAdmin, STORAGE_BUCKET, uploadFile, createSignedUrl } from './storage.services';

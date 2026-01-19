@@ -1,4 +1,4 @@
-import { Prisma } from "../generated/prisma/client";
+import { Prisma } from "../generated/prisma";
 
 /**
  * Tipo para ciclo de plano com campos necessários para cálculo de multa

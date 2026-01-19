@@ -2,7 +2,7 @@ import prisma from "../prisma/client";
 import { ICancelamentoService } from "../interfaces/cancelamento.interface";
 import { CancelamentoData, CancelamentoStatus, CancelamentoTipo, CancelamentoResponse, CancelamentoWithUsers } from "../types/cancelamento.types";
 import { ProximaConsultaService } from "./proximaConsulta.service";
-import { AgendaStatus, User, CancelamentoSessaoStatus, AutorTipoCancelamento } from "../generated/prisma/client";
+import { AgendaStatus, User, CancelamentoSessaoStatus, AutorTipoCancelamento } from "../generated/prisma";
 import { ConsultaOrigemStatus } from "../constants/consultaStatus.constants";
 import { StatusConsulta } from "../types/statusConsulta.types";
 import { determinarRepasse, determinarDevolucaoSessao } from "../utils/statusConsulta.util";

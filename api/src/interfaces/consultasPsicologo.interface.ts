@@ -1,5 +1,5 @@
 import { Response } from "express";
-import { Consulta, User } from "../generated/prisma/client";
+import { Consulta, User } from "../generated/prisma";
 
 export interface ConsultaEmAndamentoResponse {
     success: boolean;

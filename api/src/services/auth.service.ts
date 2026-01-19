@@ -8,7 +8,7 @@ import { VindiService } from './vindi.service';
 import prisma from '../prisma/client';
 import { isValidCPF } from '../utils/validation.util';
 import { verifyToken } from '../utils/verifyToken';
-import { TipoPessoaJuridica, Role, TipoAtendimento, Languages, Abordagem, Queixa, ProfessionalProfileStatus, Prisma, ExperienciaClinica } from '../generated/prisma/client';
+import { TipoPessoaJuridica, Role, TipoAtendimento, Languages, Abordagem, Queixa, ProfessionalProfileStatus, Prisma, ExperienciaClinica } from '../generated/prisma';
 import { PsychologistDocumentInput } from '../interfaces/auth.interface';
 
 interface PessoaJuridicaInput {

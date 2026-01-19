@@ -1,4 +1,4 @@
-import { PrismaClient } from "../generated/prisma/client";
+import { PrismaClient } from "../generated/prisma";
 import { IControleConsultasService } from "../interfaces/controleConsultas.interface";
 import { ControleConsultaParams, ControleConsultaResult } from "../types/controleConsultas.types";
 

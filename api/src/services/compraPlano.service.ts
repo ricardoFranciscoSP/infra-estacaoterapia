@@ -6,7 +6,7 @@ import { NotificationService } from "../services/notification.service";
 import { WebSocketNotificationService } from "../services/websocketNotification.service";
 import { CompraPlanoPayload, CompraPlanoResponse } from "../types/compraPlano.types";
 import { ICompraPlanoService } from "../interfaces/compraPlano.interface";
-import { Prisma, TipoFatura, ControleFinanceiroStatus, PlanoCompraStatus, ControleConsultaMensalStatus, FaturaStatus } from "../generated/prisma/client";
+import { Prisma, TipoFatura, ControleFinanceiroStatus, PlanoCompraStatus, ControleConsultaMensalStatus, FaturaStatus } from "../generated/prisma";
 import { CicloPlanoService } from "./cicloPlano.service";
 import { formatVindiErrorMessage, extractVindiErrorDetails } from "../utils/vindiErrorFormatter";
 import { calcularMultaProporcional } from "../utils/calcularMultaProporcional";

@@ -1,5 +1,5 @@
 import prisma from "../prisma/client";
-import { AgendaStatus, $Enums } from "../generated/prisma/client";
+import { AgendaStatus, $Enums } from "../generated/prisma";
 import axios from "axios";
 import dayjs from "dayjs";
 import utc from 'dayjs/plugin/utc';

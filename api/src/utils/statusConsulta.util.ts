@@ -9,7 +9,7 @@ import {
     normalizarStatus,
     CONFIGURACOES_STATUS
 } from "../types/statusConsulta.types";
-import { AutorTipoCancelamento } from "../generated/prisma/client";
+import { AutorTipoCancelamento } from "../generated/prisma";
 import prisma from "../prisma/client";
 
 dayjs.extend(utc);

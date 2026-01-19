@@ -18,6 +18,7 @@ type PsicologoListItem = {
   Address?: Address | Address[];
   ProfessionalProfiles?: ProfessionalProfiles[];
   PessoalJuridica?: PessoalJuridica;
+  ProfilePercent?: number;
 };
 
 const EyeIcon = () => (
@@ -303,7 +304,9 @@ export default function PsicologosPage() {
               ) : (
                 psicologosPaginados.map((p: PsicologoListItem, i: number) => {
                   const statusFmt = formatarStatus(p.Status);
-                  const profilePercent = calcularPercentualPerfil(p);
+                  const profilePercent = typeof p.ProfilePercent === "number"
+                    ? p.ProfilePercent
+                    : calcularPercentualPerfil(p);
                   
                   return (
                     <motion.tr 
@@ -382,7 +385,9 @@ export default function PsicologosPage() {
           psicologosPaginados.map((p: PsicologoListItem, i: number) => {
             const statusFmt = formatarStatus(p.Status);
             const iniciais = p.Nome?.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || '??';
-            const profilePercent = calcularPercentualPerfil(p);
+            const profilePercent = typeof p.ProfilePercent === "number"
+              ? p.ProfilePercent
+              : calcularPercentualPerfil(p);
             
             return (
               <motion.div

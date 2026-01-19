@@ -1,5 +1,5 @@
 import prisma from "../prisma/client";
-import { ConsultaStatus } from "../generated/prisma/client";
+import { ConsultaStatus } from "../generated/prisma";
 import {
   ConsultaStatusHelper,
   ConsultaOrigemStatus,

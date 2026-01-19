@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { AuthorizationService } from "../services/authorization.service";
 import { ReportsService, ReportFilters } from "../services/reports.service";
 import { AuditService } from "../services/audit.service";
-import { Role, Module, ActionType } from "../generated/prisma/client";
+import { Role, Module, ActionType } from "../generated/prisma";
 import { getClientIp } from "../utils/getClientIp.util";
 import { normalizeQueryString } from "../utils/validation.util";
 

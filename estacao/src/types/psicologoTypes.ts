@@ -171,6 +171,11 @@ export type Psicologo = {
     ReviewsReceived: ReviewsReceived[];
     PessoalJuridica?: PessoalJuridica; // já está correto, não precisa de []
     BillingAddress?: EnderecoCobranca | EnderecoCobranca[];
+    RatingAverage?: number;
+    RatingCount?: number;
+    RatingPercent?: number;
+    RatingStatus?: string;
+    ProfilePercent?: number;
 };
 
 export type PsicologoUpdate = Partial<Omit<Psicologo, "Address" | "BillingAddress" | "ProfessionalProfiles" | "PessoalJuridica">> & {
@@ -275,6 +280,8 @@ export interface PsicologoAtivo {
     Id: string;
     Nome: string;
     Crp: string;
+    RatingAverage?: number;
+    RatingCount?: number;
     Images: Image[];
     Reviews: Reviews[];
     ProfessionalProfiles: ProfessionalProfiles[];

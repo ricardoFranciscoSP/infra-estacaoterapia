@@ -4,7 +4,7 @@
  */
 
 import prisma from "../../prisma/client";
-import { Role, UserStatus, ConsultaStatus } from "../../generated/prisma/client";
+import { Role, UserStatus, ConsultaStatus } from "../../generated/prisma";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";

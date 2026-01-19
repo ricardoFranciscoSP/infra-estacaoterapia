@@ -152,6 +152,31 @@ export interface SignedUrlOptions {
  * console.log(result.signedUrl);
  * ```
  */
+const resolveStoragePath = (inputPath: string, fallbackBucket: string) => {
+    if (!inputPath) {
+        return { bucket: fallbackBucket, path: inputPath };
+    }
+    if (!/^https?:\/\//i.test(inputPath)) {
+        return { bucket: fallbackBucket, path: inputPath };
+    }
+    // Tenta extrair bucket e path do formato padrão do Supabase
+    const match = inputPath.match(/storage\/v1\/object\/(public|sign)\/([^\/]+)\/(.+)$/);
+    if (match && match[2] && match[3]) {
+        return { bucket: match[2], path: match[3].split("?")[0] };
+    }
+    // Fallback: tenta localizar o bucket esperado na URL
+    const idx = inputPath.lastIndexOf(`/${fallbackBucket}/`);
+    if (idx !== -1) {
+        return {
+            bucket: fallbackBucket,
+            path: inputPath.substring(idx + fallbackBucket.length + 2).split("?")[0]
+        };
+    }
+    // Último fallback: retorna só o final do caminho
+    const parts = inputPath.split("?")[0].split("/");
+    return { bucket: fallbackBucket, path: parts.slice(-2).join("/") };
+};
+
 export async function createSignedUrl(
     filePath: string,
     options: SignedUrlOptions = {}
@@ -180,23 +205,9 @@ export async function createSignedUrl(
         throw new Error("filePath não pode ser vazio");
     }
 
-    // Normaliza filePath caso seja uma URL pública (ex.: armazenada no DB via getPublicUrl)
-    // Suporta formatos do Supabase: .../storage/v1/object/public/{bucket}/{path}
-    const normalizeFilePath = (p: string, bucketName: string) => {
-        if (!p) return p;
-        if (!/^https?:\/\//i.test(p)) return p;
-        // Tenta extrair a parte após /storage/v1/object/(public|sign)/{bucket}/
-        const match = p.match(/storage\/v1\/object\/(public|sign)\/([^\/]+)\/(.+)$/);
-        if (match && match[3]) return match[3].split("?")[0];
-        // Fallback: busca a última ocorrência de `/{bucket}/` e pega tudo depois
-        const idx = p.lastIndexOf(`/${bucketName}/`);
-        if (idx !== -1) return p.substring(idx + bucketName.length + 2).split("?")[0];
-        // Último fallback: retorna apenas o último segmento (nome do arquivo)
-        const parts = p.split('?')[0].split('/');
-        return parts.slice(-2).join('/');
-    };
-
-    const normalizedFilePath = normalizeFilePath(filePath, bucket);
+    const resolved = resolveStoragePath(filePath, bucket);
+    const normalizedFilePath = resolved.path;
+    const resolvedBucket = resolved.bucket || bucket;
 
     // Configurar opções de download
     const signOptions: any = {
@@ -213,7 +224,7 @@ export async function createSignedUrl(
 
     const { data, error } = await supabaseAdmin
         .storage
-        .from(bucket)
+        .from(resolvedBucket)
         .createSignedUrl(normalizedFilePath, expiresIn, signOptions);
 
     if (error) {
@@ -292,19 +303,9 @@ export async function fileExists(
         throw new Error("Bucket não especificado");
     }
 
-    // Normaliza caso seja URL pública
-    const normalizeFilePath = (p: string, bucketName: string) => {
-        if (!p) return p;
-        if (!/^https?:\/\//i.test(p)) return p;
-        const match = p.match(/storage\/v1\/object\/(public|sign)\/([^\/]+)\/(.+)$/);
-        if (match && match[3]) return match[3].split("?")[0];
-        const idx = p.lastIndexOf(`/${bucketName}/`);
-        if (idx !== -1) return p.substring(idx + bucketName.length + 2).split("?")[0];
-        const parts = p.split('?')[0].split('/');
-        return parts.slice(-2).join('/');
-    };
-
-    const normalized = normalizeFilePath(filePath, bucket);
+    const resolved = resolveStoragePath(filePath, bucket);
+    const normalized = resolved.path;
+    const resolvedBucket = resolved.bucket || bucket;
 
     try {
         const dir = normalized.includes('/') ? normalized.substring(0, normalized.lastIndexOf('/')) : '';
@@ -312,7 +313,7 @@ export async function fileExists(
 
         const { data, error } = await supabaseAdmin
             .storage
-            .from(bucket)
+            .from(resolvedBucket)
             .list(dir, {
                 search: filename
             });
@@ -348,23 +349,13 @@ export async function deleteFile(
         throw new Error("Bucket não especificado");
     }
 
-    // Normaliza caso filePath seja uma URL pública
-    const normalizeFilePath = (p: string, bucketName: string) => {
-        if (!p) return p;
-        if (!/^https?:\/\//i.test(p)) return p;
-        const match = p.match(/storage\/v1\/object\/(public|sign)\/([^\/]+)\/(.+)$/);
-        if (match && match[3]) return match[3].split("?")[0];
-        const idx = p.lastIndexOf(`/${bucketName}/`);
-        if (idx !== -1) return p.substring(idx + bucketName.length + 2).split("?")[0];
-        const parts = p.split('?')[0].split('/');
-        return parts.slice(-2).join('/');
-    };
-
-    const normalized = normalizeFilePath(filePath, bucket);
+    const resolved = resolveStoragePath(filePath, bucket);
+    const normalized = resolved.path;
+    const resolvedBucket = resolved.bucket || bucket;
 
     const { error } = await supabaseAdmin
         .storage
-        .from(bucket)
+        .from(resolvedBucket)
         .remove([normalized]);
 
     if (error) {
@@ -389,23 +380,14 @@ export async function downloadFile(
         throw new Error("Bucket não especificado");
     }
 
-    const normalizeFilePath = (p: string, bucketName: string) => {
-        if (!p) return p;
-        if (!/^https?:\/\//i.test(p)) return p;
-        const match = p.match(/storage\/v1\/object\/(public|sign)\/([^\/]+)\/(.+)$/);
-        if (match && match[3]) return match[3].split("?")[0];
-        const idx = p.lastIndexOf(`/${bucketName}/`);
-        if (idx !== -1) return p.substring(idx + bucketName.length + 2).split("?")[0];
-        const parts = p.split('?')[0].split('/');
-        return parts.slice(-2).join('/');
-    };
-
-    const normalized = normalizeFilePath(filePath, bucket);
+    const resolved = resolveStoragePath(filePath, bucket);
+    const normalized = resolved.path;
+    const resolvedBucket = resolved.bucket || bucket;
     const fileName = normalized.includes("/") ? normalized.split("/").pop() || "documento" : normalized;
 
     const { data, error } = await supabaseAdmin
         .storage
-        .from(bucket)
+        .from(resolvedBucket)
         .download(normalized);
 
     if (error || !data) {

@@ -6,7 +6,7 @@ const WEBHOOK_QUEUE_NAME = "webhookProcessor";
 import { WebHookService } from "../services/webhook.service";
 import prisma from "../prisma/client";
 import type { VindiBill } from "../types/vindi.types";
-import type { Prisma } from "../generated/prisma/client";
+import type { Prisma } from "../generated/prisma";
 
 let started = false;
 export let worker: Worker | null = null;

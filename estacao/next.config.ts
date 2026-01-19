@@ -2,21 +2,13 @@ import type { NextConfig } from "next";
 import { config } from "dotenv";
 import { existsSync } from "fs";
 import { resolve } from "path";
-import { validateEnvironmentConfig } from "./src/config/env";
-
-/* ======================================================
-   CONTROLE DE EXECUÇÃO ÚNICA
-====================================================== */
-declare global {
-  var __NEXT_CONFIG_VALIDATED__: boolean | undefined;
-}
 
 const isProduction = process.env.NODE_ENV === "production";
 
 /* ======================================================
-   LOAD ENV (DEV ONLY)
+  LOAD ENV (DEV ONLY)
 ====================================================== */
-if (!isProduction && !global.__NEXT_CONFIG_VALIDATED__) {
+if (!isProduction) {
   const envLocalPath = resolve(process.cwd(), ".env.local");
   const envPath = resolve(process.cwd(), ".env");
 
@@ -25,57 +17,6 @@ if (!isProduction && !global.__NEXT_CONFIG_VALIDATED__) {
   } else if (existsSync(envPath)) {
     config({ path: envPath, override: false });
   }
-}
-
-/* ======================================================
-   ENV VALIDATION
-====================================================== */
-const requiredEnvVars = [
-  "NEXT_PUBLIC_API_URL",
-  "NEXT_PUBLIC_WEBSITE_URL",
-  "NEXT_PUBLIC_SOCKET_URL",
-  "NEXT_PUBLIC_VINDI_PUBLIC_KEY",
-  "NEXT_PUBLIC_URL_VINDI_API",
-] as const;
-
-if (!global.__NEXT_CONFIG_VALIDATED__) {
-  // Verificar variáveis obrigatórias
-  // Permitir placeholders durante build (serão substituídos em runtime via env_file)
-  const missing = requiredEnvVars.filter(v => {
-    const value = process.env[v];
-    // Falhar apenas se estiver completamente ausente ou vazio
-    // Placeholders são aceitos durante build
-    return !value || value === "";
-  });
-
-  if (missing.length) {
-    // Verificar se são placeholders (aceitos em build)
-    const placeholders = requiredEnvVars.filter(v => {
-      const value = process.env[v];
-      return value && value.startsWith("__PLACEHOLDER");
-    });
-
-    if (placeholders.length > 0 && missing.length === placeholders.length) {
-      // Apenas placeholders, permitir em build (serão substituídos em runtime)
-      console.warn("⚠️  Variáveis usando placeholders (serão substituídas em runtime):", placeholders);
-    } else {
-      // Variáveis realmente faltando
-      console.error("❌ Variáveis obrigatórias ausentes:", missing);
-      if (placeholders.length > 0) {
-        console.warn("⚠️  Algumas variáveis estão usando placeholders:", placeholders);
-        console.warn("💡 Placeholders são aceitos durante build, mas devem ser substituídos em runtime");
-      }
-      process.exit(1);
-    }
-  }
-
-  const envValidation = validateEnvironmentConfig();
-  if (!envValidation.isValid) {
-    console.error("❌ Erro de ambiente:", envValidation.errors);
-    process.exit(1);
-  }
-
-  global.__NEXT_CONFIG_VALIDATED__ = true;
 }
 
 /* ======================================================
@@ -128,15 +69,15 @@ const nextConfig: NextConfig = {
       "@mui/material",
       "@mui/x-date-pickers",
     ],
-    // ⚡ OTIMIZAÇÃO: Otimiza e minifica CSS automaticamente
-    optimizeCss: true,
+    // Evita pico de memória no build; o Next já minifica CSS por padrão
+    optimizeCss: false,
     scrollRestoration: true,
     disableOptimizedLoading: false,
     serverActions: {
       bodySizeLimit: "1mb",
     },
-    // Otimização: reduz latência do caminho crítico de CSS
-    optimizeServerReact: true,
+    // Reduz consumo de memória no build (evita otimizações extras)
+    optimizeServerReact: false,
   },
 
   webpack: (config, { isServer, dev }) => {
@@ -151,98 +92,7 @@ const nextConfig: NextConfig = {
       tls: false,
     };
 
-    // ⚡ OTIMIZAÇÃO: Code splitting agressivo para reduzir bundle size (apenas produção)
-    if (!isServer && !dev) {
-      config.optimization = {
-        ...config.optimization,
-        moduleIds: 'deterministic',
-        // Separa runtime em chunk próprio para melhor cache
-        runtimeChunk: {
-          name: 'runtime',
-        },
-        splitChunks: {
-          chunks: 'all',
-          maxInitialRequests: 25,
-          minSize: 20000,
-          cacheGroups: {
-            default: false,
-            vendors: false,
-            // Framework React separado - reduz tamanho do bundle principal
-            framework: {
-              name: 'framework',
-              chunks: 'all',
-              test: /[\\/]node_modules[\\/](react|react-dom|scheduler)[\\/]/,
-              priority: 50,
-              enforce: true,
-            },
-            // Chart.js - biblioteca pesada separada
-            charts: {
-              name: 'charts',
-              test: /[\\/]node_modules[\\/](chart\.js|react-chartjs-2)[\\/]/,
-              chunks: 'all',
-              priority: 45,
-              enforce: true,
-            },
-            // Framer Motion - biblioteca pesada separada
-            framerMotion: {
-              name: 'framer-motion',
-              test: /[\\/]node_modules[\\/]framer-motion[\\/]/,
-              chunks: 'all',
-              priority: 44,
-              enforce: true,
-            },
-            // Agora RTC - biblioteca pesada separada
-            agora: {
-              name: 'agora',
-              test: /[\\/]node_modules[\\/](agora-rtc|agora-rtm)[\\/]/,
-              chunks: 'all',
-              priority: 43,
-              enforce: true,
-            },
-            // MUI - biblioteca pesada separada
-            mui: {
-              name: 'mui',
-              test: /[\\/]node_modules[\\/]@mui[\\/]/,
-              chunks: 'all',
-              priority: 42,
-              enforce: true,
-            },
-            // React Query - separado
-            reactQuery: {
-              name: 'react-query',
-              test: /[\\/]node_modules[\\/]@tanstack[\\/]react-query[\\/]/,
-              chunks: 'all',
-              priority: 41,
-              enforce: true,
-            },
-            // Socket.io - separado
-            socketio: {
-              name: 'socketio',
-              test: /[\\/]node_modules[\\/]socket\.io[\\/]/,
-              chunks: 'all',
-              priority: 40,
-              enforce: true,
-            },
-            // Outras bibliotecas compartilhadas
-            commons: {
-              name: 'commons',
-              minChunks: 2,
-              priority: 20,
-              reuseExistingChunk: true,
-            },
-            // Vendor libraries menores
-            vendor: {
-              name: 'vendor',
-              test: /[\\/]node_modules[\\/]/,
-              chunks: 'all',
-              priority: 10,
-              minChunks: 1,
-              reuseExistingChunk: true,
-            },
-          },
-        },
-      };
-    }
+    // Deixa o code splitting padrão do Next (menos pressão de memória)
 
     return config;
   },

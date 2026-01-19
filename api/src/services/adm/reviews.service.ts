@@ -1,5 +1,5 @@
 import prisma from "../../prisma/client";
-import { Prisma } from "../../generated/prisma/client";
+import { Prisma } from "../../generated/prisma";
 import { IReviewsService } from "../../interfaces/adm/iReview.interface";
 import { Request, Response } from "express";
 import { normalizeParamString } from "../../utils/validation.util";

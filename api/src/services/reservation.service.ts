@@ -1,5 +1,5 @@
 import prisma from '../prisma/client';
-import { AgendaStatus, ConsultaAvulsaStatus, ConsultaStatus, Prisma } from '../generated/prisma/client';
+import { AgendaStatus, ConsultaAvulsaStatus, ConsultaStatus, Prisma } from '../generated/prisma';
 import { IReservationService } from '../interfaces/reservation.interface';
 import { STATUS } from '../constants/status.constants';
 import { IEmailService } from '../interfaces/email.interface';

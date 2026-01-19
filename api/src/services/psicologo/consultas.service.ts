@@ -1,7 +1,7 @@
 import { IConsultasService } from "../../interfaces/psicoologo/iConsultas.interface";
 import { IAgendaRepository } from '../../repositories/IAgendaRepository';
 import prisma from "../../prisma/client";
-import { $Enums, AgendaStatus, Prisma } from "../../generated/prisma/client";
+import { $Enums, AgendaStatus, Prisma } from "../../generated/prisma";
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';

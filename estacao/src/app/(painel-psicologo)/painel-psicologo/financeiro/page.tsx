@@ -667,13 +667,6 @@ export default function FinanceiroPage() {
                   </span>
                 </div>
               </div>
-              <a
-                href="#"
-                className="inline-flex items-center gap-2 fira-sans font-medium text-xs sm:text-[15px] leading-[22px] text-[#6D75C0] hover:underline break-words sm:whitespace-nowrap self-start sm:self-auto"
-              >
-                <Image src="/icons/duvida-azul.svg" alt="Ajuda" width={16} height={16} />
-                <span>Como gerar meu documento fiscal?</span>
-              </a>
             </div>
             {/* Cards principais */}
             <div className="flex flex-col md:flex-row gap-4 sm:gap-6 mb-6 sm:mb-8 w-full max-w-[1100px]">

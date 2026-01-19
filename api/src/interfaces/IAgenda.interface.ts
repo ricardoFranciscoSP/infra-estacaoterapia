@@ -1,4 +1,4 @@
-import { Agenda } from '../generated/prisma/client';
+import { Agenda } from '../generated/prisma';
 
 export interface IAgendaService {
     listarTodasAgendas(): Promise<any[]>;

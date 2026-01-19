@@ -6,7 +6,7 @@ import dayjs from 'dayjs';
 import timezone from 'dayjs/plugin/timezone';
 import utc from 'dayjs/plugin/utc';
 import type { VindiBill } from '../types/vindi.types';
-import type { Prisma } from '../generated/prisma/client';
+import type { Prisma } from '../generated/prisma';
 import { nowBrasiliaTimestamp, nowBrasiliaDate, toBrasiliaISO, BRASILIA_TIMEZONE } from '../utils/timezone.util';
 import { attachQueueEventsLogging } from '../utils/bullmqLogs';
 

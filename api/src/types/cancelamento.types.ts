@@ -1,4 +1,4 @@
-import { CancelamentoSessao, User } from "../generated/prisma/client";
+import { CancelamentoSessao, User } from "../generated/prisma";
 
 export type CancelamentoStatus = "Em Analise" | "Aprovado" | "Rejeitado" | "EmAnalise" | "Deferido" | "Indeferido" | "Cancelado";
 

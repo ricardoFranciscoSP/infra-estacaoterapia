@@ -19,7 +19,7 @@ import {
 } from "../../services/adm/comprehensiveReports.service";
 import { ReportExportService } from "../../services/adm/reportExport.service";
 import { normalizeQueryString } from "../../utils/validation.util";
-import { Role } from "../../generated/prisma/client";
+import { Role } from "../../generated/prisma";
 
 const exportService = new ReportExportService();
 

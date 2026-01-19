@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { AuthorizationService } from "../../services/authorization.service";
 import { ConsultasService } from "../../services/psicologo/consultas.service";
-import { AgendaStatus } from "../../generated/prisma/client";
+import { AgendaStatus } from "../../generated/prisma";
 import { normalizeQueryString, normalizeQueryInt, normalizeParamStringRequired } from "../../utils/validation.util";
 
 export class ConsultasPsicologoController {

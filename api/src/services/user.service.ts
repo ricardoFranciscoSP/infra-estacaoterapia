@@ -1,5 +1,5 @@
 import prisma from '../prisma/client';
-import { PlanoCompraStatus, Prisma, TipoFatura, ControleFinanceiroStatus } from '../generated/prisma/client';
+import { PlanoCompraStatus, Prisma, TipoFatura, ControleFinanceiroStatus } from '../generated/prisma';
 import { IUserService, Plano } from '../interfaces/user.interface';
 import { ROLES } from '../constants/roles.constants';
 import { comparePassword, hashPassword } from '../utils/hashPassword';

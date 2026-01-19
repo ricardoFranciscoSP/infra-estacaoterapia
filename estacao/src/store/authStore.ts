@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { authService } from '@/services/authService';
+import { normalizeApiErrorMessage } from '@/utils/normalizeApiError';
 import getSocket, { joinUserRoom } from '@/lib/socket';
 
 type Role = 'Patient' | 'Psychologist' | 'Admin' | 'Management' | 'Finance';
@@ -297,13 +298,7 @@ export const useAuthStore = create<AuthState>((set) => ({
             return { success: true, message: response.data.message, user: { ...response.data.user, Onboardings: response.data.user?.Onboardings ?? [] } };
         } catch (error: unknown) {
             set({ user: null, isLoading: false });
-            let message = 'Erro ao registrar.';
-            if (error && typeof error === 'object' && 'response' in error) {
-                const responseError = error as { response?: { data?: { message?: string } } };
-                if (responseError.response?.data?.message) {
-                    message = responseError.response.data.message;
-                }
-            }
+            const message = normalizeApiErrorMessage(error, 'Erro ao registrar.');
             return { success: false, message };
         }
     },

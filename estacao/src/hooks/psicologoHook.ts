@@ -83,6 +83,8 @@ export function useVerPsicologos() {
                 Id: item.Id ?? '',
                 Nome: item.Nome ?? '',
                 Crp: item.Crp ?? '',
+                RatingAverage: item.RatingAverage ?? 0,
+                RatingCount: item.RatingCount ?? 0,
                 Images: item.Images ?? [],
                 Reviews: item.Reviews ?? [],
                 ProfessionalProfiles: item.ProfessionalProfiles ?? [],

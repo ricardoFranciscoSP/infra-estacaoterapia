@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { PrismaClient, Sexo as SexoEnum, TipoPessoaJuridica, TipoAtendimento, Queixa, Abordagem, Languages, Pronome, ExperienciaClinica, TipoFormacao, ProfessionalProfileStatus } from "../../generated/prisma/client";
+import { PrismaClient, Sexo as SexoEnum, TipoPessoaJuridica, TipoAtendimento, Queixa, Abordagem, Languages, Pronome, ExperienciaClinica, TipoFormacao, ProfessionalProfileStatus, Prisma } from "../../generated/prisma";
 import { UserStatus } from "../../types/userStatus.enum";
 import { AuthorizationService } from "../../services/authorization.service";
 import dayjs from "dayjs";
@@ -7,8 +7,8 @@ import timezone from "dayjs/plugin/timezone";
 import utc from "dayjs/plugin/utc";
 import { PsicologoService } from "../../services/getPsicologos";
 import { AgendaStatus, Role, Module, ActionType } from "../../types/permissions.types";
-import { Prisma } from "../../generated/prisma/client";
 import { normalizeQueryIntWithDefault, normalizeQueryArray, normalizeParamString } from "../../utils/validation.util";
+import { refreshAgendaAvailabilityView } from "../../utils/agendaAvailabilityView.util";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -570,17 +570,16 @@ export class PsicologoController {
                     Status: UserStatus.Ativo,
                     ProfessionalProfiles: {
                         some: {
-                            Status: ProfessionalProfileStatus.Preenchido,
-                            Documents: { some: {} },
-                            Formacoes: { some: {} }
+                            Status: ProfessionalProfileStatus.Preenchido
                         }
                     },
-                    Address: { some: {} }
                 },
                 select: {
                     Id: true,
                     Nome: true,
                     Crp: true,
+                    RatingAverage: true,
+                    RatingCount: true,
                     Images: {
                         select: {
                             Id: true,
@@ -638,10 +637,39 @@ export class PsicologoController {
                 return true;
             });
 
-            if (!psicologosCompletos || psicologosCompletos.length === 0) {
-                return res.status(200).json([]);
+            const resultado = psicologosCompletos.length > 0 ? psicologosCompletos : psicologos;
+
+            // Ordena pelo total de horários disponíveis via banco (mais performático)
+            const ids = resultado.map((psicologo) => psicologo.Id);
+            let disponiveisPorPsicologo = new Map<string, number>();
+
+            if (ids.length > 0) {
+                try {
+                    await refreshAgendaAvailabilityView(this.prisma);
+                    const disponiveis = await this.prisma.$queryRaw<
+                        { PsicologoId: string; Disponiveis: number }[]
+                    >(Prisma.sql`
+                        SELECT "PsicologoId", "Disponiveis"
+                        FROM "AgendaDisponibilidadeResumo"
+                        WHERE "PsicologoId" IN (${Prisma.join(ids)})
+                    `);
+
+                    disponiveisPorPsicologo = new Map(
+                        disponiveis.map((item) => [item.PsicologoId, item.Disponiveis])
+                    );
+                } catch (error) {
+                    console.error("[AgendaDisponibilidadeResumo] Erro ao consultar view:", error);
+                }
             }
-            return res.status(200).json(psicologosCompletos);
+
+            const ordenados = resultado.sort((a, b) => {
+                const aCount = disponiveisPorPsicologo.get(a.Id) ?? 0;
+                const bCount = disponiveisPorPsicologo.get(b.Id) ?? 0;
+                if (bCount !== aCount) return bCount - aCount;
+                return a.Nome.localeCompare(b.Nome);
+            });
+
+            return res.status(200).json(ordenados);
         } catch (error) {
             return res.status(200).json([]);
         }

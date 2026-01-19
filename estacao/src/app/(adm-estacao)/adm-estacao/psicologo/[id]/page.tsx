@@ -165,18 +165,31 @@ type PreviewState = {
   contentType?: string;
 };
 
-function calcularNota(consultas: Consulta[]) {
-  const realizadas = consultas?.filter((c) => c.Status === "Realizada" && typeof c.Estrelas === "number") || [];
-  if (realizadas.length === 0) return 0;
-  const soma = realizadas.reduce((acc, c) => acc + (c.Estrelas as number), 0);
-  return soma / realizadas.length;
+function statusNotaPorPercentual(percentual: number) {
+  if (percentual >= 75) return "Ótimo";
+  if (percentual >= 50) return "Bom";
+  if (percentual >= 25) return "Regular";
+  return "Ruim";
 }
 
-function statusNota(nota: number) {
-  if (nota >= 4.5) return "Ótimo";
-  if (nota >= 3.5) return "Bom";
-  if (nota >= 2.5) return "Médio";
-  return "Ruim";
+function getReviewRating(review: ReviewsReceived) {
+  const ratingValue =
+    typeof review.Rating === "number"
+      ? review.Rating
+      : typeof (review as { Estrelas?: number }).Estrelas === "number"
+        ? (review as { Estrelas: number }).Estrelas
+        : Number(review.Rating);
+  return Number.isFinite(ratingValue) ? ratingValue : null;
+}
+
+function calcularMediaReviews(reviews: ReviewsReceived[] | undefined) {
+  const avaliadas = (reviews ?? [])
+    .map(getReviewRating)
+    .filter((rating): rating is number => typeof rating === "number");
+
+  if (avaliadas.length === 0) return 0;
+  const soma = avaliadas.reduce((acc, rating) => acc + rating, 0);
+  return soma / avaliadas.length;
 }
 
 type ProfessionalProfileStatus = "Preenchido" | "Incompleto";
@@ -868,6 +881,11 @@ export default function PsicologoDetalhePage() {
   const refreshedDocumentIdsRef = useRef<Set<string>>(new Set());
 
   // Renova URLs expiradas/ausentes ao entrar na página
+  // Dependências estáveis para o useEffect
+  const stableIsUrlExpired = isUrlExpired;
+  const stableRefreshDocumentUrl = refreshDocumentUrl;
+  const stableRefetchDocuments = refetchDocuments;
+
   useEffect(() => {
     if (!documentsFromHook.length) return;
 
@@ -877,7 +895,7 @@ export default function PsicologoDetalhePage() {
         if (!docId || refreshedDocumentIdsRef.current.has(docId)) return false;
         if (doc.error) return true;
         if (!doc.url) return true;
-        return doc.expiresAt ? isUrlExpired(doc.expiresAt) : true;
+        return doc.expiresAt ? stableIsUrlExpired(doc.expiresAt) : true;
       })
       .map((doc) => doc.id as string);
 
@@ -885,11 +903,18 @@ export default function PsicologoDetalhePage() {
 
     idsToRefresh.forEach((id) => refreshedDocumentIdsRef.current.add(id));
 
-    Promise.all(idsToRefresh.map((id) => refreshDocumentUrl(id))).catch((err) => {
-      console.error("[Admin Psicologo] Erro ao renovar URLs:", err);
-      idsToRefresh.forEach((id) => refreshedDocumentIdsRef.current.delete(id));
-    });
-  }, [documentsFromHook, isUrlExpired, refreshDocumentUrl]);
+    Promise.all(idsToRefresh.map((id) => stableRefreshDocumentUrl(id)))
+      .then(() => {
+        if (typeof stableRefetchDocuments === 'function') {
+          stableRefetchDocuments();
+        }
+      })
+      .catch((err) => {
+        console.error("[Admin Psicologo] Erro ao renovar URLs:", err);
+        idsToRefresh.forEach((id) => refreshedDocumentIdsRef.current.delete(id));
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [documentsFromHook]);
 
   // Verifica se já existe contrato e está disponível no storage
   const hasContrato = React.useMemo(() => {
@@ -905,7 +930,10 @@ export default function PsicologoDetalhePage() {
     setProfileStatusEdit(normalizeProfileStatus(psicologo?.ProfessionalProfiles?.[0]?.Status));
   }, [psicologo?.Status, psicologo?.ProfessionalProfiles]);
 
-  const profilePercent = React.useMemo(() => calcularPercentualPerfil(psicologo), [psicologo]);
+  const profilePercent = React.useMemo(() => {
+    if (typeof psicologo?.ProfilePercent === "number") return psicologo.ProfilePercent;
+    return calcularPercentualPerfil(psicologo);
+  }, [psicologo]);
 
   // Normaliza consultas vindas da API para obter Data/Hora/Paciente de forma consistente
   // Primeiro tenta Consultas, depois ConsultaPsicologos
@@ -1045,8 +1073,12 @@ export default function PsicologoDetalhePage() {
     }, {})
   );
 
-  const nota = Number(calcularNota(consultas).toFixed(1));
-  const statusDaNota = statusNota(nota);
+  const ratingAverageFromApi = typeof psicologo?.RatingAverage === "number" ? psicologo.RatingAverage : 0;
+  const ratingAverageFromReviews = calcularMediaReviews(psicologo?.ReviewsReceived);
+  const ratingAverage = ratingAverageFromReviews > 0 ? ratingAverageFromReviews : ratingAverageFromApi;
+  const ratingPercent = Math.round((ratingAverage / 5) * 100);
+  const statusDaNota = statusNotaPorPercentual(ratingPercent);
+  const nota = Number(ratingAverage.toFixed(1));
   const porPagina = 10;
   const [pagina, setPagina] = useState(1);
   // Filtros de consultas (status e busca por paciente)

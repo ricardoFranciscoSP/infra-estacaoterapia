@@ -12,7 +12,7 @@ import {
     FaturaStatus,
     PlanoCompraStatus,
     ControleConsultaMensalStatus
-} from '../generated/prisma/client';
+} from '../generated/prisma';
 import { CicloPlanoService } from './cicloPlano.service';
 import type {
     VindiBill,
@@ -26,7 +26,7 @@ import type {
     VindiPaymentProfile,
     VindiMessage
 } from '../types/vindi.types';
-import type { Prisma } from '../generated/prisma/client';
+import type { Prisma } from '../generated/prisma';
 
 // Este serviço foi padronizado para não enfileirar diretamente.
 // O enfileiramento e os retries são responsabilidade do controller/worker BullMQ.

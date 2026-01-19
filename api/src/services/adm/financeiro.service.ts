@@ -1,5 +1,5 @@
 import prisma from '../../prisma/client';
-import { FinanceiroPsicologoStatus, ControleFinanceiroStatus } from '../../generated/prisma/client';
+import { FinanceiroPsicologoStatus, ControleFinanceiroStatus } from '../../generated/prisma';
 
 export interface FiltroFinanceiroAdmin {
   dataInicio?: string;

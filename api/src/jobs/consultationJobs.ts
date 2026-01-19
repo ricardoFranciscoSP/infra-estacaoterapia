@@ -13,7 +13,7 @@ import { ConsultaRoomService } from "../services/consultaRoom.service";
 import { ConsultaStatusService } from "../services/consultaStatus.service";
 import { SessionStatusService } from "../services/sessionStatus.service";
 import { AutorTipoCancelamento, AgendaStatus } from "../types/permissions.types";
-import type { Prisma } from "../generated/prisma/client";
+import type { Prisma } from "../generated/prisma";
 import dayjs from "dayjs";
 import timezone from "dayjs/plugin/timezone";
 import utc from "dayjs/plugin/utc";

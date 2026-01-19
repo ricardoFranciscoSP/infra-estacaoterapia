@@ -1,7 +1,7 @@
 import { IReservaSessaoService } from "../interfaces/reservaSessao.interface";
 import prisma from '../prisma/client';
 import { ReservaSessaoResponse } from '../types/reservaSessao.types';
-import type { Prisma } from '../generated/prisma/client';
+import type { Prisma } from '../generated/prisma';
 
 export class ReservaSessaoService implements IReservaSessaoService {
     async getReservaSessao(id: string): Promise<ReservaSessaoResponse> {

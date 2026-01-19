@@ -149,6 +149,22 @@ export class FilesService {
                     };
                 }
                 try {
+                    const exists = await fileExists(doc.Url, STORAGE_BUCKET);
+                    if (!exists) {
+                        return {
+                            id: doc.Id,
+                            fileName: doc.Url.split('/').pop() || null,
+                            type: doc.Type,
+                            description: doc.Description ?? undefined,
+                            createdAt: doc.CreatedAt,
+                            updatedAt: doc.UpdatedAt,
+                            url: null,
+                            expiresAt: null,
+                            error: "Arquivo não encontrado no storage",
+                            fileExists: false
+                        };
+                    }
+
                     const { signedUrl, expiresAt } = await createSignedUrl(doc.Url, {
                         bucket: STORAGE_BUCKET,
                         expiresIn: isPrivileged ? 86400 * 7 : 43200

@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 import { randomUUID } from 'crypto';
 import { IEmailService } from '../../interfaces/communication.interface';
 import { AuditService } from '../audit.service';
-import { Module } from '../../generated/prisma/client';
+import { Module } from '../../generated/prisma';
 
 export interface GenerateResetLinkResult {
     success: boolean;

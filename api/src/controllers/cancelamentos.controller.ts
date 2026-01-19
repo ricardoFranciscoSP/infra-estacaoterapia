@@ -8,7 +8,7 @@ import { WebSocketNotificationService } from "../services/websocketNotification.
 import { ConsultaCancelamentoService } from "../services/consultaCancelamento.service";
 import { MulterRequest } from "../types/multerRequest";
 import prisma from "../prisma/client";
-import { CancelamentoSessaoStatus, AgendaStatus } from "../generated/prisma/client";
+import { CancelamentoSessaoStatus, AgendaStatus } from "../generated/prisma";
 import { supabase, STORAGE_BUCKET } from "../services/storage.services";
 import { v4 as uuidv4 } from "uuid";
 import { CancelamentoResponse } from "../types/cancelamento.types";

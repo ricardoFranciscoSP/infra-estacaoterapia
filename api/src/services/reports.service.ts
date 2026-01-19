@@ -1,5 +1,5 @@
 import prisma from "../prisma/client";
-import { Role, UserStatus, ConsultaStatus, PlanoCompraStatus, ControleFinanceiroStatus, CommissionStatus } from "../generated/prisma/client";
+import { Role, UserStatus, ConsultaStatus, PlanoCompraStatus, ControleFinanceiroStatus, CommissionStatus } from "../generated/prisma";
 
 export interface ReportFilters {
     startDate?: string;

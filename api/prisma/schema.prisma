@@ -50,6 +50,8 @@ model User {
   TermsAccepted               Boolean                  @default(false)
   PrivacyAccepted             Boolean                  @default(false)
   Status                      UserStatus               @default(Ativo)
+  RatingAverage               Float                    @default(0)
+  RatingCount                 Int                      @default(0)
   Password                    String
   Role                        Role
   IsOnboard                   Boolean                  @default(false)

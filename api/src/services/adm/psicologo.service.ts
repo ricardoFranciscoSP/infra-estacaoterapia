@@ -14,6 +14,13 @@ import { EmailService } from "../email.service";
 import { UserService } from "../user.service";
 
 export class PsicologoService {
+    private calcularStatusPorPercentual(percentual: number) {
+        if (percentual >= 75) return "Ótimo";
+        if (percentual >= 50) return "Bom";
+        if (percentual >= 25) return "Regular";
+        return "Ruim";
+    }
+
     private normalizeContratoText(text: string) {
         return text
             .normalize("NFD")
@@ -35,6 +42,87 @@ export class PsicologoService {
         return this.normalizeContratoText(text).includes(
             "CONTRATO DE PRESTACAO DE SERVICOS PSICOLOGICOS VIA PLATAFORMA VIRTUAL"
         );
+    }
+
+    private calcularPercentualPerfil(psicologo: {
+        Telefone?: string | null;
+        Sexo?: string | null;
+        Pronome?: string | null;
+        RacaCor?: string | null;
+        Address?: { Cep?: string | null; Rua?: string | null; Numero?: string | null; Complemento?: string | null; Bairro?: string | null; Cidade?: string | null; Estado?: string | null } | Array<{ Cep?: string | null; Rua?: string | null; Numero?: string | null; Complemento?: string | null; Bairro?: string | null; Cidade?: string | null; Estado?: string | null }>;
+        ProfessionalProfiles?: Array<{
+            SobreMim?: string | null;
+            ExperienciaClinica?: string | null;
+            Idiomas?: string[] | null;
+            TipoAtendimento?: string[] | null;
+            Abordagens?: string[] | null;
+            Queixas?: string[] | null;
+            TipoPessoaJuridico?: string[] | string | null;
+            Formacoes?: Array<{ TipoFormacao?: string | null; Tipo?: string | null; Curso?: string | null; Instituicao?: string | null }> | null;
+        }>;
+        PessoalJuridica?: { InscricaoEstadual?: string | null } | null;
+    } | null | undefined): number {
+        if (!psicologo) return 48;
+
+        const profile = psicologo.ProfessionalProfiles?.[0];
+        const addressRaw = psicologo.Address;
+        const address = Array.isArray(addressRaw) ? addressRaw[0] : addressRaw;
+
+        const percentualBase = 48;
+        const tipoPessoaJuridico = profile?.TipoPessoaJuridico;
+        const tiposArray = Array.isArray(tipoPessoaJuridico)
+            ? tipoPessoaJuridico
+            : tipoPessoaJuridico
+                ? [tipoPessoaJuridico]
+                : [];
+
+        const isAutonomo = tiposArray.some((t) => t === "Autonomo") &&
+            !tiposArray.some((t) => t === "Juridico" || t === "PjAutonomo" || t === "Ei" || t === "Mei" || t === "SociedadeLtda" || t === "Eireli" || t === "Slu");
+        const isPJ = !isAutonomo && tiposArray.some((t) => t === "Juridico" || t === "PjAutonomo" || t === "Ei" || t === "Mei" || t === "SociedadeLtda" || t === "Eireli" || t === "Slu");
+        const totalCamposEditaveis = isAutonomo ? 17 : 19;
+
+        let camposPreenchidos = 0;
+
+        if (psicologo.Telefone && psicologo.Telefone.trim() !== "") camposPreenchidos++;
+        if (psicologo.Sexo && psicologo.Sexo.trim() !== "") camposPreenchidos++;
+        if (psicologo.Pronome && psicologo.Pronome.trim() !== "") camposPreenchidos++;
+        if (psicologo.RacaCor && psicologo.RacaCor.trim() !== "") camposPreenchidos++;
+
+        if (isPJ && psicologo.PessoalJuridica?.InscricaoEstadual && psicologo.PessoalJuridica.InscricaoEstadual.trim() !== "") {
+            camposPreenchidos++;
+        }
+
+        if (address?.Cep && address.Cep.trim() !== "") camposPreenchidos++;
+        if (address?.Rua && address.Rua.trim() !== "") camposPreenchidos++;
+        if (address?.Numero && address.Numero.trim() !== "") camposPreenchidos++;
+        if (!isAutonomo && address?.Complemento && address.Complemento.trim() !== "") camposPreenchidos++;
+        if (address?.Bairro && address.Bairro.trim() !== "") camposPreenchidos++;
+        if (address?.Cidade && address.Cidade.trim() !== "") camposPreenchidos++;
+        if (address?.Estado && address.Estado.trim() !== "") camposPreenchidos++;
+
+        if (profile?.SobreMim && profile.SobreMim.trim() !== "") camposPreenchidos++;
+
+        if (profile?.ExperienciaClinica && profile.ExperienciaClinica.trim() !== "") camposPreenchidos++;
+        if (profile?.Idiomas && profile.Idiomas.length > 0) camposPreenchidos++;
+        if (profile?.TipoAtendimento && profile.TipoAtendimento.length > 0) camposPreenchidos++;
+        if (profile?.Abordagens && profile.Abordagens.length > 0) camposPreenchidos++;
+        if (profile?.Queixas && profile.Queixas.length > 0) camposPreenchidos++;
+
+        if (profile?.Formacoes && profile.Formacoes.length > 0) {
+            const formacaoCompleta = profile.Formacoes.some((f) => {
+                const tipoFormacao = f.TipoFormacao || f.Tipo || "";
+                return tipoFormacao.trim() !== "" &&
+                    (f.Curso || "").trim() !== "" &&
+                    (f.Instituicao || "").trim() !== "";
+            });
+            if (formacaoCompleta) camposPreenchidos++;
+        }
+
+        const percentualAdicional = totalCamposEditaveis > 0
+            ? Math.round((camposPreenchidos / totalCamposEditaveis) * 52)
+            : 0;
+
+        return Math.min(100, percentualBase + percentualAdicional);
     }
     private authorizationService: AuthorizationService | undefined;
     private contratoService: ContratoService;
@@ -79,6 +167,9 @@ export class PsicologoService {
                 Telefone: true,
                 Sexo: true,
                 Pronome: true,
+                RacaCor: true,
+                RatingAverage: true,
+                RatingCount: true,
                 Address: {
                     select: {
                         Id: true,
@@ -123,8 +214,10 @@ export class PsicologoService {
             },
         });
 
-        // Retorna todos os psicólogos, independentemente de estarem completos
-        return psicologos;
+        return psicologos.map((psicologo) => ({
+            ...psicologo,
+            ProfilePercent: this.calcularPercentualPerfil(psicologo),
+        }));
     }
 
     async delete(user: User, id: string) {
@@ -737,7 +830,19 @@ export class PsicologoService {
 
         if (!psicologo) return null;
         const { Password, ...rest } = psicologo;
-        return rest;
+        const ratingAverage = typeof psicologo.RatingAverage === "number" ? psicologo.RatingAverage : 0;
+        const ratingCount = typeof psicologo.RatingCount === "number" ? psicologo.RatingCount : 0;
+        const ratingPercent = Math.max(0, Math.min(100, Math.round((ratingAverage / 5) * 100)));
+        const ratingStatus = this.calcularStatusPorPercentual(ratingPercent);
+
+        return {
+            ...rest,
+            RatingAverage: ratingAverage,
+            RatingCount: ratingCount,
+            RatingPercent: ratingPercent,
+            RatingStatus: ratingStatus,
+            ProfilePercent: this.calcularPercentualPerfil(psicologo),
+        };
     }
 
 

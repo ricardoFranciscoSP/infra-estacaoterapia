@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { AuthorizationService } from "../services/authorization.service";
 import { AuditService, AuditLogData } from "../services/audit.service";
-import { ActionType, Module } from "../generated/prisma/client";
+import { ActionType, Module } from "../generated/prisma";
 import { normalizeParamStringRequired } from "../utils/validation.util";
 
 export class AuditController {

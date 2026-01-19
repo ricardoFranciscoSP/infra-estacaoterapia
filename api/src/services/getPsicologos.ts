@@ -1,4 +1,5 @@
-import { PrismaClient, Prisma, Sexo, Queixa, Abordagem, TipoAtendimento, Languages, ProfessionalProfileStatus } from "../generated/prisma/client";
+import { PrismaClient, Prisma, Sexo, Queixa, Abordagem, TipoAtendimento, Languages, ProfessionalProfileStatus } from "../generated/prisma";
+import { refreshAgendaAvailabilityView } from "../utils/agendaAvailabilityView.util";
 import prismaDefault from "../prisma/client";
 
 interface FiltroPsicologo {
@@ -37,11 +38,8 @@ export class PsicologoService {
             ProfessionalProfiles: {
                 some: {
                     Status: ProfessionalProfileStatus.Preenchido,
-                    Documents: { some: {} },
-                    Formacoes: { some: {} },
                 }
             },
-            Address: { some: {} },
         };
 
         if (nome) {
@@ -198,6 +196,8 @@ export class PsicologoService {
                 Id: true,
                 Nome: true,
                 Crp: true,
+                RatingAverage: true,
+                RatingCount: true,
                 Images: {
                     select: {
                         Id: true,
@@ -234,6 +234,34 @@ export class PsicologoService {
             },
         });
 
-        return psicologos;
+        // Ordena pelo total de horários disponíveis via banco (mais performático)
+        const ids = psicologos.map((psicologo) => psicologo.Id);
+        let disponiveisPorPsicologo = new Map<string, number>();
+
+        if (ids.length > 0) {
+            try {
+                await refreshAgendaAvailabilityView(this.prisma);
+                const disponiveis = await this.prisma.$queryRaw<
+                    { PsicologoId: string; Disponiveis: number }[]
+                >(Prisma.sql`
+                    SELECT "PsicologoId", "Disponiveis"
+                    FROM "AgendaDisponibilidadeResumo"
+                    WHERE "PsicologoId" IN (${Prisma.join(ids)})
+                `);
+
+                disponiveisPorPsicologo = new Map(
+                    disponiveis.map((item) => [item.PsicologoId, item.Disponiveis])
+                );
+            } catch (error) {
+                console.error("[AgendaDisponibilidadeResumo] Erro ao consultar view:", error);
+            }
+        }
+
+        return psicologos.sort((a, b) => {
+            const aCount = disponiveisPorPsicologo.get(a.Id) ?? 0;
+            const bCount = disponiveisPorPsicologo.get(b.Id) ?? 0;
+            if (bCount !== aCount) return bCount - aCount;
+            return a.Nome.localeCompare(b.Nome);
+        });
     }
 }

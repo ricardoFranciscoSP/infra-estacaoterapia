@@ -5,7 +5,7 @@ import { IScheduleService } from '../interfaces/schedule.interface';
 import { ROLES } from '../constants/roles.constants';
 import { MulterRequest } from '../types/multerRequest';
 import prisma from '../prisma/client';
-import { AgendaStatus, $Enums, ConsultaStatus, Prisma } from '../generated/prisma/client';
+import { AgendaStatus, $Enums, ConsultaStatus, Prisma } from '../generated/prisma';
 import { ConsultaOrigemStatus } from '../constants/consultaStatus.constants';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';

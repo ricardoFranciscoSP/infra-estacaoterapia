@@ -3,6 +3,28 @@ import { IReviewRepository } from "../interfaces/review.repository.interface";
 import { ReviewData } from "../types/review.types";
 
 export class ReviewRepository implements IReviewRepository {
+    private async updatePsychologistRating(psicologoId: string) {
+        const aggregate = await prisma.review.aggregate({
+            where: {
+                PsicologoId: psicologoId,
+                Status: "Aprovado",
+            },
+            _avg: { Rating: true },
+            _count: { Rating: true },
+        });
+
+        const average = aggregate._avg.Rating ?? 0;
+        const count = aggregate._count.Rating ?? 0;
+
+        await prisma.user.update({
+            where: { Id: psicologoId },
+            data: {
+                RatingAverage: average,
+                RatingCount: count,
+            },
+        });
+    }
+
     async createReview(data: ReviewData) {
         try {
             // Verifica se já existe uma avaliação do mesmo paciente para o mesmo psicólogo
@@ -40,6 +62,7 @@ export class ReviewRepository implements IReviewRepository {
                     where: { Id: existingReview.Id },
                     data: updateData,
                 });
+                await this.updatePsychologistRating(existingReview.PsicologoId);
                 console.log(`✅ [ReviewRepository.createReview] Review atualizada com sucesso:`, updated.Id);
                 return updated;
             }
@@ -72,6 +95,7 @@ export class ReviewRepository implements IReviewRepository {
             const created = await prisma.review.create({
                 data: createData,
             });
+            await this.updatePsychologistRating(data.psicologoId);
             console.log(`✅ [ReviewRepository.createReview] Review criada com sucesso:`, created.Id, `| Status: ${created.Status}`);
             return created;
         } catch (error) {
@@ -84,8 +108,8 @@ export class ReviewRepository implements IReviewRepository {
         return prisma.review.findMany({
             where: { PsicologoId: psicologoId, Status: "Aprovado" },
             include: {
-                User: { select: { Id: true, Nome: true, Images: true } },
-                Psicologo: { select: { Id: true, Nome: true, Images: true } },
+                User: { select: { Id: true, Nome: true, Images: { select: { Id: true, Url: true } } } },
+                Psicologo: { select: { Id: true, Nome: true, Images: { select: { Id: true, Url: true } } } },
             },
             orderBy: [{ Rating: "desc" }, { CreatedAt: "desc" }],
         });
@@ -95,45 +119,48 @@ export class ReviewRepository implements IReviewRepository {
         const review = await prisma.review.findUnique({ where: { Id: reviewId } });
         if (!review || review.UserId !== userId) throw new Error("Permissão negada ou avaliação não encontrada.");
         await prisma.review.delete({ where: { Id: reviewId } });
+        await this.updatePsychologistRating(review.PsicologoId);
     }
 
     async updateReview(reviewId: string, userId: string, rating: number, comment: string) {
         const review = await prisma.review.findUnique({ where: { Id: reviewId } });
         if (!review || review.UserId !== userId) throw new Error("Permissão negada ou avaliação não encontrada.");
-        return prisma.review.update({
+        const updated = await prisma.review.update({
             where: { Id: reviewId },
             data: { Rating: rating, Comentario: comment },
         });
+        await this.updatePsychologistRating(review.PsicologoId);
+        return updated;
     }
 
     async getAverageRating(psicologoId: string) {
-        type SimpleReview = { Rating: number };
-        // Busca apenas avaliações aprovadas para calcular a média
-        const reviews = await prisma.review.findMany({ 
-            where: { 
-                PsicologoId: psicologoId,
-                Status: "Aprovado" // Apenas avaliações aprovadas contam para a média
-            } 
-        }) as SimpleReview[];
-        if (reviews.length === 0) return 0;
-        const totalRating = reviews.reduce((acc: number, review: SimpleReview) => acc + review.Rating, 0);
-        return totalRating / reviews.length;
+        const psicologo = await prisma.user.findUnique({
+            where: { Id: psicologoId },
+            select: {
+                RatingAverage: true,
+                RatingCount: true,
+            },
+        });
+        if (!psicologo || psicologo.RatingCount === 0) return 0;
+        return psicologo.RatingAverage;
     }
 
     async getReviewsByPsicologoId(psicologoId: string) {
         return prisma.review.findMany({
             where: { PsicologoId: psicologoId },
             include: {
-                User: { select: { Id: true, Nome: true, Email: true, Images: true } },
+                User: { select: { Id: true, Nome: true, Email: true, Images: { select: { Id: true, Url: true } } } },
             },
         });
     }
 
     async approveReview(id: string, status: string) {
-        return prisma.review.update({
+        const updated = await prisma.review.update({
             where: { Id: id },
             data: { Status: status },
         });
+        await this.updatePsychologistRating(updated.PsicologoId);
+        return updated;
     }
 
     async getAllReviews() {
@@ -143,8 +170,8 @@ export class ReviewRepository implements IReviewRepository {
                 Status: "Aprovado"
             },
             include: {
-                User: { select: { Id: true, Nome: true, Email: true, Images: true } },
-                Psicologo: { select: { Id: true, Nome: true, Email: true, Images: true } },
+                User: { select: { Id: true, Nome: true, Email: true, Images: { select: { Id: true, Url: true } } } },
+                Psicologo: { select: { Id: true, Nome: true, Email: true, Images: { select: { Id: true, Url: true } } } },
             },
             orderBy: [{ CreatedAt: "desc" }],
         });

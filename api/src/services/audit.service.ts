@@ -1,5 +1,5 @@
 import prisma from "../prisma/client";
-import { ActionType, Module } from "../generated/prisma/client";
+import { ActionType, Module } from "../generated/prisma";
 import ExcelJS from "exceljs";
 import puppeteer from "puppeteer";
 import { getPuppeteerLaunchOptions } from "../utils/puppeteer";

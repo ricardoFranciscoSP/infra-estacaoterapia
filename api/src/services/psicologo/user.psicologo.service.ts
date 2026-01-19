@@ -16,7 +16,7 @@ import {
     Role,
     RacaCor,
     Prisma
-} from "../../generated/prisma/client";
+} from "../../generated/prisma";
 import {
     UserUpdateData,
     AddressUpdateData,

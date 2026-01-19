@@ -1,5 +1,5 @@
 import { Consulta } from "../types/permissions.types";
-import { Prisma } from "../generated/prisma/client";
+import { Prisma } from "../generated/prisma";
 import { WebSocketNotificationService } from "../services/websocketNotification.service";
 import { WebSocketNotificationBatchService } from "../services/websocketNotificationBatch.service";
 

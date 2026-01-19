@@ -1,5 +1,5 @@
 import prisma from "../../prisma/client";
-import { AgendaStatus } from "../../generated/prisma/client";
+import { AgendaStatus } from "../../generated/prisma";
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';

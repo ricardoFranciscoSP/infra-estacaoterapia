@@ -8,11 +8,14 @@
   },
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
-    "build": "npm run prisma:generate && tsc && npm run copy-templates",
+    "build": "set NODE_OPTIONS=--max-old-space-size=4096 && npm run prisma:generate && set NODE_OPTIONS=--max-old-space-size=4096 && tsc && npm run copy-templates",
+    "lint": "tsc --noEmit",
     "prisma:generate": "prisma generate",
     "render-build": "npm run build",
     "start": "node dist/server.js",
     "copy-templates": "ts-node scripts/copy-templates.ts",
+    "backfill:ratings": "ts-node scripts/backfill-rating.ts",
+    "refresh:agenda-view": "ts-node scripts/refresh-agenda-view.ts",
     "seed": "node prisma/seed.js",
     "postinstall": "npx puppeteer browsers install chrome"
   },

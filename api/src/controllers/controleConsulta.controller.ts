@@ -1,4 +1,4 @@
-import { PrismaClient } from "../generated/prisma/client";
+import { PrismaClient } from "../generated/prisma";
 import { Request, Response } from "express";
 import { AuthorizationService } from "../services/authorization.service";
 import { ControleConsultasService } from "../services/controleConsulta.service";
