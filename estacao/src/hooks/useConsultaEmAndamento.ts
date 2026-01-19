@@ -3,7 +3,12 @@ import { consultaEmAndamentoService } from '@/services/consultaEmAndamentoServic
 import { useConsultaEmAndamentoStore } from '@/store/consultaEmAndamentoStore';
 
 export function useConsultaEmAndamento(role: 'psicologo' | 'paciente') {
-  const consulta = useConsultaEmAndamentoStore((s) => s.consulta);
+  // Sempre retorna null se não houver consulta válida
+  const consulta = useConsultaEmAndamentoStore((s) => {
+    const c = s.consulta;
+    if (!c || !c.Id || !c.Status || !c.Date || !c.Time) return null;
+    return c;
+  });
   const setConsulta = useConsultaEmAndamentoStore((s) => s.setConsulta);
 
   const fetchConsulta = useCallback(async () => {
@@ -12,7 +17,13 @@ export function useConsultaEmAndamento(role: 'psicologo' | 'paciente') {
         role === 'psicologo'
           ? await consultaEmAndamentoService.getPsicologo()
           : await consultaEmAndamentoService.getPaciente();
-      setConsulta(response.data.consulta || null);
+      const c = response.data?.consulta;
+      // Só seta se for um objeto válido
+      if (c && c.Id && c.Status && c.Date && c.Time) {
+        setConsulta(c);
+      } else {
+        setConsulta(null);
+      }
     } catch {
       setConsulta(null);
     }

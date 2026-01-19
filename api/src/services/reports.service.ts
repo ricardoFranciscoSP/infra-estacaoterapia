@@ -162,32 +162,65 @@ export class ReportsService {
 
         const usuarios = await prisma.user.findMany({
             where,
-            include: {
+            select: {
+                Id: true,
+                Nome: true,
+                Email: true,
+                Role: true,
+                Status: true,
+                DataNascimento: true,
+                Telefone: true,
+                CreatedAt: true,
+                LastLogin: true,
                 AssinaturaPlanos: {
                     where: {
                         Status: PlanoCompraStatus.Ativo,
                     },
-                    include: {
-                        PlanoAssinatura: true,
+                    select: {
+                        Status: true,
+                        PlanoAssinatura: {
+                            select: {
+                                Nome: true,
+                            },
+                        },
                     },
                     take: 1,
                     orderBy: {
                         CreatedAt: 'desc',
                     },
                 },
-                ConsultaPacientes: filters.startDate || filters.endDate ? {
-                    where: {
-                        Date: {
-                            ...(filters.startDate ? { gte: new Date(filters.startDate) } : {}),
-                            ...(filters.endDate ? { lte: new Date(filters.endDate) } : {}),
-                        },
+                _count: filters.startDate || filters.endDate ? undefined : {
+                    select: {
+                        ConsultaPacientes: true,
                     },
-                } : undefined,
+                },
             },
             orderBy: {
                 CreatedAt: 'desc',
             },
         });
+
+        const consultaCountByUser = new Map<string, number>();
+        if (filters.startDate || filters.endDate) {
+            const consultaCounts = await prisma.consulta.groupBy({
+                by: ["PacienteId"],
+                where: {
+                    PacienteId: { in: usuarios.map(user => user.Id) },
+                    Date: {
+                        ...(filters.startDate ? { gte: new Date(filters.startDate) } : {}),
+                        ...(filters.endDate ? { lte: new Date(filters.endDate) } : {}),
+                    },
+                },
+                _count: {
+                    _all: true,
+                },
+            });
+            for (const row of consultaCounts) {
+                if (row.PacienteId) {
+                    consultaCountByUser.set(row.PacienteId, row._count._all);
+                }
+            }
+        }
 
         return usuarios.map(user => ({
             Id: user.Id,
@@ -199,7 +232,9 @@ export class ReportsService {
             Telefone: user.Telefone,
             CreatedAt: user.CreatedAt,
             LastLogin: user.LastLogin,
-            TotalConsultas: user.ConsultaPacientes?.length || 0,
+            TotalConsultas: filters.startDate || filters.endDate
+                ? consultaCountByUser.get(user.Id) || 0
+                : user._count?.ConsultaPacientes || 0,
             PlanoAtivo: user.AssinaturaPlanos[0] ? {
                 Nome: user.AssinaturaPlanos[0].PlanoAssinatura.Nome,
                 Status: user.AssinaturaPlanos[0].Status,
@@ -223,36 +258,70 @@ export class ReportsService {
 
         const planos = await prisma.planoAssinatura.findMany({
             where,
-            include: {
-                Assinaturas: {
-                    include: {
-                        Financeiro: filters.startDate || filters.endDate ? {
-                            where: {
-                                CreatedAt: {
-                                    ...(filters.startDate ? { gte: new Date(filters.startDate) } : {}),
-                                    ...(filters.endDate ? { lte: new Date(filters.endDate) } : {}),
-                                },
-                            },
-                        } : true,
-                    },
-                },
+            select: {
+                Id: true,
+                Nome: true,
+                Preco: true,
+                Duracao: true,
+                Tipo: true,
+                Status: true,
+                CreatedAt: true,
             },
             orderBy: {
                 CreatedAt: 'desc',
             },
         });
 
-        return planos.map(plano => {
-            const assinaturasAtivas = plano.Assinaturas.filter(a => a.Status === PlanoCompraStatus.Ativo);
-            const assinaturasInativas = plano.Assinaturas.filter(a => a.Status !== PlanoCompraStatus.Ativo);
-            const receitaTotal = plano.Assinaturas.reduce((acc, assinatura) => {
-                const financeiros = assinatura.Financeiro || [];
-                const valorPago = financeiros
-                    .filter(f => f.Status === ControleFinanceiroStatus.Aprovado)
-                    .reduce((sum, f) => sum + f.Valor, 0);
-                return acc + valorPago;
-            }, 0);
+        const planoIds = planos.map(plano => plano.Id);
+        const assinaturaCounts = await prisma.assinaturaPlano.groupBy({
+            by: ["PlanoAssinaturaId", "Status"],
+            where: {
+                PlanoAssinaturaId: { in: planoIds },
+            },
+            _count: {
+                _all: true,
+            },
+        });
 
+        const receitaPorPlano = await prisma.financeiro.groupBy({
+            by: ["PlanoAssinaturaId"],
+            where: {
+                PlanoAssinaturaId: { in: planoIds },
+                Status: ControleFinanceiroStatus.Aprovado,
+                ...(filters.startDate || filters.endDate ? {
+                    CreatedAt: {
+                        ...(filters.startDate ? { gte: new Date(filters.startDate) } : {}),
+                        ...(filters.endDate ? { lte: new Date(filters.endDate) } : {}),
+                    },
+                } : {}),
+            },
+            _sum: {
+                Valor: true,
+            },
+        });
+
+        const receitaMap = new Map<string, number>();
+        for (const row of receitaPorPlano) {
+            if (row.PlanoAssinaturaId) {
+                receitaMap.set(row.PlanoAssinaturaId, row._sum.Valor ?? 0);
+            }
+        }
+
+        const assinaturaStats = new Map<string, { total: number; ativos: number; inativos: number }>();
+        for (const row of assinaturaCounts) {
+            if (!row.PlanoAssinaturaId) continue;
+            const current = assinaturaStats.get(row.PlanoAssinaturaId) || { total: 0, ativos: 0, inativos: 0 };
+            current.total += row._count._all;
+            if (row.Status === PlanoCompraStatus.Ativo) {
+                current.ativos += row._count._all;
+            } else {
+                current.inativos += row._count._all;
+            }
+            assinaturaStats.set(row.PlanoAssinaturaId, current);
+        }
+
+        return planos.map(plano => {
+            const stats = assinaturaStats.get(plano.Id) || { total: 0, ativos: 0, inativos: 0 };
             return {
                 Id: plano.Id,
                 Nome: plano.Nome,
@@ -260,10 +329,10 @@ export class ReportsService {
                 Duracao: plano.Duracao,
                 Tipo: plano.Tipo,
                 Status: plano.Status,
-                TotalAssinaturas: plano.Assinaturas.length,
-                AssinaturasAtivas: assinaturasAtivas.length,
-                AssinaturasInativas: assinaturasInativas.length,
-                ReceitaTotal: receitaTotal,
+                TotalAssinaturas: stats.total,
+                AssinaturasAtivas: stats.ativos,
+                AssinaturasInativas: stats.inativos,
+                ReceitaTotal: receitaMap.get(plano.Id) || 0,
                 CreatedAt: plano.CreatedAt,
             };
         });
@@ -296,8 +365,19 @@ export class ReportsService {
 
         const usuarios = await prisma.user.findMany({
             where,
-            include: {
-                ConsultaPacientes: true,
+            select: {
+                Id: true,
+                Nome: true,
+                Email: true,
+                Role: true,
+                Status: true,
+                CreatedAt: true,
+                LastLogin: true,
+                _count: {
+                    select: {
+                        ConsultaPacientes: true,
+                    },
+                },
             },
             orderBy: {
                 UpdatedAt: 'desc',
@@ -321,7 +401,7 @@ export class ReportsService {
                 CreatedAt: user.CreatedAt,
                 LastLogin: user.LastLogin,
                 DiasInativo: diasInativo,
-                TotalConsultas: user.ConsultaPacientes?.length || 0,
+                TotalConsultas: user._count.ConsultaPacientes,
             };
         });
     }
@@ -349,10 +429,17 @@ export class ReportsService {
 
         const financeiros = await prisma.financeiro.findMany({
             where,
-            include: {
+            select: {
+                Id: true,
+                UserId: true,
+                Valor: true,
+                DataVencimento: true,
+                Status: true,
+                Tipo: true,
+                FaturaId: true,
+                CreatedAt: true,
                 User: {
                     select: {
-                        Id: true,
                         Nome: true,
                         Email: true,
                     },
@@ -406,10 +493,19 @@ export class ReportsService {
 
         const repasses = await prisma.financeiroPsicologo.findMany({
             where,
-            include: {
+            select: {
+                Id: true,
+                UserId: true,
+                Periodo: true,
+                ConsultasRealizadas: true,
+                Valor: true,
+                Status: true,
+                DataPagamento: true,
+                DataVencimento: true,
+                Tipo: true,
+                CreatedAt: true,
                 User: {
                     select: {
-                        Id: true,
                         Nome: true,
                         Email: true,
                     },
@@ -459,16 +555,23 @@ export class ReportsService {
 
         const avaliacoes = await prisma.review.findMany({
             where,
-            include: {
+            select: {
+                Id: true,
+                PsicologoId: true,
+                UserId: true,
+                Rating: true,
+                Comentario: true,
+                Status: true,
+                MostrarNaHome: true,
+                MostrarNaPsicologo: true,
+                CreatedAt: true,
                 Psicologo: {
                     select: {
-                        Id: true,
                         Nome: true,
                     },
                 },
                 User: {
                     select: {
-                        Id: true,
                         Nome: true,
                     },
                 },
@@ -519,16 +622,23 @@ export class ReportsService {
 
         const sessoes = await prisma.consulta.findMany({
             where,
-            include: {
+            select: {
+                Id: true,
+                Date: true,
+                Time: true,
+                Status: true,
+                PacienteId: true,
+                PsicologoId: true,
+                Valor: true,
+                Faturada: true,
+                CreatedAt: true,
                 Paciente: {
                     select: {
-                        Id: true,
                         Nome: true,
                     },
                 },
                 Psicologo: {
                     select: {
-                        Id: true,
                         Nome: true,
                     },
                 },
@@ -579,16 +689,22 @@ export class ReportsService {
 
         const agendas = await prisma.agenda.findMany({
             where,
-            include: {
+            select: {
+                Id: true,
+                Data: true,
+                Horario: true,
+                DiaDaSemana: true,
+                Status: true,
+                PsicologoId: true,
+                PacienteId: true,
+                CreatedAt: true,
                 Paciente: {
                     select: {
-                        Id: true,
                         Nome: true,
                     },
                 },
                 Psicologo: {
                     select: {
-                        Id: true,
                         Nome: true,
                     },
                 },
@@ -625,8 +741,8 @@ export class ReportsService {
             totalUsuariosAtivos,
             totalUsuariosInativos,
             totalPlanos,
-            financeiros,
-            repasses,
+            faturamentoAgg,
+            repasseAgg,
             totalAvaliacoes,
             totalSessoes,
             totalAgendamentos,
@@ -650,18 +766,24 @@ export class ReportsService {
                     Status: 'ativo',
                 },
             }),
-            prisma.financeiro.findMany({
+            prisma.financeiro.aggregate({
                 where: dateFilter ? {
                     CreatedAt: dateFilter,
                     Status: ControleFinanceiroStatus.Aprovado,
                 } : {
                     Status: ControleFinanceiroStatus.Aprovado,
                 },
+                _sum: {
+                    Valor: true,
+                },
             }),
-            prisma.financeiroPsicologo.findMany({
+            prisma.financeiroPsicologo.aggregate({
                 where: dateFilter ? {
                     CreatedAt: dateFilter,
                 } : {},
+                _sum: {
+                    Valor: true,
+                },
             }),
             prisma.review.count({
                 where: dateFilter ? {
@@ -680,8 +802,8 @@ export class ReportsService {
             }),
         ]);
 
-        const totalFaturamento = financeiros.reduce((acc, fin) => acc + fin.Valor, 0);
-        const totalRepasse = repasses.reduce((acc, rep) => acc + rep.Valor, 0);
+        const totalFaturamento = faturamentoAgg._sum.Valor ?? 0;
+        const totalRepasse = repasseAgg._sum.Valor ?? 0;
 
         return {
             totalUsuariosAtivos,

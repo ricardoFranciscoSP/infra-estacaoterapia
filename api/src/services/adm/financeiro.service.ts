@@ -254,7 +254,12 @@ export class AdmFinanceiroService {
       const [users, total] = await Promise.all([
         prisma.user.findMany({
           where,
-          include: {
+          select: {
+            Id: true,
+            Nome: true,
+            Email: true,
+            Crp: true,
+            Status: true,
             ProfessionalProfiles: {
               select: {
                 Id: true,
@@ -265,14 +270,6 @@ export class AdmFinanceiroService {
             PessoalJuridica: {
               select: {
                 Id: true,
-              },
-            },
-            FinanceiroPsicologoEntries: {
-              select: {
-                Id: true,
-                Valor: true,
-                Status: true,
-                DataPagamento: true,
               },
             },
             FormularioSaqueAutonomo: {
@@ -288,41 +285,65 @@ export class AdmFinanceiroService {
         prisma.user.count({ where }),
       ]);
 
+      const userIds = users.map(user => user.Id);
+      const financeiroPorStatus = await prisma.financeiroPsicologo.groupBy({
+        by: ["UserId", "Status"],
+        where: {
+          UserId: { in: userIds },
+        },
+        _sum: {
+          Valor: true,
+        },
+      });
+
+      const ultimoPagamentoAgg = await prisma.financeiroPsicologo.groupBy({
+        by: ["UserId"],
+        where: {
+          UserId: { in: userIds },
+          DataPagamento: { not: null },
+        },
+        _max: {
+          DataPagamento: true,
+        },
+      });
+
+      const sumPorStatusMap = new Map<string, Map<string, number>>();
+      for (const row of financeiroPorStatus) {
+        if (!row.UserId) continue;
+        const map = sumPorStatusMap.get(row.UserId) || new Map<string, number>();
+        map.set(row.Status, row._sum.Valor ?? 0);
+        sumPorStatusMap.set(row.UserId, map);
+      }
+
+      const ultimoPagamentoMap = new Map<string, Date | null>();
+      for (const row of ultimoPagamentoAgg) {
+        if (!row.UserId) continue;
+        ultimoPagamentoMap.set(row.UserId, row._max.DataPagamento ?? null);
+      }
+
       const psicologos = users.map((user) => {
-        const profile = (user as any).ProfessionalProfiles?.[0];
-        const financeiros = (user as any).FinanceiroPsicologoEntries || [];
-        
-        const saldoDisponivel = financeiros
-          .filter((f: { Status: string; Valor: number }) => f.Status === 'pago' || f.Status === 'aprovado')
-          .reduce((sum: number, f: { Valor: number }) => sum + f.Valor, 0);
+        const profile = user.ProfessionalProfiles?.[0];
+        const statusMap = sumPorStatusMap.get(user.Id) || new Map<string, number>();
 
-        const saldoRetido = financeiros
-          .filter((f: { Status: string; Valor: number }) => f.Status === 'retido')
-          .reduce((sum: number, f: { Valor: number }) => sum + f.Valor, 0);
+        const valorPago = statusMap.get('pago') || 0;
+        const valorAprovado = statusMap.get('aprovado') || 0;
+        const valorRetido = statusMap.get('retido') || 0;
+        const valorPendente = statusMap.get('pendente') || 0;
+        const valorProcessando = statusMap.get('processando') || 0;
+        const valorCancelado = statusMap.get('cancelado') || 0;
 
-        const totalPago = financeiros
-          .filter((f: { Status: string; Valor: number }) => f.Status === 'pago')
-          .reduce((sum: number, f: { Valor: number }) => sum + f.Valor, 0);
+        const saldoDisponivel = valorPago + valorAprovado;
+        const saldoRetido = valorRetido;
+        const totalPago = valorPago;
+        const totalPendente = valorPendente + valorProcessando;
+        const totalReprovado = valorCancelado;
+        const ultimoPagamento = ultimoPagamentoMap.get(user.Id) || null;
 
-        const totalPendente = financeiros
-          .filter((f: { Status: string; Valor: number }) => f.Status === 'pendente' || f.Status === 'processando')
-          .reduce((sum: number, f: { Valor: number }) => sum + f.Valor, 0);
-
-        const totalReprovado = financeiros
-          .filter((f: { Status: string; Valor: number }) => f.Status === 'cancelado')
-          .reduce((sum: number, f: { Valor: number }) => sum + f.Valor, 0);
-
-        const ultimoPagamento = financeiros
-          .filter((f: { DataPagamento: Date | null }) => f.DataPagamento)
-          .sort((a: { DataPagamento: Date | null }, b: { DataPagamento: Date | null }) => {
-            const dateA = a.DataPagamento ? new Date(a.DataPagamento).getTime() : 0;
-            const dateB = b.DataPagamento ? new Date(b.DataPagamento).getTime() : 0;
-            return dateB - dateA;
-          })[0]?.DataPagamento || null;
-
-        const tipoPessoa = (user as any).PessoalJuridica 
-          ? 'Pessoa Jurídica' 
-          : (profile?.TipoPessoaJuridico && Array.isArray(profile.TipoPessoaJuridico) && profile.TipoPessoaJuridico.some((t: string) => t !== 'Autonomo'))
+        const tipoPessoa = user.PessoalJuridica
+          ? 'Pessoa Jurídica'
+          : (profile?.TipoPessoaJuridico &&
+              Array.isArray(profile.TipoPessoaJuridico) &&
+              profile.TipoPessoaJuridico.some((tipo) => tipo !== 'Autonomo'))
             ? 'Pessoa Jurídica'
             : 'Autônomo';
 
@@ -340,7 +361,7 @@ export class AdmFinanceiroService {
           TotalReprovado: totalReprovado,
           UltimoPagamento: ultimoPagamento,
           DocumentosPendentes: 0, // Será calculado separadamente se necessário
-          FormularioSaqueCompleto: !!(user as any).FormularioSaqueAutonomo,
+          FormularioSaqueCompleto: !!user.FormularioSaqueAutonomo,
           ProfessionalProfileId: profile?.Id || null,
         };
       });

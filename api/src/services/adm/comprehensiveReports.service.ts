@@ -81,23 +81,52 @@ export async function getClientesCadastroReport(
 
     const clientes = await prisma.user.findMany({
         where,
-        include: {
-            Address: true,
+        select: {
+            Id: true,
+            Nome: true,
+            Email: true,
+            Telefone: true,
+            Cpf: true,
+            DataNascimento: true,
+            Sexo: true,
+            Status: true,
+            CreatedAt: true,
+            LastLogin: true,
+            Address: {
+                select: {
+                    Rua: true,
+                    Numero: true,
+                    Bairro: true,
+                    Cidade: true,
+                    Estado: true,
+                    Cep: true,
+                },
+                take: 1,
+            },
             AssinaturaPlanos: {
                 where: { Status: 'Ativo' },
-                include: { PlanoAssinatura: true },
+                select: {
+                    Status: true,
+                    PlanoAssinatura: {
+                        select: {
+                            Nome: true,
+                        },
+                    },
+                },
                 take: 1,
                 orderBy: { CreatedAt: 'desc' },
             },
-            ConsultaPacientes: true,
+            _count: {
+                select: {
+                    ConsultaPacientes: true,
+                },
+            },
         },
         orderBy: { CreatedAt: 'desc' },
     });
 
     return clientes.map(cliente => {
-        const endereco = Array.isArray(cliente.Address) && cliente.Address.length > 0
-            ? cliente.Address[0]
-            : null;
+        const endereco = cliente.Address[0] || null;
 
         const enderecoCompleto = endereco
             ? `${endereco.Rua || ''}, ${endereco.Numero || ''} - ${endereco.Bairro || ''}, ${endereco.Cidade || ''} - ${endereco.Estado || ''}, CEP: ${endereco.Cep || ''}`
@@ -114,7 +143,7 @@ export async function getClientesCadastroReport(
             Status: cliente.Status,
             DataCadastro: cliente.CreatedAt,
             UltimoAcesso: cliente.LastLogin,
-            TotalConsultas: cliente.ConsultaPacientes?.length || 0,
+            TotalConsultas: cliente._count.ConsultaPacientes,
             PlanoAtivo: cliente.AssinaturaPlanos[0]?.PlanoAssinatura?.Nome || null,
             StatusPlano: cliente.AssinaturaPlanos[0]?.Status || null,
             EnderecoCompleto: enderecoCompleto,
@@ -180,32 +209,69 @@ export async function getPsicologosCredenciamentoReport(
 
     const psicologos = await prisma.user.findMany({
         where,
-        include: {
-            Address: true,
-            ConsultaPsicologos: true,
-            ReviewsReceived: {
+        select: {
+            Id: true,
+            Nome: true,
+            Email: true,
+            Telefone: true,
+            Cpf: true,
+            Crp: true,
+            DataNascimento: true,
+            Status: true,
+            CreatedAt: true,
+            DataAprovacao: true,
+            LastLogin: true,
+            Address: {
                 select: {
-                    Rating: true,
+                    Rua: true,
+                    Numero: true,
+                    Bairro: true,
+                    Cidade: true,
+                    Estado: true,
+                    Cep: true,
+                },
+                take: 1,
+            },
+            _count: {
+                select: {
+                    ConsultaPsicologos: true,
                 },
             },
         },
         orderBy: { CreatedAt: 'desc' },
     });
 
+    const psicologoIds = psicologos.map(psicologo => psicologo.Id);
+    const avaliacaoStats = await prisma.review.groupBy({
+        by: ["PsicologoId"],
+        where: {
+            PsicologoId: { in: psicologoIds },
+        },
+        _count: {
+            _all: true,
+        },
+        _avg: {
+            Rating: true,
+        },
+    });
+    const avaliacaoMap = new Map<string, { total: number; media: number }>();
+    for (const row of avaliacaoStats) {
+        if (row.PsicologoId) {
+            avaliacaoMap.set(row.PsicologoId, {
+                total: row._count._all,
+                media: row._avg.Rating ?? 0,
+            });
+        }
+    }
+
     return psicologos.map(psicologo => {
-        const endereco = Array.isArray(psicologo.Address) && psicologo.Address.length > 0
-            ? psicologo.Address[0]
-            : null;
+        const endereco = psicologo.Address[0] || null;
 
         const enderecoCompleto = endereco
             ? `${endereco.Rua || ''}, ${endereco.Numero || ''} - ${endereco.Bairro || ''}, ${endereco.Cidade || ''} - ${endereco.Estado || ''}, CEP: ${endereco.Cep || ''}`
             : null;
 
-        const avaliacoes = psicologo.ReviewsReceived || [];
-        const totalAvaliacoes = avaliacoes.length;
-        const mediaAvaliacoes = totalAvaliacoes > 0
-            ? avaliacoes.reduce((sum: number, av: { Rating: number }) => sum + av.Rating, 0) / totalAvaliacoes
-            : 0;
+        const avaliacao = avaliacaoMap.get(psicologo.Id) || { total: 0, media: 0 };
 
         return {
             Id: psicologo.Id,
@@ -220,9 +286,9 @@ export async function getPsicologosCredenciamentoReport(
             DataCadastro: psicologo.CreatedAt,
             DataAprovacao: psicologo.DataAprovacao,
             UltimoAcesso: psicologo.LastLogin,
-            TotalConsultas: psicologo.ConsultaPsicologos?.length || 0,
-            TotalAvaliacoes: totalAvaliacoes,
-            MediaAvaliacoes: Math.round(mediaAvaliacoes * 10) / 10,
+            TotalConsultas: psicologo._count.ConsultaPsicologos,
+            TotalAvaliacoes: avaliacao.total,
+            MediaAvaliacoes: Math.round(avaliacao.media * 10) / 10,
             EnderecoCompleto: enderecoCompleto,
         };
     });
@@ -284,43 +350,81 @@ export async function getPlanosMovimentacaoReport(
 
     const assinaturas = await prisma.assinaturaPlano.findMany({
         where,
-        include: {
+        select: {
+            Id: true,
+            UserId: true,
+            PlanoAssinaturaId: true,
+            Status: true,
+            CreatedAt: true,
+            DataInicio: true,
+            DataFim: true,
             User: {
                 select: {
-                    Id: true,
                     Nome: true,
                     Email: true,
                 },
             },
-            PlanoAssinatura: true,
-            Ciclos: {
-                include: {
-                    Consultas: true,
-                },
-            },
-            Financeiro: {
-                where: {
-                    Status: 'Aprovado',
+            PlanoAssinatura: {
+                select: {
+                    Nome: true,
+                    Tipo: true,
+                    Preco: true,
                 },
             },
         },
         orderBy: { CreatedAt: 'desc' },
     });
 
+    const assinaturaIds = assinaturas.map(assinatura => assinatura.Id);
+    const ciclosAgg = await prisma.cicloPlano.groupBy({
+        by: ["AssinaturaPlanoId"],
+        where: {
+            AssinaturaPlanoId: { in: assinaturaIds },
+        },
+        _count: {
+            _all: true,
+        },
+        _sum: {
+            ConsultasUsadas: true,
+            ConsultasDisponiveis: true,
+        },
+    });
+    const cicloMap = new Map<string, { total: number; usadas: number; disponiveis: number }>();
+    for (const row of ciclosAgg) {
+        if (row.AssinaturaPlanoId) {
+            cicloMap.set(row.AssinaturaPlanoId, {
+                total: row._count._all,
+                usadas: row._sum.ConsultasUsadas ?? 0,
+                disponiveis: row._sum.ConsultasDisponiveis ?? 0,
+            });
+        }
+    }
+
+    const assinaturaFinanceiros = await prisma.assinaturaPlano.findMany({
+        where: {
+            Id: { in: assinaturaIds },
+        },
+        select: {
+            Id: true,
+            Financeiro: {
+                where: {
+                    Status: 'Aprovado',
+                },
+                select: {
+                    Valor: true,
+                },
+            },
+        },
+    });
+    const financeiroMap = new Map<string, number>();
+    for (const row of assinaturaFinanceiros) {
+        const total = row.Financeiro.reduce((sum, fin) => sum + fin.Valor, 0);
+        financeiroMap.set(row.Id, total);
+    }
+
     return assinaturas.map(assinatura => {
-        const totalCiclos = assinatura.Ciclos?.length || 0;
-        const totalConsultasUsadas = assinatura.Ciclos?.reduce(
-            (sum, ciclo) => sum + (ciclo.ConsultasUsadas || 0),
-            0
-        ) || 0;
-        const totalConsultasDisponiveis = assinatura.Ciclos?.reduce(
-            (sum, ciclo) => sum + (ciclo.ConsultasDisponiveis || 0),
-            0
-        ) || 0;
-        const valorTotalPago = assinatura.Financeiro?.reduce(
-            (sum, fin) => sum + fin.Valor,
-            0
-        ) || 0;
+        const ciclos = cicloMap.get(assinatura.Id) || { total: 0, usadas: 0, disponiveis: 0 };
+        const valorTotalPago = financeiroMap.get(assinatura.Id) || 0;
 
         return {
             Id: assinatura.Id,
@@ -337,9 +441,9 @@ export async function getPlanosMovimentacaoReport(
             DataFim: assinatura.DataFim,
             DataCancelamento: null, // Campo não existe no schema
             MotivoCancelamento: null, // Campo não existe no schema
-            TotalCiclos: totalCiclos,
-            TotalConsultasUsadas: totalConsultasUsadas,
-            TotalConsultasDisponiveis: totalConsultasDisponiveis,
+            TotalCiclos: ciclos.total,
+            TotalConsultasUsadas: ciclos.usadas,
+            TotalConsultasDisponiveis: ciclos.disponiveis,
             ValorTotalPago: valorTotalPago,
         };
     });
