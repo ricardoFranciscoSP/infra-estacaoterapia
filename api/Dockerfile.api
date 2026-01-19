@@ -115,6 +115,9 @@ RUN if ! id deploy >/dev/null 2>&1; then \
 
 RUN mkdir -p /tmp /run && chmod 1777 /tmp /run
 
+# Diretório de documentos do contrato precisa ser gravável pelo usuário deploy
+RUN mkdir -p /app/documentos && chown -R deploy:deploy /app/documentos
+
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
