@@ -44,11 +44,12 @@ export default function ModalLoginAgendamento({
       const agendamentoComContexto = {
         ...agendamento,
         contexto: "primeira_sessao",
-        origem: "marketplace"
+        origem: "marketplace",
+        timestamp: Date.now(),
       };
       window.sessionStorage.setItem("agendamento-pendente", JSON.stringify(agendamentoComContexto));
       // Redireciona para registro com contexto de primeira sessão
-      router.push(`/register?psicologoId=${agendamento.psicologoId}&contexto=primeira_sessao&origem=marketplace`);
+      router.push(`/register?tab=paciente&psicologoId=${agendamento.psicologoId}&contexto=primeira_sessao&origem=marketplace`);
     } catch {
       alert("Não foi possível reservar o horário. Tente novamente.");
     }

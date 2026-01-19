@@ -223,10 +223,17 @@ const RegisterPageInner = () => {
           if (user?.Role === "Patient") {
             // Verifica se há planoId na query string (fluxo de primeira sessão)
             const planoId = searchParams?.get("planoId");
+            const productId = searchParams?.get("productId");
             const redirect = searchParams?.get("redirect");
             const contexto = searchParams?.get("contexto");
             const psicologoId = searchParams?.get("psicologoId");
             const origem = searchParams?.get("origem");
+            const isPrimeiraSessao = contexto === "primeira_sessao" || redirect === "/comprar-consulta";
+            const limparCacheAgendamento = () => {
+              if (typeof window === "undefined") return;
+              window.localStorage.removeItem("draftId");
+              window.sessionStorage.removeItem("agendamento-pendente");
+            };
             
             // Se veio do marketplace com psicologoId (fluxo de primeira sessão)
             if (psicologoId && contexto === "primeira_sessao" && origem === "marketplace") {
@@ -235,8 +242,13 @@ const RegisterPageInner = () => {
             }
             
             // Se veio do fluxo de primeira sessão da Home, redireciona para compra
-            if (planoId && (redirect === "/comprar-consulta" || contexto === "primeira_sessao")) {
+            if (planoId && isPrimeiraSessao) {
               router.push(`/comprar-consulta?planoId=${planoId}`);
+              return;
+            }
+            if (!planoId && isPrimeiraSessao) {
+              const query = productId ? `?productId=${productId}` : "";
+              router.push(`/comprar-consulta${query}`);
               return;
             }
             
@@ -248,11 +260,17 @@ const RegisterPageInner = () => {
               if (draftId && agendamentoPendente) {
                 try {
                   const agendamento = JSON.parse(agendamentoPendente);
-                  if (agendamento.contexto === 'primeira_sessao' && agendamento.psicologoId) {
+                  const expirado = agendamento.timestamp
+                    ? Date.now() - Number(agendamento.timestamp) > 15 * 60 * 1000
+                    : false;
+                  if (expirado) {
+                    limparCacheAgendamento();
+                  } else if (agendamento.contexto === 'primeira_sessao' && agendamento.psicologoId) {
                     router.push(`/comprar-consulta?psicologoId=${agendamento.psicologoId}`);
                     return;
                   }
                 } catch {
+                  limparCacheAgendamento();
                   // Se não conseguir parsear, segue fluxo normal
                 }
               }

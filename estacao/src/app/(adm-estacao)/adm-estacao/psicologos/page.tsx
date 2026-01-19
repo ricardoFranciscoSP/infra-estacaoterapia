@@ -139,6 +139,10 @@ export default function PsicologosPage() {
         p.Crp?.toLowerCase().includes(busca.toLowerCase())) ?? false;
     const statusMatch = filtroStatus === "Todos" || p.Status === filtroStatus;
     return buscaMatch && statusMatch;
+  }).sort((a, b) => {
+    const dataA = a.CreatedAt ? new Date(a.CreatedAt).getTime() : 0;
+    const dataB = b.CreatedAt ? new Date(b.CreatedAt).getTime() : 0;
+    return dataB - dataA;
   });
 
   const total = psicologosFiltrados.length;

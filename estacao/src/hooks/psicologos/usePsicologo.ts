@@ -65,6 +65,12 @@ export function usePsicologoPage() {
         return h * 60 + m;
     }
 
+    const normalizarStatus = (status?: string | null) =>
+        (status || "")
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .toLowerCase();
+
     function getHorariosPorDataAgenda(psicologos: PsicologoAtivo[], datas: { date: Date }[]) {
         if (!Array.isArray(psicologos)) return [];
 
@@ -81,10 +87,10 @@ export function usePsicologoPage() {
 
                 const horariosDisponiveis = agendaArray
                     .filter((agenda) => {
-                        // Filtra APENAS agendas com status exatamente igual a 'Disponivel' (case-sensitive)
+                        // Filtra APENAS agendas com status de disponível (com/sem acento)
                         if (!agenda) return false;
-                        const statusAgenda = agenda.Status || '';
-                        if (statusAgenda !== "Disponivel") return false;
+                        const statusAgenda = normalizarStatus(agenda.Status);
+                        if (statusAgenda !== "disponivel") return false;
                         const agendaYMD = formatDateToYMD(agenda.Data);
 
                         // Só mostra horários para o dia do calendário
@@ -169,9 +175,9 @@ export function usePsicologoPage() {
             const agendas = p.PsychologistAgendas ?? [];
             const pr = periodoRange(periodoFiltro);
             const ok = agendas.some((a) => {
-                // Filtra APENAS agendas com status exatamente igual a 'Disponivel' (case-sensitive)
-                const statusAgenda = a.Status || '';
-                if (statusAgenda !== 'Disponivel') return false;
+                // Filtra APENAS agendas com status de disponível (com/sem acento)
+                const statusAgenda = normalizarStatus(a.Status);
+                if (statusAgenda !== 'disponivel') return false;
                 if (dataFiltro && ymd(a.Data) < (dataFiltro as string)) return false; // a partir de
                 if (pr) {
                     const m = toMinutes(a.Horario);

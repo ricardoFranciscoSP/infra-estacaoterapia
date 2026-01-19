@@ -5,4 +5,7 @@ export interface AgendamentoParams {
     nome: string;
     data: string;
     horario: string;
+    contexto?: string;
+    origem?: string;
+    timestamp?: number;
 }

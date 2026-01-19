@@ -38,7 +38,7 @@ import {
   type CardFormType,
   type AddressFormType,
 } from './comprarConsultaBusiness';
-import { recuperarDadosPrimeiraCompra, atualizarEnderecoTemp } from '@/utils/primeiraCompraStorage'; 
+import { recuperarDadosPrimeiraCompra, atualizarEnderecoTemp, limparDadosPrimeiraCompra } from '@/utils/primeiraCompraStorage'; 
 
 export default function ComprarConsultaPage() {
   const pathname = usePathname(); 
@@ -61,6 +61,7 @@ export default function ComprarConsultaPage() {
   const [quantity, setQuantity] = useState(1);
   const [cardErrors, setCardErrors] = useState<Record<string, string>>({});
   const [touchedFields, setTouchedFields] = useState<Record<string, boolean>>({});
+  const [cancelamentoEmAndamento, setCancelamentoEmAndamento] = useState(false);
 
   // Estados do formulário de endereço
   const [addressForm, setAddressForm] = useState<AddressFormType>(clearAddressForm());
@@ -156,6 +157,19 @@ export default function ComprarConsultaPage() {
       }).catch(console.error);
     }
   }, [isPrimeiraCompraValue, planosTyped, useUserAddress]);
+
+  useEffect(() => {
+    const handlePageHide = () => {
+      if (window.location.pathname.includes("/painel/success")) return;
+      void limparCacheCompra();
+    };
+    window.addEventListener("beforeunload", handlePageHide);
+    window.addEventListener("pagehide", handlePageHide);
+    return () => {
+      window.removeEventListener("beforeunload", handlePageHide);
+      window.removeEventListener("pagehide", handlePageHide);
+    };
+  }, []);
 
   // Salva endereço nos dados temporários quando o usuário preenche
   useEffect(() => {
@@ -303,6 +317,19 @@ export default function ComprarConsultaPage() {
   };
 
   const handleCloseModal = () => setShowModal(false);
+  const limparCacheCompra = async () => {
+    await limparDadosPrimeiraCompra();
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem("draftId");
+      window.sessionStorage.removeItem("agendamento-pendente");
+    }
+  };
+  const handleCancelarCompra = async () => {
+    if (cancelamentoEmAndamento) return;
+    setCancelamentoEmAndamento(true);
+    await limparCacheCompra();
+    router.push("/painel");
+  };
 
   // Função para confirmar dentro do modal
   
@@ -977,6 +1004,7 @@ export default function ComprarConsultaPage() {
               className={`w-full h-[40px] rounded-[4px] border border-[#6D75C0] pr-[18px] pl-[18px] gap-[12px] text-gray py-2 font-medium ${
                 loading ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'cursor-pointer hover:bg-gray-100'
               }`}
+              onClick={handleCancelarCompra}
             >
               Cancelar compra
             </button>
@@ -1038,6 +1066,7 @@ export default function ComprarConsultaPage() {
               className={`w-full h-[40px] rounded-[4px] border border-[#6D75C0] pr-[18px] pl-[18px] gap-[12px] text-gray py-2 font-medium ${
                 loading ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'cursor-pointer hover:bg-gray-100'
               }`}
+              onClick={handleCancelarCompra}
             >
               Cancelar compra
             </button>

@@ -994,7 +994,7 @@ export default function PsicologoPerfilPage() {
                 
                 console.log('[PsicologoPerfilPage] AgendaId recebido:', agendaId);
                 
-                const agendamento = {
+                  const agendamento = {
                   psicologoId: psicologo?.Id,
                   agendaId: agendaId,
                   nome: psicologo?.Nome,
@@ -1012,8 +1012,14 @@ export default function PsicologoPerfilPage() {
                     agendamento.agendaId,
                   ).then((draftId: string) => {
                     window.localStorage.setItem("draftId", draftId);
-                    window.sessionStorage.setItem("agendamento-pendente", JSON.stringify(agendamento));
-                    window.location.href = "/login";
+                    const agendamentoComContexto = {
+                      ...agendamento,
+                      contexto: "primeira_sessao",
+                      origem: "marketplace",
+                      timestamp: Date.now(),
+                    };
+                    window.sessionStorage.setItem("agendamento-pendente", JSON.stringify(agendamentoComContexto));
+                    window.location.href = `/register?tab=paciente&psicologoId=${agendamento.psicologoId}&contexto=primeira_sessao&origem=marketplace`;
                   });
                 }
               }}

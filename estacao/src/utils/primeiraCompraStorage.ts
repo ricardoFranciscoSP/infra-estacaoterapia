@@ -10,7 +10,7 @@
 import { encryptedLocalStorage } from './encryptedStorage';
 
 const STORAGE_KEY = 'primeira-compra-temp';
-const STORAGE_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24 horas
+const STORAGE_EXPIRY_MS = 15 * 60 * 1000; // 15 minutos
 
 export interface PrimeiraCompraTempData {
   planoId: string;

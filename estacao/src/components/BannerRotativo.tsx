@@ -134,7 +134,12 @@ export default function BannerRotativo() {
 
     const imageUrl = isMobile ? currentBanner.UrlImagemMobile : currentBanner.UrlImagemDesktop;
     const altText = (isMobile ? currentBanner.AltTextMobile : currentBanner.AltTextDesktop) || 'Banner';
-    const linkHref = currentBanner.LinkDestino || '#';
+    const registerParams = new URLSearchParams({
+        tab: "paciente",
+        contexto: "primeira_sessao",
+        redirect: "/comprar-consulta",
+    });
+    const linkHref = `https://estacaoterapia.com.br/register?${registerParams.toString()}`;
     const ariaLabel = currentBanner.TitleSEO || altText;
 
     return (

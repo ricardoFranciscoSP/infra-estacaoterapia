@@ -21,6 +21,14 @@ export function useDraftSession() {
                 if (storedAgendamento) {
                     try {
                         const agendamento = JSON.parse(storedAgendamento);
+                        const expirado = agendamento.timestamp
+                            ? Date.now() - Number(agendamento.timestamp) > 15 * 60 * 1000
+                            : false;
+                        if (expirado) {
+                            window.localStorage.removeItem('draftId');
+                            window.sessionStorage.removeItem('agendamento-pendente');
+                            return;
+                        }
                         // Restaura a sessão com os dados disponíveis
                         setDraftSession(
                             storedDraftId,

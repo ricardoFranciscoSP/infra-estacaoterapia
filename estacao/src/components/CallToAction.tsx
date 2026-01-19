@@ -155,12 +155,13 @@ const CallToAction: React.FC = () => {
             cursor-pointer
           "
           onClick={() => {
-            // Todos os caminhos convergem para /comprar-consulta
             const params = new URLSearchParams();
-            if (planoPrimeiraConsultaProductId) params.set("productId", planoPrimeiraConsultaProductId);
+            params.set("tab", "paciente");
+            params.set("contexto", "primeira_sessao");
+            params.set("redirect", "/comprar-consulta");
             if (planoPrimeiraConsultaId) params.set("planoId", planoPrimeiraConsultaId);
-            const query = params.toString();
-            router.push(`/comprar-consulta${query ? `?${query}` : ""}`);
+            if (planoPrimeiraConsultaProductId) params.set("productId", planoPrimeiraConsultaProductId);
+            router.push(`/register?${params.toString()}`);
           }}
         >
           Fazer minha sessão experimental agora!

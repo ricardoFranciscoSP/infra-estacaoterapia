@@ -164,8 +164,12 @@ export default function PlanosSection({ planos = [], loading }: PlanosSectionPro
             aria-label="Adquirir primeira sessão experimental"
             onClick={() => {
               if (!planoPrimeiraConsultaId) return;
-              // Todos os caminhos convergem para /comprar-consulta
-              router.push(`/comprar-consulta?planoId=${planoPrimeiraConsultaId}`);
+              const params = new URLSearchParams();
+              params.set("tab", "paciente");
+              params.set("contexto", "primeira_sessao");
+              params.set("redirect", "/comprar-consulta");
+              params.set("planoId", planoPrimeiraConsultaId);
+              router.push(`/register?${params.toString()}`);
             }}
           >
             Adquirir primeira sessão agora

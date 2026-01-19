@@ -53,7 +53,7 @@ const CallToActionPaciente: React.FC = () => {
                     router.push("/adm-psicologo");
                     return;
                   }
-                  router.push("/register");
+                  router.push("/register?tab=paciente");
                 }}
                 className="inline-flex items-center justify-center py-2 px-6 rounded-[8px] bg-[#8494E9] w-full md:w-auto md:min-w-[280px] h-[48px] fira-sans text-bold text-[18px] text-secondary hover:bg-[#6B7DD8] transition-colors duration-200 whitespace-nowrap"
               >

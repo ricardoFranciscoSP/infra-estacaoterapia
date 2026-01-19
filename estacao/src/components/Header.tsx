@@ -522,7 +522,7 @@ const Header: React.FC = () => {
                 ? <>
                     <button
                       className="px-2.5 py-1.5 border-2 border-[#6D75C0] text-[#6D75C0] rounded-[6px] font-medium text-[13px] bg-transparent hover:bg-[#ecebfa] transition-colors whitespace-nowrap cursor-pointer"
-                      onClick={() => router.push('/register')}
+                      onClick={() => router.push('/register?tab=paciente')}
                     >
                       Criar conta
                     </button>
@@ -627,7 +627,7 @@ const Header: React.FC = () => {
                   <button
                     className="w-[133px] h-[40px] px-[16px] flex items-center justify-center border-2 border-[#6D75C0] text-[#6D75C0] rounded-[6px] font-bold fira-sans text-[16px] leading-[24px] bg-transparent hover:bg-[#6B7DD8] hover:text-white hover:border-[#6B7DD8] transition-colors whitespace-nowrap cursor-pointer"
                     style={{letterSpacing: 0, verticalAlign: 'middle'}}
-                    onClick={() => router.push('/register')}
+                    onClick={() => router.push('/register?tab=paciente')}
                   >
                     Criar conta
                   </button>
@@ -746,7 +746,7 @@ const Header: React.FC = () => {
                           className="w-full px-5 py-2 border-2 border-[#6c6bb6] text-[#6c6bb6] rounded-md font-bold bg-transparent hover:bg-[#6B7DD8] hover:text-white hover:border-[#6B7DD8] transition-colors"
                           onClick={() => {
                             setMenuOpen(false);
-                            router.push('/register');
+                            router.push('/register?tab=paciente');
                           }}
                         >
                           Criar conta

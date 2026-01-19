@@ -9,6 +9,7 @@ import ListPsicologo from "@/components/listPsicologo";
 import Image from "next/image";
 import { usePsicologoSearch } from '@/hooks/usePsicologoSearch';
 import { usePsicologoFilterStore } from "@/store/filters/psicologoFilterStore";
+import { useVerPsicologos } from "@/hooks/psicologoHook";
 import { PsicologoAtivo } from "@/types/psicologoTypes";
 
 export default function PsicologosListPage() {
@@ -45,6 +46,7 @@ function PsicologosPage() {
   } = usePsicologoPage();
   const [busca, setBusca] = React.useState("");
   const { psicologos, searchPsicologos, isLoading } = usePsicologoSearch();
+  const { psicologos: psicologosAtivos, isLoading: isLoadingAtivos } = useVerPsicologos();
   
   const {
     queixas,
@@ -205,8 +207,17 @@ function PsicologosPage() {
     return soma / reviews.length;
   };
 
-  const temHorariosDisponiveis = (psicologo: PsicologoAtivo): boolean => {
-    return Array.isArray(psicologo.PsychologistAgendas) && psicologo.PsychologistAgendas.length > 0;
+  const normalizarStatus = (status?: string | null) =>
+    (status || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase();
+
+  const contarVagasLivres = (psicologo: PsicologoAtivo): number => {
+    const agendas = Array.isArray(psicologo.PsychologistAgendas)
+      ? psicologo.PsychologistAgendas
+      : [];
+    return agendas.filter((agenda) => normalizarStatus(agenda.Status) === "disponivel").length;
   };
 
   const ordenarPsicologos = (psicologosList: PsicologoAtivo[]): PsicologoAtivo[] => {
@@ -214,28 +225,21 @@ function PsicologosPage() {
     // 2º: Quem tem mais horários livres (agenda disponível)
     // 3º: Maior tempo de experiência
     // 4º: Maior nota média
-    // Psicólogos sem horários disponíveis sempre por último
     return [...psicologosList].sort((a, b) => {
-      // 1. Compatibilidade com filtros
-      const compatibilidadeA = calcularCompatibilidade(a);
-      const compatibilidadeB = calcularCompatibilidade(b);
-      if (compatibilidadeA !== compatibilidadeB) {
-        return compatibilidadeB - compatibilidadeA;
+      // 1. Compatibilidade com filtros (apenas se houver filtro)
+      if (hasFiltroSelecionado) {
+        const compatibilidadeA = calcularCompatibilidade(a);
+        const compatibilidadeB = calcularCompatibilidade(b);
+        if (compatibilidadeA !== compatibilidadeB) {
+          return compatibilidadeB - compatibilidadeA;
+        }
       }
 
-      // 2. Disponibilidade de horários (quem tem agenda vem antes)
-      const horariosA = temHorariosDisponiveis(a);
-      const horariosB = temHorariosDisponiveis(b);
-      if (horariosA !== horariosB) {
-        return horariosB ? 1 : -1;
-      }
-      // Se ambos têm horários, prioriza quem tem mais horários livres
-      if (horariosA && horariosB) {
-        const livresA = a.PsychologistAgendas?.filter(h => h.Status === 'Disponível').length || 0;
-        const livresB = b.PsychologistAgendas?.filter(h => h.Status === 'Disponível').length || 0;
-        if (livresA !== livresB) {
-          return livresB - livresA;
-        }
+      // 2. Mais vagas livres
+      const livresA = contarVagasLivres(a);
+      const livresB = contarVagasLivres(b);
+      if (livresA !== livresB) {
+        return livresB - livresA;
       }
 
       // 3. Maior tempo de experiência
@@ -252,14 +256,30 @@ function PsicologosPage() {
     });
   };
 
+  const hasFiltroSelecionado =
+    !!busca ||
+    (queixas && queixas.length > 0) ||
+    (abordagens && abordagens.length > 0) ||
+    !!sexo ||
+    (atendimentos && atendimentos.length > 0) ||
+    (idiomas && idiomas.length > 0) ||
+    !!data ||
+    !!periodo;
+
+  const psicologosBase = React.useMemo(() => {
+    if (hasFiltroSelecionado) return psicologos ?? [];
+    if (Array.isArray(psicologos) && psicologos.length > 0) return psicologos;
+    return psicologosAtivos ?? [];
+  }, [hasFiltroSelecionado, psicologos, psicologosAtivos]);
+
   // Aplica ordenação aos psicólogos
   const psicologosOrdenados = React.useMemo(() => {
-    if (!Array.isArray(psicologos) || psicologos.length === 0) {
+    if (!Array.isArray(psicologosBase) || psicologosBase.length === 0) {
       return [];
     }
-    return ordenarPsicologos(psicologos);
+    return ordenarPsicologos(psicologosBase);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [psicologos, queixas, abordagens, sexo, atendimentos, idiomas, data, periodo]);
+  }, [psicologosBase, queixas, abordagens, sexo, atendimentos, idiomas, data, periodo]);
 
   return (
     <div className="flex flex-col items-center min-h-screen bg-[#FCFBF6]">
@@ -458,7 +478,7 @@ function PsicologosPage() {
               </button>
             </div>
             {/* Fim do input de pesquisa */}
-            {isLoading ? (
+            {(isLoading || (!hasFiltroSelecionado && isLoadingAtivos)) ? (
               <div className="text-center py-8 text-[#8494E9]"></div>
             ) : psicologosOrdenados.length === 0 ? (
               <div className="text-center py-8 text-[#8494E9]">Nenhum psicólogo encontrado...</div>

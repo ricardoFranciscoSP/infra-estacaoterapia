@@ -102,6 +102,7 @@ function ComprarConsultaRedirectPageInner() {
     // Se não estiver logado, redireciona para registro com planoId e contexto
     if (!user) {
       const params = new URLSearchParams();
+      params.set("tab", "paciente");
       params.set("planoId", planoIdFinal);
       params.set("redirect", "/comprar-consulta");
       params.set("contexto", "primeira_sessao");
