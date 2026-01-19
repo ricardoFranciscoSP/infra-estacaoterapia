@@ -5,8 +5,9 @@ export LC_ALL=C.UTF-8
 export LANG=C.UTF-8
 
 # Definir valores padrão para variáveis opcionais
-CLEAN_DEPLOY="${CLEAN_DEPLOY:-true}"
+CLEAN_DEPLOY="${CLEAN_DEPLOY:-false}"
 FORCE_BUILD="${FORCE_BUILD:-false}"
+UPDATE_STATEFUL="${UPDATE_STATEFUL:-false}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SECRETS_DIR="/opt/secrets"
@@ -28,7 +29,7 @@ GIT_HASH="$(git rev-parse --short HEAD 2>/dev/null || echo local)"
 TAG="${TIMESTAMP}-${GIT_HASH}"
 
 echo "📦 Tag: prd-$TAG | Keep versions: $KEEP_VERSIONS"
-echo "   Clean deploy: $CLEAN_DEPLOY | Force build: $FORCE_BUILD"
+echo "   Clean deploy: $CLEAN_DEPLOY | Force build: $FORCE_BUILD | Update stateful: $UPDATE_STATEFUL"
 
 # ==============================
 # 1. PRÉ-REQUISITOS
@@ -47,9 +48,10 @@ done
 echo "✅ Pré-requisitos OK"
 
 # ==============================
-# 2. CLEAN DEPLOY (PADRÃO)
+# 2. CLEAN DEPLOY (OPCIONAL)
 # ==============================
 if [ "$CLEAN_DEPLOY" = true ]; then
+  echo "⚠️  CLEAN_DEPLOY=true pode causar downtime (stack será removida)"
   echo "🧹 Removendo stack anterior para deploy limpo..."
   docker stack rm "$STACK_NAME" || true
   sleep 10
@@ -113,6 +115,7 @@ echo "[BUILD] Construindo imagens versionadas..."
 
 build_image() {
   local name="$1"
+  local extra_tag="${2:-}"
   local image_name="estacaoterapia-$name"
   
   echo "   📦 $image_name:prd-$TAG"
@@ -127,13 +130,34 @@ build_image() {
   
   # Tag como 'latest' também (para fácil referência)
   docker tag "$image_name:prd-$TAG" "$image_name:latest"
+  if [ -n "$extra_tag" ]; then
+    docker tag "$image_name:prd-$TAG" "$image_name:$extra_tag"
+  fi
   echo "   ✅ $image_name:prd-$TAG (também tagged como latest)"
 }
 
-build_image redis
+if [ "$UPDATE_STATEFUL" = true ]; then
+  build_image redis stable
+else
+  if ! docker image inspect estacaoterapia-redis:stable >/dev/null 2>&1; then
+    echo "⚠️  Imagem estacaoterapia-redis:stable não encontrada. Fazendo build inicial..."
+    build_image redis stable
+  else
+    echo "ℹ️  UPDATE_STATEFUL=false: mantendo redis:stable"
+  fi
+fi
 build_image api
 build_image socket
-build_image pgbouncer
+if [ "$UPDATE_STATEFUL" = true ]; then
+  build_image pgbouncer stable
+else
+  if ! docker image inspect estacaoterapia-pgbouncer:stable >/dev/null 2>&1; then
+    echo "⚠️  Imagem estacaoterapia-pgbouncer:stable não encontrada. Fazendo build inicial..."
+    build_image pgbouncer stable
+  else
+    echo "ℹ️  UPDATE_STATEFUL=false: mantendo pgbouncer:stable"
+  fi
+fi
 
 # ==============================
 # 5.1 LIMPEZA DE VERSÕES ANTIGAS

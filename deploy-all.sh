@@ -27,6 +27,7 @@ START_TIME=$(date +%s)
 DEPLOY_API_SUCCESS=0
 DEPLOY_FRONTEND_SUCCESS=0
 DEPLOY_CADDY_SUCCESS=0
+UPDATE_STATEFUL="${UPDATE_STATEFUL:-false}"
 
 ###############################################################################
 # Funções de Log
@@ -224,11 +225,12 @@ deploy_api() {
     
     log_info "Diretório: $API_DIR"
     log_info "Iniciando deploy da API..."
+    log_info "UPDATE_STATEFUL=$UPDATE_STATEFUL (true atualiza Redis/PGbouncer)"
     
     # Garantir permissões de execução
     chmod +x ./deploy.sh 2>/dev/null || true
     
-    if ./deploy.sh 2>&1 | tee -a "../$LOG_FILE"; then
+    if UPDATE_STATEFUL="$UPDATE_STATEFUL" ./deploy.sh 2>&1 | tee -a "../$LOG_FILE"; then
         log_success "Deploy da API concluído com sucesso"
         DEPLOY_API_SUCCESS=1
         return 0
@@ -382,6 +384,7 @@ main() {
     log_info "Iniciado em: $(date '+%d/%m/%Y %H:%M:%S')"
     log_info "Usuário: $(whoami)"
     log_info "Diretório: $SCRIPT_DIR"
+    log_info "Update stateful (Redis/PGbouncer): $UPDATE_STATEFUL"
     
     # Executar etapas
     check_prerequisites

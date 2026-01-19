@@ -1502,7 +1502,7 @@ export class ContratoService {
             }
 
             let linkContratoEmail = urlContrato;
-            const { data: signedData, error: signedError } = storageClient.storage
+            const { data: signedData, error: signedError } = await storageClient.storage
                 .from(bucketName)
                 .createSignedUrl(filePath, 60 * 60 * 24 * 7, { download: fileName });
 

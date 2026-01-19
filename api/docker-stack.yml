@@ -52,7 +52,7 @@ services:
   # REDIS (2º)
   # =====================================
   redis:
-    image: estacaoterapia-redis:prd-{{TAG}}
+    image: estacaoterapia-redis:stable
     secrets:
       - redis_password
     volumes:
@@ -91,7 +91,7 @@ services:
   # PGBOUNCER (3º)
   # =====================================
   pgbouncer:
-    image: estacaoterapia-pgbouncer:prd-{{TAG}}
+    image: estacaoterapia-pgbouncer:stable
     secrets:
       - source: pgbouncer.ini
         target: /run/secrets/pgbouncer.ini
@@ -168,7 +168,7 @@ services:
         parallelism: 1
         delay: 30s
         order: start-first
-        failure_action: pause
+        failure_action: rollback
         monitor: 60s
       restart_policy:
         condition: any
@@ -220,7 +220,7 @@ services:
         parallelism: 1
         delay: 30s
         order: start-first
-        failure_action: pause
+        failure_action: rollback
         monitor: 60s
       restart_policy:
         condition: any
