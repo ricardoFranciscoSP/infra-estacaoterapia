@@ -86,18 +86,29 @@ const CallToActionPaciente: React.FC = () => {
               <p className="fira-sans font-normal text-[16px] md:text-[17px] lg:text-[18px] leading-[24px] md:leading-[26px] lg:leading-[28px] mb-4 md:mb-5 lg:mb-6 text-[#26220D]">
                 Aqui você se cuida com profissionais preparados e qualificados, disponíveis para te atender no melhor dia e horário que se encaixa em sua rotina.
               </p>
-              <button
-                type="button"
-                onClick={() => {
-                  const params = new URLSearchParams();
-                  if (planoPrimeiraConsultaProductId) params.set("productId", planoPrimeiraConsultaProductId);
-                  if (planoPrimeiraConsultaId) params.set("planoId", planoPrimeiraConsultaId);
-                  const query = params.toString();
-                  router.push(`/comprar-consulta${query ? `?${query}` : ""}`);
-                }}
-                className="inline-flex items-center justify-center py-2 px-6 rounded-[8px] bg-[#8494E9] w-full md:w-auto md:min-w-[280px] h-[48px] fira-sans text-bold text-[18px] text-secondary hover:bg-[#6B7DD8] transition-colors duration-200 whitespace-nowrap"
-              >
-                Começar minha terapia agora!
+              {/* Redirecionamento condicional para painel, adm-psicologo ou registro, nunca para checkout */}
+              {(() => {
+                const { user } = require('@/store/userStore').useUserStore();
+                return (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (user && user.role === 'paciente') {
+                        router.push('/painel');
+                        return;
+                      }
+                      if (user && user.role === 'psicologo') {
+                        router.push('/adm-psicologo');
+                        return;
+                      }
+                      router.push('/register');
+                    }}
+                    className="inline-flex items-center justify-center py-2 px-6 rounded-[8px] bg-[#8494E9] w-full md:w-auto md:min-w-[280px] h-[48px] fira-sans text-bold text-[18px] text-secondary hover:bg-[#6B7DD8] transition-colors duration-200 whitespace-nowrap"
+                  >
+                    Começar minha terapia agora!
+                  </button>
+                );
+              })()}
               </button>
             </div>
           </div>
