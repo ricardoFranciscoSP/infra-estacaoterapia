@@ -353,6 +353,9 @@ export function useDeleteUserImage() {
     mutationFn: deleteUserImage,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['userImages'] });
+      queryClient.invalidateQueries({ queryKey: ['userDetails'] });
+      queryClient.invalidateQueries({ queryKey: ['userMe'] });
+      queryClient.invalidateQueries({ queryKey: ['userBasic'] });
     },
   });
 

@@ -2,8 +2,11 @@
 import React from "react"; 
 import SidebarPsicologo from "../SidebarPsicologo";
 import Image from "next/image";
-import { FiEdit2 } from "react-icons/fi";
+import { FiEdit2, FiX } from "react-icons/fi";
 import { useUserPsicologo, useUploadUserPsicologoImagem, useUpdateUserPsicologoImagem } from '@/hooks/user/userPsicologoHook';
+import { useDeleteUserImage } from "@/hooks/user/userHook";
+import { useAuthStore } from "@/store/authStore";
+import toast from 'react-hot-toast';
 import { useEnums } from "@/hooks/enumsHook";
 import { Formacao, EnderecoCobranca } from "@/types/psicologoTypes";
 import EditModal from '@/components/painelPsicologo/EditModal';
@@ -24,8 +27,10 @@ interface UpdateImagemResponse {
 }
 
 export default function MeuPerfilPage() {
-  const { user: psicologos = [] } = useUserPsicologo()?.psicologo ?? {};
+  const psicologoHook = useUserPsicologo();
+  const { user: psicologos = [] } = psicologoHook?.psicologo ?? {};
   const psicologo = psicologos[0];
+  const refreshAuthUser = useAuthStore((state) => state.fetchUser);
   const { enums } = useEnums();
   const [modal, setModal] = React.useState<null | string>(null);
   
@@ -75,18 +80,27 @@ export default function MeuPerfilPage() {
       : psicologo.BillingAddress;
   }, [psicologo?.BillingAddress]);
 
+  const avatarImage = React.useMemo(() => psicologo?.Images?.[0] ?? null, [psicologo?.Images]);
+  const avatarImageId = React.useMemo(
+    () => (avatarImage as { Id?: string; id?: string } | null)?.Id ?? (avatarImage as { id?: string } | null)?.id ?? null,
+    [avatarImage]
+  );
+  const hasAvatarImage = Boolean(avatarImage?.Url);
+
   // Estado local para imagem
-  const [imagemUrl, setImagemUrl] = React.useState<string>(psicologo?.Images?.[0]?.Url ?? "/assets/Profile.svg");
+  const [imagemUrl, setImagemUrl] = React.useState<string>(avatarImage?.Url ?? "/assets/Profile.svg");
 
   // Atualiza imagem quando psicologo muda
   React.useEffect(() => {
-    setImagemUrl(psicologo?.Images?.[0]?.Url ?? "/assets/Profile.svg");
-  }, [psicologo?.Images]);
+    setImagemUrl(avatarImage?.Url ?? "/assets/Profile.svg");
+  }, [avatarImage]);
 
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const uploadUserImage = useUploadUserPsicologoImagem();
   const updateUserImage = useUpdateUserPsicologoImagem();
+  const deleteUserImage = useDeleteUserImage();
   const isPending = uploadUserImage.isPending || updateUserImage.isPending;
+  const isDeletingImage = deleteUserImage.isPending;
 
   // Handler para upload
   const handleAvatarClick = () => {
@@ -101,16 +115,17 @@ export default function MeuPerfilPage() {
     const localUrl = URL.createObjectURL(file);
     setImagemUrl(localUrl);
 
-    const existingImage = psicologo?.Images?.[0];
-    
+    const existingImage = avatarImage;
+
     // Atualiza imagem existente ou faz upload de nova imagem
-    if (existingImage?.UserId && existingImage?.Id) {
+    if (existingImage?.Id) {
       updateUserImage.mutate(
         { imageId: existingImage.Id, file },
         {
           onSuccess: (data: UpdateImagemResponse) => {
             // Se backend retorna nova URL, atualiza
             if (data?.url) setImagemUrl(data.url);
+            refreshAuthUser();
           }
         }
       );
@@ -121,10 +136,32 @@ export default function MeuPerfilPage() {
           onSuccess: (data: UpdateImagemResponse) => {
             // Se backend retorna nova URL, atualiza
             if (data?.url) setImagemUrl(data.url);
+            refreshAuthUser();
           }
         }
       );
     }
+  };
+
+  const handleRemoveImage = () => {
+    if (isDeletingImage) return;
+    const existingImageId = avatarImageId;
+    if (!existingImageId) {
+      toast.error('Imagem sem ID para remover.');
+      return;
+    }
+
+    deleteUserImage.mutate(existingImageId, {
+      onSuccess: async () => {
+        toast.success('Imagem removida com sucesso!');
+        setImagemUrl("/assets/Profile.svg");
+        await psicologoHook?.refetch();
+        await refreshAuthUser();
+      },
+      onError: () => {
+        toast.error('Erro ao remover imagem.');
+      }
+    });
   };
 
   return (
@@ -140,19 +177,36 @@ export default function MeuPerfilPage() {
           <section className="bg-white border border-[#E3E4F3] px-4 sm:px-6 py-6 sm:py-8 w-full rounded-2xl flex flex-col md:flex-row items-center md:items-center gap-6 sm:gap-8 mb-6 sm:mb-10 shadow-md">
             {/* Avatar + editar foto */}
             <div className="flex flex-col items-center">
-              <div
-                className="w-28 h-28 rounded-full border-4 border-[#0A66C2] overflow-hidden bg-white mb-3 shadow-sm transition-transform hover:scale-105 cursor-pointer"
-                onClick={handleAvatarClick}
-                title="Alterar foto"
-                style={{ cursor: "pointer" }}
-              >
-                <Image
-                  src={imagemUrl}
-                  alt="Avatar"
-                  width={112}
-                  height={112}
-                  className="object-cover w-full h-full"
-                />
+              <div className="relative w-28 h-28 mb-3">
+                <div
+                  className="w-28 h-28 rounded-full border-4 border-[#0A66C2] overflow-hidden bg-white shadow-sm transition-transform hover:scale-105 cursor-pointer"
+                  onClick={handleAvatarClick}
+                  title="Alterar foto"
+                  style={{ cursor: "pointer" }}
+                >
+                  <Image
+                    src={imagemUrl}
+                    alt="Avatar"
+                    width={112}
+                    height={112}
+                    className="object-cover w-full h-full"
+                  />
+                </div>
+                {hasAvatarImage && (
+                  <button
+                    type="button"
+                    aria-label="Remover foto"
+                    className="absolute -top-1 -right-1 z-20 w-6 h-6 rounded-full bg-white text-[#E57373] border border-[#E57373] flex items-center justify-center shadow-sm hover:bg-[#FFE6E6] transition"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleRemoveImage();
+                    }}
+                    disabled={isDeletingImage || isPending}
+                  >
+                    <FiX size={12} />
+                  </button>
+                )}
               </div>
               <button
                 className="mt-2 px-4 py-1.5 rounded-lg border border-[#0A66C2] text-[#0A66C2] text-xs font-semibold flex items-center gap-2 hover:bg-[#EDF3F8] transition-all shadow-sm"

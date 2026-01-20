@@ -9,10 +9,12 @@ import Image from "next/image";
 import PhoneInput from "@/components/PhoneInput";
 import BreadcrumbsVoltar from "@/components/BreadcrumbsVoltar";
 import { DatePickerTailwind } from "@/components/DatePickerMaterial";
+import { FiX } from "react-icons/fi";
 
 interface User {
   Nome: string;
   Image?: {
+    Id?: string;
     Url: string;
   };
 }
@@ -63,7 +65,8 @@ const ProfileAvatar: React.FC<{
   imageLoading: boolean;
   size: number;
   onLabelClick: () => void;
-}> = ({ imagePreview, user, imageLoading, size, onLabelClick }) => {
+  onRemove?: () => void;
+}> = ({ imagePreview, user, imageLoading, size, onLabelClick, onRemove }) => {
   const getAvatarUrl = () => {
     if (imagePreview) return imagePreview;
     if (user?.Image?.Url && user.Image.Url.startsWith("http")) {
@@ -74,27 +77,44 @@ const ProfileAvatar: React.FC<{
 
   const avatarUrl = getAvatarUrl();
   const isDefaultAvatar = avatarUrl === "/assets/avatar-placeholder.svg";
+  const canRemove = Boolean(onRemove && (imagePreview || user?.Image?.Id));
 
   return (
     <label onClick={onLabelClick} className="cursor-pointer group relative">
-      <div
-        className="flex items-center justify-center rounded-full border-[2.13px] border-[#CACFD4] overflow-hidden group-hover:border-indigo-400 transition-all"
-        style={{ width: size, height: size }}
-      >
-        <Image 
-          src={avatarUrl} 
-          alt="Avatar" 
-          width={size} 
-          height={size} 
-          className="object-cover w-full h-full"
-          unoptimized={!isDefaultAvatar}
-        />
-        {imageLoading && (
-          <div className="absolute inset-0 bg-black/40 flex items-center justify-center rounded-full z-10">
-            <Image src="/assets/loading.svg" alt="Carregando" width={size/2} height={size/2} />
-          </div>
+      <div className="relative" style={{ width: size, height: size }}>
+        <div
+          className="flex items-center justify-center rounded-full border-[2.13px] border-[#CACFD4] overflow-hidden group-hover:border-indigo-400 transition-all"
+          style={{ width: size, height: size }}
+        >
+          <Image 
+            src={avatarUrl} 
+            alt="Avatar" 
+            width={size} 
+            height={size} 
+            className="object-cover w-full h-full"
+            unoptimized={!isDefaultAvatar}
+          />
+          {imageLoading && (
+            <div className="absolute inset-0 bg-black/40 flex items-center justify-center rounded-full z-10">
+              <Image src="/assets/loading.svg" alt="Carregando" width={size/2} height={size/2} />
+            </div>
+          )}
+          <span className="absolute inset-0 rounded-full bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+        </div>
+        {canRemove && (
+          <button
+            type="button"
+            aria-label="Remover foto"
+            className="absolute -top-1 -right-1 z-20 w-6 h-6 rounded-full bg-white text-[#E57373] border border-[#E57373] flex items-center justify-center shadow-sm hover:bg-[#FFE6E6] transition"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onRemove?.();
+            }}
+          >
+            <FiX size={12} />
+          </button>
         )}
-        <span className="absolute inset-0 rounded-full bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity" />
       </div>
     </label>
   );
@@ -133,6 +153,7 @@ export default function DadosPessoaisPage() {
     imagePreview,
     imageLoading,
     handleImageChange, 
+    handleRemoveImage,
     maskCep,
     handleCepChangeOrBlur,
     onSubmit,
@@ -241,6 +262,7 @@ export default function DadosPessoaisPage() {
                     imagePreview={imagePreview}
                     imageLoading={imageLoading}
                     onLabelClick={handleAvatarClick}
+                    onRemove={handleRemoveImage}
                     size={64}
                   />
                   <span className="font-medium text-[12px] leading-6 text-center text-[#49525A] mt-2">{user?.Nome || "Nome do usuário"}</span>
@@ -268,6 +290,7 @@ export default function DadosPessoaisPage() {
                     imagePreview={imagePreview}
                     imageLoading={imageLoading}
                     onLabelClick={handleAvatarClick}
+                    onRemove={handleRemoveImage}
                     size={96}
                   />
                   <div className="flex flex-col justify-center">

@@ -13,6 +13,7 @@ export const userPsicologoService = () => {
         updateImagem: (imageId: string, formData: PsicologoImagemFormData) => api.put(`/adm-psicologos/user/me/image/${imageId}`, formData, {
             headers: { 'Content-Type': 'multipart/form-data' }
         }),
+        deleteImagem: (imageId: string) => api.delete(`/users/image/${imageId}`),
         deleteFormacao: (formacaoId: string) => api.delete(`/adm-psicologos/user/me/formacao/${formacaoId}`),
         // Métodos específicos para atualizações parciais
         updateDadosBancarios: (chavePix: string) => api.put('/adm-psicologos/user/me/dados-bancarios', { chavePix }),

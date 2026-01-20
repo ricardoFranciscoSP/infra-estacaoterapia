@@ -9,6 +9,15 @@ import ListPsicologo from "@/components/listPsicologo";
 import Image from "next/image";
 import { usePsicologoSearch } from '@/hooks/usePsicologoSearch';
 import { usePsicologoFilterStore } from "@/store/filters/psicologoFilterStore";
+import {
+  hasIntersection,
+  normalizeFilterValue,
+  normalizarStatus,
+  periodoRange,
+  sortPsicologos,
+  toMinutes,
+  ymd,
+} from "@/utils/psicologoFilters";
 import { useVerPsicologos } from "@/hooks/psicologoHook";
 import { PsicologoAtivo } from "@/types/psicologoTypes";
 
@@ -57,6 +66,7 @@ function PsicologosPage() {
     data,
     periodo,
   } = usePsicologoFilterStore();
+
 
   // Carregar lista padrão ao montar
   React.useEffect(() => {
@@ -125,137 +135,6 @@ function PsicologosPage() {
     return map[experiencia] ?? 0;
   };
 
-  /**
-   * Calcula a compatibilidade com filtros aplicados (0-100%)
-   * Baseado em: abordagem, queixa, idioma, tipo de atendimento, horários (data/periodo)
-   * Nota: Sexo já é filtrado no backend, então não precisa ser verificado aqui
-   */
-  const calcularCompatibilidade = (psicologo: PsicologoAtivo): number => {
-    const profile = psicologo.ProfessionalProfiles?.[0];
-    if (!profile) return 0;
-
-    let totalFiltros = 0;
-    let filtrosCorrespondentes = 0;
-
-    // Filtro: Abordagens
-    if (abordagens && abordagens.length > 0) {
-      totalFiltros++;
-      const abordagensPsicologo = profile.Abordagens || [];
-      const temAbordagem = abordagens.some(a => 
-        abordagensPsicologo.some(ap => ap.toLowerCase() === a.toLowerCase())
-      );
-      if (temAbordagem) filtrosCorrespondentes++;
-    }
-
-    // Filtro: Queixas
-    if (queixas && queixas.length > 0) {
-      totalFiltros++;
-      const queixasPsicologo = profile.Queixas || [];
-      const temQueixa = queixas.some(q => 
-        queixasPsicologo.some(qp => qp.toLowerCase() === q.toLowerCase())
-      );
-      if (temQueixa) filtrosCorrespondentes++;
-    }
-
-    // Filtro: Idiomas
-    if (idiomas && idiomas.length > 0) {
-      totalFiltros++;
-      const idiomasPsicologo = profile.Idiomas || [];
-      const temIdioma = idiomas.some(i => 
-        idiomasPsicologo.some(ip => ip.toLowerCase() === i.toLowerCase())
-      );
-      if (temIdioma) filtrosCorrespondentes++;
-    }
-
-    // Filtro: Tipo de Atendimento
-    if (atendimentos && atendimentos.length > 0) {
-      totalFiltros++;
-      const tiposAtendimentoPsicologo = profile.TipoAtendimento || [];
-      const temTipoAtendimento = atendimentos.some(a => 
-        tiposAtendimentoPsicologo.some(tap => tap.toLowerCase() === a.toLowerCase())
-      );
-      if (temTipoAtendimento) filtrosCorrespondentes++;
-    }
-
-    // Filtro: Data/Período (horários disponíveis)
-    // Nota: A verificação de disponibilidade de horários é mais complexa
-    // e pode requerer verificação da agenda. Por enquanto, se houver filtro de data,
-    // verificamos se o psicólogo tem agendas
-    if (data || periodo) {
-      totalFiltros++;
-      const temAgendas = psicologo.PsychologistAgendas && psicologo.PsychologistAgendas.length > 0;
-      if (temAgendas) filtrosCorrespondentes++;
-    }
-
-    // Se não há filtros aplicados, retorna 100% (compatibilidade total)
-    if (totalFiltros === 0) return 100;
-
-    // Retorna percentual de correspondência
-    return Math.round((filtrosCorrespondentes / totalFiltros) * 100);
-  };
-
-  /**
-   * Ordena psicólogos conforme critérios de priorização:
-   * 1. Compatibilidade com filtros (100% → 0%, decrescente)
-   * 2. Taxa de ocupação (menor é melhor, crescente)
-   * 3. Experiência clínica (maior é melhor, decrescente) - critério de desempate
-   */
-  const calcularNotaMedia = (psicologo: PsicologoAtivo): number => {
-    const reviews = psicologo.ReviewsReceived || [];
-    if (reviews.length === 0) return 0;
-    const soma = reviews.reduce((acc, r) => acc + (r.Rating || 0), 0);
-    return soma / reviews.length;
-  };
-
-  const normalizarStatus = (status?: string | null) =>
-    (status || "")
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .toLowerCase();
-
-  const contarVagasLivres = (psicologo: PsicologoAtivo): number => {
-    const agendas = Array.isArray(psicologo.PsychologistAgendas)
-      ? psicologo.PsychologistAgendas
-      : [];
-    return agendas.filter((agenda) => normalizarStatus(agenda.Status) === "disponivel").length;
-  };
-
-  const ordenarPsicologos = (psicologosList: PsicologoAtivo[]): PsicologoAtivo[] => {
-    // 1º: Filtros selecionados (compatibilidade)
-    // 2º: Quem tem mais horários livres (agenda disponível)
-    // 3º: Maior tempo de experiência
-    // 4º: Maior nota média
-    return [...psicologosList].sort((a, b) => {
-      // 1. Compatibilidade com filtros (apenas se houver filtro)
-      if (hasFiltroSelecionado) {
-        const compatibilidadeA = calcularCompatibilidade(a);
-        const compatibilidadeB = calcularCompatibilidade(b);
-        if (compatibilidadeA !== compatibilidadeB) {
-          return compatibilidadeB - compatibilidadeA;
-        }
-      }
-
-      // 2. Mais vagas livres
-      const livresA = contarVagasLivres(a);
-      const livresB = contarVagasLivres(b);
-      if (livresA !== livresB) {
-        return livresB - livresA;
-      }
-
-      // 3. Maior tempo de experiência
-      const experienciaA = experienciaClinicaParaAnos(a.ProfessionalProfiles?.[0]?.ExperienciaClinica);
-      const experienciaB = experienciaClinicaParaAnos(b.ProfessionalProfiles?.[0]?.ExperienciaClinica);
-      if (experienciaA !== experienciaB) {
-        return experienciaB - experienciaA;
-      }
-
-      // 4. Maior nota média
-      const notaA = calcularNotaMedia(a);
-      const notaB = calcularNotaMedia(b);
-      return notaB - notaA;
-    });
-  };
-
   const hasFiltroSelecionado =
     !!busca ||
     (queixas && queixas.length > 0) ||
@@ -272,14 +151,77 @@ function PsicologosPage() {
     return psicologosAtivos ?? [];
   }, [hasFiltroSelecionado, psicologos, psicologosAtivos]);
 
+  const psicologosFiltrados = React.useMemo(() => {
+    if (!Array.isArray(psicologosBase)) return [];
+    return psicologosBase.filter((p: PsicologoAtivo) => {
+      const profile = p.ProfessionalProfiles?.[0];
+      const idiomasArr = profile?.Idiomas ?? [];
+      const abordArr = profile?.Abordagens ?? [];
+      const queixasArr = profile?.Queixas ?? [];
+      const atendArr = profile?.TipoAtendimento ?? [];
+
+      if (sexo) {
+        const sexoValue = (p as PsicologoAtivo & { Sexo?: string }).Sexo ?? null;
+        if (sexoValue) {
+          const sexoNorm = normalizeFilterValue(String(sexoValue));
+          if (sexo === "feminino" && !sexoNorm.includes("femin")) return false;
+          if (sexo === "masculino" && !sexoNorm.includes("mascul")) return false;
+          if (sexo === "outros" && (sexoNorm.includes("femin") || sexoNorm.includes("mascul"))) return false;
+        }
+      }
+
+      if (!hasIntersection(idiomas, idiomasArr)) return false;
+      if (!hasIntersection(abordagens, abordArr)) return false;
+      if (!hasIntersection(queixas, queixasArr)) return false;
+      if (!hasIntersection(atendimentos, atendArr)) return false;
+
+      if (data || periodo) {
+        const agendas = p.PsychologistAgendas ?? [];
+        const range = periodoRange(periodo);
+        const ok = agendas.some((agenda) => {
+          const statusAgenda = normalizarStatus(agenda?.Status);
+          if (statusAgenda !== "disponivel") return false;
+          if (data && ymd(agenda.Data) < (data as string)) return false;
+          if (range) {
+            const m = toMinutes(agenda.Horario);
+            return m >= range[0] && m <= range[1];
+          }
+          return true;
+        });
+        if (!ok) return false;
+      }
+
+      return true;
+    });
+  }, [
+    psicologosBase,
+    sexo,
+    idiomas,
+    abordagens,
+    queixas,
+    atendimentos,
+    data,
+    periodo,
+    hasIntersection,
+    normalizeFilterValue,
+    normalizarStatus,
+    periodoRange,
+    toMinutes,
+    ymd,
+  ]);
+
   // Aplica ordenação aos psicólogos
   const psicologosOrdenados = React.useMemo(() => {
-    if (!Array.isArray(psicologosBase) || psicologosBase.length === 0) {
+    if (!Array.isArray(psicologosFiltrados) || psicologosFiltrados.length === 0) {
       return [];
     }
-    return ordenarPsicologos(psicologosBase);
+    return sortPsicologos(psicologosFiltrados, {
+      filtros: { abordagens, queixas, idiomas, atendimentos, data, periodo },
+      hasFiltroSelecionado,
+      experienciaClinicaParaAnos,
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [psicologosBase, queixas, abordagens, sexo, atendimentos, idiomas, data, periodo]);
+  }, [psicologosFiltrados, queixas, abordagens, sexo, atendimentos, idiomas, data, periodo]);
 
   return (
     <div className="flex flex-col items-center min-h-screen bg-[#FCFBF6]">

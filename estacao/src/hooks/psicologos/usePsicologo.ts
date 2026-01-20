@@ -5,6 +5,14 @@ import { PsicologoAtivo } from "@/types/psicologoTypes";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePsicologoFilterStore } from "@/store/filters/psicologoFilterStore";
+import {
+    hasIntersection,
+    normalizeFilterValue,
+    normalizarStatus,
+    periodoRange,
+    toMinutes,
+    ymd,
+} from "@/utils/psicologoFilters";
 
 export function usePsicologoPage() {
     const { psicologos: psicologosOriginais, isLoading: isPsicologosLoading, refetch } = useVerPsicologos();
@@ -65,12 +73,6 @@ export function usePsicologoPage() {
         return h * 60 + m;
     }
 
-    const normalizarStatus = (status?: string | null) =>
-        (status || "")
-            .normalize("NFD")
-            .replace(/[\u0300-\u036f]/g, "")
-            .toLowerCase();
-
     function getHorariosPorDataAgenda(psicologos: PsicologoAtivo[], datas: { date: Date }[]) {
         if (!Array.isArray(psicologos)) return [];
 
@@ -114,36 +116,19 @@ export function usePsicologoPage() {
         });
     }
 
-    // Helpers de normalização
-    const norm = (s: string) => (s || "").toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, '').replace(/_/g, ' ');
-    const hasIntersection = (selected: string[], target: string[]) => {
-        if (!selected || selected.length === 0) return true; // sem filtro
-        const tset = new Set(target.map(norm));
-        return selected.some((v) => tset.has(norm(v)));
-    };
-
-    const ymd = (d: string) => d.slice(0, 10);
-    const toMinutes = (h: string) => {
-        const [hh, mm] = h.split(":").map(Number); return hh * 60 + (mm || 0);
-    };
-    const periodoRange = (p: string): [number, number] | null => {
-        if (p === 'manha') return [6 * 60, 12 * 60 - 1];
-        if (p === 'tarde') return [12 * 60, 18 * 60 - 1];
-        if (p === 'noite') return [18 * 60, 23 * 60 + 59];
-        return null;
-    };
+    // Helpers importados em utils
 
     // Aplica filtros client-side sobre os psicólogos originais
     const psicologos = (psicologosOriginais ?? []).filter((p) => {
         // Busca textual
-        const texto = norm(busca);
+        const texto = normalizeFilterValue(busca);
         if (texto) {
-            const nomeOk = norm(p.Nome).includes(texto);
+            const nomeOk = normalizeFilterValue(p.Nome).includes(texto);
             const profile = p.ProfessionalProfiles?.[0];
             const extras = [
                 ...(profile?.Queixas ?? []),
                 ...(profile?.Abordagens ?? []),
-            ].map(norm).join(' ');
+            ].map(normalizeFilterValue).join(' ');
             if (!nomeOk && !extras.includes(texto)) return false;
         }
 
@@ -158,7 +143,7 @@ export function usePsicologoPage() {
             const psicologoComSexo = p as PsicologoAtivo & { Sexo?: string };
             const sexoValue = psicologoComSexo.Sexo ?? null;
             if (sexoValue) {
-                const sexoNorm = norm(String(sexoValue));
+                const sexoNorm = normalizeFilterValue(String(sexoValue));
                 if (sexoFiltro === 'feminino' && !sexoNorm.includes('femin')) return false;
                 if (sexoFiltro === 'masculino' && !sexoNorm.includes('mascul')) return false;
                 if (sexoFiltro === 'outros' && (sexoNorm.includes('femin') || sexoNorm.includes('mascul'))) return false;
@@ -173,7 +158,7 @@ export function usePsicologoPage() {
         // Data/Período: requer pelo menos 1 agenda compatível
         if (dataFiltro || periodoFiltro) {
             const agendas = p.PsychologistAgendas ?? [];
-            const pr = periodoRange(periodoFiltro);
+        const pr = periodoRange(periodoFiltro);
             const ok = agendas.some((a) => {
                 // Filtra APENAS agendas com status de disponível (com/sem acento)
                 const statusAgenda = normalizarStatus(a.Status);

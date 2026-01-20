@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useForm } from 'react-hook-form';
-import { useUpdateUser, useUpdateUserImage, useUploadUserImage, useUserDetails } from '@/hooks/user/userHook';
+import { useDeleteUserImage, useUpdateUser, useUpdateUserImage, useUploadUserImage, useUserDetails } from '@/hooks/user/userHook';
+import { useAuthStore } from "@/store/authStore";
 import { fetchAddressByCep } from "@/services/viaCepService";
 import toast from 'react-hot-toast';
 import { formatDateToYYYYMMDD } from "@/utils/date";
@@ -23,9 +24,11 @@ type FormData = {
 export function useDadosPessoais() {
     const methods = useForm<FormData>();
     const { user, refetch } = useUserDetails();
+    const refreshAuthUser = useAuthStore((state) => state.fetchUser);
     const { mutate: updateUser, isPending } = useUpdateUser();
     const updateUserImage = useUpdateUserImage();
     const uploadUserImage = useUploadUserImage();
+    const deleteUserImage = useDeleteUserImage();
     const [imageFile, setImageFile] = useState<File | null>(null);
     const [imagePreview, setImagePreview] = useState<string | null>(null);
     const [isSaving, setIsSaving] = useState(false);
@@ -103,6 +106,7 @@ export function useDadosPessoais() {
                     onSuccess: async () => {
                         toast.success('Imagem atualizada com sucesso!');
                         await refetch();
+                        await refreshAuthUser();
                         setImageLoading(false);
                     },
                     onError: () => {
@@ -118,6 +122,7 @@ export function useDadosPessoais() {
                     onSuccess: async () => {
                         toast.success('Imagem adicionada com sucesso!');
                         await refetch();
+                        await refreshAuthUser();
                         setImageLoading(false);
                     },
                     onError: () => {
@@ -127,6 +132,35 @@ export function useDadosPessoais() {
                 }
             );
         }
+    };
+
+    const handleRemoveImage = () => {
+        if (imageLoading) return;
+
+        // Se houver apenas preview local, limpa sem chamar a API
+        if (imagePreview && !user?.Image?.Id) {
+            setImageFile(null);
+            setImagePreview(null);
+            return;
+        }
+
+        if (!user?.Image?.Id) return;
+
+        setImageLoading(true);
+        deleteUserImage.mutate(user.Image.Id, {
+            onSuccess: async () => {
+                toast.success('Imagem removida com sucesso!');
+                setImageFile(null);
+                setImagePreview(null);
+                await refetch();
+                await refreshAuthUser();
+                setImageLoading(false);
+            },
+            onError: () => {
+                toast.error('Erro ao remover imagem.');
+                setImageLoading(false);
+            }
+        });
     };
 
     const onSubmit = async (data: FormData) => {
@@ -243,6 +277,7 @@ export function useDadosPessoais() {
         maskCep,
         handleCepChangeOrBlur,
         handleImageChange,
+        handleRemoveImage,
         onSubmit,
         showAttention,
         isPending,

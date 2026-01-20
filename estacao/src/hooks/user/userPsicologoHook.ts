@@ -1,4 +1,5 @@
 import { useUserPsicologoStore } from '@/store/psicologos/userPsicologoStore';
+import { queryClient } from '@/lib/queryClient';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { userPsicologoService, updatePsicologo } from '@/services/userPsicologoService';
 import React from 'react';
@@ -92,6 +93,31 @@ export function useUpdateUserPsicologoImagem() {
         },
         onSuccess: (updated) => {
             setPsicologo(updated);
+        }
+    });
+
+    return {
+        mutate: mutation.mutate,
+        isPending: mutation.isPending,
+        isError: mutation.isError,
+        reset: mutation.reset,
+    };
+}
+
+// Hook para deletar imagem do psicólogo
+export function useDeleteUserPsicologoImagem() {
+    const { setPsicologo } = useUserPsicologoStore();
+
+    const mutation = useMutation({
+        mutationFn: async (imageId: string) => {
+            const { data } = await userPsicologoService().deleteImagem(imageId);
+            return data;
+        },
+        onSuccess: (updated) => {
+            if (updated?.user) {
+                setPsicologo(updated.user);
+            }
+            queryClient.invalidateQueries({ queryKey: ['userPsicologo'] });
         }
     });
 

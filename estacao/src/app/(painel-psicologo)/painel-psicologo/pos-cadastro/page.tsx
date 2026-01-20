@@ -3,12 +3,13 @@ import React from "react";
 import { useRouter } from "next/navigation";
 import SidebarPsicologo from "../SidebarPsicologo";
 import Image from "next/image";
-import { FiEdit2 } from "react-icons/fi";
+import { FiEdit2, FiX } from "react-icons/fi";
 import { motion } from "framer-motion";
 import Select from "react-select";
 import { useEnums } from '@/hooks/enumsHook';
 import toast from 'react-hot-toast';
-import { useUserPsicologo, useUpdateUserPsicologo, useUploadUserPsicologoImagem, useUpdateUserPsicologoImagem, useDeletePsicologo } from '@/hooks/user/userPsicologoHook';
+import { useUserPsicologo, useUpdateUserPsicologo, useUploadUserPsicologoImagem, useDeleteUserPsicologoImagem, useDeletePsicologo } from '@/hooks/user/userPsicologoHook';
+import { useAuthStore } from "@/store/authStore";
 import { PHONE_COUNTRIES, PhoneCountry, onlyDigits, maskTelefoneByCountry, getFlagUrl } from "@/utils/phoneCountries";
 import { Psicologo } from "@/types/psicologoTypes";
 import type { updatePsicologo } from "@/services/userPsicologoService";
@@ -98,6 +99,7 @@ export default function MeuPerfilPage() {
   // ...existing code...
   const router = useRouter();
   const { psicologo, refetch } = useUserPsicologo();
+  const refreshAuthUser = useAuthStore((state) => state.fetchUser);
   const { enums } = useEnums();
   const [showPhotoModal, setShowPhotoModal] = React.useState(false);
   const [showLeaveModal, setShowLeaveModal] = React.useState(false);
@@ -805,9 +807,10 @@ export default function MeuPerfilPage() {
   }));
 
   const uploadUserImage = useUploadUserPsicologoImagem();
-  const updateUserImage = useUpdateUserPsicologoImagem();
+  const deleteUserImage = useDeleteUserPsicologoImagem();
   const [imagemPreview, setImagemPreview] = React.useState<string | null>(null);
   const [imageLoading, setImageLoading] = React.useState(false);
+  const isImageBusy = imageLoading || uploadUserImage.isPending || deleteUserImage.isPending;
 
   // Referência para input file
   const inputFileRef = React.useRef<HTMLInputElement>(null);
@@ -838,39 +841,70 @@ export default function MeuPerfilPage() {
     const user = psicologo?.user?.[0];
     const existingImage = user?.Images?.[0];
 
-    // Atualiza imagem existente ou faz upload de nova imagem
-    if (existingImage?.UserId && existingImage?.Id) {
-      updateUserImage.mutate(
-        { imageId: existingImage.Id, file },
-        {
-          onSuccess: async () => {
-            toast.success('Imagem atualizada com sucesso!');
-            await refetch();
-            setImageLoading(false);
-          },
-          onError: () => {
-            toast.error('Erro ao atualizar imagem.');
-            setImageLoading(false);
-          }
+    // Sempre remove a imagem antiga antes de subir a nova
+    if (existingImage?.Id) {
+      deleteUserImage.mutate(existingImage.Id, {
+        onSuccess: () => {
+          uploadUserImage.mutate(
+            file,
+            {
+              onSuccess: async () => {
+                toast.success('Imagem atualizada com sucesso!');
+                await refetch();
+                await refreshAuthUser();
+                setImageLoading(false);
+              },
+              onError: () => {
+                toast.error('Erro ao atualizar imagem.');
+                setImageLoading(false);
+              }
+            }
+          );
+        },
+        onError: () => {
+          toast.error('Erro ao remover imagem antiga.');
+          setImageLoading(false);
         }
-      );
-    } else {
-      uploadUserImage.mutate(
-        file,
-        {
-          onSuccess: async () => {
-            toast.success('Imagem adicionada com sucesso!');
-            await refetch();
-            setImageLoading(false);
-          },
-          onError: () => {
-            toast.error('Erro ao adicionar imagem.');
-            setImageLoading(false);
-          }
-        }
-      );
+      });
+      return;
     }
+
+    uploadUserImage.mutate(
+      file,
+      {
+        onSuccess: async () => {
+          toast.success('Imagem adicionada com sucesso!');
+          await refetch();
+          await refreshAuthUser();
+          setImageLoading(false);
+        },
+        onError: () => {
+          toast.error('Erro ao adicionar imagem.');
+          setImageLoading(false);
+        }
+      }
+    );
   }
+
+  const handleRemoveImage = () => {
+    if (imageLoading || deleteUserImage.isPending) return;
+    const existingImage = psicologo?.user?.[0]?.Images?.[0];
+    if (!existingImage?.Id) return;
+    setImageLoading(true);
+    deleteUserImage.mutate(existingImage.Id, {
+      onSuccess: async () => {
+        toast.success('Imagem removida com sucesso!');
+        setImagemPreview(null);
+        await refetch();
+        await refreshAuthUser();
+        setImageLoading(false);
+      },
+      onError: () => {
+        toast.error('Erro ao remover imagem.');
+        setImageLoading(false);
+      }
+    });
+  };
 
   // Handler para tirar foto (usando input file com capture)
   function handleTirarFoto() {
@@ -1170,7 +1204,8 @@ export default function MeuPerfilPage() {
               <div className="flex-1 flex flex-col sm:flex-row items-center justify-center bg-white rounded-b-lg px-4 sm:px-8 py-6 sm:py-8 gap-6 sm:gap-8">
                 {/* Avatar à esquerda */}
                 <div className="flex flex-col items-center justify-center">
-                  <div className="w-32 h-32 rounded-full border-4 border-[#606C76] overflow-hidden mb-2 bg-white">
+                  <div className="relative w-32 h-32 mb-2">
+                    <div className="w-32 h-32 rounded-full border-4 border-[#606C76] overflow-hidden bg-white">
                     <Image
                       src={imagemPreview || psicologo?.user?.[0]?.Images?.[0]?.Url || "/assets/Profile.svg"}
                       alt="Avatar"
@@ -1178,6 +1213,22 @@ export default function MeuPerfilPage() {
                       height={128}
                       className="object-cover w-full h-full"
                     />
+                    </div>
+                    {psicologo?.user?.[0]?.Images?.[0]?.Id && (
+                      <button
+                        type="button"
+                        aria-label="Remover foto"
+                        className="absolute -top-1 -right-1 z-20 w-6 h-6 rounded-full bg-white text-[#E57373] border border-[#E57373] flex items-center justify-center shadow-sm hover:bg-[#FFE6E6] transition"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleRemoveImage();
+                        }}
+                        disabled={isImageBusy}
+                      >
+                        <FiX size={12} />
+                      </button>
+                    )}
                   </div>
                 </div>
                 {/* Texto e botões à direita */}
@@ -1196,26 +1247,26 @@ export default function MeuPerfilPage() {
                       className="flex-1 flex flex-col items-center justify-center border-2 border-[#606C76] rounded-lg py-4 px-6 bg-white hover:bg-[#F0F1FA] transition text-[#23253A] text-base font-medium"
                       type="button"
                       onClick={handleTirarFoto}
-                      disabled={imageLoading || uploadUserImage.isPending || updateUserImage.isPending}
+                      disabled={isImageBusy}
                     >
                       <svg width="32" height="32" fill="none" viewBox="0 0 24 24" className="mb-2">
                         <rect x="3" y="7" width="18" height="12" rx="2" stroke="#8494E9" strokeWidth="2"/>
                         <path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="#8494E9" strokeWidth="2"/>
                         <circle cx="12" cy="13" r="3" stroke="#8494E9" strokeWidth="2"/>
                       </svg>
-                      {(imageLoading || uploadUserImage.isPending || updateUserImage.isPending) ? "Enviando..." : "Tirar foto"}
+                      {isImageBusy ? "Enviando..." : "Tirar foto"}
                     </button>
                     <button
                       className="flex-1 flex flex-col items-center justify-center border-2 border-[#606C76] rounded-lg py-4 px-6 bg-white hover:bg-[#F0F1FA] transition text-[#23253A] text-base font-medium"
                       type="button"
                       onClick={handleEscolherArquivo}
-                      disabled={imageLoading || uploadUserImage.isPending || updateUserImage.isPending}
+                      disabled={isImageBusy}
                     >
                       <svg width="32" height="32" fill="none" viewBox="0 0 24 24" className="mb-2">
                         <rect x="3" y="5" width="18" height="14" rx="2" stroke="#8494E9" strokeWidth="2"/>
                         <path d="M8 11l2 2 4-4" stroke="#8494E9" strokeWidth="2"/>
                       </svg>
-                      {(imageLoading || uploadUserImage.isPending || updateUserImage.isPending) ? "Enviando..." : "Escolher na biblioteca"}
+                      {isImageBusy ? "Enviando..." : "Escolher na biblioteca"}
                     </button>
                     {/* Input file oculto para tirar foto ou escolher arquivo */}
                     <input
@@ -1234,7 +1285,7 @@ export default function MeuPerfilPage() {
                       className="flex-1 h-12 rounded-lg px-6 flex items-center justify-center bg-white border border-[#606C76] text-[#8494E9] text-base font-medium hover:bg-[#F0F1FA] transition"
                       onClick={() => setShowPhotoModal(false)}
                       type="button"
-                      disabled={imageLoading || uploadUserImage.isPending || updateUserImage.isPending}
+                      disabled={isImageBusy}
                     >
                       Cancelar
                     </button>
@@ -1265,23 +1316,40 @@ export default function MeuPerfilPage() {
             <div className="w-full max-w-5xl">
               {/* Avatar e dados principais */}
               <div className="flex flex-col items-center bg-[#F7F7FB] pt-6 sm:pt-8 pb-4 px-4">
-                <button
-                  type="button"
-                  className="w-24 h-24 sm:w-28 sm:h-28 rounded-full border-2 border-[#606C76] flex items-center justify-center bg-white focus:outline-none overflow-hidden"
-                  onClick={() => setShowPhotoModal(true)}
-                >
-                  <Image
-                    src={
-                      psicologo?.user?.[0]?.Images?.[0]?.Url ||
-                      "/assets/Profile.svg"
-                    }
-                    alt="Avatar"
-                    width={112}
-                    height={112}
-                    className="rounded-full object-cover w-full h-full"
-                    style={{ objectFit: 'cover' }}
-                  />
-                </button>
+                <div className="relative w-24 h-24 sm:w-28 sm:h-28">
+                  <button
+                    type="button"
+                    className="w-24 h-24 sm:w-28 sm:h-28 rounded-full border-2 border-[#606C76] flex items-center justify-center bg-white focus:outline-none overflow-hidden"
+                    onClick={() => setShowPhotoModal(true)}
+                  >
+                    <Image
+                      src={
+                        psicologo?.user?.[0]?.Images?.[0]?.Url ||
+                        "/assets/Profile.svg"
+                      }
+                      alt="Avatar"
+                      width={112}
+                      height={112}
+                      className="rounded-full object-cover w-full h-full"
+                      style={{ objectFit: 'cover' }}
+                    />
+                  </button>
+                  {psicologo?.user?.[0]?.Images?.[0]?.Id && (
+                    <button
+                      type="button"
+                      aria-label="Remover foto"
+                      className="absolute -top-1 -right-1 z-20 w-6 h-6 rounded-full bg-white text-[#E57373] border border-[#E57373] flex items-center justify-center shadow-sm hover:bg-[#FFE6E6] transition"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleRemoveImage();
+                      }}
+                      disabled={isImageBusy}
+                    >
+                      <FiX size={12} />
+                    </button>
+                  )}
+                </div>
                 <button
                   className="mt-2 text-[#8494E9] text-xs sm:text-sm flex items-center gap-1 hover:underline"
                   onClick={() => setShowPhotoModal(true)}
