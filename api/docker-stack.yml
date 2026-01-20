@@ -160,7 +160,7 @@ services:
       - source: estacao_api_env
         target: /run/secrets/estacao_api.env
         mode: 0444
-      - redis_password
+      - source: redis_password
         target: /run/secrets/redis_password
         mode: 0444
     environment:
@@ -224,7 +224,7 @@ services:
       - source: estacao_socket_env
         target: /run/secrets/estacao_socket.env
         mode: 0444
-      - redis_password
+      - source: redis_password
         target: /run/secrets/redis_password
         mode: 0444
     environment:
