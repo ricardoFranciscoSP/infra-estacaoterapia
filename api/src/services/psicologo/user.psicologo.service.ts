@@ -28,6 +28,33 @@ import {
     GrauInstrucao
 } from "../../types/user.update.types";
 
+const reviewSelectWithTitulo: Prisma.ReviewSelect = {
+    Id: true,
+    UserId: true,
+    PsicologoId: true,
+    Rating: true,
+    Titulo: true,
+    Comentario: true,
+    Status: true,
+    MostrarNaHome: true,
+    MostrarNaPsicologo: true,
+    CreatedAt: true,
+    UpdatedAt: true
+};
+
+const reviewSelectWithoutTitulo: Prisma.ReviewSelect = {
+    Id: true,
+    UserId: true,
+    PsicologoId: true,
+    Rating: true,
+    Comentario: true,
+    Status: true,
+    MostrarNaHome: true,
+    MostrarNaPsicologo: true,
+    CreatedAt: true,
+    UpdatedAt: true
+};
+
 const userPsicologoSelect = {
     Id: true,
     Nome: true,
@@ -88,34 +115,10 @@ const userPsicologoSelect = {
         }
     },
     ReviewsMade: {
-        select: {
-            Id: true,
-            UserId: true,
-            PsicologoId: true,
-            Rating: true,
-            Titulo: true,
-            Comentario: true,
-            Status: true,
-            MostrarNaHome: true,
-            MostrarNaPsicologo: true,
-            CreatedAt: true,
-            UpdatedAt: true
-        }
+        select: reviewSelectWithTitulo
     },
     ReviewsReceived: {
-        select: {
-            Id: true,
-            UserId: true,
-            PsicologoId: true,
-            Rating: true,
-            Titulo: true,
-            Comentario: true,
-            Status: true,
-            MostrarNaHome: true,
-            MostrarNaPsicologo: true,
-            CreatedAt: true,
-            UpdatedAt: true
-        }
+        select: reviewSelectWithTitulo
     },
     ProfessionalProfiles: {
         select: {
@@ -230,19 +233,74 @@ const userPsicologoSelect = {
     }
 } satisfies Prisma.UserSelect;
 
+const userPsicologoSelectLegacy: Prisma.UserSelect = {
+    ...userPsicologoSelect,
+    WhatsApp: false,
+    RacaCor: false,
+    ReviewsMade: {
+        select: reviewSelectWithoutTitulo
+    },
+    ReviewsReceived: {
+        select: reviewSelectWithoutTitulo
+    }
+};
+
+const isMissingColumnError = (error: unknown): boolean => {
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        return error.code === 'P2022';
+    }
+    if (error instanceof Error) {
+        const message = error.message.toLowerCase();
+        return message.includes('column') && message.includes('does not exist');
+    }
+    return false;
+};
+
 
 export class UserPsicologoService implements IUserPsicologoService {
     async fetchUsersPsicologo(userId: string): Promise<UserPsicologo[]> {
-        const psicologos = await prisma.user.findMany({
-            where: {
-                Id: userId,
-                Role: "Psychologist"
-            },
-            select: userPsicologoSelect
-        });
+        try {
+            const psicologos = await prisma.user.findMany({
+                where: {
+                    Id: userId,
+                    Role: "Psychologist"
+                },
+                select: userPsicologoSelect
+            });
 
-        // Se Address vier como array, converta para objeto ou ajuste o tipo UserPsicologo
-        const psicologosFormatted = psicologos.map((p) => {
+            return this.formatUserPsicologo(psicologos);
+        } catch (error) {
+            if (!isMissingColumnError(error)) {
+                throw error;
+            }
+
+            const psicologosLegacy = await prisma.user.findMany({
+                where: {
+                    Id: userId,
+                    Role: "Psychologist"
+                },
+                select: userPsicologoSelectLegacy
+            });
+
+            return this.formatUserPsicologo(psicologosLegacy, {
+                includeMissingFields: true
+            });
+        }
+    }
+
+    private formatUserPsicologo(
+        psicologos: Array<
+            Omit<UserPsicologo, "RacaCor" | "WhatsApp" | "ReviewsMade" | "ReviewsReceived"> & {
+                RacaCor?: string | null;
+                WhatsApp?: string | null;
+                ReviewsMade?: Array<{ Titulo?: string | null }>;
+                ReviewsReceived?: Array<{ Titulo?: string | null }>;
+            }
+        >,
+        options?: { includeMissingFields?: boolean }
+    ): UserPsicologo[] {
+        const includeMissingFields = options?.includeMissingFields === true;
+        return psicologos.map((p) => {
             const address = Array.isArray(p.Address) ? p.Address[0] : p.Address;
             const addressFormatted = address ? {
                 ...address,
@@ -258,19 +316,28 @@ export class UserPsicologoService implements IUserPsicologoService {
                 Cep: ''
             };
 
-            // Normaliza BillingAddress também (pode vir como array)
             const billingAddress = Array.isArray(p.BillingAddress) && p.BillingAddress.length > 0
                 ? p.BillingAddress[0]
                 : (p.BillingAddress || null);
 
+            const reviewsMade = p.ReviewsMade?.map((review) => ({
+                ...review,
+                ...(includeMissingFields ? { Titulo: review.Titulo ?? null } : {})
+            })) ?? [];
+            const reviewsReceived = p.ReviewsReceived?.map((review) => ({
+                ...review,
+                ...(includeMissingFields ? { Titulo: review.Titulo ?? null } : {})
+            })) ?? [];
+
             return {
                 ...p,
+                ...(includeMissingFields ? { RacaCor: p.RacaCor ?? null, WhatsApp: p.WhatsApp ?? null } : {}),
                 Address: addressFormatted,
-                BillingAddress: billingAddress
+                BillingAddress: billingAddress,
+                ReviewsMade: reviewsMade,
+                ReviewsReceived: reviewsReceived
             } as unknown as UserPsicologo;
         });
-
-        return psicologosFormatted;
     }
 
     async updateUserPsicologo(userId: string, data: Partial<UserPsicologo>): Promise<UserPsicologo | null> {

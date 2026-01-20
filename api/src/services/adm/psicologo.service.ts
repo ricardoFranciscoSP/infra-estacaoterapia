@@ -311,6 +311,12 @@ export class PsicologoService {
             'ReviewsMade'
         ];
 
+        const nonModelFields = [
+            'RatingPercent',
+            'RatingStatus',
+            'ProfilePercent',
+        ];
+
         const normalizeUserStatus = (status: string): string | undefined => {
             const normalized = status
                 .normalize("NFD")
@@ -361,7 +367,7 @@ export class PsicologoService {
                 continue;
             }
             // Permite todos os campos do User, exceto relações e Password
-            if (!relationFields.includes(key) && key !== 'Password') {
+            if (!relationFields.includes(key) && !nonModelFields.includes(key) && key !== 'Password') {
                 updateData[key] = data[key];
             }
         }
