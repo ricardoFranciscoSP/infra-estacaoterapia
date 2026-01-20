@@ -443,8 +443,8 @@ main() {
     SERVICES=(api redis socket pgbouncer)
     for service in "${SERVICES[@]}"; do
         IMAGE_PREFIX="estacaoterapia-$service"
-        # Lista todas as tags prd-* ordenadas, pega as antigas (mantém 2 mais recentes)
-        OLD_IMAGES=$(docker images --format "{{.Repository}}:{{.Tag}}" | grep "^$IMAGE_PREFIX:prd-" | sort -r | tail -n +3)
+        # Lista todas as tags latest/stable ordenadas, pega as antigas (mantém 2 mais recentes)
+        OLD_IMAGES=$(docker images --format "{{.Repository}}:{{.Tag}}" | grep "^$IMAGE_PREFIX:\(latest\|stable\)" | sort -r | tail -n +3)
         if [ -n "$OLD_IMAGES" ]; then
             echo "$OLD_IMAGES" | while read -r image; do
                 log_info "Removendo imagem antiga: $image"

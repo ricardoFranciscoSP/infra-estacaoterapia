@@ -31,7 +31,6 @@ TAG="${TIMESTAMP}-${GIT_HASH}"
 
 echo "==============================="
 echo "[LOG] Iniciando deploy.sh"
-echo "📦 Tag: prd-$TAG | Keep versions: $KEEP_VERSIONS"
 echo "   Clean deploy: $CLEAN_DEPLOY | Force build: $FORCE_BUILD | Update stateful: $UPDATE_STATEFUL"
 echo "Diretório atual: $(pwd)"
 echo "==============================="
@@ -123,131 +122,50 @@ else
 fi
 
 # ==============================
-# 5. BUILD IMAGENS COM VERSIONAMENTO
+# 5. BUILD IMAGENS (sempre latest/stable)
 # ==============================
 echo ""
-echo "[BUILD] Construindo imagens versionadas..."
+echo "[BUILD] Construindo imagens (sempre latest/stable)..."
 
-build_image() {
-  local name="$1"
-  local extra_tag="${2:-}"
-  local image_name="estacaoterapia-$name"
-  
-  echo "   📦 $image_name:prd-$TAG"
-  docker build \
-    ${FORCE_BUILD:+--no-cache} \
-    --platform linux/amd64 \
-    -t "$image_name:prd-$TAG" \
-    -f "Dockerfile.$name" . || {
-      echo "   ❌ Erro ao buildar $image_name"
-      exit 1
-    }
-  
-  # Tag como 'latest' também (para fácil referência)
-  docker tag "$image_name:prd-$TAG" "$image_name:latest"
-  if [ -n "$extra_tag" ]; then
-    docker tag "$image_name:prd-$TAG" "$image_name:$extra_tag"
-  fi
-  echo "   ✅ $image_name:prd-$TAG (também tagged como latest)"
-}
+docker build ${FORCE_BUILD:+--no-cache} --platform linux/amd64 -t estacaoterapia-api:latest -f Dockerfile.api . || { echo "❌ Erro ao buildar estacaoterapia-api"; exit 1; }
+docker build ${FORCE_BUILD:+--no-cache} --platform linux/amd64 -t estacaoterapia-socket:latest -f Dockerfile.socket . || { echo "❌ Erro ao buildar estacaoterapia-socket"; exit 1; }
 
 if [ "$UPDATE_STATEFUL" = true ]; then
-  build_image redis stable
+  docker build ${FORCE_BUILD:+--no-cache} --platform linux/amd64 -t estacaoterapia-redis:stable -f Dockerfile.redis . || { echo "❌ Erro ao buildar estacaoterapia-redis"; exit 1; }
+  docker build ${FORCE_BUILD:+--no-cache} --platform linux/amd64 -t estacaoterapia-pgbouncer:stable -f Dockerfile.pgbouncer . || { echo "❌ Erro ao buildar estacaoterapia-pgbouncer"; exit 1; }
 else
   if ! docker image inspect estacaoterapia-redis:stable >/dev/null 2>&1; then
     echo "⚠️  Imagem estacaoterapia-redis:stable não encontrada. Fazendo build inicial..."
-    build_image redis stable
+    docker build ${FORCE_BUILD:+--no-cache} --platform linux/amd64 -t estacaoterapia-redis:stable -f Dockerfile.redis . || { echo "❌ Erro ao buildar estacaoterapia-redis"; exit 1; }
   else
     echo "ℹ️  UPDATE_STATEFUL=false: mantendo redis:stable"
   fi
-fi
-build_image api
-build_image socket
-if [ "$UPDATE_STATEFUL" = true ]; then
-  build_image pgbouncer stable
-else
   if ! docker image inspect estacaoterapia-pgbouncer:stable >/dev/null 2>&1; then
     echo "⚠️  Imagem estacaoterapia-pgbouncer:stable não encontrada. Fazendo build inicial..."
-    build_image pgbouncer stable
+    docker build ${FORCE_BUILD:+--no-cache} --platform linux/amd64 -t estacaoterapia-pgbouncer:stable -f Dockerfile.pgbouncer . || { echo "❌ Erro ao buildar estacaoterapia-pgbouncer"; exit 1; }
   else
     echo "ℹ️  UPDATE_STATEFUL=false: mantendo pgbouncer:stable"
   fi
 fi
 
-# ==============================
-# 5.1 LIMPEZA DE VERSÕES ANTIGAS
-# ==============================
 echo ""
-echo "[CLEANUP] Removendo versões antigas (mantendo $KEEP_VERSIONS mais recentes)..."
-
-cleanup_old_images() {
-  local prefix="$1"
-  local to_remove
-  
-  # Listar tags prd-* ordenadas, pegar as antigas (skip as KEEP_VERSIONS mais recentes)
-  to_remove=$(docker images --format "{{.Repository}}:{{.Tag}}" | \
-    grep "^$prefix:prd-" | \
-    sort -r | \
-    tail -n +$((KEEP_VERSIONS + 1)))
-  
-  if [ -z "$to_remove" ]; then
-    echo "   ℹ️  Nenhuma versão antiga para remover ($prefix)"
-    return
-  fi
-  
-  echo "$to_remove" | while read -r image; do
-    echo "   🗑️  Removendo $image"
-    docker rmi "$image" 2>/dev/null || true
-  done
-}
-
-for service in redis api socket pgbouncer; do
-  cleanup_old_images "estacaoterapia-$service"
-done
-
-# Remove dangling images
-echo "   🧹 Removendo imagens órfãs..."
+echo "[CLEANUP] Removendo imagens órfãs..."
 docker image prune -f --filter "dangling=true" 2>/dev/null || true
 
 # ==============================
 # 6. DEPLOY
 # ==============================
 
-# Gera arquivo temporário do stack com a TAG substituída
-
-echo "[LOG] Gerando arquivo temporário do stack: $STACK_TMP"
-STACK_TMP="docker-stack-$TAG.yml"
-cp docker-stack.yml "$STACK_TMP"
-if [ $? -ne 0 ]; then
-  echo "❌ Erro ao copiar docker-stack.yml para $STACK_TMP"
-  exit 1
-fi
-echo "[LOG] Substituindo {{TAG}} por $TAG em $STACK_TMP"
-sed -i "s/{{TAG}}/$TAG/g" "$STACK_TMP"
-if [ $? -ne 0 ]; then
-  echo "❌ Erro ao substituir TAG no arquivo $STACK_TMP"
-  exit 1
-fi
-
-# Valida se a substituição foi feita corretamente
-if grep -q '{{TAG}}' "$STACK_TMP"; then
-  echo "❌ Erro: a variável {{TAG}} não foi substituída corretamente em $STACK_TMP. Abortando deploy."
-  exit 1
-fi
-echo "[LOG] Substituição da TAG concluída com sucesso."
-
-echo "[LOG] Iniciando deploy da stack com arquivo: $STACK_TMP"
-
-
+echo "[LOG] Iniciando deploy da stack com arquivo: docker-stack.yml"
 echo "📡 Deploy stack $STACK_NAME"
 docker stack deploy \
-  --compose-file "$STACK_TMP" \
+  --compose-file docker-stack.yml \
   --resolve-image always \
   "$STACK_NAME"
 DEPLOY_EXIT_CODE=$?
 if [ $DEPLOY_EXIT_CODE -ne 0 ]; then
   echo "❌ Erro ao executar docker stack deploy. Código de saída: $DEPLOY_EXIT_CODE"
-  echo "[LOG] Verifique o arquivo $STACK_TMP para possíveis erros de sintaxe ou variáveis não substituídas."
+  echo "[LOG] Verifique o arquivo docker-stack.yml para possíveis erros de sintaxe."
   exit 1
 else
   echo "[LOG] docker stack deploy executado com sucesso."
@@ -282,13 +200,12 @@ done
 # ==============================
 echo ""
 echo "[LOG] [CLEANUP] Finalizando..."
-rm -f "$STACK_TMP"
 
-# Mostrar versões ativas e disponíveis
+# Mostrar imagens ativas
 echo ""
-echo "📊 VERSÕES DISPONÍVEIS:"
+echo "📊 IMAGENS ATIVAS:"
 for service in redis api socket pgbouncer; do
-  versions=$(docker images --format "{{.Repository}}:{{.Tag}}" | grep "^estacaoterapia-$service:prd-" | sort -r | head -5)
+  versions=$(docker images --format "{{.Repository}}:{{.Tag}}" | grep "^estacaoterapia-$service:" | sort -r | head -5)
   if [ -n "$versions" ]; then
     echo ""
     echo "   estacaoterapia-$service:"
@@ -305,5 +222,5 @@ docker service ls --filter name="$STACK_NAME" --format "table {{.Name}}\t{{.Repl
 echo ""
 echo "[LOG] 💡 DICAS:"
 echo "   - Ver logs:  docker service logs estacaoterapia_api -f"
-echo "   - Revert:    docker service update --force --image estacaoterapia-api:prd-TAG estacaoterapia_api"
+echo "   - Revert:    docker service update --force --image estacaoterapia-api:latest estacaoterapia_api"
 echo "   - Versões:   docker images | grep estacaoterapia"

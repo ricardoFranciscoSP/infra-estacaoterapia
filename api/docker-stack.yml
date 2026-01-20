@@ -146,7 +146,7 @@ services:
   # API (4º)
   # =====================================
   api:
-    image: estacaoterapia-api:prd-{{TAG}}
+    image: estacaoterapia-api:latest
     user: 'deploy'
     entrypoint: ['/bin/sh', '/entrypoint.sh']
     command: ['node', 'dist/server.js']
@@ -206,7 +206,7 @@ services:
   # SOCKET SERVER (5º)
   # =====================================
   socket-server:
-    image: estacaoterapia-socket:prd-{{TAG}}
+    image: estacaoterapia-socket:latest
     user: 'deploy'
     entrypoint: ['/bin/sh', '/entrypoint.sh']
     command: ['node', 'dist/socket/server.js']
