@@ -121,6 +121,16 @@ mask_secret() {
   printf "%s...%s" "$(printf "%s" "$secret" | cut -c1-4)" "$(printf "%s" "$secret" | tail -c 3)"
 }
 
+url_encode() {
+  value="$1"
+  [ -z "$value" ] && echo "" && return 0
+  if command -v node >/dev/null 2>&1; then
+    node -e "process.stdout.write(encodeURIComponent(process.argv[1]))" "$value"
+  else
+    printf "%s" "$value"
+  fi
+}
+
 # =====================================================
 # API
 # =====================================================
@@ -166,8 +176,9 @@ start_api() {
 
   # DATABASE_URL
   if [ -n "$POSTGRES_USER" ] && [ -n "$POSTGRES_PASSWORD" ]; then
-    export DATABASE_URL="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${PG_HOST}:${PG_PORT}/${POSTGRES_DB}?schema=public"
-    export BACKUP_DATABASE_URL="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${PG_HOST_DIRECT}:${PG_PORT_DIRECT}/${POSTGRES_DB}?schema=public"
+    ENCODED_PG_PASSWORD="$(url_encode "$POSTGRES_PASSWORD")"
+    export DATABASE_URL="postgresql://${POSTGRES_USER}:${ENCODED_PG_PASSWORD}@${PG_HOST}:${PG_PORT}/${POSTGRES_DB}?schema=public"
+    export BACKUP_DATABASE_URL="postgresql://${POSTGRES_USER}:${ENCODED_PG_PASSWORD}@${PG_HOST_DIRECT}:${PG_PORT_DIRECT}/${POSTGRES_DB}?schema=public"
   fi
 
   # REDIS_URL
@@ -222,7 +233,8 @@ start_socket() {
   resolve_host_with_fallback "REDIS_HOST" "$REDIS_HOST" "" "tasks.redis redis estacaoterapia_redis" "Redis"
 
   if [ -n "$POSTGRES_USER" ] && [ -n "$POSTGRES_PASSWORD" ]; then
-    export DATABASE_URL="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${PG_HOST}:${PG_PORT}/${POSTGRES_DB}?schema=public"
+    ENCODED_PG_PASSWORD="$(url_encode "$POSTGRES_PASSWORD")"
+    export DATABASE_URL="postgresql://${POSTGRES_USER}:${ENCODED_PG_PASSWORD}@${PG_HOST}:${PG_PORT}/${POSTGRES_DB}?schema=public"
   fi
 
   if [ -n "$REDIS_PASSWORD" ]; then
