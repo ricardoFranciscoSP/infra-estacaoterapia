@@ -21,6 +21,7 @@ out/
 
 # Logs
 logs/
+!estacao/src/app/(adm-estacao)/adm-estacao/configuracoes/logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
@@ -49,6 +50,7 @@ temp/
 *.bak
 *.tar.gz
 backups/
+!estacao/src/app/(adm-estacao)/adm-estacao/configuracoes/backups/
 postgres_backup.tar.gz
 
 # Service account
@@ -70,3 +72,5 @@ backups/
 api/.git/
 estacao/.git/
 .md
+!estacao/src/app/(adm-estacao)/adm-estacao/configuracoes/logs/
+!estacao/src/app/(adm-estacao)/adm-estacao/configuracoes/backups/

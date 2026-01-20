@@ -41,7 +41,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobile = false, onClose, modul
       currentPath?.includes("/auditoria") ||
       currentPath?.includes("/permissoes") ||
       currentPath?.includes("/logs") ||
-      currentPath?.includes("/backups")
+      currentPath?.includes("/log-view")
     ) {
       setConfigOpen(true);
     }
@@ -225,7 +225,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobile = false, onClose, modul
               isActive(`${basePath}/auditoria`) ||
               isActive(`${basePath}/permissoes`) ||
               isActive(`${basePath}/configuracoes/gestao-documentos`) ||
-              isActive(`${basePath}/configuracoes/logs`) ||
+              isActive(`${basePath}/configuracoes/log-view`) ||
               isActive(`${basePath}/configuracoes/backups`);
             const relatoriosActive = 
               isActive(`${basePath}/relatorios`);
@@ -387,7 +387,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobile = false, onClose, modul
                             !isActive(`${basePath}/configuracoes/seguranca`) &&
                             !isActive(`${basePath}/auditoria`) &&
                             !isActive(`${basePath}/permissoes`) &&
-                            !isActive(`${basePath}/configuracoes/logs`) &&
+                            !isActive(`${basePath}/configuracoes/log-view`) &&
                             !isActive(`${basePath}/configuracoes/backups`)
                               ? "text-[#8494E9] bg-[#F2F4FD]"
                               : "text-[#6C757D]"
@@ -428,9 +428,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobile = false, onClose, modul
                       </li>
                       <li>
                         <Link
-                          href={`${basePath}/configuracoes/logs`}
+                          href={`${basePath}/configuracoes/log-view`}
                           className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded hover:bg-[#F2F4FD] ${
-                            isActive(`${basePath}/configuracoes/logs`)
+                            isActive(`${basePath}/configuracoes/log-view`)
                               ? "text-[#8494E9] bg-[#F2F4FD]"
                               : "text-[#6C757D]"
                           }`}
