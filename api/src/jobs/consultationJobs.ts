@@ -442,8 +442,13 @@ export async function startConsultationWorker() {
                             // Gera os tokens Agora para ambos os participantes exatamente no horário da consulta
                             // Alinhado ao horário do servidor (server-time)
                             const channelName = reservaSessao.AgoraChannel ?? `sala_${consultationId}`;
+                            let patientToken = reservaSessao.AgoraTokenPatient ?? null;
+                            let psychologistToken = reservaSessao.AgoraTokenPsychologist ?? null;
+                            const hasPatientToken = !!patientToken?.trim();
+                            const hasPsychologistToken = !!psychologistToken?.trim();
 
                             try {
+                                if (!hasPatientToken || !hasPsychologistToken) {
                                 // Gera UIDs se ainda não existirem
                                 let patientUid = reservaSessao.Uid;
                                 let psychologistUid = reservaSessao.UidPsychologist;
@@ -460,10 +465,10 @@ export async function startConsultationWorker() {
                                 }
 
                                 // Gera token para o paciente
-                                const patientToken = await agoraService.generateToken(channelName, patientUid, 'patient');
+                                patientToken = await agoraService.generateToken(channelName, patientUid, 'patient');
 
                                 // Gera token para o psicólogo
-                                const psychologistToken = await agoraService.generateToken(channelName, psychologistUid, 'psychologist');
+                                psychologistToken = await agoraService.generateToken(channelName, psychologistUid, 'psychologist');
 
                                 // Atualiza a reservaSessao com os tokens gerados
                                 await prisma.reservaSessao.update({
@@ -476,11 +481,16 @@ export async function startConsultationWorker() {
                                     }
                                 });
 
-                                // Registra tokens no Redis
-                                await roomService.registerParticipantJoin(consultationId, 'patient', patientToken);
-                                await roomService.registerParticipantJoin(consultationId, 'psychologist', psychologistToken);
-
                                 console.log(`✅ [ConsultationWorker] Tokens gerados para consulta ${consultationId} exatamente no horário da consulta`);
+                                } else {
+                                    console.log(`ℹ️ [ConsultationWorker] Tokens Agora já existem para consulta ${consultationId}, pulando geração`);
+                                }
+
+                                // Registra tokens no Redis (garante sincronização)
+                                if (patientToken && psychologistToken) {
+                                    await roomService.registerParticipantJoin(consultationId, 'patient', patientToken);
+                                    await roomService.registerParticipantJoin(consultationId, 'psychologist', psychologistToken);
+                                }
 
                                 // Atualiza status da consulta para EmAndamento
                                 try {
@@ -510,7 +520,7 @@ export async function startConsultationWorker() {
                                 // Notifica ambos sobre o início da consulta
                                 await wsNotify.emitConsultation(`consultation:${consultationId}`, {
                                     status: "started",
-                                    tokensReady: true
+                                    tokensReady: !!(patientToken && psychologistToken)
                                 });
 
                                 // Publica via Event Sync para Socket.io
@@ -519,7 +529,7 @@ export async function startConsultationWorker() {
                                     event: 'consultation:started',
                                     payload: {
                                         status: "started",
-                                        tokensReady: true,
+                                        tokensReady: !!(patientToken && psychologistToken),
                                         patientToken: patientToken,
                                         psychologistToken: psychologistToken
                                     }

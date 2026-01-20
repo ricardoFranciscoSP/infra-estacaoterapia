@@ -144,10 +144,52 @@ export async function scheduleAgoraTokenGenerationWithFallback(
         }
 
         const now = dayjs.tz(dayjs(), BRASILIA_TIMEZONE);
+        const runAt = timeInfo.scheduledTime.toDate();
 
         // Calcula o delay: tokens devem ser gerados EXATAMENTE no início da reserva (ScheduledAt)
         // O job será executado no horário exato do ScheduledAt
         const delayMs = Math.max(0, timeInfo.scheduledTime.valueOf() - now.valueOf());
+
+        // Registra/atualiza o job no banco (auditoria + rastreio)
+        const payload = {
+            consultaId,
+            scheduledAt: timeInfo.scheduledTime.format('YYYY-MM-DD HH:mm:ss'),
+            source: timeInfo.source,
+            sourceId: timeInfo.sourceId,
+            queue: 'webhookProcessor'
+        };
+
+        const existingJob = await prisma.job.findFirst({
+            where: {
+                Type: 'agora_tokens',
+                Status: { in: ['pending', 'processing'] },
+                Payload: {
+                    path: ['consultaId'],
+                    equals: consultaId
+                }
+            }
+        });
+
+        const dbJob = existingJob
+            ? await prisma.job.update({
+                where: { Id: existingJob.Id },
+                data: {
+                    Payload: payload,
+                    RunAt: runAt,
+                    Status: 'pending',
+                    Attempts: 0,
+                    LastError: null
+                }
+            })
+            : await prisma.job.create({
+                data: {
+                    Type: 'agora_tokens',
+                    Payload: payload,
+                    RunAt: runAt,
+                    Status: 'pending',
+                    MaxAttempts: 3
+                }
+            });
 
         console.log(
             `[scheduleAgoraTokenWithFallback] Agendando geração de tokens para consulta ${consultaId}`,
@@ -159,6 +201,7 @@ export async function scheduleAgoraTokenGenerationWithFallback(
                 delayMs,
                 delaySeconds: Math.floor(delayMs / 1000),
                 delayMinutes: Math.floor(delayMs / (1000 * 60)),
+                jobId: dbJob.Id
             }
         );
 
@@ -194,7 +237,7 @@ export async function scheduleAgoraTokenGenerationWithFallback(
                 const { generateAgoraTokensForConsulta } = await import(
                     './scheduleAgoraToken'
                 );
-                return await generateAgoraTokensForConsulta(consultaId);
+                return await generateAgoraTokensForConsulta(consultaId, dbJob.Id);
             }
 
             // ✅ Agenda para o horário EXATO do ScheduledAt (não antes, não depois)
@@ -206,7 +249,7 @@ export async function scheduleAgoraTokenGenerationWithFallback(
             // Agenda no Redis
             await webhookQueue.add(
                 'generateAgoraTokens',
-                { consultaId },
+                { consultaId, jobId: dbJob.Id },
                 {
                     delay: delayMs,
                     attempts: 3,
@@ -214,7 +257,7 @@ export async function scheduleAgoraTokenGenerationWithFallback(
                         type: 'exponential',
                         delay: 5000,
                     },
-                    jobId: `agora-token-${consultaId}`,
+                    jobId: `agora-token:${dbJob.Id}`,
                     removeOnComplete: { age: 3600 },
                     removeOnFail: { age: 86400 },
                 }

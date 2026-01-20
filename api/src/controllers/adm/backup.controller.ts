@@ -6,6 +6,16 @@ import { BackupService } from "../../services/adm/backup.service";
 import { scheduleAutomaticBackupGeneration } from "../../jobs/jobGerarBackupAutomatica";
 
 export class BackupController {
+  private getFileNameParam(fileName: string | string[] | undefined): string {
+    if (typeof fileName === "string") {
+      return fileName;
+    }
+    if (Array.isArray(fileName)) {
+      throw Object.assign(new Error("Nome do arquivo inválido"), { status: 400 });
+    }
+    throw Object.assign(new Error("Nome do arquivo é obrigatório"), { status: 400 });
+  }
+
   async getSchedule(req: Request, res: Response) {
     const config = await prisma.configuracao.findFirst({
       select: {
@@ -73,13 +83,13 @@ export class BackupController {
   }
 
   async download(req: Request, res: Response) {
-    const { fileName } = req.params;
+    const fileName = this.getFileNameParam(req.params.fileName);
     const filePath = await BackupService.getBackupFilePath(fileName);
     return res.download(filePath, path.basename(filePath));
   }
 
   async delete(req: Request, res: Response) {
-    const { fileName } = req.params;
+    const fileName = this.getFileNameParam(req.params.fileName);
     await BackupService.deleteBackup(fileName);
     return res.json({ message: "Backup removido com sucesso" });
   }

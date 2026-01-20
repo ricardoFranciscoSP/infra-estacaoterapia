@@ -8,7 +8,7 @@ import dynamic from "next/dynamic";
 
 const PhoneInput = dynamic(() => import('react-phone-input-2'), { ssr: false });
 import 'react-phone-input-2/lib/style.css';
-import type { Psicologo, PsicologoUpdate } from "@/types/psicologoTypes";
+import type { Psicologo, PsicologoUpdate, ReviewsReceived } from "@/types/psicologoTypes";
 import { useDocuments, type Document as DocumentItem } from "@/hooks/useDocuments";
 import { documentsFilesService } from "@/services/documentsFiles";
 import { formatDateBR } from "@/utils/formatarDataHora";

@@ -36,7 +36,8 @@ export async function scheduleAgoraTokenGeneration(
  * @returns Promise<boolean> - true se tokens foram gerados com sucesso
  */
 export async function generateAgoraTokensForConsulta(
-    consultaId: string
+    consultaId: string,
+    jobId?: string
 ): Promise<boolean> {
     try {
         // Busca a reserva de sessão e dados relacionados
@@ -51,6 +52,12 @@ export async function generateAgoraTokensForConsulta(
             console.warn(
                 `[generateAgoraTokensForConsulta] ReservaSessao não encontrada para consulta ${consultaId}`
             );
+            if (jobId) {
+                await prisma.job.update({
+                    where: { Id: jobId },
+                    data: { Status: "failed", LastError: "ReservaSessao não encontrada" }
+                }).catch(() => undefined);
+            }
             return false;
         }
 
@@ -62,6 +69,12 @@ export async function generateAgoraTokensForConsulta(
             console.log(
                 `[generateAgoraTokensForConsulta] Tokens já existem para consulta ${consultaId}, pulando geração`
             );
+            if (jobId) {
+                await prisma.job.update({
+                    where: { Id: jobId },
+                    data: { Status: "completed" }
+                }).catch(() => undefined);
+            }
             return true;
         }
 
@@ -113,6 +126,25 @@ export async function generateAgoraTokensForConsulta(
             },
         });
 
+        // Atualiza status das tabelas (Consulta, ReservaSessao, Agenda) para EmAndamento
+        try {
+            const { ConsultaStatusService } = await import('../services/consultaStatus.service');
+            const statusService = new ConsultaStatusService();
+            await statusService.iniciarConsulta(consultaId);
+        } catch (statusError) {
+            console.error(
+                `❌ [generateAgoraTokensForConsulta] Erro ao atualizar status para EmAndamento:`,
+                statusError
+            );
+        }
+
+        if (jobId) {
+            await prisma.job.update({
+                where: { Id: jobId },
+                data: { Status: "completed" }
+            }).catch(() => undefined);
+        }
+
         console.log(
             `✅ [generateAgoraTokensForConsulta] Tokens gerados com sucesso para consulta ${consultaId}`
         );
@@ -122,6 +154,15 @@ export async function generateAgoraTokensForConsulta(
             `❌ [generateAgoraTokensForConsulta] Erro ao gerar tokens para consulta ${consultaId}:`,
             error
         );
+        if (jobId) {
+            await prisma.job.update({
+                where: { Id: jobId },
+                data: {
+                    Status: "failed",
+                    LastError: error instanceof Error ? error.message : String(error)
+                }
+            }).catch(() => undefined);
+        }
         throw error;
     }
 }

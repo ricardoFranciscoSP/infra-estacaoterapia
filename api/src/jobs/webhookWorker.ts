@@ -85,13 +85,19 @@ export async function startWebhookWorker() {
             // Processa geração de tokens Agora
             if (job.name === 'generateAgoraTokens') {
                 try {
-                    const { consultaId } = job.data as { consultaId: string };
+                    const { consultaId, jobId } = job.data as { consultaId: string; jobId?: string };
                     if (!consultaId) {
                         throw new Error('consultaId ausente no job generateAgoraTokens');
                     }
 
                     const { generateAgoraTokensForConsulta } = await import('../utils/scheduleAgoraToken');
-                    await generateAgoraTokensForConsulta(consultaId);
+                    if (jobId) {
+                        await prisma.job.update({
+                            where: { Id: jobId },
+                            data: { Status: "processing" }
+                        }).catch(() => undefined);
+                    }
+                    await generateAgoraTokensForConsulta(consultaId, jobId);
 
                     const duration = Date.now() - jobStartTime;
                     console.log(`✅ [WebhookWorker] Tokens Agora gerados (generateAgoraTokens) para consulta ${consultaId} em ${duration}ms`);

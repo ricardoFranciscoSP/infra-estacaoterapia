@@ -202,12 +202,6 @@ function PsicologosPage() {
     atendimentos,
     data,
     periodo,
-    hasIntersection,
-    normalizeFilterValue,
-    normalizarStatus,
-    periodoRange,
-    toMinutes,
-    ymd,
   ]);
 
   // Aplica ordenação aos psicólogos
