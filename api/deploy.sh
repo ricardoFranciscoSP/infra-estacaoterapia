@@ -61,6 +61,7 @@ if [ "$CLEAN_DEPLOY" = true ]; then
   sleep 10
 fi
 
+
 # ==============================
 # 3. SECRETS (PRODUÇÃO SAFE)
 # ==============================
@@ -72,27 +73,32 @@ create_secret_if_missing() {
     return
   fi
 
+  if [ ! -f "$file" ]; then
+    echo "❌ Arquivo de secret não encontrado: $file"
+    exit 1
+  fi
+
   docker secret create "$name" "$file"
   echo "✅ Secret $name criado"
 }
 
+# Secrets principais
 create_secret_if_missing postgres_env "$SECRETS_DIR/postgres.env"
 create_secret_if_missing estacao_api_env "$SECRETS_DIR/estacao_api.env"
 create_secret_if_missing estacao_socket_env "$SECRETS_DIR/estacao_socket.env"
 create_secret_if_missing pgbouncer.ini "/opt/secrets/pgbouncer/pgbouncer.ini"
 create_secret_if_missing userlist.txt "/opt/secrets/pgbouncer/userlist.txt"
 
-# ==============================
-# Redis password (especial)
-# ==============================
+# Secret redis_password (extraído do estacao_api.env ou estacao_socket.env se não existir)
 if ! docker secret inspect redis_password >/dev/null 2>&1; then
   REDIS_PASS="$(grep -E '^REDIS_PASSWORD=' "$SECRETS_DIR/estacao_api.env" | cut -d= -f2- | tr -d '\r')"
-
   if [ -z "$REDIS_PASS" ]; then
-    echo "❌ REDIS_PASSWORD vazio em estacao_api.env"
+    REDIS_PASS="$(grep -E '^REDIS_PASSWORD=' "$SECRETS_DIR/estacao_socket.env" | cut -d= -f2- | tr -d '\r')"
+  fi
+  if [ -z "$REDIS_PASS" ]; then
+    echo "❌ REDIS_PASSWORD vazio em estacao_api.env e estacao_socket.env"
     exit 1
   fi
-
   printf '%s' "$REDIS_PASS" | docker secret create redis_password -
   echo "✅ Secret redis_password criado"
 else
