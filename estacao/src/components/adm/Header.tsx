@@ -20,6 +20,11 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSidebarMobile }) => {
   const buttonRef = useRef<HTMLButtonElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
   const basePath = useMemo(() => (user?.Role === "Finance" ? "/adm-finance" : "/adm-estacao"), [user?.Role]);
+  const perfilHref = useMemo(() => {
+    if (user?.Role === "Finance") return "/adm-finance/perfil";
+    if (user?.Role === "Admin") return "/adm-estacao/perfil";
+    return "/perfil";
+  }, [user?.Role]);
 
   // Hook de notificações
   const {
@@ -154,7 +159,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSidebarMobile }) => {
           </button>
           {submenuOpen && (
             <div className="absolute right-0 top-10 sm:top-12 md:top-14 bg-white border border-[#E5E9FA] rounded shadow-md w-36 sm:w-40 z-10">
-              <a href="/perfil" className="block px-3 sm:px-4 py-2 text-xs sm:text-sm text-[#212529] hover:bg-[#F2F4FD]">Perfil</a>
+              <a href={perfilHref} className="block px-3 sm:px-4 py-2 text-xs sm:text-sm text-[#212529] hover:bg-[#F2F4FD]">Perfil</a>
               <button
                 onClick={logout}
                 className="w-full text-left block px-3 sm:px-4 py-2 text-xs sm:text-sm text-[#212529] hover:bg-[#F2F4FD]"
