@@ -38,6 +38,24 @@ load_secrets() {
 }
 
 # =========================
+# Validação de secrets
+# =========================
+require_secret_file() {
+  file="$1"
+  name="$2"
+
+  if [ -z "$file" ] || [ ! -f "$file" ]; then
+    echo "❌ Secret obrigatório não encontrado: $name ($file)"
+    exit 1
+  fi
+
+  if [ ! -r "$file" ]; then
+    echo "❌ Sem permissão para ler secret: $name ($file)"
+    exit 1
+  fi
+}
+
+# =========================
 # Diagnóstico simples (não bloqueante)
 # =========================
 check_port() {
@@ -134,6 +152,9 @@ mask_secret() {
 start_api() {
   echo "🚀 Iniciando API"
 
+  require_secret_file /run/secrets/estacao_api.env "estacao_api.env"
+  require_secret_file /run/secrets/redis_password "redis_password"
+
   load_secrets /run/secrets/estacao_api.env
 
   NODE_ENV="${NODE_ENV:-production}"
@@ -221,6 +242,9 @@ start_api() {
 # =========================
 start_socket() {
   echo "🚀 Iniciando Socket Server"
+
+  require_secret_file /run/secrets/estacao_socket.env "estacao_socket.env"
+  require_secret_file /run/secrets/redis_password "redis_password"
 
   load_secrets /run/secrets/estacao_socket.env
 

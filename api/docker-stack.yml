@@ -15,7 +15,9 @@ services:
   postgres:
     image: postgres:16-alpine
     secrets:
-      - postgres_env
+      - source: postgres_env
+        target: /run/secrets/postgres_env
+        mode: 0444
     environment:
       PGDATA: /var/lib/postgresql/data/pgdata
     ports:
@@ -60,7 +62,9 @@ services:
   redis:
     image: estacaoterapia-redis:stable
     secrets:
-      - redis_password
+      - source: redis_password
+        target: /run/secrets/redis_password
+        mode: 0444
     volumes:
       - redis_data:/data
     networks:
@@ -107,8 +111,10 @@ services:
     secrets:
       - source: pgbouncer.ini
         target: /run/secrets/pgbouncer.ini
+        mode: 0444
       - source: userlist.txt
         target: /run/secrets/userlist.txt
+        mode: 0444
     environment:
       PG_HOST: postgres
       PG_PORT: '5432'
@@ -152,10 +158,14 @@ services:
     command: ['node', 'dist/server.js']
     secrets:
       - source: estacao_api_env
-        target: estacao_api.env
+        target: /run/secrets/estacao_api.env
+        mode: 0444
       - redis_password
+        target: /run/secrets/redis_password
+        mode: 0444
     environment:
       NODE_ENV: production
+      PORT: '3333'
       NODE_OPTIONS: '--max-old-space-size=2048'
       PG_HOST: tasks.pgbouncer
       PG_PORT: '6432'
@@ -212,8 +222,11 @@ services:
     command: ['node', 'dist/socket/server.js']
     secrets:
       - source: estacao_socket_env
-        target: estacao_socket.env
+        target: /run/secrets/estacao_socket.env
+        mode: 0444
       - redis_password
+        target: /run/secrets/redis_password
+        mode: 0444
     environment:
       NODE_ENV: production
       PORT: '3334'
