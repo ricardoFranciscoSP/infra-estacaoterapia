@@ -50,8 +50,9 @@ export class AuthController {
       // Registrar auditoria de login (sucesso ou falha)
       try {
         const { logLogin } = await import('../utils/auditLogger.util');
+        const auditUserId = result.user?.Id || result.userId;
         await logLogin(
-          result.success && result.user ? result.user.Id : 'system',
+          auditUserId,
           identifier || 'unknown',
           result.success,
           ip,

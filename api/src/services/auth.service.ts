@@ -1087,10 +1087,16 @@ export class AuthService implements IAuthService {
     // OUTROS MÉTODOS 
     // ========================
 
-    async login(identifier: string, password: string, ip?: string, userAgent?: string): Promise<{ success: boolean; message: string; user?: User }> {
+    async login(
+        identifier: string,
+        password: string,
+        ip?: string,
+        userAgent?: string
+    ): Promise<{ success: boolean; message: string; user?: User; userId?: string }> {
         let user: User | null = null;
         let success = false;
         let message = '';
+        const fail = (msg: string) => ({ success: false, message: msg, userId: user?.Id });
         try {
             // Debug: Log da DATABASE_URL (sem senha) para comparar com local
             if (process.env.DATABASE_URL) {
@@ -1105,7 +1111,7 @@ export class AuthService implements IAuthService {
 
             if (!identifier || !password) {
                 message = 'Por favor, preencha todos os campos obrigatórios.';
-                return { success: false, message };
+                return fail(message);
             }
 
             const originalIdentifier = identifier;
@@ -1158,7 +1164,7 @@ export class AuthService implements IAuthService {
                 console.error('[LOGIN] Tamanho do hash:', user.Password?.length, 'Esperado: 60');
                 // NUNCA logar o hash em si
                 message = 'Usuário ou senha incorretos.';
-                return { success: false, message };
+                return fail(message);
             }
 
             // Garante que o hash seja uma string pura
@@ -1191,7 +1197,7 @@ export class AuthService implements IAuthService {
 
             if (!isMatch) {
                 message = 'Usuário ou senha incorretos.';
-                return { success: false, message };
+                return fail(message);
             }
 
             // Validação de tipo de identificador usado no login
@@ -1213,13 +1219,13 @@ export class AuthService implements IAuthService {
 
                 if (!isCrpMatch && !isEmail) {
                     message = 'Psicólogo deve fazer login com CRP ou email cadastrado.';
-                    return { success: false, message };
+                    return fail(message);
                 }
             }
 
             if ((user.Role === 'Admin' || user.Role === 'Patient') && user.Email !== identifier && user.Telefone !== identifier) {
                 message = 'Paciente deve fazer login com email ou telefone cadastrado.';
-                return { success: false, message };
+                return fail(message);
             }
 
             const statusKey = String(user.Status || '')
@@ -1229,7 +1235,7 @@ export class AuthService implements IAuthService {
                 .replace(/[^A-Z]/g, "");
             if (statusKey === "INATIVO") {
                 message = "Você não tem acesso à plataforma. Entre em contato com o suporte.";
-                return { success: false, message };
+                return fail(message);
             }
 
             const { Password: _password, ...userWithoutPassword } = user;
@@ -1276,7 +1282,7 @@ export class AuthService implements IAuthService {
                     Message: errorMessage || 'Erro desconhecido no login',
                 }
             });
-            return { success: false, message: 'Erro interno ao tentar login.' };
+            return { success: false, message: 'Erro interno ao tentar login.', userId: user?.Id };
         }
     }
 

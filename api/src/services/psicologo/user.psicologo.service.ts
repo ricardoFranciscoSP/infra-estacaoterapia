@@ -28,6 +28,208 @@ import {
     GrauInstrucao
 } from "../../types/user.update.types";
 
+const userPsicologoSelect = {
+    Id: true,
+    Nome: true,
+    Email: true,
+    Cpf: true,
+    Crp: true,
+    GoogleId: true,
+    Telefone: true,
+    WhatsApp: true,
+    DataNascimento: true,
+    Sexo: true,
+    RacaCor: true,
+    Status: true,
+    Role: true,
+    DataAprovacao: true,
+    Pronome: true,
+    Rg: true,
+    AssinaturaContrato: true,
+    twoFASecret: true,
+    isTwoFAEnabled: true,
+    Address: {
+        select: {
+            Id: true,
+            UserId: true,
+            Rua: true,
+            Numero: true,
+            Complemento: true,
+            Bairro: true,
+            Cidade: true,
+            Estado: true,
+            Cep: true,
+            CreatedAt: true,
+            UpdatedAt: true
+        }
+    },
+    BillingAddress: {
+        select: {
+            Id: true,
+            UserId: true,
+            Rua: true,
+            Numero: true,
+            Complemento: true,
+            Bairro: true,
+            Cidade: true,
+            Estado: true,
+            Cep: true,
+            CreatedAt: true,
+            UpdatedAt: true
+        }
+    },
+    Images: {
+        select: {
+            Id: true,
+            UserId: true,
+            Url: true,
+            CreatedAt: true,
+            UpdatedAt: true
+        }
+    },
+    ReviewsMade: {
+        select: {
+            Id: true,
+            UserId: true,
+            PsicologoId: true,
+            Rating: true,
+            Titulo: true,
+            Comentario: true,
+            Status: true,
+            MostrarNaHome: true,
+            MostrarNaPsicologo: true,
+            CreatedAt: true,
+            UpdatedAt: true
+        }
+    },
+    ReviewsReceived: {
+        select: {
+            Id: true,
+            UserId: true,
+            PsicologoId: true,
+            Rating: true,
+            Titulo: true,
+            Comentario: true,
+            Status: true,
+            MostrarNaHome: true,
+            MostrarNaPsicologo: true,
+            CreatedAt: true,
+            UpdatedAt: true
+        }
+    },
+    ProfessionalProfiles: {
+        select: {
+            Id: true,
+            TipoPessoaJuridico: true,
+            TipoAtendimento: true,
+            ExperienciaClinica: true,
+            Idiomas: true,
+            SobreMim: true,
+            Abordagens: true,
+            Queixas: true,
+            Status: true,
+            CreatedAt: true,
+            UpdatedAt: true,
+            AreasAtuacao: true,
+            DadosBancarios: {
+                select: {
+                    Id: true,
+                    PessoalJuridicaId: true,
+                    PsicologoAutonomoId: true,
+                    ChavePix: true,
+                    CreatedAt: true,
+                    UpdatedAt: true
+                }
+            },
+            Formacoes: {
+                select: {
+                    Id: true,
+                    ProfessionalProfileId: true,
+                    TipoFormacao: true,
+                    Instituicao: true,
+                    Curso: true,
+                    Status: true,
+                    DataInicio: true,
+                    DataConclusao: true,
+                    CreatedAt: true,
+                    UpdatedAt: true
+                }
+            },
+            Documents: {
+                select: {
+                    Id: true,
+                    ProfessionalProfileId: true,
+                    Url: true,
+                    Type: true,
+                    Description: true,
+                    CreatedAt: true,
+                    UpdatedAt: true
+                }
+            }
+        }
+    },
+    PessoalJuridica: {
+        select: {
+            Id: true,
+            CNPJ: true,
+            RazaoSocial: true,
+            NomeFantasia: true,
+            InscricaoEstadual: true,
+            SimplesNacional: true,
+            CreatedAt: true,
+            UpdatedAt: true,
+            DadosBancarios: {
+                select: {
+                    Id: true,
+                    PessoalJuridicaId: true,
+                    ChavePix: true,
+                    CreatedAt: true,
+                    UpdatedAt: true
+                }
+            }
+        }
+    },
+    Document: {
+        select: {
+            Id: true,
+            Url: true,
+            Type: true,
+            Description: true,
+            DataHoraAceite: true,
+            IpNavegador: true,
+            AssinaturaDigital: true,
+            CreatedAt: true,
+            UpdatedAt: true
+        }
+    },
+    Solicitacoes: {
+        select: {
+            Id: true,
+            Title: true,
+            Tipo: true,
+            Status: true,
+            Protocol: true,
+            Descricao: true,
+            Documentos: true,
+            Log: true,
+            SLA: true,
+            CreatedAt: true,
+            UpdatedAt: true
+        }
+    },
+    LoginLog: {
+        select: {
+            Id: true,
+            Email: true,
+            Ip: true,
+            UserAgent: true,
+            Success: true,
+            Message: true,
+            CreatedAt: true
+        }
+    }
+} satisfies Prisma.UserSelect;
+
 
 export class UserPsicologoService implements IUserPsicologoService {
     async fetchUsersPsicologo(userId: string): Promise<UserPsicologo[]> {
@@ -36,28 +238,7 @@ export class UserPsicologoService implements IUserPsicologoService {
                 Id: userId,
                 Role: "Psychologist"
             },
-            include: {
-                Address: true,
-                BillingAddress: true,
-                Images: true,
-                ReviewsMade: true,
-                ReviewsReceived: true,
-                ProfessionalProfiles: {
-                    include: {
-                        Documents: true,
-                        Formacoes: true,
-                        DadosBancarios: true
-                    }
-                },
-                PessoalJuridica: {
-                    include: {
-                        DadosBancarios: true
-                    }
-                },
-                Document: true,
-                Solicitacoes: true,
-                LoginLog: true
-            }
+            select: userPsicologoSelect
         });
 
         // Se Address vier como array, converta para objeto ou ajuste o tipo UserPsicologo
@@ -918,28 +1099,7 @@ export class UserPsicologoService implements IUserPsicologoService {
                 // Busca o usuário atualizado para calcular o percentual e atualizar o Status
                 const updatedUser = await tx.user.findUnique({
                     where: { Id: userId },
-                    include: {
-                        Address: true,
-                        BillingAddress: true,
-                        Images: true,
-                        ReviewsMade: true,
-                        ReviewsReceived: true,
-                        ProfessionalProfiles: {
-                            include: {
-                                Documents: true,
-                                Formacoes: true,
-                                DadosBancarios: true
-                            }
-                        },
-                        PessoalJuridica: {
-                            include: {
-                                DadosBancarios: true
-                            }
-                        },
-                        Document: true,
-                        Solicitacoes: true,
-                        LoginLog: true
-                    }
+                    select: userPsicologoSelect
                 });
 
                 // Calcula o percentual de preenchimento e atualiza o Status se necessário
@@ -1032,27 +1192,7 @@ export class UserPsicologoService implements IUserPsicologoService {
                 // Retorna o usuário atualizado com todos os relacionamentos
                 const user = await tx.user.findUnique({
                     where: { Id: userId },
-                    include: {
-                        Address: true,
-                        BillingAddress: true,
-                        Images: true,
-                        ReviewsMade: true,
-                        ReviewsReceived: true,
-                        ProfessionalProfiles: {
-                            include: {
-                                Documents: true,
-                                Formacoes: true
-                            }
-                        },
-                        PessoalJuridica: {
-                            include: {
-                                DadosBancarios: true
-                            }
-                        },
-                        Document: true,
-                        Solicitacoes: true,
-                        LoginLog: true
-                    }
+                    select: userPsicologoSelect
                 });
 
                 if (!user) return null;
@@ -1187,12 +1327,20 @@ export class UserPsicologoService implements IUserPsicologoService {
             // Busca o usuário e seus relacionamentos
             const user = await tx.user.findUnique({
                 where: { Id: userId },
-                include: {
+                select: {
+                    Id: true,
                     ProfessionalProfiles: {
-                        include: { DadosBancarios: true }
+                        select: {
+                            Id: true,
+                            TipoPessoaJuridico: true,
+                            DadosBancarios: { select: { Id: true } }
+                        }
                     },
                     PessoalJuridica: {
-                        include: { DadosBancarios: true }
+                        select: {
+                            Id: true,
+                            DadosBancarios: { select: { Id: true } }
+                        }
                     }
                 }
             });
@@ -1291,7 +1439,10 @@ export class UserPsicologoService implements IUserPsicologoService {
         return await prisma.$transaction(async (tx) => {
             const user = await tx.user.findUnique({
                 where: { Id: userId },
-                include: { ProfessionalProfiles: true }
+                select: {
+                    Id: true,
+                    ProfessionalProfiles: { select: { Id: true } }
+                }
             });
 
             if (!user) throw new Error("Usuário não encontrado");
@@ -1319,7 +1470,10 @@ export class UserPsicologoService implements IUserPsicologoService {
         return await prisma.$transaction(async (tx) => {
             const user = await tx.user.findUnique({
                 where: { Id: userId },
-                include: { ProfessionalProfiles: true }
+                select: {
+                    Id: true,
+                    ProfessionalProfiles: { select: { Id: true } }
+                }
             });
 
             if (!user) throw new Error("Usuário não encontrado");
@@ -1404,7 +1558,10 @@ export class UserPsicologoService implements IUserPsicologoService {
                 // Atualiza BillingAddress
                 const user = await tx.user.findUnique({
                     where: { Id: userId },
-                    include: { PessoalJuridica: true }
+                    select: {
+                        Id: true,
+                        PessoalJuridica: { select: { Id: true } }
+                    }
                 });
 
                 if (!user?.PessoalJuridica) {
@@ -1484,7 +1641,10 @@ export class UserPsicologoService implements IUserPsicologoService {
         return await prisma.$transaction(async (tx) => {
             const user = await tx.user.findUnique({
                 where: { Id: userId },
-                include: { PessoalJuridica: true }
+                select: {
+                    Id: true,
+                    PessoalJuridica: { select: { Id: true } }
+                }
             });
 
             if (!user) throw new Error("Usuário não encontrado");
@@ -1538,7 +1698,10 @@ export class UserPsicologoService implements IUserPsicologoService {
         return await prisma.$transaction(async (tx) => {
             const user = await tx.user.findUnique({
                 where: { Id: userId },
-                include: { ProfessionalProfiles: true }
+                select: {
+                    Id: true,
+                    ProfessionalProfiles: { select: { Id: true } }
+                }
             });
 
             if (!user) throw new Error("Usuário não encontrado");

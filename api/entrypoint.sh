@@ -193,6 +193,19 @@ start_api() {
     export BACKUP_DATABASE_URL="postgresql://${POSTGRES_USER}:${ENCODED_PG_PASSWORD}@${PG_HOST_DIRECT}:${PG_PORT_DIRECT}/${POSTGRES_DB}?schema=public"
   fi
 
+  # Migrations (opcional)
+  RUN_MIGRATIONS="${RUN_MIGRATIONS:-true}"
+  if [ "$RUN_MIGRATIONS" = "true" ]; then
+    if [ -n "$BACKUP_DATABASE_URL" ]; then
+      echo "🧱 Aplicando migrations (prisma migrate deploy)"
+      DATABASE_URL="$BACKUP_DATABASE_URL" npx prisma migrate deploy || {
+        echo "⚠️  Falha ao aplicar migrations. Continuando startup."
+      }
+    else
+      echo "⚠️  BACKUP_DATABASE_URL vazio. Pulando migrations."
+    fi
+  fi
+
   # REDIS_URL
   if [ -n "$REDIS_PASSWORD" ]; then
     export REDIS_URL="redis://:${REDIS_PASSWORD}@${REDIS_HOST}:${REDIS_PORT}/${REDIS_DB}"

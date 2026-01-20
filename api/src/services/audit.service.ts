@@ -63,6 +63,10 @@ export class AuditService {
                 console.error("❌ [AuditService] userId é obrigatório");
                 return;
             }
+            if (auditData.userId === 'system') {
+                console.warn("⚠️  [AuditService] userId 'system' não é válido para auditoria. Pulando registro.");
+                return;
+            }
             if (!auditData.actionType) {
                 console.error("❌ [AuditService] actionType é obrigatório");
                 return;

@@ -183,7 +183,7 @@ export async function logCommissionCreate(
     ipAddress?: string
 ): Promise<void> {
     await logAudit({
-        userId: 'system', // Sistema automaticamente cria comissões
+        userId: psicologoId,
         actionType: 'Create',
         module: 'Finance',
         description: `Comissão criada: Psicólogo ${psicologoId} - Consulta ${consultaId} - Valor: R$ ${valor.toFixed(2)} - Plano: ${tipoPlano}`,
@@ -194,6 +194,7 @@ export async function logCommissionCreate(
             consultaId,
             valor,
             tipoPlano,
+            actor: 'system',
         },
     });
 }
@@ -355,14 +356,18 @@ export async function logSolicitacaoDelete(
  * Registra auditoria de login
  */
 export async function logLogin(
-    userId: string,
+    userId: string | undefined,
     email: string,
     success: boolean,
     ipAddress?: string,
     error?: string
 ): Promise<void> {
+    if (!userId) {
+        console.warn('[AuditLogger] userId não disponível para auditoria de login. Pulando registro.');
+        return;
+    }
     await logAudit({
-        userId: success ? userId : 'system', // Se falhou, pode não ter userId válido
+        userId,
         actionType: 'Read', // Login é uma ação de leitura/acesso
         module: 'Users', // Usando Users como módulo para autenticação
         description: success 
