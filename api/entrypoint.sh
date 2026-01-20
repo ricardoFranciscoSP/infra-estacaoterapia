@@ -32,9 +32,21 @@ load_secrets() {
   echo "🔐 Carregando secrets: $file"
 
   while IFS= read -r line || [ -n "$line" ]; do
+    line="$(printf "%s" "$line" | tr -d '\r')"
     case "$line" in ""|\#*) continue ;; esac
+
+    line="${line#"${line%%[![:space:]]*}"}"
+    case "$line" in "export "*) line="${line#export }" ;; esac
+
     key="${line%%=*}"
     value="${line#*=}"
+    key="$(printf "%s" "$key" | sed -E 's/^[[:space:]]+|[[:space:]]+$//g')"
+    value="$(printf "%s" "$value" | sed -E 's/^[[:space:]]+|[[:space:]]+$//g')"
+
+    case "$value" in
+      \"*\") value="${value#\"}"; value="${value%\"}" ;;
+      \'*\') value="${value#\'}"; value="${value%\'}" ;;
+    esac
 
     case "$key" in
       ''|*[!A-Za-z0-9_]*|[0-9]*) continue ;;
