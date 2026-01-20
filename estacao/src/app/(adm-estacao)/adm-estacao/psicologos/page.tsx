@@ -12,7 +12,6 @@ type PsicologoListItem = {
   Status: string;
   CreatedAt?: string;
   Telefone?: string;
-  WhatsApp?: string | null;
   Whatsapp?: string | null;
   Sexo?: string;
   Pronome?: string | null;
@@ -277,7 +276,6 @@ export default function PsicologosPage() {
               <tr>
                 <th className="py-4 px-6 text-left text-xs font-semibold text-[#8494E9] uppercase tracking-wider">Psicólogo</th>
                 <th className="py-4 px-6 text-left text-xs font-semibold text-[#8494E9] uppercase tracking-wider">CRP</th>
-                <th className="py-4 px-6 text-left text-xs font-semibold text-[#8494E9] uppercase tracking-wider">WhatsApp</th>
                 <th className="py-4 px-6 text-left text-xs font-semibold text-[#8494E9] uppercase tracking-wider">Data Cadastro</th>
                 <th className="py-4 px-6 text-left text-xs font-semibold text-[#8494E9] uppercase tracking-wider whitespace-nowrap">Nota perfil</th>
                 <th className="py-4 px-6 text-left text-xs font-semibold text-[#8494E9] uppercase tracking-wider whitespace-nowrap">Status</th>
@@ -323,9 +321,6 @@ export default function PsicologosPage() {
                         <span className="font-medium text-gray-800">{p.Nome}</span>
                       </td>
                       <td className="py-4 px-6 text-sm text-gray-600 font-mono">{p.Crp || "-"}</td>
-                      <td className="py-4 px-6 text-sm text-gray-600 font-mono">
-                        {p.WhatsApp || p.Whatsapp || "-"}
-                      </td>
                       <td className="py-4 px-6 text-sm text-gray-600">
                         {p.CreatedAt ? new Date(p.CreatedAt).toLocaleDateString("pt-BR") : "-"}
                       </td>
@@ -419,10 +414,6 @@ export default function PsicologosPage() {
                   <div className="flex justify-between">
                     <span className="text-gray-500">CRP:</span>
                     <span className="font-medium font-mono">{p.Crp || "-"}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">WhatsApp:</span>
-                    <span className="font-medium font-mono">{p.WhatsApp || p.Whatsapp || "-"}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-500">Cadastro:</span>

@@ -120,6 +120,29 @@ ws.prd.estacaoterapia.com.br, http://ws.prd.estacaoterapia.com.br  {
 # FRONTEND (Next.js)
 # ============================================
 estacaoterapia.com.br, www.estacaoterapia.com.br {
+	@socketio {
+		path /socket.io*
+	}
+	handle @socketio {
+		reverse_proxy estacaoterapia_socket-server:3334 {
+			health_uri /health
+			health_interval 15s
+			health_timeout 10s
+			health_status 200
+
+			# Força HTTP/1.1 para compatibilidade com Socket.IO
+			transport http {
+				versions 1.1
+				dial_timeout 15s
+				response_header_timeout 30s
+				read_timeout 60s
+			}
+
+			header_up Upgrade websocket
+			header_up Connection upgrade
+		}
+	}
+
 	reverse_proxy estacao_estacao_next_prd:3001 {
 		transport http {
 			dial_timeout 10s

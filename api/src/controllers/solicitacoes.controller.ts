@@ -252,15 +252,15 @@ export class SolicitacoesController {
             if (userRole === Role.Psychologist) {
                 // Psicólogo pode ver apenas suas próprias solicitações
                 const result = await this.solicitacoesService.getAll(userId, userRole);
-                return res.status(result.success ? 200 : 400).json(result);
+                return res.status(result.success ? 200 : 500).json(result);
             } else if (userRole === Role.Finance) {
                 // Financeiro pode ver apenas solicitações financeiras
                 const result = await this.solicitacoesService.getAll(userId, userRole);
-                return res.status(result.success ? 200 : 400).json(result);
+                return res.status(result.success ? 200 : 500).json(result);
             } else if (userRole === Role.Admin || userRole === Role.Management) {
                 // Admin e Management veem todas as solicitações
                 const result = await this.solicitacoesService.getAll(userId, userRole);
-                return res.status(result.success ? 200 : 400).json(result);
+                return res.status(result.success ? 200 : 500).json(result);
             } else {
                 // Outros roles precisam de permissão específica
                 const hasPermission = await this.authService.checkPermission(
@@ -274,7 +274,7 @@ export class SolicitacoesController {
                 }
 
                 const result = await this.solicitacoesService.getAll(userId, userRole);
-                return res.status(result.success ? 200 : 400).json(result);
+                return res.status(result.success ? 200 : 500).json(result);
             }
         } catch (error) {
             console.error('[SolicitacoesController] Erro em getAll:', error);

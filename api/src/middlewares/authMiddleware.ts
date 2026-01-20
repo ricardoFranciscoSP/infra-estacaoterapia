@@ -46,7 +46,7 @@ export const protect = async (req: Request, res: Response, next: NextFunction): 
     }
 
     if (!token) {
-        res.status(200).json({ success: false, message: 'Token não fornecido' });
+        res.status(401).json({ success: false, message: 'Token não fornecido' });
         return;
     }
 

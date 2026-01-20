@@ -60,6 +60,11 @@ export class AuthorizationService {
      * @returns ID do usuário ou null se não autenticado.
      */
     getLoggedUserId(req: Request): string | null {
+        const userFromRequest = (req as { user?: { Id?: string } }).user;
+        if (userFromRequest?.Id) {
+            return userFromRequest.Id;
+        }
+
         const authToken = this.getCookieValue(req, "token");
 
         if (!authToken || authToken.trim() === "") {
