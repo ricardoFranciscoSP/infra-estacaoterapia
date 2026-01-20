@@ -721,6 +721,9 @@ model Configuracao {
   percentualRepasseJuridico      Float?   @default(40.0)
   percentualRepasseAutonomo      Float?   @default(32.0)
   manutencao                     Boolean? @default(false)
+  backupScheduleEnabled          Boolean? @default(false)
+  backupScheduleDayOfWeek        Int?
+  backupScheduleTime             String?
 }
 
 model RedesSociais {

@@ -163,6 +163,21 @@ export async function startWebhookWorker() {
                 return;
             }
 
+            // Processa geração automática de backup
+            if (job.name === 'generateDatabaseBackup') {
+                try {
+                    const { handleGenerateDatabaseBackup } = await import('./jobGerarBackupAutomatica');
+                    await handleGenerateDatabaseBackup();
+                    const duration = Date.now() - jobStartTime;
+                    console.log(`✅ [WebhookWorker] Backup automático concluído (${job.name}) em ${duration}ms`);
+                } catch (err) {
+                    const duration = Date.now() - jobStartTime;
+                    console.error(`❌ [WebhookWorker] Job ${job.id} (${job.name}) falhou após ${duration}ms:`, err);
+                    throw err;
+                }
+                return;
+            }
+
             // Processa job normal de webhook
             if (job.name !== "processWebhook") {
                 console.log(`⚠️ [WebhookWorker] Job desconhecido: ${job.name}`, { jobId: job.id, jobData: job.data });

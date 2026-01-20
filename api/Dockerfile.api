@@ -117,6 +117,8 @@ RUN mkdir -p /tmp /run && chmod 1777 /tmp /run
 
 # Diretório de documentos do contrato precisa ser gravável pelo usuário deploy
 RUN mkdir -p /app/documentos && chown -R deploy:deploy /app/documentos
+# Diretório de backups (para .sql)
+RUN mkdir -p /app/backups && chown -R deploy:deploy /app/backups
 
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh

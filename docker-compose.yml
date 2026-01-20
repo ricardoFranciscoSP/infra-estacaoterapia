@@ -17,6 +17,8 @@ volumes:
     driver: local
   documentos_data:
     driver: local
+  backups_data:
+    driver: local
   caddy_data:
     driver: local
   caddy_config:
@@ -262,6 +264,9 @@ services:
       # PostgreSQL via PgBouncer
       PG_HOST: ${PG_HOST:-pgbouncer}
       PG_PORT: ${PG_PORT:-6432}
+      PG_HOST_DIRECT: ${PG_HOST_DIRECT:-postgres}
+      PG_PORT_DIRECT: ${PG_PORT_DIRECT:-5432}
+      BACKUP_DIR: /app/backups
       POSTGRES_USER: ${POSTGRES_USER:-estacaoterapia}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB:-estacaoterapia}
@@ -275,6 +280,7 @@ services:
 
     volumes:
       - documentos_data:/app/documentos
+      - backups_data:/app/backups
 
     tmpfs:
       - /tmp

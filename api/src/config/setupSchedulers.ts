@@ -8,6 +8,7 @@
  */
 
 import { scheduleAutomaticAgendaGeneration } from '../jobs/jobGerarAgendaAutomatica';
+import { scheduleAutomaticBackupGeneration } from '../jobs/jobGerarBackupAutomatica';
 
 let schedulersInitialized = false;
 
@@ -39,6 +40,20 @@ export async function setupSchedulers(): Promise<void> {
                 error
             );
             // Não falha a inicialização por erro no Redis
+        }
+
+        // 2. Agenda o job semanal de backup via Redis (se habilitado)
+        try {
+            console.log('[setupSchedulers] Agendando job semanal de backup...');
+            await scheduleAutomaticBackupGeneration();
+            console.log(
+                '✅ [setupSchedulers] Job de backup agendado com sucesso'
+            );
+        } catch (error) {
+            console.error(
+                '❌ [setupSchedulers] Erro ao agendar job de backup:',
+                error
+            );
         }
 
         // ✅ REMOVIDO: Cron de verificação de tokens (setInterval)

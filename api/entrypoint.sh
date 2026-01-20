@@ -7,6 +7,14 @@ SERVER_TYPE="${SERVER_TYPE:-api}"
 mkdir -p /tmp /run 2>/dev/null || true
 chmod 1777 /tmp /run 2>/dev/null || true  # Ignorar erro se falhar (usuário não-root)
 
+# Diretório de backups (persistência de .sql)
+BACKUP_DIR="${BACKUP_DIR:-/app/backups}"
+mkdir -p "$BACKUP_DIR" 2>/dev/null || true
+chmod 775 "$BACKUP_DIR" 2>/dev/null || true
+if [ ! -w "$BACKUP_DIR" ]; then
+  echo "⚠️  Diretório de backups sem permissão de escrita: $BACKUP_DIR"
+fi
+
 # =========================
 # Carregar secrets (.env)
 # =========================
@@ -131,6 +139,8 @@ start_api() {
   NODE_ENV="${NODE_ENV:-production}"
   PG_HOST="${PG_HOST:-pgbouncer}"
   PG_PORT="${PG_PORT:-6432}"
+  PG_HOST_DIRECT="${PG_HOST_DIRECT:-postgres}"
+  PG_PORT_DIRECT="${PG_PORT_DIRECT:-5432}"
   POSTGRES_DB="${POSTGRES_DB:-estacaoterapia}"
   REDIS_HOST="${REDIS_HOST:-estacaoterapia_redis}"
   REDIS_PORT="${REDIS_PORT:-6379}"
@@ -164,6 +174,7 @@ start_api() {
 
   export NODE_ENV PORT \
     PG_HOST PG_PORT POSTGRES_DB \
+    PG_HOST_DIRECT PG_PORT_DIRECT \
     POSTGRES_USER POSTGRES_PASSWORD \
     REDIS_HOST REDIS_PORT REDIS_DB REDIS_PASSWORD \
     JWT_SECRET CORS_ORIGIN
@@ -173,8 +184,14 @@ start_api() {
   POSTGRES_PASSWORD="$(echo -n "$POSTGRES_PASSWORD" | xargs)"
   if [ -n "$POSTGRES_USER" ] && [ -n "$POSTGRES_PASSWORD" ]; then
     export DATABASE_URL="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${PG_HOST}:${PG_PORT}/${POSTGRES_DB}?schema=public"
+    if [ -z "$BACKUP_DATABASE_URL" ]; then
+      export BACKUP_DATABASE_URL="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${PG_HOST_DIRECT}:${PG_PORT_DIRECT}/${POSTGRES_DB}?schema=public"
+    fi
   elif [ -n "$DATABASE_URL" ]; then
     export DATABASE_URL="$(rewrite_url_host_port "$DATABASE_URL" "$PG_HOST" "$PG_PORT")"
+    if [ -z "$BACKUP_DATABASE_URL" ]; then
+      export BACKUP_DATABASE_URL="$(rewrite_url_host_port "$DATABASE_URL" "$PG_HOST_DIRECT" "$PG_PORT_DIRECT")"
+    fi
   fi
 
   if [ -n "$REDIS_URL" ]; then

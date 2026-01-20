@@ -141,6 +141,9 @@ services:
       NODE_OPTIONS: '--max-old-space-size=2048'
       PG_HOST: tasks.pgbouncer
       PG_PORT: '6432'
+      PG_HOST_DIRECT: postgres
+      PG_PORT_DIRECT: '5432'
+      BACKUP_DIR: /app/backups
       REDIS_HOST: tasks.redis
       REDIS_HOST_FALLBACK: 'estacaoterapia_redis,redis'
       REDIS_PORT: '6379'
@@ -148,6 +151,7 @@ services:
       REDIS_PASSWORD: 'REdnRHkZLnQpK1rcoKsseO3pX4GNIRR'
     volumes:
       - documentos_data:/app/documentos
+      - backups_data:/app/backups
     tmpfs:
       - /tmp
       - /app/data
@@ -239,6 +243,8 @@ volumes:
   redis_data:
     external: true
   documentos_data:
+    external: true
+  backups_data:
     external: true
 
 secrets:

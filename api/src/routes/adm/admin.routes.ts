@@ -15,6 +15,10 @@ import { AdmFinanceiroController } from '../../controllers/adm/financeiro.contro
 import { ComprehensiveReportsController } from '../../controllers/adm/comprehensiveReports.controller';
 import { QueueController } from '../../controllers/adm/queue.controller';
 import { AtribuirConsultaAvulsaController } from '../../controllers/adm/atribuirConsultaAvulsa.controller';
+import { BackupController } from '../../controllers/adm/backup.controller';
+import multer from 'multer';
+import fs from 'fs';
+import path from 'path';
 
 const router = Router();
 const psicologoController = new PsicologoController();
@@ -29,6 +33,13 @@ const financeiroController = new AdmFinanceiroController();
 const comprehensiveReportsController = new ComprehensiveReportsController();
 const queueController = new QueueController();
 const atribuirConsultaAvulsaController = new AtribuirConsultaAvulsaController();
+const backupController = new BackupController();
+
+const backupUploadDir = path.resolve(process.cwd(), "tmp", "backups-restore");
+if (!fs.existsSync(backupUploadDir)) {
+  fs.mkdirSync(backupUploadDir, { recursive: true });
+}
+const backupUpload = multer({ dest: backupUploadDir });
 
 
 // Middleware de proteção para todas rotas admin
@@ -130,5 +141,14 @@ router.get('/queues/jobs', authorize('Admin', 'Management'), asyncHandler(queueC
 
 // Rota para atribuir consultas avulsas (apenas Admin)
 router.post('/atribuir-consulta-avulsa', authorize('Admin'), asyncHandler(atribuirConsultaAvulsaController.atribuir.bind(atribuirConsultaAvulsaController)));
+
+// Rotas de backup (apenas Admin)
+router.get('/backups', authorize('Admin'), asyncHandler(backupController.list.bind(backupController)));
+router.post('/backups/generate', authorize('Admin'), asyncHandler(backupController.generate.bind(backupController)));
+router.get('/backups/schedule', authorize('Admin'), asyncHandler(backupController.getSchedule.bind(backupController)));
+router.put('/backups/schedule', authorize('Admin'), asyncHandler(backupController.updateSchedule.bind(backupController)));
+router.get('/backups/:fileName/download', authorize('Admin'), asyncHandler(backupController.download.bind(backupController)));
+router.delete('/backups/:fileName', authorize('Admin'), asyncHandler(backupController.delete.bind(backupController)));
+router.post('/backups/restore', authorize('Admin'), backupUpload.single('file'), asyncHandler(backupController.restore.bind(backupController)));
 
 export default router;

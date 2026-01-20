@@ -35,7 +35,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobile = false, onClose, modul
 
   // Abre submenu de Configurações se estiver em uma rota relacionada
   useEffect(() => {
-    if (currentPath?.includes("/configuracoes") || currentPath?.includes("/seguranca") || currentPath?.includes("/auditoria") || currentPath?.includes("/permissoes") || currentPath?.includes("/logs")) {
+    if (
+      currentPath?.includes("/configuracoes") ||
+      currentPath?.includes("/seguranca") ||
+      currentPath?.includes("/auditoria") ||
+      currentPath?.includes("/permissoes") ||
+      currentPath?.includes("/logs") ||
+      currentPath?.includes("/backups")
+    ) {
       setConfigOpen(true);
     }
   }, [currentPath]);
@@ -218,7 +225,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobile = false, onClose, modul
               isActive(`${basePath}/auditoria`) ||
               isActive(`${basePath}/permissoes`) ||
               isActive(`${basePath}/configuracoes/gestao-documentos`) ||
-              isActive(`${basePath}/configuracoes/logs`);
+              isActive(`${basePath}/configuracoes/logs`) ||
+              isActive(`${basePath}/configuracoes/backups`);
             const relatoriosActive = 
               isActive(`${basePath}/relatorios`);
             
@@ -379,7 +387,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobile = false, onClose, modul
                             !isActive(`${basePath}/configuracoes/seguranca`) &&
                             !isActive(`${basePath}/auditoria`) &&
                             !isActive(`${basePath}/permissoes`) &&
-                            !isActive(`${basePath}/configuracoes/logs`)
+                            !isActive(`${basePath}/configuracoes/logs`) &&
+                            !isActive(`${basePath}/configuracoes/backups`)
                               ? "text-[#8494E9] bg-[#F2F4FD]"
                               : "text-[#6C757D]"
                           }`}
@@ -429,6 +438,20 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobile = false, onClose, modul
                         >
                           <span className="w-1.5 h-1.5 rounded-full bg-current"></span>
                           <span>Logs</span>
+                        </Link>
+                      </li>
+                      <li>
+                        <Link
+                          href={`${basePath}/configuracoes/backups`}
+                          className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded hover:bg-[#F2F4FD] ${
+                            isActive(`${basePath}/configuracoes/backups`)
+                              ? "text-[#8494E9] bg-[#F2F4FD]"
+                              : "text-[#6C757D]"
+                          }`}
+                          onClick={onClose}
+                        >
+                          <span className="w-1.5 h-1.5 rounded-full bg-current"></span>
+                          <span>Backups</span>
                         </Link>
                       </li>
                       <li>

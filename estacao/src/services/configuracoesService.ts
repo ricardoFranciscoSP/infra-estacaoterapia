@@ -110,6 +110,9 @@ export interface Configuracao {
     exigir2FA?: boolean | null;
     bloqueioTentativasFalhas?: number | null;
     manutencao?: boolean | null;
+    backupScheduleEnabled?: boolean | null;
+    backupScheduleDayOfWeek?: number | null;
+    backupScheduleTime?: string | null;
     CreatedAt?: Date;
     UpdatedAt?: Date;
 }

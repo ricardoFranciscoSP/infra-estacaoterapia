@@ -98,7 +98,7 @@ fi
 # ==============================
 # 4. VOLUMES + REDE
 # ==============================
-for v in postgres_data redis_data documentos_data; do
+for v in postgres_data redis_data documentos_data backups_data; do
   docker volume create "$v" >/dev/null 2>&1 || true
 done
 
@@ -106,6 +106,16 @@ docker network inspect estacaoterapia_backend >/dev/null 2>&1 || \
 docker network create --driver overlay --attachable estacaoterapia_backend
 
 echo "✅ Volumes e rede OK"
+
+# ==============================
+# 4.1 AJUSTE DE PERMISSÕES DO VOLUME DE BACKUPS
+# ==============================
+if [ -f "./fix-backup-volume-permissions.sh" ]; then
+  chmod +x ./fix-backup-volume-permissions.sh 2>/dev/null || true
+  ./fix-backup-volume-permissions.sh || echo "⚠️  Falha ao ajustar permissões do volume de backups (continuando)"
+else
+  echo "⚠️  Script fix-backup-volume-permissions.sh não encontrado (continuando)"
+fi
 
 # ==============================
 # 5. BUILD IMAGENS COM VERSIONAMENTO

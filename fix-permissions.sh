@@ -11,7 +11,7 @@ echo "🔧 Corrigindo permissões dos scripts..."
 chmod +x deploy-all.sh prepare-deploy.sh debug-deploy.sh start.sh 2>/dev/null || true
 
 # Scripts da API
-chmod +x api/deploy.sh api/cleanup-old-replicas.sh api/entrypoint.sh 2>/dev/null || true
+chmod +x api/deploy.sh api/cleanup-old-replicas.sh api/entrypoint.sh api/fix-backup-volume-permissions.sh 2>/dev/null || true
 
 # Scripts do Frontend
 chmod +x estacao/deploy-stack.sh estacao/deploy.sh 2>/dev/null || true
