@@ -55,6 +55,11 @@ const reviewSelectWithoutTitulo: Prisma.ReviewSelect = {
     UpdatedAt: true
 };
 
+type ReviewWithOptionalTitulo = Omit<
+    Prisma.ReviewGetPayload<{ select: typeof reviewSelectWithTitulo }>,
+    "Titulo"
+> & { Titulo?: string | null };
+
 const userPsicologoSelect = {
     Id: true,
     Nome: true,
@@ -233,7 +238,9 @@ const userPsicologoSelect = {
     }
 } satisfies Prisma.UserSelect;
 
-const userPsicologoSelectLegacy: Prisma.UserSelect = {
+type UserPsicologoSelectPayload = Prisma.UserGetPayload<{ select: typeof userPsicologoSelect }>;
+
+const userPsicologoSelectLegacy = {
     ...userPsicologoSelect,
     WhatsApp: false,
     RacaCor: false,
@@ -243,7 +250,7 @@ const userPsicologoSelectLegacy: Prisma.UserSelect = {
     ReviewsReceived: {
         select: reviewSelectWithoutTitulo
     }
-};
+} satisfies Prisma.UserSelect;
 
 const isMissingColumnError = (error: unknown): boolean => {
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
@@ -290,11 +297,11 @@ export class UserPsicologoService implements IUserPsicologoService {
 
     private formatUserPsicologo(
         psicologos: Array<
-            Omit<UserPsicologo, "RacaCor" | "WhatsApp" | "ReviewsMade" | "ReviewsReceived"> & {
+            Omit<UserPsicologoSelectPayload, "RacaCor" | "WhatsApp" | "ReviewsMade" | "ReviewsReceived"> & {
                 RacaCor?: string | null;
                 WhatsApp?: string | null;
-                ReviewsMade?: Array<{ Titulo?: string | null }>;
-                ReviewsReceived?: Array<{ Titulo?: string | null }>;
+                ReviewsMade?: ReviewWithOptionalTitulo[];
+                ReviewsReceived?: ReviewWithOptionalTitulo[];
             }
         >,
         options?: { includeMissingFields?: boolean }
