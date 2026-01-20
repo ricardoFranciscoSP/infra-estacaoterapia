@@ -2,6 +2,16 @@ import { create } from 'zustand';
 import { admPsicologoService } from '@/services/admPsicologoService';
 import { ConsultasPendentes, ConsultasRealizadas, ProximasConsultas, taxaOcupacao } from '@/types/psicologoTypes';
 
+const getMonthRange = () => {
+    const hoje = new Date();
+    const primeiroDiaMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+    const ultimoDiaMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0, 23, 59, 59, 999);
+    return {
+        dataInicial: primeiroDiaMes.toISOString().split('T')[0],
+        dataFinal: ultimoDiaMes.toISOString().split('T')[0],
+    };
+};
+
 interface consultasState {
     consultasRealizadas: ConsultasRealizadas | null;
     consultasPendentes: ConsultasPendentes | null;
@@ -46,7 +56,8 @@ const useConsultasPsicologoStore = create<consultasState>((set) => ({
     fetchTaxaOcupacao: async () => {
         set({ loading: true, error: null });
         try {
-            const result = await admPsicologoService().taxaOcupacao();
+            const { dataInicial, dataFinal } = getMonthRange();
+            const result = await admPsicologoService().taxaOcupacao(dataInicial, dataFinal);
             set({ taxaOcupacao: result.data, loading: false });
         } catch (error: unknown) {
             set({ error: (error as Error)?.message || 'Erro ao obter taxa de ocupação.', loading: false });

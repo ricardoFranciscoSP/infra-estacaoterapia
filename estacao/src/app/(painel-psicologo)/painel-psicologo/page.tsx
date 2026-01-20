@@ -87,7 +87,9 @@ export default function PainelPsicologoPage() {
   const firstName = userBasic.user?.Nome?.split(" ")[0] || "";
 
   const ratingSummary = useMemo(() => {
-    const reviewsReceived = Array.isArray(userPsicologo?.psicologo?.user?.[0]?.ReviewsReceived)
+    const reviewsReceived: Array<{ Rating?: unknown }> = Array.isArray(
+      userPsicologo?.psicologo?.user?.[0]?.ReviewsReceived
+    )
       ? userPsicologo?.psicologo?.user?.[0]?.ReviewsReceived
       : [];
     const avaliadas = reviewsReceived

@@ -126,7 +126,7 @@ export class SolicitacoesService implements ISolicitacoesService {
 
                 const fileName = file.originalname || 'documento';
                 const filePath = `solicitacoes/${finalProtocol}/${fileName}`;
-                
+
                 // Usar função uploadFile que já tem tratamento adequado de erros e usa STORAGE_BUCKET
                 if (!supabaseAdmin) {
                     return {
@@ -134,7 +134,7 @@ export class SolicitacoesService implements ISolicitacoesService {
                         message: 'SUPABASE_SERVICE_ROLE_KEY não configurada. Erro ao fazer upload do documento.'
                     };
                 }
-                
+
                 try {
                     const uploadResult = await uploadFile(filePath, file.buffer, {
                         bucket: STORAGE_BUCKET,
@@ -147,7 +147,7 @@ export class SolicitacoesService implements ISolicitacoesService {
                 } catch (error: any) {
                     console.error('[SolicitacoesService] Erro no upload:', error);
                     // Tratamento específico para erro de bucket não encontrado
-                    if (error.message?.toLowerCase().includes('bucket not found') || 
+                    if (error.message?.toLowerCase().includes('bucket not found') ||
                         error.message?.toLowerCase().includes('not found')) {
                         return {
                             success: false,
@@ -336,6 +336,9 @@ export class SolicitacoesService implements ISolicitacoesService {
 
     async getSolicitacoesByUserId(userId: string, userRole?: Role): Promise<{ success: boolean; solicitacoes?: ISolicitacao[]; message?: string }> {
         try {
+            if (typeof userId !== 'string' || !userId) {
+                return { success: false, message: 'userId inválido' };
+            }
             const role = userRole || (await prisma.user.findUnique({
                 where: { Id: userId },
                 select: { Role: true }
@@ -361,13 +364,18 @@ export class SolicitacoesService implements ISolicitacoesService {
                 }
                 : null;
 
+            const orFilters: Prisma.SolicitacoesWhereInput[] = [
+                { UserId: userId },
+                { PublicoTodos: true },
+                { Destinatarios: { some: { UserId: userId } } }
+            ];
+            if (roleScopedFilter) {
+                orFilters.push(roleScopedFilter);
+            }
+
             const solicitacoesRaw = await prisma.solicitacoes.findMany({
                 where: {
-                    OR: [
-                        { UserId: userId },
-                        { PublicoTodos: true },
-                        { Destinatarios: { some: { UserId: userId } } }
-                    ].concat(roleScopedFilter ? [roleScopedFilter] : [])
+                    OR: orFilters
                 },
                 include: {
                     User: {

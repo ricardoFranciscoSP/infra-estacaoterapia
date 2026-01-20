@@ -42,6 +42,7 @@ type UseDadosPessoaisReturn = {
   imagePreview: string | null;
   imageLoading: boolean;
   handleImageChange: (e: ChangeEvent<HTMLInputElement>) => void;
+  handleRemoveImage: () => void;
   maskCep: (value: string) => string;
   handleCepChangeOrBlur: (cep: string) => Promise<void>;
   onSubmit: (data: DadosPessoaisFormData) => void;

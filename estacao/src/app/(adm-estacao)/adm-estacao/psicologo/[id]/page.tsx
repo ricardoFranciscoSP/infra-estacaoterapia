@@ -177,11 +177,12 @@ function statusNotaPorPercentual(percentual: number) {
 }
 
 function getReviewRating(review: ReviewsReceived) {
+  const estrelas = (review as unknown as Record<string, unknown>).Estrelas;
   const ratingValue =
     typeof review.Rating === "number"
       ? review.Rating
-      : typeof (review as { Estrelas?: number }).Estrelas === "number"
-        ? (review as { Estrelas: number }).Estrelas
+      : typeof estrelas === "number"
+        ? estrelas
         : Number(review.Rating);
   return Number.isFinite(ratingValue) ? ratingValue : null;
 }

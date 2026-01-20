@@ -31,6 +31,16 @@ interface ModalOcupacaoAgendaProps {
   onClose: () => void;
 }
 
+const getMonthRange = () => {
+  const hoje = new Date();
+  const primeiroDiaMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+  const ultimoDiaMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0, 23, 59, 59, 999);
+  return {
+    dataInicial: primeiroDiaMes.toISOString().split('T')[0],
+    dataFinal: ultimoDiaMes.toISOString().split('T')[0],
+  };
+};
+
 export default function ModalOcupacaoAgenda({ isOpen, onClose }: ModalOcupacaoAgendaProps) {
   useEscapeKey(isOpen, onClose);
   const [consultas, setConsultas] = useState<Consulta[]>([]);
@@ -44,25 +54,21 @@ export default function ModalOcupacaoAgenda({ isOpen, onClose }: ModalOcupacaoAg
   const [filtroStatus, setFiltroStatus] = useState<"todos" | "reservadas" | "concluidas" | "canceladas">("todos");
   const [buscaPaciente, setBuscaPaciente] = useState("");
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setError(null);
     try {
       // Busca taxa de ocupação
-      const taxaResult = await admPsicologoService().taxaOcupacao();
+      const { dataInicial, dataFinal } = getMonthRange();
+      const taxaResult = await admPsicologoService().taxaOcupacao(dataInicial, dataFinal);
       setTaxaOcupacao(taxaResult.data || null);
     } catch (err) {
       console.error("Erro ao buscar taxa de ocupação:", err);
       setError("Erro ao carregar taxa de ocupação");
     }
-  };
+  }, []);
 
   const fetchConsultasData = useCallback(async () => {
-    const hoje = new Date();
-    const primeiroDiaMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
-    const ultimoDiaMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0, 23, 59, 59, 999);
-    
-    const dataInicial = primeiroDiaMes.toISOString().split('T')[0];
-    const dataFinal = ultimoDiaMes.toISOString().split('T')[0];
+    const { dataInicial, dataFinal } = getMonthRange();
 
     // Determina o status baseado no filtro
     let statusFiltro: "todos" | "efetuada" | "cancelada" = "todos";
@@ -118,7 +124,7 @@ export default function ModalOcupacaoAgenda({ isOpen, onClose }: ModalOcupacaoAg
       fetchData();
       fetchConsultas();
     }
-  }, [isOpen, fetchConsultas]);
+  }, [isOpen, fetchData, fetchConsultas]);
 
   useEffect(() => {
     if (isOpen) {

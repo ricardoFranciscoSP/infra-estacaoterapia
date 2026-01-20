@@ -49,7 +49,7 @@ export class SolicitacoesController {
             if (!userId) {
                 return res.status(401).json({ error: 'Unauthorized' });
             }
-            
+
             // Log para debug
             console.log('[SolicitacoesController] createSolicitacao chamado com:', {
                 hasFile: !!req.file,
@@ -127,7 +127,9 @@ export class SolicitacoesController {
                 where: { Id: userId },
                 select: { Role: true }
             });
-            const result = await this.solicitacoesService.getSolicitacoesByUserId(userId, targetUser?.Role);
+            // Garantir que o tipo de Role seja compatível
+            const prismaRole = targetUser?.Role as import("../types/permissions.types").Role | undefined;
+            const result = await this.solicitacoesService.getSolicitacoesByUserId(userId, prismaRole);
             return res.status(result.success ? 200 : 404).json(result);
         } catch (error) {
             return res.status(500).json({ success: false, message: 'Erro ao buscar solicitações' });
@@ -492,7 +494,7 @@ export class SolicitacoesController {
                         where: { Id: solicitacaoId },
                         select: { Protocol: true, Status: true }
                     });
-                    
+
                     if (solicitacaoParaAudit) {
                         await logAuditFromRequest(
                             req,
