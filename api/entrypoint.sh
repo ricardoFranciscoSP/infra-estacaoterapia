@@ -16,6 +16,12 @@ mkdir -p "$BACKUP_DIR" 2>/dev/null || true
 chmod 775 "$BACKUP_DIR" 2>/dev/null || true
 [ ! -w "$BACKUP_DIR" ] && echo "⚠️  Diretório de backups sem permissão de escrita: $BACKUP_DIR"
 
+# Diretório temporário para restore de backups (admin)
+BACKUP_TMP_DIR="${BACKUP_TMP_DIR:-/app/tmp/backups-restore}"
+mkdir -p "$BACKUP_TMP_DIR" 2>/dev/null || true
+chmod 775 "$BACKUP_TMP_DIR" 2>/dev/null || true
+[ ! -w "$BACKUP_TMP_DIR" ] && echo "⚠️  Diretório temporário sem permissão de escrita: $BACKUP_TMP_DIR"
+
 # =====================================================
 # Funções utilitárias
 # =====================================================

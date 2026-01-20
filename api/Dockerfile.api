@@ -119,6 +119,8 @@ RUN mkdir -p /tmp /run && chmod 1777 /tmp /run
 RUN mkdir -p /app/documentos && chown -R deploy:deploy /app/documentos
 # Diretório de backups (para .sql)
 RUN mkdir -p /app/backups && chown -R deploy:deploy /app/backups
+# Diretório temporário para restore de backups (upload admin)
+RUN mkdir -p /app/tmp && chown -R deploy:deploy /app/tmp
 
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh

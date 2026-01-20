@@ -35,7 +35,8 @@ const queueController = new QueueController();
 const atribuirConsultaAvulsaController = new AtribuirConsultaAvulsaController();
 const backupController = new BackupController();
 
-const backupUploadDir = path.resolve(process.cwd(), "tmp", "backups-restore");
+const backupBaseDir = process.env.BACKUP_DIR || "/tmp";
+const backupUploadDir = path.resolve(backupBaseDir, "backups-restore");
 if (!fs.existsSync(backupUploadDir)) {
   fs.mkdirSync(backupUploadDir, { recursive: true });
 }
