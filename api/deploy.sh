@@ -28,8 +28,13 @@ TIMESTAMP="$(date +%Y%m%d%H%M%S)"
 GIT_HASH="$(git rev-parse --short HEAD 2>/dev/null || echo local)"
 TAG="${TIMESTAMP}-${GIT_HASH}"
 
+
+echo "==============================="
+echo "[LOG] Iniciando deploy.sh"
 echo "📦 Tag: prd-$TAG | Keep versions: $KEEP_VERSIONS"
 echo "   Clean deploy: $CLEAN_DEPLOY | Force build: $FORCE_BUILD | Update stateful: $UPDATE_STATEFUL"
+echo "Diretório atual: $(pwd)"
+echo "==============================="
 
 # ==============================
 # 1. PRÉ-REQUISITOS
@@ -207,20 +212,52 @@ docker image prune -f --filter "dangling=true" 2>/dev/null || true
 # ==============================
 # 6. DEPLOY
 # ==============================
+
+# Gera arquivo temporário do stack com a TAG substituída
+
+echo "[LOG] Gerando arquivo temporário do stack: $STACK_TMP"
 STACK_TMP="docker-stack-$TAG.yml"
 cp docker-stack.yml "$STACK_TMP"
+if [ $? -ne 0 ]; then
+  echo "❌ Erro ao copiar docker-stack.yml para $STACK_TMP"
+  exit 1
+fi
+echo "[LOG] Substituindo {{TAG}} por $TAG em $STACK_TMP"
 sed -i "s/{{TAG}}/$TAG/g" "$STACK_TMP"
+if [ $? -ne 0 ]; then
+  echo "❌ Erro ao substituir TAG no arquivo $STACK_TMP"
+  exit 1
+fi
+
+# Valida se a substituição foi feita corretamente
+if grep -q '{{TAG}}' "$STACK_TMP"; then
+  echo "❌ Erro: a variável {{TAG}} não foi substituída corretamente em $STACK_TMP. Abortando deploy."
+  exit 1
+fi
+echo "[LOG] Substituição da TAG concluída com sucesso."
+
+echo "[LOG] Iniciando deploy da stack com arquivo: $STACK_TMP"
+
 
 echo "📡 Deploy stack $STACK_NAME"
 docker stack deploy \
   --compose-file "$STACK_TMP" \
   --resolve-image always \
   "$STACK_NAME"
+DEPLOY_EXIT_CODE=$?
+if [ $DEPLOY_EXIT_CODE -ne 0 ]; then
+  echo "❌ Erro ao executar docker stack deploy. Código de saída: $DEPLOY_EXIT_CODE"
+  echo "[LOG] Verifique o arquivo $STACK_TMP para possíveis erros de sintaxe ou variáveis não substituídas."
+  exit 1
+else
+  echo "[LOG] docker stack deploy executado com sucesso."
+fi
 
 # ==============================
 # 7. HEALTH CHECK
 # ==============================
-echo "⏳ Aguardando serviços..."
+
+echo "[LOG] ⏳ Aguardando serviços ficarem estáveis..."
 
 services=(postgres pgbouncer redis api socket-server)
 
@@ -244,7 +281,7 @@ done
 # 8. CLEANUP FINAL + RELATÓRIO
 # ==============================
 echo ""
-echo "[CLEANUP] Finalizando..."
+echo "[LOG] [CLEANUP] Finalizando..."
 rm -f "$STACK_TMP"
 
 # Mostrar versões ativas e disponíveis
@@ -260,13 +297,13 @@ for service in redis api socket pgbouncer; do
 done
 
 echo ""
-echo "🎉 DEPLOY CONCLUÍDO COM SUCESSO!"
+echo "[LOG] 🎉 DEPLOY CONCLUÍDO COM SUCESSO!"
 echo ""
-echo "📡 SERVIÇOS EM EXECUÇÃO:"
+echo "[LOG] 📡 SERVIÇOS EM EXECUÇÃO:"
 docker service ls --filter name="$STACK_NAME" --format "table {{.Name}}\t{{.Replicas}}\t{{.Image}}"
 
 echo ""
-echo "💡 DICAS:"
+echo "[LOG] 💡 DICAS:"
 echo "   - Ver logs:  docker service logs estacaoterapia_api -f"
 echo "   - Revert:    docker service update --force --image estacaoterapia-api:prd-TAG estacaoterapia_api"
 echo "   - Versões:   docker images | grep estacaoterapia"
