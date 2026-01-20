@@ -53,14 +53,24 @@ echo "✅ Caddyfile válido"
 # 3️⃣ Criar/Verificar rede necessária
 # ==============================
 echo ""
-echo "🌐 Verificando rede Docker..."
+echo "🌐 Verificando redes Docker..."
 
+# Rede do Caddy
 if ! docker network ls --format '{{.Name}}' | grep -q "^estacao-network$"; then
   echo "   → Criando rede estacao-network..."
   docker network create --driver overlay estacao-network
   echo "✅ Rede estacao-network criada"
 else
   echo "✅ Rede estacao-network já existe"
+fi
+
+# Rede backend compartilhada
+if ! docker network ls --format '{{.Name}}' | grep -q "^estacaoterapia_backend$"; then
+  echo "   → Criando rede estacaoterapia_backend..."
+  docker network create --driver=overlay --attachable estacaoterapia_backend
+  echo "✅ Rede estacaoterapia_backend criada"
+else
+  echo "✅ Rede estacaoterapia_backend já existe"
 fi
 
 # ==============================

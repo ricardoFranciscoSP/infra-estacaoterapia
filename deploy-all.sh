@@ -15,12 +15,21 @@ BLUE='\033[0;34m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
+
 # Configurações
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 API_DIR="$SCRIPT_DIR/api"
 FRONTEND_DIR="$SCRIPT_DIR/estacao"
 COROOT_DIR="$SCRIPT_DIR"
 LOG_FILE="deploy-$(date +%Y%m%d_%H%M%S).log"
+
+# Garantir que a rede estacaoterapia_backend existe (idempotente)
+if ! docker network inspect estacaoterapia_backend >/dev/null 2>&1; then
+    echo -e "${CYAN}[INFO]${NC} Criando rede Docker Swarm: estacaoterapia_backend"
+    docker network create --driver overlay --attachable estacaoterapia_backend
+else
+    echo -e "${CYAN}[INFO]${NC} Rede Docker Swarm já existe: estacaoterapia_backend"
+fi
 
 # Contadores
 START_TIME=$(date +%s)
