@@ -845,7 +845,7 @@ export class PsicologoService {
             ...rest,
             RatingAverage: ratingAverage,
             RatingCount: ratingCount,
-            RatingPercent: ratingPercent,
+            // RatingPercent é só visual, nunca deve ser enviado ao banco
             RatingStatus: ratingStatus,
             ProfilePercent: this.calcularPercentualPerfil(psicologo),
         };
