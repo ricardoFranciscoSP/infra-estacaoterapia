@@ -296,46 +296,57 @@ export class UserPsicologoService implements IUserPsicologoService {
     }
 
     private formatUserPsicologo(
-        psicologos: Array<
-            Omit<UserPsicologoSelectPayload, "RacaCor" | "WhatsApp" | "ReviewsMade" | "ReviewsReceived"> & {
-                RacaCor?: string | null;
-                WhatsApp?: string | null;
-                ReviewsMade?: ReviewWithOptionalTitulo[];
-                ReviewsReceived?: ReviewWithOptionalTitulo[];
-            }
-        >,
+        psicologos: Array<any>,
         options?: { includeMissingFields?: boolean }
     ): UserPsicologo[] {
         const includeMissingFields = options?.includeMissingFields === true;
         return psicologos.map((p) => {
-            const address = Array.isArray(p.Address) ? p.Address[0] : p.Address;
+            // Address: sempre objeto único ou vazio
+            let address: any = Array.isArray(p.Address) ? p.Address[0] : p.Address;
             const addressFormatted = address ? {
-                ...address,
-                Numero: address.Numero ?? ''
+                Id: address.Id ?? '',
+                UserId: address.UserId ?? p.Id,
+                Rua: address.Rua ?? '',
+                Numero: address.Numero ?? '',
+                Complemento: address.Complemento ?? null,
+                Bairro: address.Bairro ?? '',
+                Cidade: address.Cidade ?? '',
+                Estado: address.Estado ?? '',
+                Cep: address.Cep ?? '',
+                CreatedAt: address.CreatedAt ?? null,
+                UpdatedAt: address.UpdatedAt ?? null
             } : {
                 Id: '',
                 UserId: p.Id,
                 Rua: '',
                 Numero: '',
+                Complemento: null,
                 Bairro: '',
                 Cidade: '',
                 Estado: '',
-                Cep: ''
+                Cep: '',
+                CreatedAt: null,
+                UpdatedAt: null
             };
 
-            const billingAddress = Array.isArray(p.BillingAddress) && p.BillingAddress.length > 0
-                ? p.BillingAddress[0]
-                : (p.BillingAddress || null);
+            // BillingAddress: pode ser array ou objeto ou null
+            let billingAddress: any = null;
+            if (Array.isArray(p.BillingAddress)) {
+                billingAddress = p.BillingAddress.length > 0 ? p.BillingAddress[0] : null;
+            } else if (p.BillingAddress) {
+                billingAddress = p.BillingAddress;
+            }
 
-            const reviewsMade = p.ReviewsMade?.map((review) => ({
+            const reviewsMade = p.ReviewsMade?.map((review: any) => ({
                 ...review,
                 ...(includeMissingFields ? { Titulo: review.Titulo ?? null } : {})
             })) ?? [];
-            const reviewsReceived = p.ReviewsReceived?.map((review) => ({
+            const reviewsReceived = p.ReviewsReceived?.map((review: any) => ({
                 ...review,
                 ...(includeMissingFields ? { Titulo: review.Titulo ?? null } : {})
             })) ?? [];
 
+            // Retorno 100% tipado
             return {
                 ...p,
                 ...(includeMissingFields ? { RacaCor: p.RacaCor ?? null, WhatsApp: p.WhatsApp ?? null } : {}),
@@ -343,7 +354,7 @@ export class UserPsicologoService implements IUserPsicologoService {
                 BillingAddress: billingAddress,
                 ReviewsMade: reviewsMade,
                 ReviewsReceived: reviewsReceived
-            } as unknown as UserPsicologo;
+            } as UserPsicologo;
         });
     }
 
