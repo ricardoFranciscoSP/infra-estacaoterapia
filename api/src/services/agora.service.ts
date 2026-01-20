@@ -13,7 +13,7 @@ export class AgoraService {
      * @returns Token de acesso do Agora
      */
     async generateToken(channelName: string, uid: number | string, role: 'patient' | 'psychologist' = 'patient'): Promise<string> {
-        const ttlInSeconds = 3000; // 50 minutos
+        const ttlInSeconds = 3600; // 1 hora
         const rtcRole = RtcRole.PUBLISHER;
 
         // Garante que uid seja número (RTC usa UID numérico)
@@ -50,7 +50,7 @@ export class AgoraService {
     }
 
     async generateRtmToken(channelName: string, account: number | string): Promise<string> {
-        const ttlInSeconds = 3000; // 50 minutos
+        const ttlInSeconds = 3600; // 1 hora
 
         const accountStr = typeof account === 'number' ? String(account) : account;
         if (!accountStr || accountStr.trim() === '') {

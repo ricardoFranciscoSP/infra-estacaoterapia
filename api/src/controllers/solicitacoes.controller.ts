@@ -3,6 +3,7 @@ import { AuthorizationService } from "../services/authorization.service";
 import { SolicitacoesService } from "../services/solicitacoes.service";
 import { ISolicitacao } from "../types/solicitacoes.types";
 import { WebSocketNotificationService } from "../services/websocketNotification.service";
+import { NotificationService } from "../services/notification.service";
 import { Module, ActionType, Role } from "../types/permissions.types";
 import { isSolicitacaoFinanceira } from "../constants/tiposSolicitacao";
 import prisma from "../prisma/client";
@@ -10,15 +11,36 @@ import { logSolicitacaoCreate, logSolicitacaoUpdate, logSolicitacaoDelete, logAu
 import { getClientIp } from "../utils/getClientIp.util";
 import { normalizeParamStringRequired, normalizeQueryString } from "../utils/validation.util";
 
+const parseBoolean = (value: unknown): boolean =>
+    value === true || value === 'true' || value === '1' || value === 1;
+
+const parseStringArray = (value: unknown): string[] => {
+    if (!value) return [];
+    if (Array.isArray(value)) {
+        return value.map(String).filter(Boolean);
+    }
+    if (typeof value === 'string') {
+        try {
+            const parsed = JSON.parse(value);
+            if (Array.isArray(parsed)) {
+                return parsed.map(String).filter(Boolean);
+            }
+        } catch {
+            return value.split(',').map((item) => item.trim()).filter(Boolean);
+        }
+    }
+    return [];
+};
+
 export class SolicitacoesController {
     private authService: AuthorizationService;
     private solicitacoesService: SolicitacoesService;
-    private wsService: WebSocketNotificationService;
+    private notificationService: NotificationService;
 
     constructor() {
         this.authService = new AuthorizationService();
         this.solicitacoesService = new SolicitacoesService();
-        this.wsService = new WebSocketNotificationService();
+        this.notificationService = new NotificationService(new WebSocketNotificationService());
     }
 
     async createSolicitacao(req: Request, res: Response) {
@@ -37,7 +59,15 @@ export class SolicitacoesController {
                 body: req.body
             });
 
-            const data = req.body as Omit<ISolicitacao, 'Id' | 'CreatedAt' | 'UpdatedAt' | 'Protocol'>;
+            const destinatariosIdsRaw = req.body.DestinatariosIds ?? req.body.destinatariosIds ?? req.body['DestinatariosIds[]'];
+            const data = {
+                ...(req.body as Omit<ISolicitacao, 'Id' | 'CreatedAt' | 'UpdatedAt' | 'Protocol'>),
+                PublicoTodos: parseBoolean(req.body.PublicoTodos ?? req.body.publicoTodos),
+                PublicoPacientes: parseBoolean(req.body.PublicoPacientes ?? req.body.publicoPacientes),
+                PublicoPsicologos: parseBoolean(req.body.PublicoPsicologos ?? req.body.publicoPsicologos),
+                PublicoFinanceiro: parseBoolean(req.body.PublicoFinanceiro ?? req.body.publicoFinanceiro),
+                DestinatariosIds: parseStringArray(destinatariosIdsRaw)
+            };
             const file = req.file as Express.Multer.File | undefined;
             const result = await this.solicitacoesService.createSolicitacao(userId, data, file);
 
@@ -66,58 +96,6 @@ export class SolicitacoesController {
                 }
             }
 
-            // Enviar notificações via socket se a solicitação foi criada com sucesso
-            if (result.success && result.protocol) {
-                try {
-                    // Buscar a solicitação criada para obter o ID
-                    const solicitacaoCriada = await prisma.solicitacoes.findFirst({
-                        where: { Protocol: result.protocol, UserId: userId },
-                        select: { Id: true, Title: true, Protocol: true }
-                    });
-
-                    if (solicitacaoCriada) {
-                        // Buscar usuários financeiros
-                        const financeiros = await prisma.user.findMany({
-                            where: { Role: 'Finance', Status: 'Ativo' },
-                            select: { Id: true, Nome: true }
-                        });
-
-                        // Buscar dados do usuário que criou a solicitação
-                        const criador = await prisma.user.findUnique({
-                            where: { Id: userId },
-                            select: { Id: true, Nome: true, Role: true }
-                        });
-
-                        // Notificar todos os usuários financeiros
-                        for (const financeiro of financeiros) {
-                            await this.wsService.emitToUser(financeiro.Id, 'notification', {
-                                type: 'solicitacao_criada',
-                                title: 'Nova Solicitação Criada',
-                                message: `Uma nova solicitação foi criada: ${solicitacaoCriada.Title || 'Sem título'}`,
-                                protocol: solicitacaoCriada.Protocol,
-                                solicitacaoId: solicitacaoCriada.Id,
-                                createdAt: new Date().toISOString()
-                            });
-                        }
-
-                        // Se o criador for psicólogo, também notificar ele
-                        if (criador && criador.Role === 'Psychologist') {
-                            await this.wsService.emitToUser(criador.Id, 'notification', {
-                                type: 'solicitacao_criada',
-                                title: 'Sua Solicitação foi Criada',
-                                message: `Sua solicitação foi criada com sucesso. Protocolo: ${solicitacaoCriada.Protocol}`,
-                                protocol: solicitacaoCriada.Protocol,
-                                solicitacaoId: solicitacaoCriada.Id,
-                                createdAt: new Date().toISOString()
-                            });
-                        }
-                    }
-                } catch (notifError) {
-                    console.error('[SolicitacoesController] Erro ao enviar notificações:', notifError);
-                    // Não falha a criação se a notificação falhar
-                }
-            }
-
             return res.status(result.success ? 201 : 400).json(result);
         } catch (error) {
             console.error('[SolicitacoesController] Erro ao criar solicitação:', error);
@@ -131,7 +109,8 @@ export class SolicitacoesController {
             if (!userId) {
                 return res.status(401).json({ error: 'Unauthorized' });
             }
-            const result = await this.solicitacoesService.getSolicitacoesByUserId(userId);
+            const userRole = await this.authService.getUserRole(userId);
+            const result = await this.solicitacoesService.getSolicitacoesByUserId(userId, userRole || undefined);
             return res.status(result.success ? 200 : 404).json(result);
         } catch (error) {
             return res.status(500).json({ success: false, message: 'Erro ao buscar solicitações' });
@@ -144,7 +123,11 @@ export class SolicitacoesController {
             if (!userId) {
                 return res.status(400).json({ success: false, message: 'UserId é obrigatório' });
             }
-            const result = await this.solicitacoesService.getSolicitacoesByUserId(userId);
+            const targetUser = await prisma.user.findUnique({
+                where: { Id: userId },
+                select: { Role: true }
+            });
+            const result = await this.solicitacoesService.getSolicitacoesByUserId(userId, targetUser?.Role);
             return res.status(result.success ? 200 : 404).json(result);
         } catch (error) {
             return res.status(500).json({ success: false, message: 'Erro ao buscar solicitações' });
@@ -185,53 +168,54 @@ export class SolicitacoesController {
                 }
             }
 
-            // Enviar notificações via socket se o status foi atualizado com sucesso
+            // Enviar notificações persistentes e em tempo real se o status foi atualizado com sucesso
             if (result.success) {
                 try {
                     // Buscar a solicitação para obter o criador
                     const solicitacao = await prisma.solicitacoes.findUnique({
                         where: { Id: solicitacaoId },
-                        select: { UserId: true, Title: true, Protocol: true }
+                        select: { UserId: true, Title: true, Protocol: true, Tipo: true }
                     });
 
-                    if (solicitacao) {
-                        // Buscar usuários financeiros
-                        const financeiros = await prisma.user.findMany({
+                    if (!solicitacao) {
+                        return;
+                    }
+
+                    const notifyMessage = `O status da solicitação "${solicitacao.Title || solicitacao.Protocol}" foi atualizado para: ${status}`;
+
+                    // Buscar usuários financeiros (apenas se for solicitação financeira)
+                    const shouldNotifyFinance = isSolicitacaoFinanceira(solicitacao.Tipo || "");
+                    const financeiros = shouldNotifyFinance
+                        ? await prisma.user.findMany({
                             where: { Role: 'Finance', Status: 'Ativo' },
-                            select: { Id: true, Nome: true }
+                            select: { Id: true }
+                        })
+                        : [];
+
+                    // Buscar dados do criador da solicitação
+                    const criador = await prisma.user.findUnique({
+                        where: { Id: solicitacao.UserId },
+                        select: { Id: true }
+                    });
+
+                    // Notificar todos os usuários financeiros
+                    for (const financeiro of financeiros) {
+                        await this.notificationService.sendNotification({
+                            userId: financeiro.Id,
+                            title: 'Status da Solicitação Atualizado',
+                            message: notifyMessage,
+                            type: 'info'
                         });
+                    }
 
-                        // Buscar dados do criador da solicitação
-                        const criador = await prisma.user.findUnique({
-                            where: { Id: solicitacao.UserId },
-                            select: { Id: true, Nome: true, Role: true }
+                    // Notificar o criador da solicitação
+                    if (criador) {
+                        await this.notificationService.sendNotification({
+                            userId: criador.Id,
+                            title: 'Status da Sua Solicitação Atualizado',
+                            message: notifyMessage,
+                            type: 'info'
                         });
-
-                        // Notificar todos os usuários financeiros
-                        for (const financeiro of financeiros) {
-                            await this.wsService.emitToUser(financeiro.Id, 'notification', {
-                                type: 'solicitacao_status_atualizado',
-                                title: 'Status da Solicitação Atualizado',
-                                message: `O status da solicitação "${solicitacao.Title || solicitacao.Protocol}" foi atualizado para: ${status}`,
-                                protocol: solicitacao.Protocol,
-                                solicitacaoId: solicitacaoId,
-                                status: status,
-                                createdAt: new Date().toISOString()
-                            });
-                        }
-
-                        // Notificar o criador da solicitação
-                        if (criador) {
-                            await this.wsService.emitToUser(criador.Id, 'notification', {
-                                type: 'solicitacao_status_atualizado',
-                                title: 'Status da Sua Solicitação Atualizado',
-                                message: `O status da sua solicitação "${solicitacao.Title || solicitacao.Protocol}" foi atualizado para: ${status}`,
-                                protocol: solicitacao.Protocol,
-                                solicitacaoId: solicitacaoId,
-                                status: status,
-                                createdAt: new Date().toISOString()
-                            });
-                        }
                     }
                 } catch (notifError) {
                     console.error('[SolicitacoesController] Erro ao enviar notificações:', notifError);
@@ -533,58 +517,57 @@ export class SolicitacoesController {
                 }
             }
 
-            // Enviar notificações via socket se a resposta foi adicionada com sucesso
+            // Enviar notificações persistentes e em tempo real se a resposta foi adicionada com sucesso
             if (result.success) {
                 try {
                     // Buscar a solicitação para obter o criador
                     const solicitacao = await prisma.solicitacoes.findUnique({
                         where: { Id: solicitacaoId },
-                        select: { UserId: true, Title: true, Protocol: true }
+                        select: { UserId: true, Title: true, Protocol: true, Tipo: true }
                     });
 
-                    if (solicitacao) {
-                        // Buscar usuários financeiros
-                        const financeiros = await prisma.user.findMany({
+                    if (!solicitacao) {
+                        return;
+                    }
+
+                    const autorNomeDisplay = autorNome || (autor === 'admin' ? 'Administrador' : 'Usuário');
+                    const notifyMessage = `${autorNomeDisplay} adicionou uma resposta na solicitação "${solicitacao.Title || solicitacao.Protocol}"`;
+
+                    // Buscar usuários financeiros (apenas se for solicitação financeira)
+                    const shouldNotifyFinance = isSolicitacaoFinanceira(solicitacao.Tipo || "");
+                    const financeiros = shouldNotifyFinance
+                        ? await prisma.user.findMany({
                             where: { Role: 'Finance', Status: 'Ativo' },
-                            select: { Id: true, Nome: true }
-                        });
+                            select: { Id: true }
+                        })
+                        : [];
 
-                        // Buscar dados do criador da solicitação
-                        const criador = await prisma.user.findUnique({
-                            where: { Id: solicitacao.UserId },
-                            select: { Id: true, Nome: true, Role: true }
-                        });
+                    // Buscar dados do criador da solicitação
+                    const criador = await prisma.user.findUnique({
+                        where: { Id: solicitacao.UserId },
+                        select: { Id: true }
+                    });
 
-                        const autorNomeDisplay = autorNome || (autor === 'admin' ? 'Administrador' : 'Usuário');
-
-                        // Notificar todos os usuários financeiros (exceto se foi um financeiro que respondeu)
-                        for (const financeiro of financeiros) {
-                            // Não notificar o próprio financeiro que respondeu
-                            if (financeiro.Id !== userId) {
-                                await this.wsService.emitToUser(financeiro.Id, 'notification', {
-                                    type: 'solicitacao_resposta_adicionada',
-                                    title: 'Nova Resposta na Solicitação',
-                                    message: `${autorNomeDisplay} adicionou uma resposta na solicitação "${solicitacao.Title || solicitacao.Protocol}"`,
-                                    protocol: solicitacao.Protocol,
-                                    solicitacaoId: solicitacaoId,
-                                    autor: autorNomeDisplay,
-                                    createdAt: new Date().toISOString()
-                                });
-                            }
-                        }
-
-                        // Notificar o criador da solicitação (exceto se foi ele mesmo que respondeu)
-                        if (criador && criador.Id !== userId) {
-                            await this.wsService.emitToUser(criador.Id, 'notification', {
-                                type: 'solicitacao_resposta_adicionada',
-                                title: 'Nova Resposta na Sua Solicitação',
-                                message: `${autorNomeDisplay} respondeu sua solicitação "${solicitacao.Title || solicitacao.Protocol}"`,
-                                protocol: solicitacao.Protocol,
-                                solicitacaoId: solicitacaoId,
-                                autor: autorNomeDisplay,
-                                createdAt: new Date().toISOString()
+                    // Notificar todos os usuários financeiros (exceto se foi um financeiro que respondeu)
+                    for (const financeiro of financeiros) {
+                        if (financeiro.Id !== userId) {
+                            await this.notificationService.sendNotification({
+                                userId: financeiro.Id,
+                                title: 'Nova Resposta na Solicitação',
+                                message: notifyMessage,
+                                type: 'info'
                             });
                         }
+                    }
+
+                    // Notificar o criador da solicitação (exceto se foi ele mesmo que respondeu)
+                    if (criador && criador.Id !== userId) {
+                        await this.notificationService.sendNotification({
+                            userId: criador.Id,
+                            title: 'Nova Resposta na Sua Solicitação',
+                            message: notifyMessage,
+                            type: 'info'
+                        });
                     }
                 } catch (notifError) {
                     console.error('[SolicitacoesController] Erro ao enviar notificações:', notifError);

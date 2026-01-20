@@ -161,6 +161,11 @@ export default function ModalCriarSolicitacao({ open, onClose, onSubmit, tiposSo
         Tipo: tipo,
         Descricao: descricao.trim(),
         Documentos: documento,
+        PublicoTodos: publico.all,
+        PublicoPacientes: publico.pacientes,
+        PublicoPsicologos: publico.psicologos,
+        PublicoFinanceiro: publico.financeiro,
+        DestinatariosIds: publico.all ? [] : publico.selectedUsers,
       });
       onClose();
     } catch (error) {

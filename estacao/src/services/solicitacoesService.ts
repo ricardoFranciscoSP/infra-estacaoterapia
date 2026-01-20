@@ -42,6 +42,13 @@ export const solicitacaoService = {
         if (data.Documentos) {
             formData.append('documento', data.Documentos);
         }
+        formData.append('PublicoTodos', String(!!data.PublicoTodos));
+        formData.append('PublicoPacientes', String(!!data.PublicoPacientes));
+        formData.append('PublicoPsicologos', String(!!data.PublicoPsicologos));
+        formData.append('PublicoFinanceiro', String(!!data.PublicoFinanceiro));
+        if (data.DestinatariosIds) {
+            formData.append('DestinatariosIds', JSON.stringify(data.DestinatariosIds));
+        }
         // O interceptor do axios já gerencia o Content-Type para FormData
         return api.post('/solicitacoes', formData);
     },

@@ -63,7 +63,7 @@ export const HeaderSala = () => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      audioRef.current = new Audio('/sounds/notification.mp3');
+      audioRef.current = new Audio('https://actions.google.com/sounds/v1/notifications/notification_simple-01.mp3');
       audioRef.current.volume = 0.5;
     }
   }, []);

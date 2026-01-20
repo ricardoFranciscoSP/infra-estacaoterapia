@@ -14,6 +14,11 @@ export interface ISolicitacao {
     Documentos?: string; // opcional
     Log?: string; // opcional
     SLA?: number; // opcional
+    PublicoTodos?: boolean;
+    PublicoPacientes?: boolean;
+    PublicoPsicologos?: boolean;
+    PublicoFinanceiro?: boolean;
+    DestinatariosIds?: string[];
     CreatedAt: Date;
     UpdatedAt: Date;
 }

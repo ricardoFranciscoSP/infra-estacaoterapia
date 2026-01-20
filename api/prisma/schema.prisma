@@ -38,86 +38,87 @@ model DraftSession {
 
 /// Usuário do sistema: Paciente, Psicólogo, Admin, etc.
 model User {
-  Id                          String                   @id @default(uuid())
+  Id                          String                    @id @default(uuid())
   Nome                        String
-  Email                       String                   @unique
-  Cpf                         String                   @unique
-  Crp                         String?                  @unique
-  GoogleId                    String?                  @unique
+  Email                       String                    @unique
+  Cpf                         String                    @unique
+  Crp                         String?                   @unique
+  GoogleId                    String?                   @unique
   Telefone                    String
   DataNascimento              DateTime?
   Sexo                        Sexo?
-  TermsAccepted               Boolean                  @default(false)
-  PrivacyAccepted             Boolean                  @default(false)
-  Status                      UserStatus               @default(Ativo)
-  RatingAverage               Float                    @default(0)
-  RatingCount                 Int                      @default(0)
+  TermsAccepted               Boolean                   @default(false)
+  PrivacyAccepted             Boolean                   @default(false)
+  Status                      UserStatus                @default(Ativo)
+  RatingAverage               Float                     @default(0)
+  RatingCount                 Int                       @default(0)
   Password                    String
   Role                        Role
-  IsOnboard                   Boolean                  @default(false)
+  IsOnboard                   Boolean                   @default(false)
   ResetPasswordToken          String?
   DataAprovacao               DateTime?
-  VindiCustomerId             String?                  @unique
+  VindiCustomerId             String?                   @unique
   Pronome                     Pronome?
   PaymentToken                String?
   PaymentProfileId            String?
   SubscriptionId              String?
   Rg                          String?
-  AssinaturaContrato          Boolean?                 @default(false)
+  AssinaturaContrato          Boolean?                  @default(false)
   twoFASecret                 String?
-  isTwoFAEnabled              Boolean                  @default(false)
+  isTwoFAEnabled              Boolean                   @default(false)
   backupCodes                 String?
-  LastLogin                   DateTime?                @default(now())
-  CreatedAt                   DateTime                 @default(now())
-  UpdatedAt                   DateTime                 @updatedAt
+  LastLogin                   DateTime?                 @default(now())
+  CreatedAt                   DateTime                  @default(now())
+  UpdatedAt                   DateTime                  @updatedAt
   deletedAt                   DateTime?
-  ResetPasswordTokenExpiresAt DateTime?                @db.Timestamp(6)
-  MustChangePassword          Boolean                  @default(false)
+  ResetPasswordTokenExpiresAt DateTime?                 @db.Timestamp(6)
+  MustChangePassword          Boolean                   @default(false)
   RacaCor                     RacaCor?
   WhatsApp                    String?
-  Address                     Address[]                @relation("UserAddress")
-  AdminActionLogs             AdminActionLog[]         @relation("UserAdminActionLog")
-  PatientAgendas              Agenda[]                 @relation("PacienteAgenda")
-  PsychologistAgendas         Agenda[]                 @relation("PsicologoAgenda")
-  AssinaturaPlanos            AssinaturaPlano[]        @relation("UserAssinaturaPlano")
-  BannersCreated              Banner[]                 @relation("BannerCreator")
-  BannersUpdated              Banner[]                 @relation("BannerUpdater")
-  PolicyDocumentsCreated      PolicyDocument[]         @relation("PolicyDocumentsCreated")
-  PolicyDocumentsUpdated      PolicyDocument[]         @relation("PolicyDocumentsUpdated")
-  BillingAddress              BillingAddress[]         @relation("UserBillingAddress")
-  CancelamentosPac            CancelamentoSessao[]     @relation("CancelamentoPaciente")
-  CiclosPlano                 CicloPlano[]             @relation("UserCicloPlano")
-  Commissions                 Commission[]             @relation("UserCommission")
-  ConsultaPacientes           Consulta[]               @relation("PacienteReservations")
-  ConsultaPsicologos          Consulta[]               @relation("PsicologoReservations")
-  ConsultaAvulsaPaciente      ConsultaAvulsa[]         @relation("ConsultaAvulsaPaciente")
-  ConsultaAvulsaPsicologo     ConsultaAvulsa[]         @relation("ConsultaAvulsaPsicologo")
-  ConsultaParticipacao        ConsultaParticipacao[]   @relation("UserConsultaParticipacao")
+  Address                     Address[]                 @relation("UserAddress")
+  AdminActionLogs             AdminActionLog[]          @relation("UserAdminActionLog")
+  PatientAgendas              Agenda[]                  @relation("PacienteAgenda")
+  PsychologistAgendas         Agenda[]                  @relation("PsicologoAgenda")
+  AssinaturaPlanos            AssinaturaPlano[]         @relation("UserAssinaturaPlano")
+  BannersCreated              Banner[]                  @relation("BannerCreator")
+  BannersUpdated              Banner[]                  @relation("BannerUpdater")
+  PolicyDocumentsCreated      PolicyDocument[]          @relation("PolicyDocumentsCreated")
+  PolicyDocumentsUpdated      PolicyDocument[]          @relation("PolicyDocumentsUpdated")
+  BillingAddress              BillingAddress[]          @relation("UserBillingAddress")
+  CancelamentosPac            CancelamentoSessao[]      @relation("CancelamentoPaciente")
+  CiclosPlano                 CicloPlano[]              @relation("UserCicloPlano")
+  Commissions                 Commission[]              @relation("UserCommission")
+  ConsultaPacientes           Consulta[]                @relation("PacienteReservations")
+  ConsultaPsicologos          Consulta[]                @relation("PsicologoReservations")
+  ConsultaAvulsaPaciente      ConsultaAvulsa[]          @relation("ConsultaAvulsaPaciente")
+  ConsultaAvulsaPsicologo     ConsultaAvulsa[]          @relation("ConsultaAvulsaPsicologo")
+  ConsultaParticipacao        ConsultaParticipacao[]    @relation("UserConsultaParticipacao")
   ControleConsultaMensal      ControleConsultaMensal[]
-  CreditosAvulsos             CreditoAvulso[]          @relation("UserCreditoAvulso")
-  Document                    Document[]               @relation("UserDocuments")
-  Document_fiscal             Document_fiscal[]        @relation("UserDocument_fiscal")
-  FavoritesGiven              Favorite[]               @relation("PatientFavorites")
-  FavoritesReceived           Favorite[]               @relation("PsychologistFavoritedBy")
-  FinanceiroEntries           Financeiro[]             @relation("UserFinanceiro")
-  FinanceiroPsicologoEntries  FinanceiroPsicologo[]    @relation("UserFinanceiroPsicologo")
-  FormularioSaqueAutonomo     FormularioSaqueAutonomo? @relation("UserFormularioSaqueAutonomo")
-  Images                      Image[]                  @relation("UserImage")
+  CreditosAvulsos             CreditoAvulso[]           @relation("UserCreditoAvulso")
+  Document                    Document[]                @relation("UserDocuments")
+  Document_fiscal             Document_fiscal[]         @relation("UserDocument_fiscal")
+  FavoritesGiven              Favorite[]                @relation("PatientFavorites")
+  FavoritesReceived           Favorite[]                @relation("PsychologistFavoritedBy")
+  FinanceiroEntries           Financeiro[]              @relation("UserFinanceiro")
+  FinanceiroPsicologoEntries  FinanceiroPsicologo[]     @relation("UserFinanceiroPsicologo")
+  FormularioSaqueAutonomo     FormularioSaqueAutonomo?  @relation("UserFormularioSaqueAutonomo")
+  Images                      Image[]                   @relation("UserImage")
   LoginLog                    LoginLog[]
-  NotificationStatus          NotificationStatus[]     @relation("UserNotificationStatus")
-  Onboardings                 Onboarding[]             @relation("UserOnboarding")
-  CreatedPasswordResets       PasswordReset[]          @relation("AdminPasswordReset")
-  PasswordResets              PasswordReset[]          @relation("UserPasswordReset")
+  NotificationStatus          NotificationStatus[]      @relation("UserNotificationStatus")
+  Onboardings                 Onboarding[]              @relation("UserOnboarding")
+  CreatedPasswordResets       PasswordReset[]           @relation("AdminPasswordReset")
+  PasswordResets              PasswordReset[]           @relation("UserPasswordReset")
   PessoalJuridica             PessoalJuridica?
-  PlanoAssinaturasAdmin       PlanoAssinatura[]        @relation("PlanoAdmin")
-  ProfessionalProfiles        ProfessionalProfile[]    @relation("UserProfessionalProfile")
-  RefreshTokens               RefreshToken[]           @relation("UserRefreshToken")
-  ReviewsReceived             Review[]                 @relation("PsychologistReviews")
-  ReviewsMade                 Review[]                 @relation("UserReviews")
+  PlanoAssinaturasAdmin       PlanoAssinatura[]         @relation("PlanoAdmin")
+  ProfessionalProfiles        ProfessionalProfile[]     @relation("UserProfessionalProfile")
+  RefreshTokens               RefreshToken[]            @relation("UserRefreshToken")
+  ReviewsReceived             Review[]                  @relation("PsychologistReviews")
+  ReviewsMade                 Review[]                  @relation("UserReviews")
   Solicitacoes                Solicitacoes[]
-  UserPermissions             UserPermission[]         @relation("UserPermissions")
-  WorkSchedules               WorkSchedule[]           @relation("UserWorkSchedule")
-  PlanoAssinaturas            PlanoAssinatura[]        @relation("UserPlanoAssinatura")
+  UserPermissions             UserPermission[]          @relation("UserPermissions")
+  WorkSchedules               WorkSchedule[]            @relation("UserWorkSchedule")
+  PlanoAssinaturas            PlanoAssinatura[]         @relation("UserPlanoAssinatura")
+  solicitacaoDestinatarios    SolicitacaoDestinatario[]
 
   @@map("User")
 }
@@ -842,21 +843,39 @@ model PolicyDocument {
 }
 
 model Solicitacoes {
-  Id               String            @id @default(uuid())
-  UserId           String
-  Title            String
-  Tipo             String
-  Status           String            @default("Pendente")
-  Protocol         String            @unique
-  Descricao        String?
-  Documentos       String?
-  Log              String?
-  SLA              Int?
-  CreatedAt        DateTime          @default(now())
-  UpdatedAt        DateTime          @updatedAt
-  Documents        Document[]
-  Documents_fiscal Document_fiscal[] @relation("SolicitacaoDocument_fiscal")
-  User             User              @relation(fields: [UserId], references: [Id], onDelete: Cascade)
+  Id                String                    @id @default(uuid())
+  UserId            String
+  Title             String
+  Tipo              String
+  Status            String                    @default("Pendente")
+  Protocol          String                    @unique
+  Descricao         String?
+  Documentos        String?
+  Log               String?
+  SLA               Int?
+  PublicoTodos      Boolean                   @default(false)
+  PublicoPacientes  Boolean                   @default(false)
+  PublicoPsicologos Boolean                   @default(false)
+  PublicoFinanceiro Boolean                   @default(false)
+  CreatedAt         DateTime                  @default(now())
+  UpdatedAt         DateTime                  @updatedAt
+  Documents         Document[]
+  Documents_fiscal  Document_fiscal[]         @relation("SolicitacaoDocument_fiscal")
+  Destinatarios     SolicitacaoDestinatario[]
+  User              User                      @relation(fields: [UserId], references: [Id], onDelete: Cascade)
+}
+
+model SolicitacaoDestinatario {
+  Id            String       @id @default(uuid())
+  SolicitacaoId String
+  UserId        String
+  CreatedAt     DateTime     @default(now())
+  Solicitacao   Solicitacoes @relation(fields: [SolicitacaoId], references: [Id], onDelete: Cascade)
+  User          User         @relation(fields: [UserId], references: [Id], onDelete: Cascade)
+
+  @@unique([SolicitacaoId, UserId])
+  @@index([UserId])
+  @@index([SolicitacaoId])
 }
 
 /// Modelo de banners para carrossel/slider

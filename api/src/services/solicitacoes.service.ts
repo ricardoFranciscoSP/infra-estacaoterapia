@@ -66,6 +66,10 @@ const mapSolicitacaoBase = (s: Prisma.SolicitacoesGetPayload<{}> & { User?: Soli
     Documentos: s.Documentos ?? undefined,
     Log: s.Log ?? undefined,
     SLA: s.SLA ?? undefined,
+    PublicoTodos: s.PublicoTodos ?? false,
+    PublicoPacientes: s.PublicoPacientes ?? false,
+    PublicoPsicologos: s.PublicoPsicologos ?? false,
+    PublicoFinanceiro: s.PublicoFinanceiro ?? false,
     CreatedAt: s.CreatedAt,
     UpdatedAt: s.UpdatedAt,
     Documents: []
@@ -83,6 +87,10 @@ const mapSolicitacaoWithDocs = (s: SolicitacaoWithDocs): ISolicitacao & { Docume
     Documentos: s.Documentos ?? undefined,
     Log: s.Log ?? undefined,
     SLA: s.SLA ?? undefined,
+    PublicoTodos: s.PublicoTodos ?? false,
+    PublicoPacientes: s.PublicoPacientes ?? false,
+    PublicoPsicologos: s.PublicoPsicologos ?? false,
+    PublicoFinanceiro: s.PublicoFinanceiro ?? false,
     CreatedAt: s.CreatedAt,
     UpdatedAt: s.UpdatedAt,
     Documents: s.Documents ?? []
@@ -195,9 +203,30 @@ export class SolicitacoesService implements ISolicitacoesService {
                     Descricao: data.Descricao,
                     Documentos: documentoUrl || null,
                     Log: threadInicial,
-                    SLA: slaAutomatico
+                    SLA: slaAutomatico,
+                    PublicoTodos: data.PublicoTodos ?? false,
+                    PublicoPacientes: data.PublicoPacientes ?? false,
+                    PublicoPsicologos: data.PublicoPsicologos ?? false,
+                    PublicoFinanceiro: data.PublicoFinanceiro ?? false
                 }
             });
+
+            // Criar destinatários específicos (se houver)
+            const destinatariosIds = Array.isArray(data.DestinatariosIds) ? data.DestinatariosIds : [];
+            if (destinatariosIds.length > 0 && !(data.PublicoTodos ?? false)) {
+                const uniqueIds = Array.from(new Set(destinatariosIds));
+                try {
+                    await prisma.solicitacaoDestinatario.createMany({
+                        data: uniqueIds.map((destId) => ({
+                            SolicitacaoId: solicitacao.Id,
+                            UserId: destId
+                        })),
+                        skipDuplicates: true
+                    });
+                } catch (destError) {
+                    console.error('[SolicitacoesService] ⚠️ Erro ao criar destinatários, mas solicitação foi criada:', destError);
+                }
+            }
 
             // Se houver URL do documento, criar registro Document vinculado à solicitação
             if (documentoUrl && file) {
@@ -281,6 +310,18 @@ export class SolicitacoesService implements ISolicitacoesService {
                         // Não falha a criação da solicitação se a notificação falhar
                     }
                 }
+
+                // Notificar o criador da solicitação
+                try {
+                    await notificationService.sendNotification({
+                        userId,
+                        title: 'Solicitação criada com sucesso',
+                        message: `Sua solicitação foi registrada. Protocolo: ${finalProtocol} - ${data.Title}`,
+                        type: 'info'
+                    });
+                } catch (creatorNotifError) {
+                    console.error('[SolicitacoesService] ⚠️ Erro ao notificar criador da solicitação:', creatorNotifError);
+                }
             } catch (notificationError) {
                 console.error('[SolicitacoesService] ⚠️ Erro ao enviar notificações via WebSocket (não impede a criação da solicitação):', notificationError);
                 // Não falha a criação da solicitação se as notificações falharem
@@ -293,10 +334,41 @@ export class SolicitacoesService implements ISolicitacoesService {
         }
     }
 
-    async getSolicitacoesByUserId(userId: string): Promise<{ success: boolean; solicitacoes?: ISolicitacao[]; message?: string }> {
+    async getSolicitacoesByUserId(userId: string, userRole?: Role): Promise<{ success: boolean; solicitacoes?: ISolicitacao[]; message?: string }> {
         try {
+            const role = userRole || (await prisma.user.findUnique({
+                where: { Id: userId },
+                select: { Role: true }
+            }))?.Role;
+
+            const roleFilters: Prisma.SolicitacoesWhereInput[] = [];
+            if (role === Role.Patient) {
+                roleFilters.push({ PublicoPacientes: true });
+            }
+            if (role === Role.Psychologist) {
+                roleFilters.push({ PublicoPsicologos: true });
+            }
+            if (role === Role.Finance) {
+                roleFilters.push({ PublicoFinanceiro: true });
+            }
+
+            const roleScopedFilter: Prisma.SolicitacoesWhereInput | null = roleFilters.length
+                ? {
+                    AND: [
+                        { Destinatarios: { none: {} } },
+                        { OR: roleFilters }
+                    ]
+                }
+                : null;
+
             const solicitacoesRaw = await prisma.solicitacoes.findMany({
-                where: { UserId: userId },
+                where: {
+                    OR: [
+                        { UserId: userId },
+                        { PublicoTodos: true },
+                        { Destinatarios: { some: { UserId: userId } } }
+                    ].concat(roleScopedFilter ? [roleScopedFilter] : [])
+                },
                 include: {
                     User: {
                         select: {

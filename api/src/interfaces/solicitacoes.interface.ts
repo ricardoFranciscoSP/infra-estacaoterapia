@@ -3,7 +3,7 @@ import { Role } from '../types/permissions.types';
 
 export interface ISolicitacoesService {
     createSolicitacao(userId: string, data: Omit<ISolicitacao, 'Id' | 'CreatedAt' | 'UpdatedAt' | 'Protocol'>, file?: Express.Multer.File, protocol?: string): Promise<{ success: boolean; message: string; protocol?: string }>;
-    getSolicitacoesByUserId(userId: string): Promise<{ success: boolean; solicitacoes?: ISolicitacao[]; message?: string }>;
+    getSolicitacoesByUserId(userId: string, userRole?: Role): Promise<{ success: boolean; solicitacoes?: ISolicitacao[]; message?: string }>;
     updateSolicitacaoStatus(solicitacaoId: string, status: string): Promise<{ success: boolean; message: string }>;
     getAll(userId?: string, userRole?: Role): Promise<{ success: boolean; solicitacoes?: ISolicitacao[]; message?: string }>;
     getFinanceSolicitacoes(): Promise<{ success: boolean; solicitacoes?: ISolicitacao[]; message?: string }>;

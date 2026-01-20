@@ -24,6 +24,10 @@ export interface Solicitacao {
     Documents?: SolicitacaoDocument[];
     Log?: string | null;
     SLA?: number | null;
+    PublicoTodos?: boolean;
+    PublicoPacientes?: boolean;
+    PublicoPsicologos?: boolean;
+    PublicoFinanceiro?: boolean;
     CreatedAt: Date | string;
     UpdatedAt: Date | string;
 }
@@ -33,6 +37,11 @@ export interface CreateSolicitacaoData {
     Tipo: string;
     Descricao?: string;
     Documentos?: File | null;
+    PublicoTodos?: boolean;
+    PublicoPacientes?: boolean;
+    PublicoPsicologos?: boolean;
+    PublicoFinanceiro?: boolean;
+    DestinatariosIds?: string[];
 }
 
 export interface UpdateSolicitacaoData {

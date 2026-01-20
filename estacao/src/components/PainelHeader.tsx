@@ -394,7 +394,7 @@ export default function PainelHeader({ user }: PainelHeaderProps) {
   useEffect(() => {
     // Cria o elemento de áudio apenas no cliente
     if (typeof window !== 'undefined') {
-      audioRef.current = new Audio('/sounds/notification.mp3');
+      audioRef.current = new Audio('https://actions.google.com/sounds/v1/notifications/notification_simple-01.mp3');
       audioRef.current.volume = 0.5; // Volume ajustável (0.0 a 1.0)
     }
   }, []);
