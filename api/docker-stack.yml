@@ -42,6 +42,12 @@ services:
       placement:
         constraints:
           - node.role == manager
+      update_config:
+        parallelism: 1
+        delay: 30s
+        order: start-first
+        failure_action: rollback
+        monitor: 60s
       restart_policy:
         condition: on-failure
         delay: 10s
@@ -74,6 +80,12 @@ services:
       placement:
         constraints:
           - node.role == manager
+      update_config:
+        parallelism: 1
+        delay: 30s
+        order: start-first
+        failure_action: rollback
+        monitor: 60s
       restart_policy:
         condition: on-failure
         delay: 10s
@@ -119,6 +131,12 @@ services:
       placement:
         constraints:
           - node.role == manager
+      update_config:
+        parallelism: 1
+        delay: 30s
+        order: start-first
+        failure_action: rollback
+        monitor: 60s
       restart_policy:
         condition: on-failure
         delay: 10s

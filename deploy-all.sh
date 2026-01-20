@@ -389,6 +389,11 @@ print_summary() {
 ###############################################################################
 
 main() {
+    # Bloquear uso de CLEAN_DEPLOY=true para evitar downtime
+    if [ "${CLEAN_DEPLOY:-false}" = "true" ]; then
+        log_error "CLEAN_DEPLOY=true não é permitido neste script. Para zero downtime, utilize apenas rolling update."
+        exit 1
+    fi
     log_header "🚀 Deploy Completo - Estação Terapia"
     log_info "Iniciado em: $(date '+%d/%m/%Y %H:%M:%S')"
     log_info "Usuário: $(whoami)"
@@ -432,9 +437,33 @@ main() {
 
     # Limpeza pós-deploy
     run_cleanup || true
-    
+
+    # Remover imagens antigas dos serviços (mantendo 2 mais recentes)
+    log_header "🧹 Limpando imagens antigas dos serviços"
+    SERVICES=(api redis socket pgbouncer)
+    for service in "${SERVICES[@]}"; do
+        IMAGE_PREFIX="estacaoterapia-$service"
+        # Lista todas as tags prd-* ordenadas, pega as antigas (mantém 2 mais recentes)
+        OLD_IMAGES=$(docker images --format "{{.Repository}}:{{.Tag}}" | grep "^$IMAGE_PREFIX:prd-" | sort -r | tail -n +3)
+        if [ -n "$OLD_IMAGES" ]; then
+            echo "$OLD_IMAGES" | while read -r image; do
+                log_info "Removendo imagem antiga: $image"
+                docker rmi "$image" 2>/dev/null || log_warning "Não foi possível remover $image (pode estar em uso)"
+            done
+        else
+            log_info "Nenhuma imagem antiga para remover para $service"
+        fi
+    done
+
+    # Limpar imagens dangling (órfãs)
+    DANGLING_IMAGES=$(docker images -f "dangling=true" -q 2>/dev/null || echo "")
+    if [ -n "$DANGLING_IMAGES" ]; then
+        log_info "Removendo imagens dangling..."
+        docker image prune -f >/dev/null 2>&1 || true
+    fi
+
     log_info "Finalizado em: $(date '+%d/%m/%Y %H:%M:%S')"
-    
+
     exit $exit_code
 }
 
