@@ -41,7 +41,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobile = false, onClose, modul
       currentPath?.includes("/auditoria") ||
       currentPath?.includes("/permissoes") ||
       currentPath?.includes("/logs") ||
-      currentPath?.includes("/log-view")
+      currentPath?.includes("/log-view") ||
+      currentPath?.includes("/gerar-token-manual")
     ) {
       setConfigOpen(true);
     }
@@ -226,7 +227,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobile = false, onClose, modul
               isActive(`${basePath}/permissoes`) ||
               isActive(`${basePath}/configuracoes/gestao-documentos`) ||
               isActive(`${basePath}/configuracoes/log-view`) ||
-              isActive(`${basePath}/configuracoes/backups`);
+              isActive(`${basePath}/configuracoes/backups`) ||
+              isActive(`${basePath}/configuracoes/gerar-token-manual`);
             const relatoriosActive = 
               isActive(`${basePath}/relatorios`);
             
@@ -388,7 +390,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobile = false, onClose, modul
                             !isActive(`${basePath}/auditoria`) &&
                             !isActive(`${basePath}/permissoes`) &&
                             !isActive(`${basePath}/configuracoes/log-view`) &&
-                            !isActive(`${basePath}/configuracoes/backups`)
+                            !isActive(`${basePath}/configuracoes/backups`) &&
+                            !isActive(`${basePath}/configuracoes/gerar-token-manual`)
                               ? "text-[#8494E9] bg-[#F2F4FD]"
                               : "text-[#6C757D]"
                           }`}
@@ -400,16 +403,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobile = false, onClose, modul
                       </li>
                       <li>
                         <Link
-                          href={`${basePath}/configuracoes/seguranca/redefinicao-senha`}
+                          href={`${basePath}/configuracoes/gerar-token-manual`}
                           className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded hover:bg-[#F2F4FD] ${
-                            isActive(`${basePath}/configuracoes/seguranca/redefinicao-senha`)
+                            isActive(`${basePath}/configuracoes/gerar-token-manual`)
                               ? "text-[#8494E9] bg-[#F2F4FD]"
                               : "text-[#6C757D]"
                           }`}
                           onClick={onClose}
                         >
                           <span className="w-1.5 h-1.5 rounded-full bg-current"></span>
-                          <span>Redefinição de Senha</span>
+                          <span>Tokens Manuais</span>
                         </Link>
                       </li>
                       <li>
@@ -442,20 +445,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobile = false, onClose, modul
                       </li>
                       <li>
                         <Link
-                          href={`${basePath}/configuracoes/backups`}
-                          className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded hover:bg-[#F2F4FD] ${
-                            isActive(`${basePath}/configuracoes/backups`)
-                              ? "text-[#8494E9] bg-[#F2F4FD]"
-                              : "text-[#6C757D]"
-                          }`}
-                          onClick={onClose}
-                        >
-                          <span className="w-1.5 h-1.5 rounded-full bg-current"></span>
-                          <span>Backups</span>
-                        </Link>
-                      </li>
-                      <li>
-                        <Link
                           href={`${basePath}/permissoes`}
                           className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded hover:bg-[#F2F4FD] ${
                             isActive(`${basePath}/permissoes`)
@@ -470,16 +459,30 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobile = false, onClose, modul
                       </li>
                       <li>
                         <Link
-                          href={`${basePath}/banners`}
+                          href={`${basePath}/configuracoes/seguranca/redefinicao-senha`}
                           className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded hover:bg-[#F2F4FD] ${
-                            isActive(`${basePath}/banners`)
+                            isActive(`${basePath}/configuracoes/seguranca/redefinicao-senha`)
                               ? "text-[#8494E9] bg-[#F2F4FD]"
                               : "text-[#6C757D]"
                           }`}
                           onClick={onClose}
                         >
                           <span className="w-1.5 h-1.5 rounded-full bg-current"></span>
-                          <span>Gestão de Banners</span>
+                          <span>Redefinição de Senha</span>
+                        </Link>
+                      </li>
+                      <li>
+                        <Link
+                          href={`${basePath}/configuracoes/backups`}
+                          className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded hover:bg-[#F2F4FD] ${
+                            isActive(`${basePath}/configuracoes/backups`)
+                              ? "text-[#8494E9] bg-[#F2F4FD]"
+                              : "text-[#6C757D]"
+                          }`}
+                          onClick={onClose}
+                        >
+                          <span className="w-1.5 h-1.5 rounded-full bg-current"></span>
+                          <span>Backups</span>
                         </Link>
                       </li>
                       <li>
@@ -522,6 +525,20 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobile = false, onClose, modul
                         >
                           <span className="w-1.5 h-1.5 rounded-full bg-current"></span>
                           <span>Planos</span>
+                        </Link>
+                      </li>
+                      <li>
+                        <Link
+                          href={`${basePath}/banners`}
+                          className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded hover:bg-[#F2F4FD] ${
+                            isActive(`${basePath}/banners`)
+                              ? "text-[#8494E9] bg-[#F2F4FD]"
+                              : "text-[#6C757D]"
+                          }`}
+                          onClick={onClose}
+                        >
+                          <span className="w-1.5 h-1.5 rounded-full bg-current"></span>
+                          <span>Gestão de Banners</span>
                         </Link>
                       </li>
                     </ul>

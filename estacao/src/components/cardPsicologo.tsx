@@ -4,6 +4,8 @@ import { useAverageRating } from "@/hooks/reviewHook";
 import { getAvatarUrl } from "@/utils/avatarUtils";
 import React, { useEffect } from "react";
 import Image from "next/image";
+import { FiX } from 'react-icons/fi';
+import toast from 'react-hot-toast';
 import { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
 
 interface Psicologo {
@@ -45,8 +47,32 @@ const CardPsicologos: React.FC<CardPsicologosProps> = ({
   const user = useAuthStore((s) => s.user);
   const isUserValid = !!user && !!user.Id;
 
+  // Estado para controle de imagem removida
+  const [imagemRemovida, setImagemRemovida] = React.useState(false);
   // Usa a função utilitária para garantir que sempre haverá um avatar
-  const safeAvatarUrl = getAvatarUrl({ avatarUrl });
+  const safeAvatarUrl = imagemRemovida ? '/assets/avatar-placeholder.svg' : getAvatarUrl({ avatarUrl });
+
+  // Função para remover imagem do psicólogo
+  const [removendoImagem, setRemovendoImagem] = React.useState(false);
+  const handleRemoverImagem = async () => {
+    setRemovendoImagem(true);
+    try {
+      const res = await fetch(`/api/psicologos/${psicologoId}/imagem`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      if (res.ok) {
+        setImagemRemovida(true);
+        toast.success('Imagem removida com sucesso!');
+      } else {
+        toast.error('Erro ao remover imagem.');
+      }
+    } catch (e) {
+      toast.error('Erro ao remover imagem.');
+    } finally {
+      setRemovendoImagem(false);
+    }
+  };
   // Hooks de favoritos
   const { favoritos, refetch: refetchFavoritos } = useFavoritos();
   const addFavorito = useAddFavorito();
@@ -126,20 +152,35 @@ const CardPsicologos: React.FC<CardPsicologosProps> = ({
       <div className="block md:hidden w-full h-full  flex-col">
         <div className="flex flex-row items-start w-full">
           {/* Avatar */}
-          <Image
-            src={safeAvatarUrl}
-            alt={nome || 'Psicólogo'}
-            width={56}
-            height={56}
-            className="w-14 h-14 rounded-full object-cover border-2 border-[#FCFBF6] opacity-100 flex-shrink-0"
-            unoptimized={safeAvatarUrl?.startsWith('http') || safeAvatarUrl?.startsWith('data:')}
-            onError={(e) => {
-              const target = e.target as HTMLImageElement;
-              if (target.src !== '/assets/avatar-placeholder.svg') {
-                target.src = '/assets/avatar-placeholder.svg';
-              }
-            }}
-          />
+          <div className="relative group">
+            <Image
+              src={safeAvatarUrl}
+              alt={nome || 'Psicólogo'}
+              width={56}
+              height={56}
+              className="w-14 h-14 rounded-full object-cover border-2 border-[#FCFBF6] opacity-100 flex-shrink-0"
+              unoptimized={safeAvatarUrl?.startsWith('http') || safeAvatarUrl?.startsWith('data:')}
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                if (target.src !== '/assets/avatar-placeholder.svg') {
+                  target.src = '/assets/avatar-placeholder.svg';
+                }
+              }}
+            />
+            {/* Botão X para remover imagem */}
+            {safeAvatarUrl !== '/assets/avatar-placeholder.svg' && (
+              <button
+                type="button"
+                title="Remover imagem"
+                className="absolute top-0 right-0 bg-white rounded-full p-1 shadow-md border border-gray-200 hover:bg-red-100 transition-opacity opacity-80 group-hover:opacity-100"
+                style={{ transform: 'translate(40%, -40%)' }}
+                onClick={handleRemoverImagem}
+                disabled={removendoImagem}
+              >
+                <FiX size={16} className="text-red-500" />
+              </button>
+            )}
+          </div>
           {/* Nome, CRP e ícones */}
           <div className="flex flex-col ml-3 flex-1 min-w-0">
             <div className="flex flex-row items-start w-full mb-1 gap-1.5">
@@ -235,20 +276,35 @@ const CardPsicologos: React.FC<CardPsicologosProps> = ({
       <div className="hidden md:flex flex-col w-full h-full md:w-[323px] md:h-[372px] md:rounded-tl-[8px] md:rounded-bl-[8px] md:pt-4 md:pr-4 md:pb-4 md:pl-4 gap-2">
         {/* Avatar, nome, CRP, estrelas */}
         <div className="flex flex-row items-center w-full mb-1">
-          <Image
-            src={safeAvatarUrl}
-            alt={nome || 'Psicólogo'}
-            width={80}
-            height={80}
-            className="w-20 h-20 rounded-full object-cover border-2 border-[#FCFBF6] opacity-100"
-            unoptimized={safeAvatarUrl?.startsWith('http') || safeAvatarUrl?.startsWith('data:')}
-            onError={(e) => {
-              const target = e.target as HTMLImageElement;
-              if (target.src !== '/assets/avatar-placeholder.svg') {
-                target.src = '/assets/avatar-placeholder.svg';
-              }
-            }}
-          />
+          <div className="relative group">
+            <Image
+              src={safeAvatarUrl}
+              alt={nome || 'Psicólogo'}
+              width={80}
+              height={80}
+              className="w-20 h-20 rounded-full object-cover border-2 border-[#FCFBF6] opacity-100"
+              unoptimized={safeAvatarUrl?.startsWith('http') || safeAvatarUrl?.startsWith('data:')}
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                if (target.src !== '/assets/avatar-placeholder.svg') {
+                  target.src = '/assets/avatar-placeholder.svg';
+                }
+              }}
+            />
+            {/* Botão X para remover imagem */}
+            {safeAvatarUrl !== '/assets/avatar-placeholder.svg' && (
+              <button
+                type="button"
+                title="Remover imagem"
+                className="absolute top-0 right-0 bg-white rounded-full p-1 shadow-md border border-gray-200 hover:bg-red-100 transition-opacity opacity-80 group-hover:opacity-100"
+                style={{ transform: 'translate(40%, -40%)' }}
+                onClick={handleRemoverImagem}
+                disabled={removendoImagem}
+              >
+                <FiX size={18} className="text-red-500" />
+              </button>
+            )}
+          </div>
           <div className="flex flex-col ml-3">
             <h4 className="font-semibold text-[16px] md:text-[16px] leading-[20px] text-[#FCFBF6]">
               {nome}

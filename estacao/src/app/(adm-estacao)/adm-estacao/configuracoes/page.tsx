@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import { motion } from "framer-motion";
 import { useGerarAgendaManual } from "@/hooks/gerarAgendaHook";
 import { useConfiguracaoIntegracoes, useConfiguracoes, useConfiguracaoAgenda, useConfiguracaoPagamentos, useUpdateConfiguracao } from "@/hooks/configuracoesHook";
@@ -382,6 +383,41 @@ export default function ConfiguracoesPage() {
                 </div>
               </div>
             )}
+          </motion.section>
+
+          <motion.section
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.08 }}
+            className="bg-white rounded-xl shadow-sm p-5 h-full flex flex-col border border-[#E5E9FA] w-full relative hover:shadow-md transition-shadow"
+          >
+            <div className="flex items-center gap-2 mb-3">
+              <svg
+                className="w-5 h-5 text-blue-500 mr-2"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M16 11a4 4 0 11-8 0 4 4 0 018 0zm2 2h2m-2-6h2M4 13H2m2-6H2m11 9v2m0-16V2"
+                />
+              </svg>
+              <h2 className="text-lg font-semibold text-gray-800">
+                Tokens Agora (Manual)
+              </h2>
+            </div>
+            <p className="text-sm text-gray-600 mb-4">
+              Gere tokens manualmente para um par paciente/psicólogo e acompanhe o histórico.
+            </p>
+            <Link
+              href="/adm-estacao/configuracoes/gerar-token-manual"
+              className="inline-flex items-center justify-center px-4 py-2 rounded-lg font-medium bg-[#8494E9] hover:bg-[#6B7DE0] text-white transition"
+            >
+              Acessar geração manual
+            </Link>
           </motion.section>
           
           <motion.section

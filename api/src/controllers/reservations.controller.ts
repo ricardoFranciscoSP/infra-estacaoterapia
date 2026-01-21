@@ -1233,32 +1233,26 @@ export class ReservationsController {
                 return res.status(500).json({ error: `Erro ao gerar UID do ${userType}` });
             }
 
-            // Verifica se já existe um token válido na tabela para este usuário
+            // Garante que ambos os tokens existam (sem regenerar os já existentes)
             let token: string;
-            const existingToken = expectedToken;
-
-            // Se não há token, gera sempre um novo (não restringe mais pela janela de tempo)
-            if (!existingToken || existingToken.trim().length === 0) {
-                console.log(`[ReservationsController] Token não encontrado para ${currentRole}, gerando novo token sem validar janela de tempo...`);
-                try {
-                    token = await this.agoraService.generateToken(channel, currentUserUid, currentRole);
-                    console.log(`[ReservationsController] ✅ Token gerado com sucesso para ${currentRole}`);
-                } catch (error) {
-                    console.error(`[ReservationsController] ❌ Erro ao gerar token para ${currentRole}:`, error);
-                    return res.status(500).json({
-                        error: 'Erro ao gerar token de acesso',
-                        message: error instanceof Error ? error.message : 'Erro desconhecido ao gerar token',
-                        code: 'TOKEN_GENERATION_ERROR'
-                    });
-                }
-            } else {
-                // Usa o token existente - NÃO gera novo token se já existe no banco
-                console.log(`[ReservationsController] Reutilizando token existente para ${currentRole}`);
-                token = existingToken;
-
-                // IMPORTANTE: Não valida no Redis para evitar regeneração desnecessária
-                // O token no banco é a fonte de verdade. Se não estiver no Redis, apenas registra novamente.
-                console.log(`[ReservationsController] Token existente será reutilizado e registrado no Redis se necessário`);
+            try {
+                const { ensureAgoraTokensForConsulta } = await import('../services/agoraToken.service');
+                const { getClientIp } = await import('../utils/getClientIp.util');
+                const tokenResult = await ensureAgoraTokensForConsulta(prisma, consultationId, {
+                    actorId: userId,
+                    actorIp: getClientIp(req),
+                    source: 'room',
+                });
+                token = currentRole === 'patient'
+                    ? tokenResult.patientToken
+                    : tokenResult.psychologistToken;
+            } catch (error) {
+                console.error(`[ReservationsController] ❌ Erro ao garantir tokens para ${currentRole}:`, error);
+                return res.status(500).json({
+                    error: 'Erro ao garantir tokens de acesso',
+                    message: error instanceof Error ? error.message : 'Erro desconhecido ao garantir tokens',
+                    code: 'TOKEN_GENERATION_ERROR'
+                });
             }
 
             // Prepara os dados para atualização

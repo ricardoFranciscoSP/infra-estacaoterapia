@@ -7,6 +7,7 @@ import BreadcrumbsVoltar from "@/components/BreadcrumbsVoltar";
 import ModalQueixas from "@/components/ModalQueixas";
 import ModalAbordagens from "@/components/ModalAbordagens";
 import Image from "next/image";
+import { FiX } from 'react-icons/fi';
 import ModalReview from "@/components/ModalReview";
 import CalendarioRotativo from "@/components/CalendarioRotativo";
 import React, { useState, useEffect, useCallback } from "react";
@@ -37,6 +38,8 @@ import { HorarioAgendamento } from '@/types/agendamentoTypes';
 import toast from "react-hot-toast";
 
 export default function PsicologoPerfilPage() {
+  // Estado para loading de remoção de imagem
+  const [removendoImagem, setRemovendoImagem] = useState(false);
   const { iniciarDraftSession } = useDraftSession();
   const params = useParams();
   const id = params && 'id' in params ? params.id : undefined;
@@ -346,15 +349,39 @@ export default function PsicologoPerfilPage() {
   const allQueixas = mapQueixas(perfilProfissional?.Queixas);
 
   // Função auxiliar para obter a imagem do psicólogo ou avatar padrão
+  const [imagemRemovida, setImagemRemovida] = useState(false);
   const getPsicologoImage = () => {
+    if (imagemRemovida) return '/assets/avatar-placeholder.svg';
     // Verifica tanto Image (singular) quanto Images (plural) - a API pode retornar qualquer um
     const images = psicologo?.Image || psicologo?.Images || [];
     const imageUrl = images?.[0]?.Url;
-    
     if (imageUrl && imageUrl.trim() !== '') {
       return imageUrl;
     }
     return '/assets/avatar-placeholder.svg';
+  };
+
+  // Função para remover imagem do psicólogo
+  const handleRemoverImagem = async () => {
+    if (!psicologo?.Id) return;
+    setRemovendoImagem(true);
+    try {
+      // Chama endpoint de remoção de imagem (ajuste a URL se necessário)
+      const res = await fetch(`/api/psicologos/${psicologo.Id}/imagem`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      if (res.ok) {
+        setImagemRemovida(true);
+        toast.success('Imagem removida com sucesso!');
+      } else {
+        toast.error('Erro ao remover imagem.');
+      }
+    } catch (e) {
+      toast.error('Erro ao remover imagem.');
+    } finally {
+      setRemovendoImagem(false);
+    }
   };
 
   const [abordagensToShow, setAbordagensToShow] = useState(4);
@@ -391,7 +418,7 @@ export default function PsicologoPerfilPage() {
 
     return (
       <div className="mb-6 lg:mb-0">
-        <div className="w-full mb-4 flex lg:justify-start justify-center">
+        <div className="w-full mb-4 flex lg:justify-start justify-center relative group">
           <Image
             src={getPsicologoImage()}
             alt="Foto do Psicólogo"
@@ -407,6 +434,19 @@ export default function PsicologoPerfilPage() {
               }
             }}
           />
+          {/* Botão X para remover imagem */}
+          {getPsicologoImage() !== '/assets/avatar-placeholder.svg' && (
+            <button
+              type="button"
+              title="Remover imagem"
+              className="absolute top-0 right-0 bg-white rounded-full p-1 shadow-md border border-gray-200 hover:bg-red-100 transition-opacity opacity-80 group-hover:opacity-100"
+              style={{ transform: 'translate(40%, -40%)' }}
+              onClick={handleRemoverImagem}
+              disabled={removendoImagem}
+            >
+              <FiX size={18} className="text-red-500" />
+            </button>
+          )}
         </div>
         {/* Sexo */}
         <div className="flex items-center gap-1 mb-2">

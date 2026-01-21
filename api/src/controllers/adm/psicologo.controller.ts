@@ -170,6 +170,94 @@ export class PsicologoController implements IPsicologoController {
         return res.json(result);
     }
 
+    async uploadImage(req: Request, res: Response): Promise<Response> {
+        const user = req.user;
+        if (!user) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+        const hasPermission = await this.authService.checkPermission(
+            user.Id,
+            Module.Psychologists,
+            ActionType.Update
+        );
+        if (!hasPermission) {
+            return res.status(403).json({ message: "Acesso negado" });
+        }
+
+        const psicologoId = normalizeParamStringRequired(req.params.id);
+        const file = req.file as Express.Multer.File | undefined;
+        if (!file) {
+            return res.status(400).json({ error: "Nenhum arquivo enviado." });
+        }
+
+        try {
+            const savedImage = await this.service.uploadImage(user, psicologoId, file);
+            return res.status(201).json({ message: "Imagem enviada com sucesso", data: savedImage });
+        } catch (error: any) {
+            const message = error?.message || "Erro ao fazer upload da imagem.";
+            const status = message.includes("não encontrado") ? 404 : 500;
+            return res.status(status).json({ error: message });
+        }
+    }
+
+    async updateImage(req: Request, res: Response): Promise<Response> {
+        const user = req.user;
+        if (!user) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+        const hasPermission = await this.authService.checkPermission(
+            user.Id,
+            Module.Psychologists,
+            ActionType.Update
+        );
+        if (!hasPermission) {
+            return res.status(403).json({ message: "Acesso negado" });
+        }
+
+        const psicologoId = normalizeParamStringRequired(req.params.id);
+        const imageId = normalizeParamStringRequired(req.params.imageId);
+        const file = req.file as Express.Multer.File | undefined;
+        if (!file) {
+            return res.status(400).json({ error: "Nenhum arquivo enviado." });
+        }
+
+        try {
+            const updatedImage = await this.service.updateImage(user, psicologoId, imageId, file);
+            return res.status(200).json({ message: "Imagem atualizada com sucesso", data: updatedImage });
+        } catch (error: any) {
+            const message = error?.message || "Erro ao atualizar a imagem.";
+            const status = message.includes("não encontrada") || message.includes("não encontrado") ? 404 : 500;
+            return res.status(status).json({ error: message });
+        }
+    }
+
+    async deleteImage(req: Request, res: Response): Promise<Response> {
+        const user = req.user;
+        if (!user) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+        const hasPermission = await this.authService.checkPermission(
+            user.Id,
+            Module.Psychologists,
+            ActionType.Update
+        );
+        if (!hasPermission) {
+            return res.status(403).json({ message: "Acesso negado" });
+        }
+
+        const psicologoId = normalizeParamStringRequired(req.params.id);
+        const imageId = normalizeParamStringRequired(req.params.imageId);
+
+        try {
+            const deletedImage = await this.service.deleteImage(user, psicologoId, imageId);
+            return res.status(200).json({ message: "Imagem deletada com sucesso", data: deletedImage });
+        } catch (error: any) {
+            const message = error?.message || "Erro ao excluir a imagem.";
+            const status = message.includes("não encontrada") || message.includes("não encontrado") ? 404 : 500;
+            return res.status(status).json({ error: message });
+        }
+    }
+
     async getById(req: Request, res: Response): Promise<Response> {
         const user = req.user;
         if (!user) {

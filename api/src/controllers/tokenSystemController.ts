@@ -4,12 +4,17 @@ import dayjs from 'dayjs';
 import timezone from 'dayjs/plugin/timezone';
 import utc from 'dayjs/plugin/utc';
 import { getSchedulersStatus } from '../config/setupSchedulers';
+import { AuthorizationService } from '../services/authorization.service';
+import { deriveUidFromUuid } from '../utils/uid.util';
+import { ensureAgoraTokensForConsulta } from '../services/agoraToken.service';
+import { getClientIp } from '../utils/getClientIp.util';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
 const BRASILIA_TIMEZONE = 'America/Sao_Paulo';
 const router = Router();
+const authService = new AuthorizationService();
 
 /**
  * GET /api/admin/token-system/status
@@ -181,6 +186,202 @@ router.post('/generate-missing', async (req: Request, res: Response): Promise<Re
         console.error('[tokenSystemGenerateMissing] Erro:', error);
         return res.status(500).json({
             error: 'Erro ao gerar tokens',
+            message: error instanceof Error ? error.message : 'Erro desconhecido',
+        });
+    }
+});
+
+/**
+ * POST /api/admin/token-system/generate-manual
+ * Gera tokens manualmente com base no par paciente/psicólogo
+ */
+router.post('/generate-manual', async (req: Request, res: Response): Promise<Response> => {
+    try {
+        const adminId = authService.getLoggedUserId(req);
+        if (!adminId) {
+            return res.status(401).json({ error: 'Usuário não autenticado' });
+        }
+
+        const { patientId, psychologistId, consultaId } = req.body as {
+            patientId?: string;
+            psychologistId?: string;
+            consultaId?: string;
+        };
+
+        if (!patientId || !psychologistId) {
+            return res.status(400).json({
+                error: 'patientId e psychologistId são obrigatórios',
+            });
+        }
+
+        let consulta = null as null | {
+            Id: string;
+            PacienteId: string | null;
+            PsicologoId: string | null;
+            AgendaId: string | null;
+            Status: string | null;
+        };
+
+        if (consultaId) {
+            consulta = await prisma.consulta.findUnique({
+                where: { Id: consultaId },
+                select: {
+                    Id: true,
+                    PacienteId: true,
+                    PsicologoId: true,
+                    AgendaId: true,
+                    Status: true,
+                },
+            });
+        } else {
+            consulta = await prisma.consulta.findFirst({
+                where: {
+                    PacienteId: patientId,
+                    PsicologoId: psychologistId,
+                    Status: { notIn: ['Cancelado', 'Realizada'] },
+                },
+                orderBy: { Date: 'desc' },
+                select: {
+                    Id: true,
+                    PacienteId: true,
+                    PsicologoId: true,
+                    AgendaId: true,
+                    Status: true,
+                },
+            });
+        }
+
+        if (!consulta || !consulta.Id) {
+            return res.status(404).json({
+                error: 'Consulta não encontrada para o par paciente/psicólogo',
+            });
+        }
+
+        let reservaSessao = await prisma.reservaSessao.findUnique({
+            where: { ConsultaId: consulta.Id },
+        });
+
+        if (!reservaSessao) {
+            const uidPaciente = deriveUidFromUuid(patientId);
+            const uidPsicologo = deriveUidFromUuid(psychologistId);
+
+            reservaSessao = await prisma.reservaSessao.create({
+                data: {
+                    ConsultaId: consulta.Id,
+                    ReservationId: consulta.Id,
+                    Status: 'Reservado',
+                    PatientId: patientId,
+                    PsychologistId: psychologistId,
+                    AgoraChannel: `sala_${consulta.Id}`,
+                    Uid: uidPaciente,
+                    UidPsychologist: uidPsicologo,
+                    AgendaId: consulta.AgendaId,
+                },
+            });
+        }
+
+        const tokenResult = await ensureAgoraTokensForConsulta(prisma, consulta.Id, {
+            actorId: adminId,
+            actorIp: getClientIp(req),
+            source: 'admin-manual',
+        });
+
+        console.log(`🧾 [token-system] Tokens gerados manualmente`, {
+            consultaId: consulta.Id,
+            patientToken: tokenResult.patientToken,
+            psychologistToken: tokenResult.psychologistToken,
+        });
+
+        return res.status(200).json({
+            success: true,
+            consultaId: consulta.Id,
+            channelName: tokenResult.channelName,
+            patientToken: tokenResult.patientToken,
+            psychologistToken: tokenResult.psychologistToken,
+            patientUid: tokenResult.patientUid,
+            psychologistUid: tokenResult.psychologistUid,
+            tokensGenerated: tokenResult.tokensGenerated,
+        });
+    } catch (error) {
+        console.error('[tokenSystemGenerateManual] Erro:', error);
+        return res.status(500).json({
+            error: 'Erro ao gerar tokens manualmente',
+            message: error instanceof Error ? error.message : 'Erro desconhecido',
+        });
+    }
+});
+
+/**
+ * GET /api/admin/token-system/generated
+ * Lista tokens gerados a partir das auditorias
+ */
+router.get('/generated', async (req: Request, res: Response): Promise<Response> => {
+    try {
+        const limitParam = typeof req.query.limit === 'string' ? parseInt(req.query.limit, 10) : 50;
+        const limit = Number.isNaN(limitParam) ? 50 : Math.min(Math.max(limitParam, 1), 200);
+        const consultaId = typeof req.query.consultaId === 'string' ? req.query.consultaId.trim() : '';
+
+        const whereFilter: {
+            Module: 'SystemSettings';
+            Description: { contains: string };
+            Metadata?: { contains: string };
+        } = {
+            Module: 'SystemSettings',
+            Description: { contains: 'Agora tokens gerados' },
+        };
+
+        if (consultaId) {
+            whereFilter.Metadata = { contains: consultaId };
+        }
+
+        const logs = await prisma.adminActionLog.findMany({
+            where: whereFilter,
+            orderBy: { Timestamp: 'desc' },
+            take: limit,
+            include: {
+                User: {
+                    select: {
+                        Id: true,
+                        Nome: true,
+                        Email: true,
+                        Role: true,
+                    },
+                },
+            },
+        });
+
+        const items = logs.map((log) => {
+            let metadata: Record<string, unknown> | null = null;
+            if (log.Metadata) {
+                try {
+                    metadata = JSON.parse(log.Metadata) as Record<string, unknown>;
+                } catch {
+                    metadata = null;
+                }
+            }
+
+            return {
+                id: log.Id,
+                timestamp: log.Timestamp,
+                description: log.Description,
+                status: log.Status,
+                user: log.User
+                    ? {
+                        id: log.User.Id,
+                        nome: log.User.Nome,
+                        email: log.User.Email,
+                        role: log.User.Role,
+                    }
+                    : null,
+                metadata,
+            };
+        });
+
+        return res.json({ count: items.length, items });
+    } catch (error) {
+        console.error('[tokenSystemGenerated] Erro:', error);
+        return res.status(500).json({
+            error: 'Erro ao listar tokens gerados',
             message: error instanceof Error ? error.message : 'Erro desconhecido',
         });
     }

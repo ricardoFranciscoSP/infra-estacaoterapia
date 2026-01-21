@@ -16,6 +16,7 @@ import { ComprehensiveReportsController } from '../../controllers/adm/comprehens
 import { QueueController } from '../../controllers/adm/queue.controller';
 import { AtribuirConsultaAvulsaController } from '../../controllers/adm/atribuirConsultaAvulsa.controller';
 import { BackupController } from '../../controllers/adm/backup.controller';
+import tokenSystemRouter from '../../controllers/tokenSystemController';
 import multer from 'multer';
 import fs from 'fs';
 import path from 'path';
@@ -41,6 +42,7 @@ if (!fs.existsSync(backupUploadDir)) {
   fs.mkdirSync(backupUploadDir, { recursive: true });
 }
 const backupUpload = multer({ dest: backupUploadDir });
+const upload = multer();
 
 
 // Middleware de proteção para todas rotas admin
@@ -50,6 +52,9 @@ router.use(protect);
 router.get('/psicologos', authorize('Admin', 'Management'), asyncHandler(psicologoController.list.bind(psicologoController)));
 router.get('/psicologos/:id', authorize('Admin', 'Management'), asyncHandler(psicologoController.getById.bind(psicologoController)));
 router.put('/psicologos/:id', authorize('Admin', 'Management'), asyncHandler(psicologoController.update.bind(psicologoController)));
+router.post('/psicologos/:id/image', authorize('Admin', 'Management'), upload.single('file'), asyncHandler(psicologoController.uploadImage.bind(psicologoController)));
+router.put('/psicologos/:id/image/:imageId', authorize('Admin', 'Management'), upload.single('file'), asyncHandler(psicologoController.updateImage.bind(psicologoController)));
+router.delete('/psicologos/:id/image/:imageId', authorize('Admin', 'Management'), asyncHandler(psicologoController.deleteImage.bind(psicologoController)));
 router.delete('/psicologos/:id', authorize('Admin', 'Management'), asyncHandler(psicologoController.delete.bind(psicologoController)));
 router.post('/psicologos/gerar-contrato', authorize('Admin', 'Management'), asyncHandler(psicologoController.gerarContrato.bind(psicologoController)));
 router.post('/psicologos/previa-contrato', asyncHandler(psicologoController.previaContrato.bind(psicologoController)));
@@ -151,5 +156,8 @@ router.put('/backups/schedule', authorize('Admin'), asyncHandler(backupControlle
 router.get('/backups/:fileName/download', authorize('Admin'), asyncHandler(backupController.download.bind(backupController)));
 router.delete('/backups/:fileName', authorize('Admin'), asyncHandler(backupController.delete.bind(backupController)));
 router.post('/backups/restore', authorize('Admin'), backupUpload.single('file'), asyncHandler(backupController.restore.bind(backupController)));
+
+// Rotas de tokens Agora (apenas Admin e Management)
+router.use('/token-system', authorize('Admin', 'Management'), tokenSystemRouter);
 
 export default router;

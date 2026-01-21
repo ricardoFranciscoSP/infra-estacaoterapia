@@ -40,91 +40,8 @@ export async function generateAgoraTokensForConsulta(
     jobId?: string
 ): Promise<boolean> {
     try {
-        // Busca a reserva de sessão e dados relacionados
-        const reservaSessao = await prisma.reservaSessao.findUnique({
-            where: { ConsultaId: consultaId },
-            include: {
-                Consulta: true,
-            },
-        });
-
-        if (!reservaSessao) {
-            console.warn(
-                `[generateAgoraTokensForConsulta] ReservaSessao não encontrada para consulta ${consultaId}`
-            );
-            if (jobId) {
-                await prisma.job.update({
-                    where: { Id: jobId },
-                    data: { Status: "failed", LastError: "ReservaSessao não encontrada" }
-                }).catch(() => undefined);
-            }
-            return false;
-        }
-
-        // Verifica se os tokens já foram gerados
-        if (
-            reservaSessao.AgoraTokenPatient &&
-            reservaSessao.AgoraTokenPsychologist
-        ) {
-            console.log(
-                `[generateAgoraTokensForConsulta] Tokens já existem para consulta ${consultaId}, pulando geração`
-            );
-            if (jobId) {
-                await prisma.job.update({
-                    where: { Id: jobId },
-                    data: { Status: "completed" }
-                }).catch(() => undefined);
-            }
-            return true;
-        }
-
-        // Determina o canal e UIDs
-        const channelName = reservaSessao.AgoraChannel ?? `sala_${consultaId}`;
-
-        // Deriva UIDs caso ainda não existam
-        const { deriveUidFromUuid } = await import('./uid.util');
-        let patientUid = reservaSessao.Uid;
-        let psychologistUid = reservaSessao.UidPsychologist;
-
-        if (!patientUid && reservaSessao.PatientId) {
-            patientUid = deriveUidFromUuid(reservaSessao.PatientId);
-        }
-        if (!psychologistUid && reservaSessao.PsychologistId) {
-            psychologistUid = deriveUidFromUuid(
-                reservaSessao.PsychologistId
-            );
-        }
-
-        if (!patientUid || !psychologistUid) {
-            throw new Error(
-                `Falha ao determinar UIDs para consulta ${consultaId}. PatientId: ${reservaSessao.PatientId}, PsychologistId: ${reservaSessao.PsychologistId}`
-            );
-        }
-
-        // Gera tokens via AgoraService
-        const { AgoraService } = await import('../services/agora.service');
-        const agoraService = new AgoraService();
-        const patientToken = await agoraService.generateToken(
-            channelName,
-            patientUid,
-            'patient'
-        );
-        const psychologistToken = await agoraService.generateToken(
-            channelName,
-            psychologistUid,
-            'psychologist'
-        );
-
-        // Atualiza ReservaSessao com tokens e UIDs
-        await prisma.reservaSessao.update({
-            where: { Id: reservaSessao.Id },
-            data: {
-                AgoraTokenPatient: patientToken,
-                AgoraTokenPsychologist: psychologistToken,
-                Uid: patientUid,
-                UidPsychologist: psychologistUid,
-            },
-        });
+        const { ensureAgoraTokensForConsulta } = await import('../services/agoraToken.service');
+        await ensureAgoraTokensForConsulta(prisma, consultaId, { source: 'schedule' });
 
         // Atualiza status das tabelas (Consulta, ReservaSessao, Agenda) para EmAndamento
         try {
@@ -146,7 +63,7 @@ export async function generateAgoraTokensForConsulta(
         }
 
         console.log(
-            `✅ [generateAgoraTokensForConsulta] Tokens gerados com sucesso para consulta ${consultaId}`
+            `✅ [generateAgoraTokensForConsulta] Tokens garantidos com sucesso para consulta ${consultaId}`
         );
         return true;
     } catch (error) {

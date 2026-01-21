@@ -244,6 +244,75 @@ export class PsicologoService {
         return this.userService.deleteUser(id);
     }
 
+    private async assertPsychologistExists(id: string) {
+        const psicologo = await prisma.user.findUnique({
+            where: { Id: id, Role: "Psychologist" },
+            select: { Id: true }
+        });
+        if (!psicologo) {
+            throw new Error("Psicólogo não encontrado.");
+        }
+        return psicologo;
+    }
+
+    async uploadImage(user: User, psicologoId: string, file: Express.Multer.File) {
+        if (this.authorizationService && typeof this.authorizationService.checkPermission === "function") {
+            const hasPermission = await this.authorizationService.checkPermission(
+                user.Id,
+                Module.Psychologists,
+                ActionType.Update
+            );
+            if (!hasPermission) {
+                throw new Error("Acesso negado ao módulo de psicólogos.");
+            }
+        }
+
+        await this.assertPsychologistExists(psicologoId);
+        return this.userService.uploadImage(psicologoId, file);
+    }
+
+    async updateImage(user: User, psicologoId: string, imageId: string, file: Express.Multer.File) {
+        if (this.authorizationService && typeof this.authorizationService.checkPermission === "function") {
+            const hasPermission = await this.authorizationService.checkPermission(
+                user.Id,
+                Module.Psychologists,
+                ActionType.Update
+            );
+            if (!hasPermission) {
+                throw new Error("Acesso negado ao módulo de psicólogos.");
+            }
+        }
+
+        await this.assertPsychologistExists(psicologoId);
+        const image = await prisma.image.findUnique({ where: { Id: imageId } });
+        if (!image || image.UserId !== psicologoId) {
+            throw new Error("Imagem não encontrada para este psicólogo.");
+        }
+
+        return this.userService.updateImage(psicologoId, imageId, file);
+    }
+
+    async deleteImage(user: User, psicologoId: string, imageId: string) {
+        if (this.authorizationService && typeof this.authorizationService.checkPermission === "function") {
+            const hasPermission = await this.authorizationService.checkPermission(
+                user.Id,
+                Module.Psychologists,
+                ActionType.Update
+            );
+            if (!hasPermission) {
+                throw new Error("Acesso negado ao módulo de psicólogos.");
+            }
+        }
+
+        await this.assertPsychologistExists(psicologoId);
+        const image = await prisma.image.findUnique({ where: { Id: imageId } });
+        if (!image || image.UserId !== psicologoId) {
+            throw new Error("Imagem não encontrada para este psicólogo.");
+        }
+
+        return this.userService.deleteImage(psicologoId, imageId);
+    }
+
     async update(user: User, id: string, data: Record<string, unknown>) {
         if (this.authorizationService && typeof this.authorizationService.checkPermission === "function") {
             const hasPermission = await this.authorizationService.checkPermission(

@@ -1276,7 +1276,7 @@ export default function PsicologoDetalhePage() {
     const images = psicologo?.Images || psicologo?.Image;
     const currentImage = Array.isArray(images) && images.length > 0 ? images[0] : (!Array.isArray(images) && images ? images : null);
     
-    if (!currentImage?.Id) return;
+    if (!currentImage?.Id || !idStr) return;
 
     if (!confirm('Tem certeza que deseja excluir a foto? Esta ação não pode ser desfeita.')) {
       return;
@@ -1284,7 +1284,7 @@ export default function PsicologoDetalhePage() {
 
     try {
       setImageLoading(true);
-      await admPsicologoService().deleteImage(currentImage.Id);
+      await admPsicologoService().deleteImage(idStr, currentImage.Id);
       toast.success('Foto excluída com sucesso!');
       setImagePreview(null);
       await refetch();

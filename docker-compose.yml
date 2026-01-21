@@ -41,6 +41,8 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-estacaoterapia}
       PGDATA: /var/lib/postgresql/data/pgdata
 
+      TZ: America/Sao_Paulo
+
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
@@ -173,6 +175,8 @@ services:
       PGBOUNCER_POOL_MODE: transaction
       PGBOUNCER_MAX_CLIENT_CONN: 1000
       PGBOUNCER_DEFAULT_POOL_SIZE: 25
+
+      TZ: America/Sao_Paulo
       PGBOUNCER_MIN_POOL_SIZE: 5
       PGBOUNCER_RESERVE_POOL_SIZE: 5
       PGBOUNCER_RESERVE_POOL_TIMEOUT: 3
@@ -263,6 +267,8 @@ services:
 
       # PostgreSQL via PgBouncer
       PG_HOST: ${PG_HOST:-pgbouncer}
+
+      TZ: America/Sao_Paulo
       PG_PORT: ${PG_PORT:-6432}
       PG_HOST_DIRECT: ${PG_HOST_DIRECT:-postgres}
       PG_PORT_DIRECT: ${PG_PORT_DIRECT:-5432}
@@ -333,6 +339,8 @@ services:
       PG_PORT: ${PG_PORT:-6432}
       POSTGRES_USER: ${POSTGRES_USER:-estacaoterapia}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+
+      TZ: America/Sao_Paulo
       POSTGRES_DB: ${POSTGRES_DB:-estacaoterapia}
 
       # Redis
@@ -398,6 +406,8 @@ services:
       NEXT_TELEMETRY_DISABLED: 1
       NEXT_PUBLIC_API_URL: https://api-prd.estacaoterapia.com.br
       NEXT_PUBLIC_WEBSITE_URL: https://estacaoterapia.com.br
+
+      TZ: America/Sao_Paulo
       NEXT_PUBLIC_SOCKET_URL: https://ws.prd.estacaoterapia.com.br
 
     networks:

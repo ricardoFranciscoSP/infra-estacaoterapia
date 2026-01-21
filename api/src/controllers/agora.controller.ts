@@ -5,6 +5,8 @@ import { AuthorizationService } from '../services/authorization.service';
 import prisma from "../prisma/client";
 import { PrismaClient, CommissionStatus, CommissionTipoPlano, ReservaSessao } from "../generated/prisma";
 import { deriveUidFromUuid } from '../utils/uid.util';
+import { ensureAgoraTokensForConsulta } from '../services/agoraToken.service';
+import { getClientIp } from '../utils/getClientIp.util';
 import { getRepassePercentForPsychologist } from '../utils/repasse.util';
 import { ConsultaStatusService } from '../services/consultaStatus.service';
 
@@ -24,107 +26,34 @@ export class AgoraController {
     ) { }
 
     /**
-     * Método privado para gerar ambos os tokens (paciente e psicólogo) em uma única operação
-     * Garante que os tokens sejam sempre gerados de forma sincronizada
-     * Sempre gera ambos os tokens, mesmo se um já existir, para garantir consistência
+     * Método privado para garantir ambos os tokens (paciente e psicólogo) em uma única operação
+     * Não regenera tokens já existentes; gera apenas os tokens ausentes
      * 
      * @param reservaSessao - Reserva de sessão com dados da consulta
-     * @returns Promise<TokenGenerationResult> - Resultado da geração com tokens ou erro
+     * @returns Promise<TokenGenerationResult> - Resultado da garantia com tokens ou erro
      */
-    private async generateBothTokens(reservaSessao: ReservaSessao & { Consulta: any }): Promise<TokenGenerationResult> {
+    private async generateBothTokens(
+        reservaSessao: ReservaSessao & { Consulta: any },
+        actorId?: string,
+        actorIp?: string
+    ): Promise<TokenGenerationResult> {
         try {
             const consultaId = reservaSessao.ConsultaId;
-            const channelName = reservaSessao.AgoraChannel ?? `sala_${consultaId}`;
-
-            // 🎯 IMPORTANTE: Preenche PatientId e PsychologistId se estiverem vazios
-            // Isso garante que os tokens possam ser gerados mesmo se os IDs não foram preenchidos na criação
-            let patientId = reservaSessao.PatientId;
-            let psychologistId = reservaSessao.PsychologistId;
-            
-            if (!patientId && reservaSessao.Consulta?.PacienteId) {
-                patientId = reservaSessao.Consulta.PacienteId;
-            }
-            
-            if (!psychologistId && reservaSessao.Consulta?.PsicologoId) {
-                psychologistId = reservaSessao.Consulta.PsicologoId;
-            }
-            
-            // Atualiza no banco se necessário
-            if ((!reservaSessao.PatientId && patientId) || (!reservaSessao.PsychologistId && psychologistId)) {
-                await this.prisma.reservaSessao.update({
-                    where: { Id: reservaSessao.Id },
-                    data: {
-                        ...(patientId && !reservaSessao.PatientId ? { PatientId: patientId } : {}),
-                        ...(psychologistId && !reservaSessao.PsychologistId ? { PsychologistId: psychologistId } : {})
-                    }
-                });
-            }
-            
-            // Valida que temos os IDs necessários
-            if (!patientId || !psychologistId) {
-                const errorMsg = `PatientId ou PsychologistId não encontrado para consulta ${consultaId}. PatientId: ${patientId || 'ausente'}, PsychologistId: ${psychologistId || 'ausente'}`;
-                console.error(`❌ [AgoraController] ${errorMsg}`);
-                return {
-                    success: false,
-                    error: errorMsg
-                };
-            }
-
-            // Sempre usa deriveUidFromUuid para garantir consistência dos UIDs
-            const patientUid = deriveUidFromUuid(patientId);
-            const psychologistUid = deriveUidFromUuid(psychologistId);
-
-            // Validação rigorosa: ambos os UIDs devem existir
-            if (!patientUid || !psychologistUid) {
-                const errorMsg = `Falha ao gerar UIDs para consulta ${consultaId}. PatientId: ${patientId}, PsychologistId: ${psychologistId}`;
-                console.error(`❌ [AgoraController] ${errorMsg}`);
-                return {
-                    success: false,
-                    error: errorMsg
-                };
-            }
-
-            // Sempre gera ambos os tokens, mesmo se um já existir
-            // Isso garante que os tokens estejam sempre atualizados e sincronizados
-            console.log(
-                `🔄 [AgoraController] Gerando tokens para consulta ${consultaId}. ` +
-                `Channel: ${channelName}, PatientUID: ${patientUid}, PsychologistUID: ${psychologistUid}`
-            );
-
-            const [patientToken, psychologistToken] = await Promise.all([
-                this.agoraService.generateToken(channelName, patientUid, 'patient'),
-                this.agoraService.generateToken(channelName, psychologistUid, 'psychologist')
-            ]);
-
-            // Valida que ambos os tokens foram gerados com sucesso
-            if (!patientToken || !psychologistToken) {
-                const errorMsg = `Falha ao gerar tokens: PatientToken=${!!patientToken}, PsychologistToken=${!!psychologistToken}`;
-                console.error(`❌ [AgoraController] ${errorMsg}`);
-                return {
-                    success: false,
-                    error: errorMsg
-                };
-            }
-
-            // Atualiza a reserva com os tokens e UIDs
-            await this.prisma.reservaSessao.update({
-                where: { Id: reservaSessao.Id },
-                data: {
-                    AgoraTokenPatient: patientToken,
-                    AgoraTokenPsychologist: psychologistToken,
-                    Uid: patientUid,
-                    UidPsychologist: psychologistUid
-                }
+            const tokenResult = await ensureAgoraTokensForConsulta(this.prisma, consultaId, {
+                actorId,
+                actorIp,
+                source: 'room-check',
             });
 
             console.log(
-                `✅ [AgoraController] Ambos os tokens gerados e salvos com sucesso para consulta ${consultaId}`
+                `✅ [AgoraController] Tokens garantidos para consulta ${consultaId}. ` +
+                `Channel: ${tokenResult.channelName}, PatientUID: ${tokenResult.patientUid}, PsychologistUID: ${tokenResult.psychologistUid}`
             );
 
             return {
                 success: true,
-                patientToken,
-                psychologistToken
+                patientToken: tokenResult.patientToken,
+                psychologistToken: tokenResult.psychologistToken
             };
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
@@ -212,7 +141,7 @@ export class AgoraController {
                     `Psychologist: ${!!reservaSessao.AgoraTokenPsychologist}`
                 );
 
-                const tokenResult = await this.generateBothTokens(reservaSessao);
+                const tokenResult = await this.generateBothTokens(reservaSessao, userId, getClientIp(req));
 
                 if (!tokenResult.success) {
                     return res.status(500).json({
@@ -614,7 +543,7 @@ export class AgoraController {
                 `Patient: ${hasPatientToken ? '✅' : '❌'}, Psychologist: ${hasPsychologistToken ? '✅' : '❌'}`
             );
 
-            const tokenResult = await this.generateBothTokens(reservaSessao);
+            const tokenResult = await this.generateBothTokens(reservaSessao, userId, getClientIp(req));
 
             if (!tokenResult.success) {
                 return res.status(500).json({
@@ -666,45 +595,42 @@ export class AgoraController {
      */
     async generateManualToken(req: Request, res: Response): Promise<Response> {
         try {
-            const { channelName, uid, role } = req.body;
+            const { consultaId } = req.body;
+            const userId = this.authService.getLoggedUserId(req);
 
-            // Validações
-            if (!channelName) {
-                return res.status(400).json({ 
-                    error: 'channelName é obrigatório',
-                    message: 'Forneça o nome do canal Agora'
+            if (!userId) {
+                return res.status(401).json({ error: 'Usuário não autenticado' });
+            }
+
+            if (!consultaId) {
+                return res.status(400).json({
+                    error: 'consultaId é obrigatório',
+                    message: 'Forneça o ID da consulta para garantir ambos os tokens'
                 });
             }
 
-            if (!uid) {
-                return res.status(400).json({ 
-                    error: 'uid é obrigatório',
-                    message: 'Forneça o UID do usuário (número ou string)'
-                });
-            }
-
-            // Role padrão é 'patient' se não fornecido
-            const userRole: 'patient' | 'psychologist' = role === 'psychologist' ? 'psychologist' : 'patient';
-
-            console.log(`[AgoraController] Geração manual de token solicitada:`, {
-                channelName,
-                uid,
-                role: userRole
+            console.log(`[AgoraController] Geração manual de tokens solicitada:`, {
+                consultaId
             });
 
-            // Gera o token usando o serviço
-            const token = await this.agoraService.generateToken(channelName, uid, userRole);
+            const tokenResult = await ensureAgoraTokensForConsulta(this.prisma, consultaId, {
+                actorId: userId,
+                actorIp: getClientIp(req),
+                source: 'manual-room',
+            });
 
-            console.log(`✅ [AgoraController] Token gerado manualmente com sucesso para ${userRole} no canal ${channelName}`);
+            console.log(`✅ [AgoraController] Tokens garantidos manualmente para consulta ${consultaId}`);
 
             return res.status(200).json({
                 success: true,
-                token,
-                channelName,
-                uid: typeof uid === 'string' ? Number(uid) : uid,
-                role: userRole,
-                expiresIn: 3000, // 50 minutos em segundos
-                message: 'Token gerado com sucesso'
+                consultaId,
+                channelName: tokenResult.channelName,
+                patientToken: tokenResult.patientToken,
+                psychologistToken: tokenResult.psychologistToken,
+                patientUid: tokenResult.patientUid,
+                psychologistUid: tokenResult.psychologistUid,
+                expiresIn: 3600,
+                message: 'Tokens garantidos com sucesso'
             });
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';

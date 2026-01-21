@@ -79,21 +79,21 @@ export const admPsicologoService = () => {
         },
         gerarContrato: (id: string) => api.post(`/admin/psicologos/gerar-contrato`, { id }),
         listarConfigAgenda: () => api.get(`/adm-psicologos/config-agenda/agenda`),
-        // Upload de imagem usando rotas de usuário (psicólogo é um User)
+        // Upload de imagem no escopo do psicólogo selecionado
         uploadImage: (id: string, file: File) => {
             const formData = new FormData();
             formData.append("file", file);
-            return api.post(`/users/image`, formData, {
+            return api.post(`/admin/psicologos/${id}/image`, formData, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
         },
         updateImage: (id: string, imageId: string, file: File) => {
             const formData = new FormData();
             formData.append("file", file);
-            return api.put(`/users/image/${imageId}`, formData, {
+            return api.put(`/admin/psicologos/${id}/image/${imageId}`, formData, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
         },
-        deleteImage: (imageId: string) => api.delete(`/users/image/${imageId}`),
+        deleteImage: (id: string, imageId: string) => api.delete(`/admin/psicologos/${id}/image/${imageId}`),
     };
 }
