@@ -30,7 +30,7 @@ export class ConsultasPacienteService {
     /**
      * Finaliza uma consulta (atualiza status para 'Realizada')
      * Usa ConsultaStatusService para garantir regras de negócio e atualizar Agenda e ReservaSessao
-     * @param forceFinalize Se true, força a finalização mesmo se ambos não estiveram na sala (usado quando completa 50 minutos)
+ * @param forceFinalize Se true, força a finalização mesmo se ambos não estiveram na sala (usado quando completa 60 minutos)
      */
     async finalizarConsulta(consultaId: string, forceFinalize: boolean = false) {
         const { ConsultaStatusService } = await import('../consultaStatus.service');

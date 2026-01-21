@@ -377,7 +377,7 @@ export default function PsicologoPerfilPage() {
       } else {
         toast.error('Erro ao remover imagem.');
       }
-    } catch (e) {
+    } catch {
       toast.error('Erro ao remover imagem.');
     } finally {
       setRemovendoImagem(false);

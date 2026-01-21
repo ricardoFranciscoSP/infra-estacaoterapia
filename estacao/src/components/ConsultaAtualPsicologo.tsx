@@ -18,7 +18,7 @@ import timezone from "dayjs/plugin/timezone";
 dayjs.extend(utc);
 dayjs.extend(timezone);
 import { normalizeConsulta, type GenericObject } from "@/utils/normalizarConsulta";
-import { calcularTempoRestante50Minutos, isConsultaDentro50MinutosComScheduledAt } from "@/utils/consultaTempoUtils";
+import { calcularTempoRestante60Minutos, isConsultaDentro60MinutosComScheduledAt } from "@/utils/consultaTempoUtils";
 import {
   onConsultationStarted,
   onConsultationEnded,
@@ -139,7 +139,7 @@ export default function ConsultaAtualPsicologo({ consulta: consultaProp = null, 
     consultationId: normalized?.id ? String(normalized.id) : undefined
   });
 
-  // Verifica se a consulta está dentro do período de 50 minutos usando ScheduledAt
+  // Verifica se a consulta está dentro do período de 60 minutos usando ScheduledAt
   const estaDentroDoPeriodo: boolean = useMemo(() => {
     // Se o status da sessão no Redis é 'finished', nunca considera dentro do período
     if (sessionStatus === 'finished') {
@@ -148,9 +148,9 @@ export default function ConsultaAtualPsicologo({ consulta: consultaProp = null, 
     
     if (!normalized) return false;
     
-    // Se o status da sessão no Redis é 'active', verifica se ainda está dentro dos 50 minutos
+    // Se o status da sessão no Redis é 'active', verifica se ainda está dentro dos 60 minutos
     if (sessionStatus === 'active') {
-      return isConsultaDentro50MinutosComScheduledAt(
+      return isConsultaDentro60MinutosComScheduledAt(
         scheduledAtFromReserva,
         normalized.date,
         normalized.time
@@ -158,7 +158,7 @@ export default function ConsultaAtualPsicologo({ consulta: consultaProp = null, 
     }
     
     // Fallback para cálculo local usando ScheduledAt
-    return isConsultaDentro50MinutosComScheduledAt(
+    return isConsultaDentro60MinutosComScheduledAt(
       scheduledAtFromReserva,
       normalized.date,
       normalized.time
@@ -172,7 +172,7 @@ export default function ConsultaAtualPsicologo({ consulta: consultaProp = null, 
   const contador50MinutosAtualizado = useMemo(() => {
     if (!normalized) return { tempoFormatado: '', estaDentroDoPeriodo: false };
     
-    return calcularTempoRestante50Minutos(
+    return calcularTempoRestante60Minutos(
       scheduledAtFromReserva,
       normalized.date,
       normalized.time
@@ -180,14 +180,14 @@ export default function ConsultaAtualPsicologo({ consulta: consultaProp = null, 
   }, [normalized, scheduledAtFromReserva]);
 
   // Se o backend retornou a consulta, ela já foi validada como "em andamento"
-  // Mostra APENAS se estiver dentro do período de 50 minutos
+  // Mostra APENAS se estiver dentro do período de 60 minutos
   const mostrarCard: boolean = useMemo(() => {
     if (!normalized || !consultaProp) return false;
     
     const dateOnly = extractDateOnly(normalized.date || '');
     if (!dateOnly || !normalized.time) return false;
     
-    // Só mostra se estiver dentro dos 50 minutos
+    // Só mostra se estiver dentro dos 60 minutos
     return estaDentroDoPeriodo;
   }, [normalized, consultaProp, estaDentroDoPeriodo]);
   
@@ -227,7 +227,7 @@ export default function ConsultaAtualPsicologo({ consulta: consultaProp = null, 
   const perfilHref = normalized?.pacienteId ? `${basePrefix}/paciente/${normalized.pacienteId}` : undefined;
   const shouldShowPerfil = !hidePerfil && Boolean(perfilHref);
   
-  // Força atualização quando consulta em andamento passar de 50 minutos
+  // Força atualização quando consulta em andamento passar de 60 minutos
   useEffect(() => {
     if (!normalized) return;
     
@@ -263,13 +263,13 @@ export default function ConsultaAtualPsicologo({ consulta: consultaProp = null, 
       }
       
       if (inicioConsulta) {
-        const fimConsulta = inicioConsulta + (50 * 60 * 1000); // 50 minutos
+        const fimConsulta = inicioConsulta + (60 * 60 * 1000); // 60 minutos
         const agoraTimestamp = dayjs().tz("America/Sao_Paulo").valueOf();
         const tempoRestante = fimConsulta - agoraTimestamp;
         
         if (tempoRestante > 0) {
           const timeoutId = setTimeout(() => {
-            // Força atualização quando passar de 50 minutos
+            // Força atualização quando passar de 60 minutos
             queryClient.invalidateQueries({ queryKey: ['consultaAtualEmAndamento'] });
             queryClient.invalidateQueries({ queryKey: ['reservas/consultas-agendadas'] });
           }, tempoRestante);
@@ -278,7 +278,7 @@ export default function ConsultaAtualPsicologo({ consulta: consultaProp = null, 
         }
       }
     } catch (error) {
-      console.error('[ConsultaAtualPsicologo] Erro ao calcular timeout de 50 minutos:', error);
+      console.error('[ConsultaAtualPsicologo] Erro ao calcular timeout de 60 minutos:', error);
     }
   }, [normalized]);
 
@@ -495,7 +495,7 @@ export default function ConsultaAtualPsicologo({ consulta: consultaProp = null, 
       buttons.botaoEntrarDesabilitado = false;
     }
 
-    // Usa o contador dos 50 minutos se estiver dentro do período
+    // Usa o contador dos 60 minutos se estiver dentro do período
     const contadorFinal = contador50MinutosAtualizado.estaDentroDoPeriodo 
       ? contador50MinutosAtualizado.tempoFormatado 
       : contadorSessao;

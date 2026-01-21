@@ -40,12 +40,12 @@ export default function GerarTokenManualPage() {
   }, [psicologos]);
 
   const patientNameById = useMemo(() => {
-    const entries = (pacientes ?? []).map((p: Paciente) => [p.Id, p.Nome]);
+    const entries = (pacientes ?? []).map((p: Paciente) => [p.Id, p.Nome] as const);
     return new Map<string, string>(entries);
   }, [pacientes]);
 
   const psychologistNameById = useMemo(() => {
-    const entries = (psicologos ?? []).map((p: Psicologo) => [p.Id, p.Nome]);
+    const entries = (psicologos ?? []).map((p: Psicologo) => [p.Id, p.Nome] as const);
     return new Map<string, string>(entries);
   }, [psicologos]);
 

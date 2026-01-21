@@ -549,7 +549,7 @@ export class ConsultasService implements IConsultasService {
             });
 
             // Filtra consultas considerando Date + Time e timezone de Brasília
-            // Inclui consultas em andamento que estão dentro da janela de 50 minutos
+            // Inclui consultas em andamento que estão dentro da janela de 60 minutos
             const agoraTimestamp = nowBr.valueOf(); // Timestamp em milissegundos
             const consultasValidas = consultas
                 .map(consulta => {
@@ -561,15 +561,15 @@ export class ConsultasService implements IConsultasService {
                     const [hh, mm] = (consulta.Time || '00:00').split(':').map(Number);
                     const dataHoraCompleta = dayjs.tz(`${dataStr} ${hh}:${mm}:00`, 'America/Sao_Paulo');
                     const inicioConsultaTimestamp = dataHoraCompleta.valueOf();
-                    const fimConsultaTimestamp = inicioConsultaTimestamp + (50 * 60 * 1000); // +50 minutos em ms
+                    const fimConsultaTimestamp = inicioConsultaTimestamp + (60 * 60 * 1000); // +60 minutos em ms
 
-                    // Se a consulta está em andamento, verifica se está dentro da janela de 50 minutos
+                    // Se a consulta está em andamento, verifica se está dentro da janela de 60 minutos
                     if (consulta.Status === 'EmAndamento') {
-                        // Consulta em andamento: só inclui se ainda estiver dentro da janela de 50 minutos
+                        // Consulta em andamento: só inclui se ainda estiver dentro da janela de 60 minutos
                         if (agoraTimestamp >= inicioConsultaTimestamp && agoraTimestamp <= fimConsultaTimestamp) {
                             return { consulta, dataHora: dataHoraCompleta, emAndamento: true };
                         } else {
-                            // Passou de 50 minutos, não inclui
+                            // Passou de 60 minutos, não inclui
                             return null;
                         }
                     }
@@ -578,7 +578,7 @@ export class ConsultasService implements IConsultasService {
                     // Usa timestamp para comparação precisa (não compara strings de horário)
                     if (inicioConsultaTimestamp <= agoraTimestamp) {
                         // A consulta já começou e não está em andamento (já passou do fim)
-                        // Verifica se passou do fim da consulta (50 minutos após o início)
+                    // Verifica se passou do fim da consulta (60 minutos após o início)
                         if (agoraTimestamp > fimConsultaTimestamp) {
                             // Já passou do fim da consulta, não é válida
                             return null;

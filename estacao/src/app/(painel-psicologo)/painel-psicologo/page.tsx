@@ -359,7 +359,7 @@ export default function PainelPsicologoPage() {
   }, [consultaAtualFromHook, consultaEmAndamento, refetchProximasConsultas, refetchProximaConsulta, fetchConsulta]);
 
   // Verifica se deve mostrar consulta atual ou próxima consulta
-  // A lógica de verificação dentro do período de 50 minutos é feita no componente ConsultaAtualPsicologo
+  // A lógica de verificação dentro do período de 60 minutos é feita no componente ConsultaAtualPsicologo
   // que já usa o estado do Redis via socket. Aqui apenas verificamos se há consulta disponível.
   const deveMostrarConsultaAtual = useMemo(() => {
     if (!consultaAtualFromHook && !consultaEmAndamento) return false;
@@ -559,7 +559,7 @@ export default function PainelPsicologoPage() {
               <div className="flex flex-col lg:flex-row gap-6 items-stretch">
                 {/* Card de Consulta - Alinhado à esquerda, abaixo do Bem-vindo */}
                 <div className="w-full lg:max-w-[540px] lg:flex-shrink-0">
-                  {/* PRIORIDADE 1: Consulta atual (em andamento) - só mostra se estiver dentro dos 50 minutos */}
+                  {/* PRIORIDADE 1: Consulta atual (em andamento) - só mostra se estiver dentro dos 60 minutos */}
                   {deveMostrarConsultaAtual && (consultaAtualFromHook || consultaEmAndamento) ? (
                     <>
                       {consultaAtualFromHook && (

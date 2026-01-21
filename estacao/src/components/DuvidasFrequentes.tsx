@@ -11,7 +11,7 @@ const perguntas = [
 	},
 	{
 		pergunta: "Qual a duração de uma sessão?",
-		resposta: "Cada sessão tem duração média de 50 minutos.", // Exemplo de resposta
+		resposta: "Cada sessão tem duração média de 60 minutos.", // Exemplo de resposta
 	},
 	{
 		pergunta: "Posso escolher o psicólogo?",

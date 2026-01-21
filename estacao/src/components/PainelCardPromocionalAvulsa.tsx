@@ -130,7 +130,7 @@ export default function PainelCardPromocionalAvulsa() {
           <span className="font-bold text-[#444D9D] text-base md:text-lg">
             {precoFormatado}
           </span>
-          {' '}e tenha acesso a uma consulta de 50 minutos com o profissional da sua escolha.
+          {' '}e tenha acesso a uma consulta de 60 minutos com o profissional da sua escolha.
         </p>
       </div>
       

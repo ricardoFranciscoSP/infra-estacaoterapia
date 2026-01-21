@@ -203,7 +203,7 @@ export default function TermoPage() {
 
           <h3 className="text-xl font-semibold mt-6 mb-2 text-gray-800">5.1.</h3>
           <p className="mb-4">
-            O &quot;Preço de Vitrine&quot; (sessão avulsa) será exibido na Plataforma. Na data de vigência desta versão dos Termos, corresponde a R$ 189,99 por sessão individual de 50 minutos, podendo ser atualizado conforme regras da Plataforma e comunicação aplicável.
+            O &quot;Preço de Vitrine&quot; (sessão avulsa) será exibido na Plataforma. Na data de vigência desta versão dos Termos, corresponde a R$ 189,99 por sessão individual de 60 minutos, podendo ser atualizado conforme regras da Plataforma e comunicação aplicável.
           </p>
 
           <h3 className="text-xl font-semibold mt-6 mb-2 text-gray-800">5.2.</h3>

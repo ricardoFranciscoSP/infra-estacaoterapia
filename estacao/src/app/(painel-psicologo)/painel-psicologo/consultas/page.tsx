@@ -12,7 +12,7 @@ import { useConsultaById } from "@/hooks/consulta";
 import { obterPrimeiroUltimoNome } from "@/utils/nomeUtils";
 import { normalizarStatusExibicao, getStatusTagInfo } from "@/utils/statusConsulta.util";
 import { isCancelamentoDentroPrazo } from "@/utils/cancelamentoUtils";
-import { isConsultaDentro50MinutosComScheduledAt } from "@/utils/consultaTempoUtils";
+import { isConsultaDentro60MinutosComScheduledAt } from "@/utils/consultaTempoUtils";
 import ConsultaAtualPsicologo from "@/components/ConsultaAtualPsicologo";
 import { joinUserRoom, onProximaConsultaAtualizada, offProximaConsultaAtualizada, onConsultationStatusChanged, offConsultationStatusChanged } from '@/lib/socket';
 import { queryClient } from '@/lib/queryClient';
@@ -218,22 +218,22 @@ export default function ConsultasPage() {
     };
   }, [consultaAtualFromHook?.Id, proximaConsulta?.Id, refetchProximasConsultas, refetchConsultaAtual]);
 
-  // Monitora quando consulta entra/sai dos 50 minutos e atualiza automaticamente
+  // Monitora quando consulta entra/sai dos 60 minutos e atualiza automaticamente
   useEffect(() => {
     if (!consultaAtualFromHook) return;
 
-    // Verifica a cada 10 segundos se a consulta ainda está dentro dos 50 minutos
+    // Verifica a cada 10 segundos se a consulta ainda está dentro dos 60 minutos
     const interval = setInterval(() => {
       const scheduledAt = 'ScheduledAt' in consultaAtualFromHook ? (consultaAtualFromHook as { ScheduledAt?: string }).ScheduledAt : undefined;
-      const aindaDentro = isConsultaDentro50MinutosComScheduledAt(
+      const aindaDentro = isConsultaDentro60MinutosComScheduledAt(
         scheduledAt,
         consultaAtualFromHook.Date,
         consultaAtualFromHook.Time
       );
 
-      // Se saiu dos 50 minutos, força atualização
+      // Se saiu dos 60 minutos, força atualização
       if (!aindaDentro) {
-        console.log('[ConsultasPage] Consulta saiu dos 50 minutos, atualizando...');
+        console.log('[ConsultasPage] Consulta saiu dos 60 minutos, atualizando...');
         refetchProximasConsultas();
         refetchConsultaAtual();
         queryClient.invalidateQueries({ queryKey: ['proximaConsultaPsicologo'] });
@@ -402,8 +402,8 @@ export default function ConsultasPage() {
         {/* Conteúdo principal - coluna direita */}
         <main className="flex-1 py-4 sm:py-8 px-4 sm:px-6 font-fira-sans w-full">
           <div className="max-w-[1000px] mx-auto">
-            {/* Consulta atual - aparece acima de "Consultas programadas" durante os 50 minutos */}
-            {consultaAtualFromHook && isConsultaDentro50MinutosComScheduledAt(
+            {/* Consulta atual - aparece acima de "Consultas programadas" durante os 60 minutos */}
+            {consultaAtualFromHook && isConsultaDentro60MinutosComScheduledAt(
               'ScheduledAt' in consultaAtualFromHook ? (consultaAtualFromHook as { ScheduledAt?: string }).ScheduledAt : undefined,
               consultaAtualFromHook.Date,
               consultaAtualFromHook.Time

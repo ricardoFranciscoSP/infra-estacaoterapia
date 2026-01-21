@@ -373,13 +373,13 @@ export default function AdminDashboard() {
               transition={{ delay: 0.1 }}
               className="bg-gradient-to-br from-[#8494E9] to-[#6B7FD7] rounded-xl shadow-md p-4 sm:p-5 text-white hover:shadow-lg transition-all duration-300"
             >
-              <div className="flex items-center gap-3 mb-3">
-                <div className="bg-white/20 rounded-lg p-2">
+              <div className="flex flex-col items-center justify-center gap-2 mb-3 text-center">
+                <div className="bg-white/20 rounded-lg p-2 flex items-center justify-center">
                   <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                   </svg>
                 </div>
-                <p className="text-xs sm:text-sm font-medium text-white/90">Psicólogos</p>
+                <p className="text-xs sm:text-sm font-medium text-white/90 whitespace-nowrap">Psicólogos</p>
               </div>
               <p className="text-2xl sm:text-3xl font-bold mb-2">{isPsicologosLoading ? "..." : (psicologos?.length || 0)}</p>
               <a href="/adm-estacao/psicologos" className="text-xs text-white/90 hover:text-white underline font-medium transition-colors">
@@ -393,13 +393,13 @@ export default function AdminDashboard() {
               transition={{ delay: 0.2 }}
               className="bg-white rounded-xl shadow-md p-4 sm:p-5 border border-[#E5E9FA] hover:shadow-lg transition-all duration-300"
             >
-              <div className="flex items-center gap-3 mb-3">
-                <div className="bg-[#F2F4FD] rounded-lg p-2">
+              <div className="flex flex-col items-center justify-center gap-2 mb-3 text-center">
+                <div className="bg-[#F2F4FD] rounded-lg p-2 flex items-center justify-center">
                   <svg className="w-5 h-5 sm:w-6 sm:h-6 text-[#8494E9]" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                   </svg>
                 </div>
-                <p className="text-xs sm:text-sm font-medium text-[#6C757D]">Pacientes</p>
+                <p className="text-xs sm:text-sm font-medium text-[#6C757D] whitespace-nowrap">Pacientes</p>
               </div>
               <p className="text-2xl sm:text-3xl font-bold text-[#212529] mb-2">{isPacientesLoading ? "..." : (pacientes?.length || 0)}</p>
               <a href="/adm-estacao/pacientes" className="text-xs text-[#8494E9] hover:text-[#6B7FD7] underline font-medium transition-colors">
@@ -413,13 +413,13 @@ export default function AdminDashboard() {
               transition={{ delay: 0.3 }}
               className="bg-white rounded-xl shadow-md p-4 sm:p-5 border border-[#E5E9FA] hover:shadow-lg transition-all duration-300"
             >
-              <div className="flex items-center gap-3 mb-3">
-                <div className="bg-[#F2F4FD] rounded-lg p-2">
+              <div className="flex flex-col items-center justify-center gap-2 mb-3 text-center">
+                <div className="bg-[#F2F4FD] rounded-lg p-2 flex items-center justify-center">
                   <svg className="w-5 h-5 sm:w-6 sm:h-6 text-[#8494E9]" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
-                <p className="text-xs sm:text-sm font-medium text-[#6C757D]">Consultas no mês</p>
+                <p className="text-xs sm:text-sm font-medium text-[#6C757D] whitespace-nowrap">Consultas no mês</p>
               </div>
               <p className="text-2xl sm:text-3xl font-bold text-[#212529] mb-2">{isConsultasMesAtualLoading ? "..." : consultasMesAtual}</p>
               <button
@@ -436,13 +436,13 @@ export default function AdminDashboard() {
               transition={{ delay: 0.35 }}
               className="bg-white rounded-xl shadow-md p-4 sm:p-5 border border-[#E5E9FA] hover:shadow-lg transition-all duration-300"
             >
-              <div className="flex items-center gap-3 mb-3">
-                <div className="bg-purple-50 rounded-lg p-2">
+              <div className="flex flex-col items-center justify-center gap-2 mb-3 text-center">
+                <div className="bg-purple-50 rounded-lg p-2 flex items-center justify-center">
                   <svg className="w-5 h-5 sm:w-6 sm:h-6 text-purple-600" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.967a1 1 0 00.95.69h4.175c.969 0 1.371 1.24.588 1.81l-3.38 2.455a1 1 0 00-.364 1.118l1.287 3.967c.3.921-.755 1.688-1.54 1.118l-3.38-2.455a1 1 0 00-1.175 0l-3.38 2.455c-.784.57-1.838-.197-1.539-1.118l1.287-3.967a1 1 0 00-.364-1.118L2.05 9.394c-.783-.57-.38-1.81.588-1.81h4.175a1 1 0 00.95-.69l1.286-3.967z" />
                   </svg>
                 </div>
-                <p className="text-xs sm:text-sm font-medium text-[#6C757D]">Avaliação média</p>
+                <p className="text-xs sm:text-sm font-medium text-[#6C757D] whitespace-nowrap">Avaliação média</p>
               </div>
               <p className="text-2xl sm:text-3xl font-bold text-[#212529] mb-2">
                 {isReviewsLoading ? "..." : averageRating.toFixed(1)}
@@ -458,13 +458,13 @@ export default function AdminDashboard() {
               transition={{ delay: 0.4 }}
               className="bg-white rounded-xl shadow-md p-4 sm:p-5 border border-[#E5E9FA] hover:shadow-lg transition-all duration-300"
             >
-              <div className="flex items-center gap-3 mb-3">
-                <div className="bg-yellow-50 rounded-lg p-2">
+              <div className="flex flex-col items-center justify-center gap-2 mb-3 text-center">
+                <div className="bg-yellow-50 rounded-lg p-2 flex items-center justify-center">
                   <svg className="w-5 h-5 sm:w-6 sm:h-6 text-yellow-600" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
-                <p className="text-xs sm:text-sm font-medium text-[#6C757D]">Psicólogos Pendentes</p>
+                <p className="text-xs sm:text-sm font-medium text-[#6C757D] whitespace-nowrap">Psicólogos Pendentes</p>
               </div>
               <p className="text-2xl sm:text-3xl font-bold text-[#212529] mb-2">{isPsicologosLoading ? "..." : qtdPendentes}</p>
               <a href="/adm-estacao/psicologos?status=EmAnalise" className="text-xs text-[#8494E9] hover:text-[#6B7FD7] underline font-medium transition-colors">
@@ -478,13 +478,13 @@ export default function AdminDashboard() {
               transition={{ delay: 0.5 }}
               className="bg-white rounded-xl shadow-md p-4 sm:p-5 border border-[#E5E9FA] hover:shadow-lg transition-all duration-300"
             >
-              <div className="flex items-center gap-3 mb-3">
-                <div className="bg-red-50 rounded-lg p-2">
+              <div className="flex flex-col items-center justify-center gap-2 mb-3 text-center">
+                <div className="bg-red-50 rounded-lg p-2 flex items-center justify-center">
                   <svg className="w-5 h-5 sm:w-6 sm:h-6 text-red-600" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </div>
-                <p className="text-xs sm:text-sm font-medium text-[#6C757D]">Consultas Canceladas</p>
+                <p className="text-xs sm:text-sm font-medium text-[#6C757D] whitespace-nowrap">Consultas Canceladas</p>
               </div>
               <p className="text-2xl sm:text-3xl font-bold text-[#212529] mb-2">{isCancelamentosLoading ? "..." : canceladasCount}</p>
               <button

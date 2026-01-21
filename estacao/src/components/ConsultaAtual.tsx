@@ -22,7 +22,7 @@ dayjs.extend(timezone);
 import { normalizeConsulta, type GenericObject } from "@/utils/normalizarConsulta";
 import { useQueryClient } from '@tanstack/react-query';
 import { ConsultaCard } from "@/lib/consultas/ConsultaCard";
-import { calcularTempoRestante50Minutos, isConsultaDentro50MinutosComScheduledAt } from "@/utils/consultaTempoUtils";
+import { calcularTempoRestante60Minutos, isConsultaDentro60MinutosComScheduledAt } from "@/utils/consultaTempoUtils";
 import {
   onConsultationStarted,
   onConsultationEnded,
@@ -142,11 +142,11 @@ export default function ConsultaAtual({ consulta: consultaProp = null, role = "p
     consultationId: normalized?.id ? String(normalized.id) : undefined
   });
 
-  // Verifica se a consulta está dentro dos 50 minutos usando ScheduledAt
+  // Verifica se a consulta está dentro dos 60 minutos usando ScheduledAt
   const estaDentroDoPeriodo50Minutos = useMemo(() => {
     if (!normalized || !consultaProp) return false;
     
-    return isConsultaDentro50MinutosComScheduledAt(
+    return isConsultaDentro60MinutosComScheduledAt(
       scheduledAtFromReserva,
       normalized.date,
       normalized.time
@@ -154,7 +154,7 @@ export default function ConsultaAtual({ consulta: consultaProp = null, role = "p
   }, [normalized, consultaProp, scheduledAtFromReserva]);
 
   // Se o backend retornou a consulta, ela já foi validada como "em andamento"
-  // Mas só mostra se estiver dentro dos 50 minutos
+  // Mas só mostra se estiver dentro dos 60 minutos
   const mostrarCard: boolean = useMemo(() => {
     if (!normalized || !consultaProp) return false;
     
@@ -162,7 +162,7 @@ export default function ConsultaAtual({ consulta: consultaProp = null, role = "p
     const dateOnly = extractDateOnly(normalized.date || '');
     if (!dateOnly || !normalized.time) return false;
     
-    // Só mostra se estiver dentro dos 50 minutos
+    // Só mostra se estiver dentro dos 60 minutos
     return estaDentroDoPeriodo50Minutos;
   }, [normalized, consultaProp, estaDentroDoPeriodo50Minutos]);
   
@@ -209,7 +209,7 @@ export default function ConsultaAtual({ consulta: consultaProp = null, role = "p
 
   const shouldShowPerfil: boolean = !hidePerfil && Boolean(perfilHref);
   
-  // Força atualização quando consulta em andamento passar de 50 minutos
+  // Força atualização quando consulta em andamento passar de 60 minutos
   useEffect(() => {
     if (!normalized) return;
     
@@ -245,12 +245,12 @@ export default function ConsultaAtual({ consulta: consultaProp = null, role = "p
       }
       
       if (inicioConsulta) {
-        const fimConsulta = inicioConsulta + (50 * 60 * 1000); // 50 minutos
+        const fimConsulta = inicioConsulta + (60 * 60 * 1000); // 60 minutos
         const agoraTimestamp = dayjs().tz("America/Sao_Paulo").valueOf();
         const tempoRestante = fimConsulta - agoraTimestamp;
         
         if (tempoRestante > 0) {
-          // Agenda um timeout para forçar refetch quando passar de 50 minutos
+          // Agenda um timeout para forçar refetch quando passar de 60 minutos
           const timeout = setTimeout(() => {
             queryClient.invalidateQueries({ queryKey: ['consultaAtualEmAndamento'] });
             queryClient.invalidateQueries({ queryKey: ['reservas/consultas-agendadas'] });
@@ -260,7 +260,7 @@ export default function ConsultaAtual({ consulta: consultaProp = null, role = "p
         }
       }
     } catch (error) {
-      console.error('[ConsultaAtual] Erro ao calcular timeout de 50 minutos:', error);
+      console.error('[ConsultaAtual] Erro ao calcular timeout de 60 minutos:', error);
     }
   }, [normalized, queryClient]);
 
@@ -324,11 +324,11 @@ export default function ConsultaAtual({ consulta: consultaProp = null, role = "p
     };
   }, [normalized?.id, queryClient]);
 
-  // Calcula o contador baseado nos 50 minutos usando ScheduledAt
+  // Calcula o contador baseado nos 60 minutos usando ScheduledAt
   const contador50Minutos = useMemo(() => {
     if (!normalized) return { tempoFormatado: '', estaDentroDoPeriodo: false };
     
-    return calcularTempoRestante50Minutos(
+    return calcularTempoRestante60Minutos(
       scheduledAtFromReserva,
       normalized.date,
       normalized.time
@@ -506,7 +506,7 @@ export default function ConsultaAtual({ consulta: consultaProp = null, role = "p
   const contador50MinutosAtualizado = useMemo(() => {
     if (!normalized) return { tempoFormatado: '', estaDentroDoPeriodo: false };
     
-    return calcularTempoRestante50Minutos(
+    return calcularTempoRestante60Minutos(
       scheduledAtFromReserva,
       normalized.date,
       normalized.time
@@ -516,7 +516,7 @@ export default function ConsultaAtual({ consulta: consultaProp = null, role = "p
   const sessionState = calculateSessionState();
   const { fraseSessao, mostrarContador, contadorSessao, buttons } = sessionState;
   
-  // Usa o contador atualizado dos 50 minutos se estiver dentro do período
+  // Usa o contador atualizado dos 60 minutos se estiver dentro do período
   const contadorFinal = contador50MinutosAtualizado.estaDentroDoPeriodo 
     ? contador50MinutosAtualizado.tempoFormatado 
     : contadorSessao;

@@ -323,7 +323,7 @@ export default function ProximasConsultas({ consultas: consultasProp = null, rol
         const statusRawLower = (c.raw?.Status || c.raw?.status || '').toString().toLowerCase();
         if (statusInativos.some(s => statusRawLower === s.toLowerCase())) return false;
         
-        // 🎯 REGRA: Se a consulta está em andamento, verifica se está dentro da janela de 50 minutos do ScheduledAt
+        // 🎯 REGRA: Se a consulta está em andamento, verifica se está dentro da janela de 60 minutos do ScheduledAt
         const statusConsulta = c.raw?.Status || c.raw?.status || c.status;
         console.log('[ProximasConsultas] Filtro - Status:', statusConsulta, 'c.raw?.Status:', c.raw?.Status, 'c.status:', c.status);
         if (statusConsulta === 'Andamento' || statusConsulta === 'andamento' || statusConsulta === 'EmAndamento' || statusConsulta === 'Em Andamento') {
@@ -342,16 +342,16 @@ export default function ProximasConsultas({ consultas: consultasProp = null, rol
           }
           
           if (inicioConsulta) {
-            const fimConsulta = inicioConsulta + (50 * 60 * 1000); // 50 minutos
+            const fimConsulta = inicioConsulta + (60 * 60 * 1000); // 60 minutos
             console.log('[ProximasConsultas] Consulta em andamento detectada - Início:', new Date(inicioConsulta), 'Fim:', new Date(fimConsulta), 'Agora:', new Date(agoraTimestamp));
             
-            // Inclui se estiver dentro da janela de 50 minutos
+            // Inclui se estiver dentro da janela de 60 minutos
             if (agoraTimestamp >= inicioConsulta && agoraTimestamp <= fimConsulta) {
-              console.log('[ProximasConsultas] Consulta em andamento incluída no filtro (dentro de 50 minutos)');
+              console.log('[ProximasConsultas] Consulta em andamento incluída no filtro (dentro de 60 minutos)');
               return true;
             } else {
-              // Passou de 50 minutos, não inclui
-              console.log('[ProximasConsultas] Consulta em andamento passou de 50 minutos - excluída do filtro');
+              // Passou de 60 minutos, não inclui
+              console.log('[ProximasConsultas] Consulta em andamento passou de 60 minutos - excluída do filtro');
               return false;
             }
           }
@@ -460,7 +460,7 @@ export default function ProximasConsultas({ consultas: consultasProp = null, rol
     // Verifica o status da consulta (tenta várias formas de acesso)
     const statusConsulta = consulta.raw?.Status || consulta.raw?.status || consulta.status;
     
-    // 🎯 REGRA: Se a consulta está em andamento, verifica se está dentro da janela de 50 minutos do ScheduledAt
+    // 🎯 REGRA: Se a consulta está em andamento, verifica se está dentro da janela de 60 minutos do ScheduledAt
     if ((statusConsulta === 'Andamento' || statusConsulta === 'andamento' || statusConsulta === 'EmAndamento' || statusConsulta === 'Em Andamento') && consulta.time) {
       let inicioConsulta: number | null = null;
       
@@ -493,9 +493,9 @@ export default function ProximasConsultas({ consultas: consultasProp = null, rol
       }
       
       if (inicioConsulta) {
-        const fimConsulta = inicioConsulta + (50 * 60 * 1000); // 50 minutos
+        const fimConsulta = inicioConsulta + (60 * 60 * 1000); // 60 minutos
         
-        // Mostra se estiver dentro da janela de 50 minutos
+        // Mostra se estiver dentro da janela de 60 minutos
         if (agoraTimestamp >= inicioConsulta && agoraTimestamp <= fimConsulta) {
           return true;
         } else {
@@ -551,7 +551,7 @@ export default function ProximasConsultas({ consultas: consultasProp = null, rol
     setVisibleCount(prev => prev + 3);
   };
 
-  // 🎯 REGRA: Força atualização quando consulta em andamento passar de 50 minutos do ScheduledAt
+  // 🎯 REGRA: Força atualização quando consulta em andamento passar de 60 minutos do ScheduledAt
   useEffect(() => {
     if (!normalized) return;
     
@@ -574,14 +574,14 @@ export default function ProximasConsultas({ consultas: consultasProp = null, rol
       }
       
       if (inicioConsulta) {
-        const fimConsulta = inicioConsulta + (50 * 60 * 1000); // 50 minutos
+        const fimConsulta = inicioConsulta + (60 * 60 * 1000); // 60 minutos
         const agoraTimestamp = dayjs().tz("America/Sao_Paulo").valueOf();
         
-        // Calcula quanto tempo falta para passar de 50 minutos
+        // Calcula quanto tempo falta para passar de 60 minutos
         const tempoRestante = fimConsulta - agoraTimestamp;
         
         if (tempoRestante > 0) {
-          // Agenda um timeout para forçar refetch quando passar de 50 minutos
+          // Agenda um timeout para forçar refetch quando passar de 60 minutos
           const timeout = setTimeout(() => {
             queryClient.invalidateQueries({ queryKey: ['reservas/consultas-agendadas'] });
           }, tempoRestante);
@@ -876,9 +876,9 @@ export default function ProximasConsultas({ consultas: consultasProp = null, rol
       if (inicioConsulta) {
         const agoraBr = dayjs().tz('America/Sao_Paulo');
         const agoraTimestamp = agoraBr.valueOf();
-        const fimConsulta = inicioConsulta + (50 * 60 * 1000); // 50 minutos
+        const fimConsulta = inicioConsulta + (60 * 60 * 1000); // 60 minutos
         
-        // 🎯 Habilita exatamente no ScheduledAt até 50 minutos depois
+        // 🎯 Habilita exatamente no ScheduledAt até 60 minutos depois
         return agoraTimestamp >= inicioConsulta && agoraTimestamp <= fimConsulta;
       }
     } catch {
@@ -1457,8 +1457,8 @@ export default function ProximasConsultas({ consultas: consultasProp = null, rol
                 const statusReservaSessao = reservaSessao?.Status || reservaSessao?.status;
                 const statusConsulta = statusReservaSessao || normalized.raw?.Status || normalized.raw?.status || normalized.status;
                 
-                // 🎯 REGRA: Verifica se está em andamento usando ScheduledAt da ReservaSessao (50 minutos)
-                // Se status for EmAndamento/Andamento e dentro de 50 minutos do ScheduledAt, mostra "Ao vivo"
+                // 🎯 REGRA: Verifica se está em andamento usando ScheduledAt da ReservaSessao (60 minutos)
+                // Se status for EmAndamento/Andamento e dentro de 60 minutos do ScheduledAt, mostra "Ao vivo"
                 if ((statusConsulta === 'Andamento' || statusConsulta === 'andamento' || statusConsulta === 'EmAndamento' || statusConsulta === 'Em Andamento')) {
                   let inicioConsulta: number | null = null;
                   
@@ -1474,7 +1474,7 @@ export default function ProximasConsultas({ consultas: consultasProp = null, rol
                   }
                   
                   if (inicioConsulta) {
-                    const fimConsulta = inicioConsulta + (50 * 60 * 1000); // 50 minutos
+                    const fimConsulta = inicioConsulta + (60 * 60 * 1000); // 60 minutos
                     const agoraTimestamp = agora.getTime();
                     
                     if (agoraTimestamp >= inicioConsulta && agoraTimestamp <= fimConsulta) {

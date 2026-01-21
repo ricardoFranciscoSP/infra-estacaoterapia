@@ -41,7 +41,7 @@ export class SessionStatusService {
         
         try {
             if (status === 'active' && ttlSeconds) {
-                // Para status 'active', define com TTL de 50 minutos (3000 segundos)
+                // Para status 'active', define com TTL de 60 minutos (3600 segundos)
                 await this.redis.setex(key, ttlSeconds, status);
                 console.log(`✅ [SessionStatusService] Status da sessão ${consultationId} definido como '${status}' com TTL de ${ttlSeconds}s`);
             } else {

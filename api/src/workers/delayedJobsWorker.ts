@@ -337,13 +337,13 @@ async function handleCancelConsultationNoShow(
 }
 
 /**
- * Finaliza consulta após 50 minutos do ScheduledAt
+ * Finaliza consulta após 60 minutos do ScheduledAt
  */
 async function handleFinalizeConsultation(
     consultationId: string
 ): Promise<void> {
     console.log(
-        `[DelayedJobsWorker] Finalizando consulta após 50 minutos: ${consultationId}`
+        `[DelayedJobsWorker] Finalizando consulta após 60 minutos: ${consultationId}`
     );
 
     const reservaSessao = await prisma.reservaSessao.findUnique({
@@ -404,7 +404,7 @@ async function handleFinalizeConsultation(
     // Notifica encerramento
     await wsNotify.emitConsultation(`consultation:${consultationId}`, {
         status: "Concluido",
-        reason: "Sala encerrada automaticamente após 50 minutos",
+        reason: "Sala encerrada automaticamente após 60 minutos",
         autoEnded: true,
     });
 
@@ -429,7 +429,7 @@ async function handleFinalizeConsultation(
     }
 
     console.log(
-        `✅ [DelayedJobsWorker] Consulta ${consultationId} finalizada após 50 minutos`
+        `✅ [DelayedJobsWorker] Consulta ${consultationId} finalizada após 60 minutos`
     );
 }
 

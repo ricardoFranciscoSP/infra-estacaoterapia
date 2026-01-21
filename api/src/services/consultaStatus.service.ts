@@ -440,7 +440,7 @@ export class ConsultaStatusService {
   /**
    * Finaliza uma consulta como realizada
    * Verifica se ambos (paciente e psicólogo) estiveram na sala antes de atualizar status e processar repasse
-   * @param forceFinalize Se true, força a finalização mesmo se ambos não estiveram na sala (usado quando completa 50 minutos)
+   * @param forceFinalize Se true, força a finalização mesmo se ambos não estiveram na sala (usado quando completa 60 minutos)
    */
   async finalizarConsulta(consultaId: string, forceFinalize: boolean = false) {
     // Verifica se a consulta já está finalizada (idempotência)

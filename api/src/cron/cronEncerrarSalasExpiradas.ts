@@ -2,7 +2,7 @@
  * ⚠️ DEPRECADO: Este arquivo foi substituído por delayed jobs
  * 
  * REFATORADO: A lógica de encerrar salas expiradas agora é executada via delayed jobs
- * quando a consulta é criada (50 minutos após ScheduledAt).
+ * quando a consulta é criada (60 minutos após ScheduledAt).
  * 
  * Este arquivo é mantido apenas para referência histórica.
  * A funcionalidade está implementada em:
@@ -31,7 +31,7 @@ export const encerrarSalasExpiradas = async () => {
         // Busca todas as reservas de sessão que:
         // 1. Têm ScheduledAt definido
         // 2. Estão em status que permitem estar ativas (Reservado, Em Andamento, Andamento)
-        // 3. Já passaram 50 minutos desde o ScheduledAt
+        // 3. Já passaram 60 minutos desde o ScheduledAt
         // Otimizado: adicionado limite para reduzir carga
         const reservasExpiradas = await prisma.reservaSessao.findMany({
             where: {
@@ -56,7 +56,7 @@ export const encerrarSalasExpiradas = async () => {
             }
         });
 
-        // Filtra as reservas que já passaram 50 minutos do ScheduledAt
+        // Filtra as reservas que já passaram 60 minutos do ScheduledAt
         const salasParaEncerrar = reservasExpiradas.filter(reserva => {
             if (!reserva.ScheduledAt) return false;
             
@@ -76,9 +76,9 @@ export const encerrarSalasExpiradas = async () => {
                     return false; // Consulta ainda não começou, não encerra
                 }
                 
-                const fimConsulta = new Date(inicioConsulta.getTime() + 50 * 60 * 1000); // 50 minutos
+                const fimConsulta = new Date(inicioConsulta.getTime() + 60 * 60 * 1000); // 60 minutos
                 
-                // Se já passou do horário de término (50 minutos após ScheduledAt)
+                // Se já passou do horário de término (60 minutos após ScheduledAt)
                 return agora >= fimConsulta;
             } catch (error) {
                 console.error(`Erro ao processar ScheduledAt da reserva ${reserva.Id}:`, error);
@@ -123,7 +123,7 @@ export const encerrarSalasExpiradas = async () => {
                 // Notifica ambos os participantes sobre o encerramento
                 await wsNotify.emitConsultation(`consultation:${consultationId}`, { 
                     status: "Concluido",
-                    reason: "Sala encerrada automaticamente após 50 minutos",
+                    reason: "Sala encerrada automaticamente após 60 minutos",
                     autoEnded: true
                 });
                 

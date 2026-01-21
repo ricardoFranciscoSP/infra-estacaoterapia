@@ -259,10 +259,10 @@ export class ConsultasPsicologoService {
                     message: 'O paciente não possui saldo de consultas disponível. Por favor, oriente o paciente a adquirir um plano ou consultas avulsas para continuar.'
                 });
             }
-            // Validação: Verifica se o paciente já possui uma consulta agendada dentro do período de 50 minutos
+            // Validação: Verifica se o paciente já possui uma consulta agendada dentro do período de 60 minutos
             // (mesmo que seja com outro psicólogo) para evitar conflito de horários
             const config = await prisma.configuracao.findFirst({ select: { duracaoConsultaMin: true } });
-            const consultaDurationMin = config?.duracaoConsultaMin || 50;
+            const consultaDurationMin = config?.duracaoConsultaMin || 60;
 
             // Prepara variáveis que serão usadas tanto na validação quanto na criação
             const horarioStr = String(agenda.Horario).padStart(5, '0');
@@ -294,14 +294,14 @@ export class ConsultasPsicologoService {
             });
 
             // Verifica conflitos considerando APENAS o horário de INÍCIO da nova consulta
-            // Regra: não permitir iniciar dentro de 50 minutos antes ou depois do início de uma consulta existente
+            // Regra: não permitir iniciar dentro de 60 minutos antes ou depois do início de uma consulta existente
             const conflito = consultasNoDia.find((consulta) => {
                 const existingTime = String(consulta.Time || '00:00').padStart(5, '0');
                 const existingDateStr = dayjs(consulta.Date).format('YYYY-MM-DD');
                 const inicioConsultaExistente = dayjs.tz(`${existingDateStr} ${existingTime}`, 'YYYY-MM-DD HH:mm', 'America/Sao_Paulo');
 
-                const inicioJanelaConflito = inicioConsultaExistente.subtract(50, 'minute');
-                const fimJanelaConflito = inicioConsultaExistente.add(50, 'minute');
+            const inicioJanelaConflito = inicioConsultaExistente.subtract(60, 'minute');
+            const fimJanelaConflito = inicioConsultaExistente.add(60, 'minute');
 
                 const inicioDentro = novaConsultaInicio.isSameOrAfter(inicioJanelaConflito) && novaConsultaInicio.isBefore(fimJanelaConflito);
                 return inicioDentro;
@@ -312,7 +312,7 @@ export class ConsultasPsicologoService {
                 const dataFormatada = dayjs(conflito.Date).format('DD/MM/YYYY');
                 const horarioConflito = String(conflito.Time || '').padStart(5, '0');
                 return res.status(400).json({
-                    error: `O paciente já possui uma consulta agendada no dia ${dataFormatada} às ${horarioConflito} com ${psicologoNome}. Não é possível marcar uma consulta dentro do período de 50 minutos antes ou depois de uma consulta já agendada.`
+                    error: `O paciente já possui uma consulta agendada no dia ${dataFormatada} às ${horarioConflito} com ${psicologoNome}. Não é possível marcar uma consulta dentro do período de 60 minutos antes ou depois de uma consulta já agendada.`
                 });
             }
 

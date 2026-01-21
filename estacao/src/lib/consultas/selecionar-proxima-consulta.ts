@@ -165,7 +165,7 @@ export function selecionarProximaConsulta(
     });
 
     // Verifica se há consulta dentro da janela
-    // Janela: 15 minutos antes até 50 minutos depois do horário
+    // Janela: 15 minutos antes até 60 minutos depois do horário
     // SEM buffer - atualização instantânea quando sair da janela
     const consultaNaJanela = consultasOrdenadas.find((consulta) => {
         try {
@@ -186,9 +186,9 @@ export function selecionarProximaConsulta(
 
             if (!dataHoraConsulta.isValid()) return false;
 
-            // Janela: 15 minutos antes até 50 minutos depois do horário
+            // Janela: 15 minutos antes até 60 minutos depois do horário
             const inicioJanela = dataHoraConsulta.subtract(15, 'minute');
-            const fimJanela = dataHoraConsulta.add(50, 'minute');
+            const fimJanela = dataHoraConsulta.add(60, 'minute');
 
             if (!inicioJanela.isValid() || !fimJanela.isValid()) return false;
 
@@ -329,8 +329,8 @@ export function podeEntrarNaConsulta(consulta: ConsultaApi | null): boolean {
 
         // 15 minutos antes
         const inicioJanela = dataHoraConsulta.subtract(15, 'minute');
-        // Fim da consulta (50 minutos de duração)
-        const fimJanela = dataHoraConsulta.add(50, 'minute');
+        // Fim da consulta (60 minutos de duração)
+        const fimJanela = dataHoraConsulta.add(60, 'minute');
 
         if (!inicioJanela.isValid() || !fimJanela.isValid()) {
             return false;

@@ -141,7 +141,7 @@ export default function ProximaConsultaPsicologo({ consultas = null, role = "pac
       const horaAtualBr = agoraBr.format('HH:mm');
       const agoraTimestamp = agoraBr.valueOf();
       
-      // 🎯 REGRA: Verifica se a consulta está em andamento usando ScheduledAt (50 minutos)
+      // 🎯 REGRA: Verifica se a consulta está em andamento usando ScheduledAt (60 minutos)
       const statusConsulta = normalized.raw?.Status || normalized.status;
       if (statusConsulta === 'Andamento' || statusConsulta === 'andamento' || statusConsulta === 'EmAndamento' || statusConsulta === 'Em Andamento') {
         let inicioConsulta: number | null = null;
@@ -159,13 +159,13 @@ export default function ProximaConsultaPsicologo({ consultas = null, role = "pac
         }
         
         if (inicioConsulta) {
-          const fimConsulta = inicioConsulta + (50 * 60 * 1000); // 50 minutos
+          const fimConsulta = inicioConsulta + (60 * 60 * 1000); // 60 minutos
           
-          // Mostra se estiver dentro da janela de 50 minutos
+          // Mostra se estiver dentro da janela de 60 minutos
           if (agoraTimestamp >= inicioConsulta && agoraTimestamp <= fimConsulta) {
             return true;
           } else {
-            // Passou de 50 minutos, não mostra
+            // Passou de 60 minutos, não mostra
             return false;
           }
         }
@@ -301,7 +301,7 @@ export default function ProximaConsultaPsicologo({ consultas = null, role = "pac
   let contadorSessao = contador;
   let botaoEntrarDesabilitado = true;
 
-  // 🎯 Verifica se pode entrar na sessão baseado no ScheduledAt (exatamente no horário até 50 minutos depois)
+  // 🎯 Verifica se pode entrar na sessão baseado no ScheduledAt (exatamente no horário até 60 minutos depois)
   const podeEntrarNaSessao = useMemo(() => {
     if (!normalized?.date || !normalized?.time) return false;
     
@@ -325,9 +325,9 @@ export default function ProximaConsultaPsicologo({ consultas = null, role = "pac
       if (inicioConsulta) {
         const agoraBr = dayjs().tz('America/Sao_Paulo');
         const agoraTimestamp = agoraBr.valueOf();
-        const fimConsulta = inicioConsulta + (50 * 60 * 1000); // 50 minutos
+        const fimConsulta = inicioConsulta + (60 * 60 * 1000); // 60 minutos
         
-        // 🎯 Habilita exatamente no ScheduledAt até 50 minutos depois
+        // 🎯 Habilita exatamente no ScheduledAt até 60 minutos depois
         return agoraTimestamp >= inicioConsulta && agoraTimestamp <= fimConsulta;
       }
     } catch {
@@ -601,8 +601,8 @@ export default function ProximaConsultaPsicologo({ consultas = null, role = "pac
               }
             }
             
-            // 🎯 REGRA: Verifica se está em andamento usando ScheduledAt da ReservaSessao (50 minutos)
-            // Se status for EmAndamento/Andamento e dentro de 50 minutos do ScheduledAt, mostra "Ao vivo"
+            // 🎯 REGRA: Verifica se está em andamento usando ScheduledAt da ReservaSessao (60 minutos)
+            // Se status for EmAndamento/Andamento e dentro de 60 minutos do ScheduledAt, mostra "Ao vivo"
             if ((statusConsulta === 'Andamento' || statusConsulta === 'andamento' || statusConsulta === 'EmAndamento' || statusConsulta === 'Em Andamento')) {
               let inicioConsulta: number | null = null;
               
@@ -638,7 +638,7 @@ export default function ProximaConsultaPsicologo({ consultas = null, role = "pac
               if (inicioConsulta) {
                 const agoraBr = dayjs().tz('America/Sao_Paulo');
                 const agoraTimestamp = agoraBr.valueOf();
-                const fimConsulta = inicioConsulta + (50 * 60 * 1000); // 50 minutos
+                const fimConsulta = inicioConsulta + (60 * 60 * 1000); // 60 minutos
                 
                 if (agoraTimestamp >= inicioConsulta && agoraTimestamp <= fimConsulta) {
                   // 🎯 Mostra tag "Ao vivo" quando consulta está em andamento

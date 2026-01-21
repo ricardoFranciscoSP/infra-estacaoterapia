@@ -58,7 +58,7 @@ export async function schedulePurchaseExpiration(
 /**
  * Agenda jobs de cancelamento e finalização quando consulta é criada
  * - Cancelamento por no-show: 10 minutos após ScheduledAt
- * - Finalização: 50 minutos após ScheduledAt
+ * - Finalização: 60 minutos após ScheduledAt
  */
 export async function scheduleConsultationJobs(
     consultationId: string,
@@ -85,8 +85,8 @@ export async function scheduleConsultationJobs(
         const cancelTime = scheduledAtBr.add(10, "minute");
         const cancelDelayMs = Math.max(0, cancelTime.valueOf() - nowBr.valueOf());
 
-        // Job de finalização: 50 minutos após ScheduledAt
-        const finalizeTime = scheduledAtBr.add(50, "minute");
+        // Job de finalização: 60 minutos após ScheduledAt
+        const finalizeTime = scheduledAtBr.add(60, "minute");
         const finalizeDelayMs = Math.max(0, finalizeTime.valueOf() - nowBr.valueOf());
 
         // JobIds únicos para evitar duplicatas

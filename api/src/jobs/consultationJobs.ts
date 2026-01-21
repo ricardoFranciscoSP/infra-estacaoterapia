@@ -61,22 +61,22 @@ export async function scheduleConsultationJobs(consultationId: string, scheduled
     await consultationQueue.add("warnInactivity", { consultationId }, { delay: delay(9 * 60 * 1000 + 30 * 1000) });
     await consultationQueue.add("cancelIfNoJoin", { consultationId }, { delay: delay(10 * 60 * 1000) });
     
-    // Notificações de tempo restante (15, 10, 5, 3 minutos antes do fim - 50 minutos total)
-    // 50 - 15 = 35 minutos após o início
-    await consultationQueue.add("notifyTimeRemaining", { consultationId, minutesRemaining: 15 }, { delay: delay(35 * 60 * 1000) });
-    // 50 - 10 = 40 minutos após o início
-    await consultationQueue.add("notifyTimeRemaining", { consultationId, minutesRemaining: 10 }, { delay: delay(40 * 60 * 1000) });
-    // 50 - 5 = 45 minutos após o início
-    await consultationQueue.add("notifyTimeRemaining", { consultationId, minutesRemaining: 5 }, { delay: delay(45 * 60 * 1000) });
-    // 50 - 3 = 47 minutos após o início
-    await consultationQueue.add("notifyTimeRemaining", { consultationId, minutesRemaining: 3 }, { delay: delay(47 * 60 * 1000) });
+    // Notificações de tempo restante (15, 10, 5, 3 minutos antes do fim - 60 minutos total)
+    // 60 - 15 = 45 minutos após o início
+    await consultationQueue.add("notifyTimeRemaining", { consultationId, minutesRemaining: 15 }, { delay: delay(45 * 60 * 1000) });
+    // 60 - 10 = 50 minutos após o início
+    await consultationQueue.add("notifyTimeRemaining", { consultationId, minutesRemaining: 10 }, { delay: delay(50 * 60 * 1000) });
+    // 60 - 5 = 55 minutos após o início
+    await consultationQueue.add("notifyTimeRemaining", { consultationId, minutesRemaining: 5 }, { delay: delay(55 * 60 * 1000) });
+    // 60 - 3 = 57 minutos após o início
+    await consultationQueue.add("notifyTimeRemaining", { consultationId, minutesRemaining: 3 }, { delay: delay(57 * 60 * 1000) });
     
-    // Job para finalizar sessão após 50 minutos (controla estado da sessão no Redis)
-    await consultationQueue.add("finish-session", { consultationId }, { delay: delay(50 * 60 * 1000) });
+    // Job para finalizar sessão após 60 minutos (controla estado da sessão no Redis)
+    await consultationQueue.add("finish-session", { consultationId }, { delay: delay(60 * 60 * 1000) });
     
-    // Finaliza consulta automaticamente quando faltar 5 minutos (45 minutos após o início) se ambos estiverem na sala
-    await consultationQueue.add("finalizeConsultation", { consultationId }, { delay: delay(45 * 60 * 1000) });
-    await consultationQueue.add("endConsultation", { consultationId }, { delay: delay(50 * 60 * 1000) });
+    // Finaliza consulta automaticamente quando faltar 5 minutos (55 minutos após o início) se ambos estiverem na sala
+    await consultationQueue.add("finalizeConsultation", { consultationId }, { delay: delay(55 * 60 * 1000) });
+    await consultationQueue.add("endConsultation", { consultationId }, { delay: delay(60 * 60 * 1000) });
 }
 
 /**
@@ -305,8 +305,8 @@ export async function startConsultationWorker() {
                                     break;
                                 }
 
-                                // Define status como 'active' com TTL de 50 minutos (3000 segundos)
-                                await sessionStatusService.setSessionStatus(consultationId, 'active', 50 * 60);
+                                // Define status como 'active' com TTL de 60 minutos (3600 segundos)
+                                await sessionStatusService.setSessionStatus(consultationId, 'active', 60 * 60);
                                 
                                 console.log(`✅ [ConsultationWorker] Sessão ${consultationId} marcada como 'active' no Redis`);
 

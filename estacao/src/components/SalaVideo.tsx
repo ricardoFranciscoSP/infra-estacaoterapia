@@ -29,6 +29,8 @@ import {
   offConsultationStatusChanged,
   onInactivityWarning,
   offInactivityWarning,
+  onTimeRemainingWarning,
+  offTimeRemainingWarning,
   onRoomClosed,
   offRoomClosed,
   ensureSocketConnection,
@@ -192,10 +194,10 @@ export default function SalaVideo({ appId, channel, token, uid, role, consultati
     return initialDuration;
   });
 
-  // Calcula o tempo restante baseado no ScheduledAt (horário inicial da reserva) + 50 minutos
+  // Calcula o tempo restante baseado no ScheduledAt (horário inicial da reserva) + 60 minutos
   // IMPORTANTE: ScheduledAt é sempre a fonte da verdade - calcula desde o horário programado
-  // Exemplo: se programado para 13:00, o tempo restante é calculado desde 13:00 + 50min = 13:50
-  // Mesmo que o usuário entre às 13:10, o tempo restante será 40 minutos (não 50)
+  // Exemplo: se programado para 13:00, o tempo restante é calculado desde 13:00 + 60min = 14:00
+  // Mesmo que o usuário entre às 13:10, o tempo restante será 50 minutos (não 60)
   const calculateTimeRemaining = useCallback((): number => {
     // Prioriza ScheduledAt da prop, depois da ReservaSessao, depois consultaDate/Time
     const scheduledAtToUse = scheduledAtFinal;
@@ -215,18 +217,18 @@ export default function SalaVideo({ appId, channel, token, uid, role, consultati
         // IMPORTANTE: Este é o horário absoluto de início, independente de quando o usuário entra
         const inicioConsulta = new Date(year, month - 1, day, hour, minute, second);
         
-        // Calcula o fim da consulta (início programado + 50 minutos)
-        // Exemplo: se programado para 13:00, termina às 13:50
-        const fimConsulta = new Date(inicioConsulta.getTime() + 50 * 60 * 1000);
+        // Calcula o fim da consulta (início programado + 60 minutos)
+        // Exemplo: se programado para 13:00, termina às 14:00
+        const fimConsulta = new Date(inicioConsulta.getTime() + 60 * 60 * 1000);
         
         // Calcula o tempo restante em segundos desde AGORA até o fim programado
-        // Se são 13:10 e termina às 13:50, restam 40 minutos (2400 segundos)
+        // Se são 13:10 e termina às 14:00, restam 50 minutos (3000 segundos)
         const agora = new Date();
         const diffMs = fimConsulta.getTime() - agora.getTime();
         const diffSeconds = Math.max(0, Math.floor(diffMs / 1000));
         
-        // Limita o máximo a 50 minutos (3000 segundos) para garantir que não ultrapasse
-        return Math.min(diffSeconds, 3000);
+        // Limita o máximo a 60 minutos (3600 segundos) para garantir que não ultrapasse
+        return Math.min(diffSeconds, 3600);
       } catch (error) {
         console.error('Erro ao calcular tempo restante a partir de ScheduledAt:', error);
       }
@@ -251,23 +253,23 @@ export default function SalaVideo({ appId, channel, token, uid, role, consultati
           inicioConsulta.setHours(hour, minute, 0, 0);
         }
 
-        // Calcula o fim da consulta (início + 50 minutos)
-        const fimConsulta = new Date(inicioConsulta.getTime() + 50 * 60 * 1000);
+        // Calcula o fim da consulta (início + 60 minutos)
+        const fimConsulta = new Date(inicioConsulta.getTime() + 60 * 60 * 1000);
         
         // Calcula o tempo restante em segundos
         const agora = new Date();
         const diffMs = fimConsulta.getTime() - agora.getTime();
         const diffSeconds = Math.max(0, Math.floor(diffMs / 1000));
         
-        // Limita o máximo a 50 minutos (3000 segundos)
-        return Math.min(diffSeconds, 3000);
+        // Limita o máximo a 60 minutos (3600 segundos)
+        return Math.min(diffSeconds, 3600);
       } catch (error) {
         console.error('Erro ao calcular tempo restante:', error);
       }
     }
     
-    // Fallback final: retorna 50 minutos se não tiver dados
-    return 3000;
+    // Fallback final: retorna 60 minutos se não tiver dados
+    return 3600;
   }, [scheduledAtFinal, consultaDate, consultaTime]);
 
   const [timeRemaining, setTimeRemaining] = useState(() => calculateTimeRemaining());
@@ -494,12 +496,6 @@ export default function SalaVideo({ appId, channel, token, uid, role, consultati
     }
   }, [loggedUserId, PsychologistId, consultaData, role]);
 
-  // Refs para controlar notificações de tempo (evitar duplicatas)
-  const notified15min = useRef(false);
-  const notified10min = useRef(false);
-  const notified5min = useRef(false);
-  const notified30sec = useRef(false);
-  
   // Ref para controlar encerramento automático (evitar múltiplas execuções)
   const autoEndTriggered = useRef(false);
 
@@ -960,6 +956,22 @@ export default function SalaVideo({ appId, channel, token, uid, role, consultati
     };
   }, [consultationIdString, socket]);
 
+  // Listener para avisos de tempo restante (15, 10, 5, 3 minutos) via socket
+  useEffect(() => {
+    if (!consultationIdString || !socket) return;
+
+    const handleTimeRemainingWarning = (data: TimeRemainingWarningData) => {
+      console.log("⏰ [SalaVideo] Aviso de tempo restante recebido:", data);
+      setTimeRemainingWarning(data);
+    };
+
+    onTimeRemainingWarning(handleTimeRemainingWarning, consultationIdString);
+
+    return () => {
+      offTimeRemainingWarning(consultationIdString);
+    };
+  }, [consultationIdString, socket]);
+
   // Contador regressivo para o aviso de inatividade
   useEffect(() => {
     if (!inactivityWarning || countdown === null) return;
@@ -1392,17 +1404,14 @@ export default function SalaVideo({ appId, channel, token, uid, role, consultati
     // Atualiza quando o timestamp global muda (a cada segundo) ou quando dados de horário mudam
   }, [timestamp, scheduledAt, reservaSessao?.ScheduledAt, consultaDate, consultaTime]);
 
-  // Resetar notificações quando entrar na sala
+  // Resetar estado quando entrar na sala
   useEffect(() => {
     if (joined) {
-      notified15min.current = false;
-      notified10min.current = false;
-      notified5min.current = false;
       autoEndTriggered.current = false;
     }
   }, [joined]);
 
-  // Contador regressivo (tempo restante baseado na data/hora de início + 50 minutos) - OTIMIZADO
+  // Contador regressivo (tempo restante baseado na data/hora de início + 60 minutos) - OTIMIZADO
   // Sincronizado via socket quando o outro participante entrar
   // OTIMIZAÇÃO: Usa useContadorGlobal em vez de setInterval separado
   useEffect(() => {
@@ -1441,19 +1450,19 @@ export default function SalaVideo({ appId, channel, token, uid, role, consultati
 
     // Função assíncrona para lidar com o encerramento
     const handleAutoEnd = async () => {
-      // Quando a consulta completa 50 minutos, assume que houve consulta
+      // Quando a consulta completa 60 minutos, assume que houve consulta
       // Passo 1: PRIMEIRO finaliza a sessão (marca como concluído conforme regra)
-      console.log("⏰ [SalaVideo] [AUTO-END] Consulta completou 50 minutos - finalizando sessão...");
+      console.log("⏰ [SalaVideo] [AUTO-END] Consulta completou 60 minutos - finalizando sessão...");
       console.log("  - Passo 1: Verificando se ambos estiveram na sala...");
       
       const ambosEstiveram = await verificarAmbosEstiveramNaSala();
       console.log("  - Resultado verificação ambos estiveram:", ambosEstiveram);
       
-      // Quando a consulta completa 50 minutos, assume que houve consulta
+      // Quando a consulta completa 60 minutos, assume que houve consulta
       // Passo 2: SEMPRE finaliza a consulta (atualiza status para Realizada e marca Agenda/ReservaSessao como Concluido)
       // Isso também limpa os tokens do Agora e processa o repasse
       console.log("  - Passo 2: Finalizando consulta (atualizando status em todas as tabelas) e verificando review...");
-      console.log("  - NOTA: Como completou 50 minutos, assume que houve consulta");
+      console.log("  - NOTA: Como completou 60 minutos, assume que houve consulta");
       
       let finalizacaoResult: { requiresReview: boolean; psychologistId?: string } | null = null;
       
@@ -1463,14 +1472,14 @@ export default function SalaVideo({ appId, channel, token, uid, role, consultati
         console.log("✅ [SalaVideo] [AUTO-END] Consulta finalizada - status atualizados (Realizada/Concluido) e tokens limpos");
       } catch (error) {
         // Se a finalização falhar (ex: ambos não estiveram), força a finalização
-        // pois completou 50 minutos, então assume que houve consulta
-        console.log("⚠️ [SalaVideo] [AUTO-END] Finalização normal falhou, mas como completou 50 minutos, força finalização");
+        // pois completou 60 minutos, então assume que houve consulta
+        console.log("⚠️ [SalaVideo] [AUTO-END] Finalização normal falhou, mas como completou 60 minutos, força finalização");
         console.log("  - Erro da finalização normal:", error);
         console.log("  - Tentando finalizar com forceFinalize=true via API...");
         
         try {
           const { consultaService } = await import('@/services/consultaService');
-          // Força finalização quando completa 50 minutos (assume que houve consulta)
+          // Força finalização quando completa 60 minutos (assume que houve consulta)
           const response = await consultaService().finalizarConsultaComReview(consultationIdString, true);
           finalizacaoResult = {
             requiresReview: response.data.requiresReview,
@@ -1695,171 +1704,6 @@ export default function SalaVideo({ appId, channel, token, uid, role, consultati
     return () => clearTimeout(checkTimer);
   }, [role, joined, showEvaluation, consultationIdString, verificarAmbosEstiveramNaSala, verificarDepoimentoExistente]);
 
-  // Notificações de tempo restante (15min, 10min, 5min) - estilo Google Meet
-  // Funciona para paciente e psicólogo
-  useEffect(() => {
-    if (!joined || timeRemaining <= 0) return;
-
-    // Notificação aos 15 minutos restantes (900 segundos)
-    // Dispara quando faltam entre 15min (900s) e 14min58s (898s) para garantir que seja disparada
-    if (timeRemaining <= 900 && timeRemaining >= 898 && !notified15min.current) {
-      notified15min.current = true;
-      toast.custom(
-        (t) => (
-          <div 
-            className={`${t.visible ? 'animate-enter' : 'animate-leave'} max-w-md w-full bg-white shadow-lg rounded-lg pointer-events-auto flex ring-1 ring-black ring-opacity-5 transition-all`}
-            style={{ border: '2px solid #F97316', zIndex: 9999 }}
-          >
-            <div className="flex-1 w-0 p-4">
-              <div className="flex items-start">
-                <div className="flex-shrink-0 flex items-center">
-                  <svg className="w-6 h-6 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <div className="ml-3 flex-1">
-                  <p className="text-sm font-semibold text-gray-900">⏰ 15 minutos restantes</p>
-                  <p className="mt-1 text-sm text-gray-600">A sessão terminará em breve</p>
-                </div>
-              </div>
-            </div>
-            <div className="flex border-l border-gray-200">
-              <button
-                onClick={() => toast.dismiss(t.id)}
-                className="w-full border border-transparent rounded-none rounded-r-lg p-4 flex items-center justify-center text-sm font-medium text-gray-400 hover:text-gray-500 focus:outline-none"
-              >
-                ✕
-              </button>
-            </div>
-          </div>
-        ),
-        {
-          duration: 8000,
-          position: "bottom-right",
-        }
-      );
-    }
-
-    // Notificação aos 10 minutos restantes (600 segundos)
-    // Dispara quando faltam entre 10min (600s) e 9min58s (598s) para garantir que seja disparada
-    if (timeRemaining <= 600 && timeRemaining >= 598 && !notified10min.current) {
-      notified10min.current = true;
-      toast.custom(
-        (t) => (
-          <div 
-            className={`${t.visible ? 'animate-enter' : 'animate-leave'} max-w-md w-full bg-white shadow-lg rounded-lg pointer-events-auto flex ring-1 ring-black ring-opacity-5 transition-all`}
-            style={{ border: '2px solid #EA580C', zIndex: 9999 }}
-          >
-            <div className="flex-1 w-0 p-4">
-              <div className="flex items-start">
-                <div className="flex-shrink-0 flex items-center">
-                  <svg className="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <div className="ml-3 flex-1">
-                  <p className="text-sm font-semibold text-gray-900">⏰ 10 minutos restantes</p>
-                  <p className="mt-1 text-sm text-gray-600">A sessão está quase terminando</p>
-                </div>
-              </div>
-            </div>
-            <div className="flex border-l border-gray-200">
-              <button
-                onClick={() => toast.dismiss(t.id)}
-                className="w-full border border-transparent rounded-none rounded-r-lg p-4 flex items-center justify-center text-sm font-medium text-gray-400 hover:text-gray-500 focus:outline-none"
-              >
-                ✕
-              </button>
-            </div>
-          </div>
-        ),
-        {
-          duration: 8000,
-          position: "bottom-right",
-        }
-      );
-    }
-
-    // Notificação aos 5 minutos restantes (300 segundos)
-    // Dispara quando faltam entre 5min (300s) e 4min58s (298s) para garantir que seja disparada
-    if (timeRemaining <= 300 && timeRemaining >= 298 && !notified5min.current) {
-      notified5min.current = true;
-      toast.custom(
-        (t) => (
-          <div 
-            className={`${t.visible ? 'animate-enter' : 'animate-leave'} max-w-md w-full bg-red-50 shadow-lg rounded-lg pointer-events-auto flex ring-1 ring-black ring-opacity-5 transition-all`}
-            style={{ border: '2px solid #DC2626', zIndex: 9999 }}
-          >
-            <div className="flex-1 w-0 p-4">
-              <div className="flex items-start">
-                <div className="flex-shrink-0 flex items-center">
-                  <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <div className="ml-3 flex-1">
-                  <p className="text-sm font-bold text-gray-900">⏰ 5 minutos restantes</p>
-                  <p className="mt-1 text-sm text-red-600 font-medium">A sessão terminará em breve!</p>
-                </div>
-              </div>
-            </div>
-            <div className="flex border-l border-red-200">
-              <button
-                onClick={() => toast.dismiss(t.id)}
-                className="w-full border border-transparent rounded-none rounded-r-lg p-4 flex items-center justify-center text-sm font-medium text-gray-400 hover:text-gray-500 focus:outline-none"
-              >
-                ✕
-              </button>
-            </div>
-          </div>
-        ),
-        {
-          duration: 10000,
-          position: "bottom-right",
-        }
-      );
-    }
-
-    // Notificação aos 30 segundos restantes (antes de completar 50 minutos)
-    // Dispara quando faltam entre 30s e 28s para garantir que seja disparada uma vez
-    if (timeRemaining <= 30 && timeRemaining >= 28 && !notified30sec.current) {
-      notified30sec.current = true;
-      toast.custom(
-        (t) => (
-          <div 
-            className={`${t.visible ? 'animate-enter' : 'animate-leave'} max-w-md w-full bg-white shadow-lg rounded-lg pointer-events-auto flex ring-1 ring-black ring-opacity-5 transition-all`}
-            style={{ border: '2px solid #7C3AED', zIndex: 9999 }}
-          >
-            <div className="flex-1 w-0 p-4">
-              <div className="flex items-start">
-                <div className="flex-shrink-0 flex items-center">
-                  <svg className="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <div className="ml-3 flex-1">
-                  <p className="text-sm font-semibold text-gray-900">⏰ 30 segundos restantes</p>
-                  <p className="mt-1 text-sm text-gray-600">A sessão de 50 minutos está acabando</p>
-                </div>
-              </div>
-            </div>
-            <div className="flex border-l border-gray-200">
-              <button
-                onClick={() => toast.dismiss(t.id)}
-                className="w-full border border-transparent rounded-none rounded-r-lg p-4 flex items-center justify-center text-sm font-medium text-gray-400 hover:text-gray-500 focus:outline-none"
-              >
-                ✕
-              </button>
-            </div>
-          </div>
-        ),
-        {
-          duration: 5000,
-          position: "bottom-right",
-        }
-      );
-    }
-  }, [timeRemaining, joined]);
 
   // Toggle câmera
   const toggleCamera = async () => {
@@ -2829,17 +2673,6 @@ export default function SalaVideo({ appId, channel, token, uid, role, consultati
                   <span className="text-[8px] sm:text-[9px] md:text-[10px] text-orange-100 hidden sm:block">Clique para responder</span>
                 </div>
               </div>
-            )}
-
-            {/* Notificação de Tempo Restante - Estilo Google Meet (canto inferior direito) */}
-            {timeRemainingWarning && (
-              <NotificationToast
-                message={timeRemainingWarning.message}
-                type="info"
-                minutesRemaining={timeRemainingWarning.minutesRemaining}
-                onClose={() => setTimeRemainingWarning(null)}
-                autoClose={8000} // 8 segundos
-              />
             )}
 
             {/* Notificação de Tempo Restante - Estilo Google Meet (canto inferior direito) */}

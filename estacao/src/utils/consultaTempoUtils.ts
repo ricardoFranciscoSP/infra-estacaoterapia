@@ -6,13 +6,13 @@ dayjs.extend(utc);
 dayjs.extend(timezone);
 
 /**
- * Calcula o tempo restante dos 50 minutos a partir do ScheduledAt
+ * Calcula o tempo restante dos 60 minutos a partir do ScheduledAt
  * @param scheduledAt - Data/hora do início da consulta no formato 'YYYY-MM-DD HH:mm:ss'
  * @param date - Data da consulta (fallback)
  * @param time - Horário da consulta (fallback)
  * @returns Objeto com tempo restante em segundos e string formatada
  */
-export function calcularTempoRestante50Minutos(
+export function calcularTempoRestante60Minutos(
   scheduledAt?: string | null,
   date?: string | null,
   time?: string | null
@@ -34,7 +34,7 @@ export function calcularTempoRestante50Minutos(
           inicioConsulta = inicioConsultaDate.valueOf();
         }
       } catch (error) {
-        console.error('[calcularTempoRestante50Minutos] Erro ao parsear ScheduledAt:', error);
+        console.error('[calcularTempoRestante60Minutos] Erro ao parsear ScheduledAt:', error);
       }
     }
     
@@ -53,9 +53,9 @@ export function calcularTempoRestante50Minutos(
     
     const agoraBr = dayjs().tz('America/Sao_Paulo');
     const agoraTimestamp = agoraBr.valueOf();
-    const fimConsulta = inicioConsulta + (50 * 60 * 1000); // 50 minutos
+    const fimConsulta = inicioConsulta + (60 * 60 * 1000); // 60 minutos
     
-    // Verifica se está dentro do período de 50 minutos
+    // Verifica se está dentro do período de 60 minutos
     const estaDentroDoPeriodo = agoraTimestamp >= inicioConsulta && agoraTimestamp <= fimConsulta;
     
     if (!estaDentroDoPeriodo) {
@@ -65,8 +65,8 @@ export function calcularTempoRestante50Minutos(
     // Calcula tempo decorrido desde o início (em segundos)
     const segundosDecorridos = Math.floor((agoraTimestamp - inicioConsulta) / 1000);
     
-    // Calcula tempo restante até 50 minutos (em segundos)
-    const segundosRestantes = (50 * 60) - segundosDecorridos;
+    // Calcula tempo restante até 60 minutos (em segundos)
+    const segundosRestantes = (60 * 60) - segundosDecorridos;
     
     // Formata o tempo decorrido (não o restante) para exibir
     const minutosDecorridos = Math.floor(segundosDecorridos / 60);
@@ -79,20 +79,20 @@ export function calcularTempoRestante50Minutos(
       estaDentroDoPeriodo: true,
     };
   } catch (error) {
-    console.error('[calcularTempoRestante50Minutos] Erro ao calcular tempo:', error);
+    console.error('[calcularTempoRestante60Minutos] Erro ao calcular tempo:', error);
     return { segundosRestantes: 0, tempoFormatado: '', estaDentroDoPeriodo: false };
   }
 }
 
 /**
- * Verifica se a consulta está dentro dos 50 minutos usando ScheduledAt
+ * Verifica se a consulta está dentro dos 60 minutos usando ScheduledAt
  */
-export function isConsultaDentro50MinutosComScheduledAt(
+export function isConsultaDentro60MinutosComScheduledAt(
   scheduledAt?: string | null,
   date?: string | null,
   time?: string | null
 ): boolean {
-  const { estaDentroDoPeriodo } = calcularTempoRestante50Minutos(scheduledAt, date, time);
+  const { estaDentroDoPeriodo } = calcularTempoRestante60Minutos(scheduledAt, date, time);
   return estaDentroDoPeriodo;
 }
 

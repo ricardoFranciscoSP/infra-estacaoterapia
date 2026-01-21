@@ -123,7 +123,7 @@ export default function ModalCadastroAgendamento({
     try {
       const ymdSelecionado = normalizarData(dataBR);
       const horaSelecionada = (hora || "").slice(0, 5);
-      const duracaoConsultaMin = 50; // Duração padrão de 50 minutos
+      const duracaoConsultaMin = 60; // Duração padrão de 60 minutos
 
       // Busca consultas já agendadas/futuras do paciente
       const [agendadas, futuras] = await Promise.allSettled([
@@ -173,7 +173,7 @@ export default function ModalCadastroAgendamento({
         return { conflito: false };
       }
 
-      // Verifica conflitos considerando 50 minutos antes e depois de cada consulta existente
+      // Verifica conflitos considerando 60 minutos antes e depois de cada consulta existente
       const consultaConflito = consultas.find((c: ConsultaLike) => {
         const dataApi = c?.Agenda?.Data || c?.agenda?.data || c?.Date || c?.date;
         const horaApi = c?.Agenda?.Horario || c?.agenda?.horario || c?.Time || c?.time;
@@ -192,7 +192,7 @@ export default function ModalCadastroAgendamento({
 
         if (!inicioConsultaExistente.isValid()) return false;
 
-        // Janela de conflito: 50 minutos antes do início até 50 minutos depois do fim
+        // Janela de conflito: 60 minutos antes do início até 60 minutos depois do fim
         const inicioJanelaConflito = inicioConsultaExistente.subtract(50, 'minute');
         const fimJanelaConflito = fimConsultaExistente.add(50, 'minute');
 
@@ -233,11 +233,11 @@ export default function ModalCadastroAgendamento({
     
     setLoading(true);
     try {
-      // 1) Checagem preventiva de conflito: verifica se há consulta dentro de 50 minutos antes ou depois
+      // 1) Checagem preventiva de conflito: verifica se há consulta dentro de 60 minutos antes ou depois
       const resultadoConflito = await existeConflitoPeriodo50Minutos(psicologo.Data, psicologo.Horario);
       if (resultadoConflito.conflito && resultadoConflito.consultaConflito) {
         toast.error(
-          `Você já possui uma consulta agendada no dia ${resultadoConflito.consultaConflito.data} às ${resultadoConflito.consultaConflito.hora}. Não é possível marcar uma consulta dentro do período de 50 minutos antes ou depois de uma consulta já agendada.`
+          `Você já possui uma consulta agendada no dia ${resultadoConflito.consultaConflito.data} às ${resultadoConflito.consultaConflito.hora}. Não é possível marcar uma consulta dentro do período de 60 minutos antes ou depois de uma consulta já agendada.`
         );
         setLoading(false);
         return;
@@ -255,7 +255,7 @@ export default function ModalCadastroAgendamento({
           // Trata erro de conflito do backend
           const axiosError = error as AxiosErrorResponse;
           const errorMessage = axiosError?.response?.data?.message || (error instanceof Error ? error.message : 'Erro ao criar agendamento');
-          if (errorMessage.includes('50 minutos') || errorMessage.includes('período')) {
+          if (errorMessage.includes('60 minutos') || errorMessage.includes('período')) {
             toast.error(errorMessage);
             setLoading(false);
             return;

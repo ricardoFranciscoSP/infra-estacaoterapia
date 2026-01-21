@@ -40,7 +40,7 @@ const ComoFunciona = () => {
         {
             imgSrc: '/icons/Icon-reload.svg',
             title: 'Duração da sessão',
-            text: 'Oferecemos psicoterapia com sessões de duração de 50 minutos',
+            text: 'Oferecemos psicoterapia com sessões de duração de 60 minutos',
             align: 'right',
             style: { marginTop: '0', marginBottom: '0' }
         }

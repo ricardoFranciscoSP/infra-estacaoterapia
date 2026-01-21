@@ -386,7 +386,7 @@ export class ReservationService implements IReservationService {
 
         // Validação: impede sobreposição de consultas para o mesmo paciente no período da sessão
         const config = await prisma.configuracao.findFirst({ select: { duracaoConsultaMin: true } });
-        const consultaDurationMin = config?.duracaoConsultaMin || 50;
+        const consultaDurationMin = config?.duracaoConsultaMin || 60;
 
         const horarioStr = String(agenda.Horario).padStart(5, '0');
         const agendaDateStr = dayjs(agenda.Data).format('YYYY-MM-DD');
@@ -416,15 +416,15 @@ export class ReservationService implements IReservationService {
         });
 
         // Verifica conflitos considerando apenas o horário de INÍCIO da nova consulta
-        // Regra: não permitir iniciar dentro de uma janela de 50 minutos antes ou depois do início de uma consulta existente
+        // Regra: não permitir iniciar dentro de uma janela de 60 minutos antes ou depois do início de uma consulta existente
         const conflito = consultasNoDia.find((consulta) => {
             const existingTime = String(consulta.Time || '00:00').padStart(5, '0');
             const existingDateStr = dayjs(consulta.Date).format('YYYY-MM-DD');
             const inicioConsultaExistente = dayjs.tz(`${existingDateStr} ${existingTime}`, 'YYYY-MM-DD HH:mm', 'America/Sao_Paulo');
 
-            // Janela de conflito: 50 minutos antes do início até 50 minutos depois do início da consulta existente
-            const inicioJanelaConflito = inicioConsultaExistente.subtract(50, 'minute');
-            const fimJanelaConflito = inicioConsultaExistente.add(50, 'minute');
+            // Janela de conflito: 60 minutos antes do início até 60 minutos depois do início da consulta existente
+            const inicioJanelaConflito = inicioConsultaExistente.subtract(60, 'minute');
+            const fimJanelaConflito = inicioConsultaExistente.add(60, 'minute');
 
             // Conflito se o INÍCIO da nova consulta cair dentro desta janela
             const inicioDentro = novaConsultaInicio.isSameOrAfter(inicioJanelaConflito) && novaConsultaInicio.isBefore(fimJanelaConflito);
@@ -437,7 +437,7 @@ export class ReservationService implements IReservationService {
             const horarioConflito = String(conflito.Time || '').padStart(5, '0');
             return {
                 available: false,
-                message: `Você já possui uma consulta agendada no dia ${dataFormatada} às ${horarioConflito} com ${psicologoNome}. Não é possível marcar uma consulta dentro do período de 50 minutos antes ou depois de uma consulta já agendada.`
+                message: `Você já possui uma consulta agendada no dia ${dataFormatada} às ${horarioConflito} com ${psicologoNome}. Não é possível marcar uma consulta dentro do período de 60 minutos antes ou depois de uma consulta já agendada.`
             };
         }
 

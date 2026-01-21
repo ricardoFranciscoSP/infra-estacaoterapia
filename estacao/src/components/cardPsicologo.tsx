@@ -67,7 +67,7 @@ const CardPsicologos: React.FC<CardPsicologosProps> = ({
       } else {
         toast.error('Erro ao remover imagem.');
       }
-    } catch (e) {
+    } catch {
       toast.error('Erro ao remover imagem.');
     } finally {
       setRemovendoImagem(false);

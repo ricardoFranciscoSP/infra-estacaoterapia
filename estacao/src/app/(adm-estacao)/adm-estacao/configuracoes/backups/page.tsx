@@ -227,118 +227,117 @@ export default function BackupsPage() {
         </p>
       </motion.div>
 
-      <div className="space-y-6">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <motion.section
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-xl shadow-sm p-5 border border-[#E5E9FA] flex flex-col gap-4"
-          >
-            <div>
-              <h2 className="text-lg font-semibold text-gray-800 mb-2">Gerar backup</h2>
-              <p className="text-sm text-gray-500">
-                Crie um arquivo .sql do banco atual e faça o download imediatamente.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={handleGenerate}
-              disabled={action.isLoading}
-              className={`w-full px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
-                action.isLoading
-                  ? "bg-gray-400 cursor-not-allowed text-white"
-                  : "bg-[#8494E9] hover:bg-[#6B7DE0] text-white"
-              }`}
-            >
-              {action.isLoading ? "Gerando..." : "Gerar backup"}
-            </button>
-          </motion.section>
 
-          <motion.section
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-xl shadow-sm p-5 border border-[#E5E9FA] flex flex-col gap-4"
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <motion.section
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white rounded-xl shadow-sm p-5 border border-[#E5E9FA] flex flex-col gap-4"
+        >
+          <div>
+            <h2 className="text-lg font-semibold text-gray-800 mb-2">Gerar backup</h2>
+            <p className="text-sm text-gray-500">
+              Crie um arquivo .sql do banco atual e faça o download imediatamente.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={handleGenerate}
+            disabled={action.isLoading}
+            className={`w-full px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
+              action.isLoading
+                ? "bg-gray-400 cursor-not-allowed text-white"
+                : "bg-[#8494E9] hover:bg-[#6B7DE0] text-white"
+            }`}
           >
-            <div>
-              <h2 className="text-lg font-semibold text-gray-800 mb-2">Restaurar backup</h2>
-              <p className="text-sm text-gray-500">
-                Faça upload de um arquivo .sql para restaurar o banco.
-              </p>
-            </div>
-            <input
-              type="file"
-              accept=".sql"
-              onChange={(event) => setRestoreFile(event.target.files?.[0] || null)}
-              className="w-full text-sm text-gray-600"
-            />
-            <button
-              type="button"
-              onClick={handleRestore}
-              disabled={action.isLoading || !restoreFile}
-              className={`w-full px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
-                action.isLoading || !restoreFile
-                  ? "bg-gray-300 cursor-not-allowed text-white"
-                  : "bg-[#E57373] hover:bg-[#D55D5D] text-white"
-              }`}
-            >
-              {action.isLoading ? "Restaurando..." : "Restaurar backup"}
-            </button>
-          </motion.section>
-        </div>
+            {action.isLoading ? "Gerando..." : "Gerar backup"}
+          </button>
+        </motion.section>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <motion.section
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-xl shadow-sm p-5 border border-[#E5E9FA]"
+        <motion.section
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white rounded-xl shadow-sm p-5 border border-[#E5E9FA] flex flex-col gap-4"
+        >
+          <div>
+            <h2 className="text-lg font-semibold text-gray-800 mb-2">Restaurar backup</h2>
+            <p className="text-sm text-gray-500">
+              Faça upload de um arquivo .sql para restaurar o banco.
+            </p>
+          </div>
+          <input
+            type="file"
+            accept=".sql"
+            onChange={(event) => setRestoreFile(event.target.files?.[0] || null)}
+            className="w-full text-sm text-gray-600"
+          />
+          <button
+            type="button"
+            onClick={handleRestore}
+            disabled={action.isLoading || !restoreFile}
+            className={`w-full px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
+              action.isLoading || !restoreFile
+                ? "bg-gray-300 cursor-not-allowed text-white"
+                : "bg-[#E57373] hover:bg-[#D55D5D] text-white"
+            }`}
           >
-            <h2 className="text-lg font-semibold text-gray-800 mb-2">Status</h2>
-            <div className="text-sm text-gray-600 space-y-2">
-              <p>
-                <span className="font-medium">Total de backups:</span>{" "}
-                {sortedBackups.length}
-              </p>
-              <p>
-                <span className="font-medium">Última atualização:</span>{" "}
-                {sortedBackups[0] ? formatDate(sortedBackups[0].updatedAt) : "-"}
-              </p>
-            </div>
-          </motion.section>
+            {action.isLoading ? "Restaurando..." : "Restaurar backup"}
+          </button>
+        </motion.section>
+      </div>
 
-          <motion.section
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-xl shadow-sm p-5 border border-[#E5E9FA] flex flex-col gap-4"
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <motion.section
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white rounded-xl shadow-sm p-5 border border-[#E5E9FA]"
+        >
+          <h2 className="text-lg font-semibold text-gray-800 mb-2">Status</h2>
+          <div className="text-sm text-gray-600 space-y-2">
+            <p>
+              <span className="font-medium">Total de backups:</span>{" "}
+              {sortedBackups.length}
+            </p>
+            <p>
+              <span className="font-medium">Última atualização:</span>{" "}
+              {sortedBackups[0] ? formatDate(sortedBackups[0].updatedAt) : "-"}
+            </p>
+          </div>
+        </motion.section>
+
+        <motion.section
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white rounded-xl shadow-sm p-5 border border-[#E5E9FA] flex flex-col gap-4"
+        >
+          <div>
+            <h2 className="text-lg font-semibold text-gray-800 mb-2">Agendamento</h2>
+            <p className="text-sm text-gray-500">
+              Configure a rotina automática de geração de backup.
+            </p>
+          </div>
+          <div className="text-sm text-gray-600 space-y-2">
+            <p>
+              <span className="font-medium">Status:</span>{" "}
+              {schedule.enabled ? "Ativo" : "Inativo"}
+            </p>
+            <p>
+              <span className="font-medium">Dia:</span>{" "}
+              {dayLabels[schedule.dayOfWeek] ?? "-"}
+            </p>
+            <p>
+              <span className="font-medium">Horário:</span> {schedule.time || "-"}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={handleOpenSchedule}
+            disabled={scheduleLoading}
+            className="w-full px-4 py-2 rounded-lg font-medium transition-all duration-200 border border-[#E5E9FA] hover:bg-[#F2F4FD]"
           >
-            <div>
-              <h2 className="text-lg font-semibold text-gray-800 mb-2">Agendamento</h2>
-              <p className="text-sm text-gray-500">
-                Configure a rotina automática de geração de backup.
-              </p>
-            </div>
-            <div className="text-sm text-gray-600 space-y-2">
-              <p>
-                <span className="font-medium">Status:</span>{" "}
-                {schedule.enabled ? "Ativo" : "Inativo"}
-              </p>
-              <p>
-                <span className="font-medium">Dia:</span>{" "}
-                {dayLabels[schedule.dayOfWeek] ?? "-"}
-              </p>
-              <p>
-                <span className="font-medium">Horário:</span> {schedule.time || "-"}
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={handleOpenSchedule}
-              disabled={scheduleLoading}
-              className="w-full px-4 py-2 rounded-lg font-medium transition-all duration-200 border border-[#E5E9FA] hover:bg-[#F2F4FD]"
-            >
-              {scheduleLoading ? "Carregando..." : "Configurar agendamento"}
-            </button>
-          </motion.section>
-        </div>
+            {scheduleLoading ? "Carregando..." : "Configurar agendamento"}
+          </button>
+        </motion.section>
       </div>
 
       <motion.section

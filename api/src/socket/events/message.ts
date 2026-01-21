@@ -489,14 +489,14 @@ export function handleMessage(io: Server, socket: Socket) {
             let timeRemaining = 0;
             if (reservaSessao?.ScheduledAt) {
                 try {
-                    // Calcula tempo restante baseado no ScheduledAt + 50 minutos
+                    // Calcula tempo restante baseado no ScheduledAt + 60 minutos
                     const scheduledAt = new Date(reservaSessao.ScheduledAt);
-                    const fimConsulta = new Date(scheduledAt.getTime() + 50 * 60 * 1000);
+                    const fimConsulta = new Date(scheduledAt.getTime() + 60 * 60 * 1000);
                     const agora = new Date();
                     const diffMs = fimConsulta.getTime() - agora.getTime();
                     timeRemaining = Math.max(0, Math.floor(diffMs / 1000));
-                    // Limita a 50 minutos (3000 segundos)
-                    timeRemaining = Math.min(timeRemaining, 3000);
+                    // Limita a 60 minutos (3600 segundos)
+                    timeRemaining = Math.min(timeRemaining, 3600);
                 } catch (error) {
                     console.error("❌ [session:sync-duration] Erro ao calcular tempo restante:", error);
                 }
