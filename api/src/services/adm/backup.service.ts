@@ -41,33 +41,43 @@ export class BackupService {
   }
 
   private static parseDatabaseUrl(): DbConfig {
+    const envUser = process.env.POSTGRES_USER;
+    const envDatabase = process.env.POSTGRES_DB;
+    const envPassword =
+      process.env.POSTGRES_PASSWORD ||
+      process.env.BACKUP_DATABASE_PASSWORD ||
+      process.env.PGPASSWORD ||
+      "";
+    const envHost =
+      process.env.PG_HOST_DIRECT ||
+      process.env.PG_HOST ||
+      "postgres";
+    const envPort =
+      process.env.PG_PORT_DIRECT ||
+      process.env.PG_PORT ||
+      "5432";
+
     const urlValue = process.env.BACKUP_DATABASE_URL || process.env.DATABASE_URL;
     if (!urlValue) {
-      const envUser = process.env.POSTGRES_USER;
-      const envDatabase = process.env.POSTGRES_DB;
-      const envPassword =
-        process.env.POSTGRES_PASSWORD ||
-        process.env.BACKUP_DATABASE_PASSWORD ||
-        process.env.PGPASSWORD ||
-        "";
-      const envHost =
-        process.env.PG_HOST_DIRECT ||
-        process.env.PG_HOST ||
-        "";
-      const envPort =
-        process.env.PG_PORT_DIRECT ||
-        process.env.PG_PORT ||
-        "";
+    if (envUser && envDatabase) {
+      console.log("[BackupService] Config (env vars)", {
+        host: envHost,
+        port: envPort,
+        database: envDatabase,
+        user: envUser,
+        passwordSet: Boolean(envPassword),
+        passwordLength: envPassword ? envPassword.length : 0,
+        source: "POSTGRES_*",
+      });
 
-      if (envUser && envDatabase) {
-        return {
-          host: envHost || "postgres",
-          port: envPort || "5432",
-          database: envDatabase,
-          user: envUser,
-          password: envPassword,
-        };
-      }
+      return {
+        host: envHost,
+        port: envPort,
+        database: envDatabase,
+        user: envUser,
+        password: envPassword,
+      };
+    }
 
       throw Object.assign(new Error("DATABASE_URL não configurada para backup"), { status: 500 });
     }
@@ -91,12 +101,46 @@ export class BackupService {
       process.env.PGPASSWORD ||
       "";
 
+    if (envUser && envDatabase) {
+      const resolvedPassword = envPassword || passwordFromUrl || fallbackPassword;
+
+      console.log("[BackupService] Config (env vars override URL)", {
+        host: envHost,
+        port: envPort,
+        database: envDatabase,
+        user: envUser,
+        passwordSet: Boolean(resolvedPassword),
+        passwordLength: resolvedPassword ? resolvedPassword.length : 0,
+        source: "POSTGRES_*",
+      });
+
+      return {
+        host: envHost,
+        port: envPort,
+        database: envDatabase,
+        user: envUser,
+        password: resolvedPassword,
+      };
+    }
+
+    console.log("[BackupService] Config (DATABASE_URL)", {
+      host: parsed.hostname || envHost,
+      port: parsed.port || envPort,
+      database: envDatabase || database,
+      user: envUser || decodeURIComponent(parsed.username),
+      passwordSet: Boolean(passwordFromUrl || fallbackPassword),
+      passwordLength: (passwordFromUrl || fallbackPassword)
+        ? (passwordFromUrl || fallbackPassword).length
+        : 0,
+      source: "DATABASE_URL",
+    });
+
     return {
-      host: parsed.hostname,
-      port: parsed.port || "5432",
-      database,
-      user: decodeURIComponent(parsed.username),
-      password: passwordFromUrl || fallbackPassword,
+      host: parsed.hostname || envHost,
+      port: parsed.port || envPort,
+      database: envDatabase || database,
+      user: envUser || decodeURIComponent(parsed.username),
+      password: envPassword || passwordFromUrl || fallbackPassword,
     };
   }
 
