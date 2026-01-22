@@ -97,6 +97,7 @@ model User {
   CreditosAvulsos             CreditoAvulso[]           @relation("UserCreditoAvulso")
   Document                    Document[]                @relation("UserDocuments")
   Document_fiscal             Document_fiscal[]         @relation("UserDocument_fiscal")
+  DatabaseBackupsCreated      DatabaseBackup[]          @relation("UserDatabaseBackupsCreated")
   FavoritesGiven              Favorite[]                @relation("PatientFavorites")
   FavoritesReceived           Favorite[]                @relation("PsychologistFavoritedBy")
   FinanceiroEntries           Financeiro[]              @relation("UserFinanceiro")
@@ -432,6 +433,24 @@ model AdminActionLog {
   Status      String?    @default("Sucesso")
   Metadata    String?
   User        User       @relation("UserAdminActionLog", fields: [UserId], references: [Id], onDelete: Cascade)
+}
+
+/// Backups do banco de dados (metadados, sem conteúdo do arquivo)
+model DatabaseBackup {
+  Id                String          @id @default(uuid())
+  Filename          String          @unique
+  Bucket            String
+  Path              String
+  Size              Int
+  CreatedAt         DateTime        @default(now())
+  CreatedById       String?
+  Status            BackupStatus    @default(AVAILABLE)
+  StorageProvider   StorageProvider @default(supabase)
+  DownloadExpiresAt DateTime?
+  CreatedBy         User?           @relation("UserDatabaseBackupsCreated", fields: [CreatedById], references: [Id], onDelete: SetNull)
+
+  @@index([CreatedAt])
+  @@index([Status])
 }
 
 /// Modelo para rastrear redefinições de senha
@@ -1597,4 +1616,13 @@ enum WebhookStatus {
   PENDING
   SUCCESS
   FAILED
+}
+
+enum BackupStatus {
+  AVAILABLE
+  FAILED
+}
+
+enum StorageProvider {
+  supabase
 }

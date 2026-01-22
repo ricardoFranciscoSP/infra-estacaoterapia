@@ -50,14 +50,19 @@ export const SocketProvider = ({ children, userId }: SocketProviderProps) => {
 
         // Prepara listeners se houver userId, mas NÃO conecta automaticamente
         if (userId) {
-            console.log('� [SocketProvider] Preparando socket para userId:', userId);
+            console.log('👤 [SocketProvider] Preparando socket para userId:', userId);
             console.log('ℹ️ [SocketProvider] Socket será conectado sob demanda quando necessário');
-            
+
+            // Aplica auth para garantir envio no handshake
+            socketInstance.auth = { userId };
+
             // Configura listener para entrar na sala quando conectar
             socketInstance.on('connect', () => {
                 console.log('🔌 [SocketProvider] Socket conectado, entrando na sala do usuário');
                 joinUserRoom(userId);
             });
+        } else {
+            socketInstance.auth = {};
         }
 
         // Cleanup

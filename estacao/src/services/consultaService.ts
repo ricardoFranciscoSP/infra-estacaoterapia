@@ -9,13 +9,13 @@ export const consultaService = () => {
         getAgendadas: () => api.get('/reservas/consultas-agendadas'),
         getConsultaConcluidas: (timeout?: number) => {
             // Usa o endpoint correto do backend
-            return api.get('/paciente/consultas/todas-realizadas', {
+            return api.get('/consultas-paciente/todas-realizadas', {
                 timeout: timeout || 8000, // 8 segundos por padrão
             });
         },
         getConsultasCompletas: (timeout?: number) => {
             // Usa o endpoint correto do backend
-            return api.get('/paciente/consultas/todas-realizadas', {
+            return api.get('/consultas-paciente/todas-realizadas', {
                 timeout: timeout || 10000, // 10 segundos por padrão
             });
         },

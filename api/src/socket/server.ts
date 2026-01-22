@@ -110,6 +110,23 @@ const io = new Server(server, {
     path: "/socket.io",
 });
 
+io.use((socket, next) => {
+    const userId = socket.handshake.auth?.userId as string | undefined;
+    if (!userId) {
+        console.warn("⚠️ [SocketAuth] Conexão recusada sem userId", {
+            socketId: socket.id,
+            auth: socket.handshake.auth,
+            query: socket.handshake.query,
+        });
+        return next(new Error("userId obrigatório no auth do socket"));
+    }
+    console.log("✅ [SocketAuth] Conexão autorizada com userId", {
+        socketId: socket.id,
+        userId,
+    });
+    return next();
+});
+
 // Garante que headers CORS estejam presentes em todas as respostas do Engine.IO (inclui polling)
 io.engine.on("headers", (headers, req) => {
     const origin = (req.headers["origin"] as string) || undefined;

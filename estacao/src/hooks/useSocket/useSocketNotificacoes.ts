@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useSocket } from "@/components/SocketProvider";
+import { connectSocket } from "@/lib/socket";
 import { useNotificacoes } from "@/store/useNotificacoes";
 
 // Tipos dos payloads dos eventos
@@ -90,7 +91,7 @@ export function useSocketNotifications<
         // ✅ Força reconexão se não estiver conectado
         if (!socket.connected) {
             console.log('🔄 [useSocketNotifications] Socket desconectado, forçando reconexão...');
-            socket.connect();
+            connectSocket();
         }
 
         // ✅ Emite evento para o servidor saber que o cliente está pronto

@@ -158,10 +158,12 @@ export async function scheduleAutomaticBackupGeneration(): Promise<boolean> {
 /**
  * Executa o backup e re-agenda o próximo ciclo
  */
-export async function handleGenerateDatabaseBackup(): Promise<boolean> {
+export async function handleGenerateDatabaseBackup(payload?: {
+  requestedBy?: string | null;
+}): Promise<boolean> {
   try {
     console.log("[handleGenerateDatabaseBackup] Iniciando backup automático...");
-    await BackupService.generateBackup();
+    await BackupService.generateAndUploadBackup(payload?.requestedBy ?? null);
     console.log("✅ [handleGenerateDatabaseBackup] Backup gerado com sucesso");
 
     await scheduleAutomaticBackupGeneration();

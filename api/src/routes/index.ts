@@ -86,6 +86,8 @@ router.use("/audit", auditRoutes);
 router.use("/files", filesRoutes);
 router.use("/proxima-consulta", proximaConsultaRoutes);
 router.use("/consultas-paciente", require("./paciente/consultas.routes").default);
+// Alias legado para manter compatibilidade com frontend antigo
+router.use("/paciente/consultas", require("./paciente/consultas.routes").default);
 router.use("/contato", contatoRoutes);
 
 router.use("/address", addressRoutes);

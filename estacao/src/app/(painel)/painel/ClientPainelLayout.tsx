@@ -5,7 +5,6 @@ import { useUserBasic } from '@/hooks/user/userHook';
 import dynamic from 'next/dynamic';
 import PainelHeaderSkeleton from '@/components/PainelHeaderSkeleton';
 import { PainelLoadingSkeleton } from '@/components/PainelLoadingSkeleton';
-import PainelFooter from '@/components/PainelFooter';
 import { CustomToastProvider } from '@/components/CustomToastProvider';
 import { useNotificacoes } from '@/store/useNotificacoes';
 import { useProtectedRoute } from '@/hooks/useProtectedRoute';

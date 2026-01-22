@@ -2,7 +2,6 @@
 import React, { useEffect, useState, useMemo, Suspense } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { CustomToastProvider } from "@/components/CustomToastProvider";
-import PainelFooter from "@/components/PainelFooter";
 import dynamic from 'next/dynamic';
 import PainelHeaderSkeleton from '@/components/PainelHeaderSkeleton';
 import { PainelLoadingSkeleton } from '@/components/PainelLoadingSkeleton';

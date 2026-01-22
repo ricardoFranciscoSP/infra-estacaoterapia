@@ -14,6 +14,29 @@ const logWarn = (...args: unknown[]) => {
 const logError = (...args: unknown[]) => {
     if (isDev) console.error(...args);
 };
+
+const getUserIdFromCookie = (): string | undefined => {
+    if (typeof document === "undefined") return undefined;
+    const cookie = document.cookie
+        .split(";")
+        .find((item) => item.trim().startsWith("user-data-client="));
+    if (!cookie) return undefined;
+    try {
+        const rawValue = cookie.split("=")[1];
+        if (!rawValue) return undefined;
+        const decoded = decodeURIComponent(rawValue);
+        const parsed = JSON.parse(decoded) as { id?: string; Id?: string };
+        return parsed.id ?? parsed.Id;
+    } catch {
+        return undefined;
+    }
+};
+
+const applySocketAuth = (s: Socket) => {
+    const userId = getUserIdFromCookie();
+    s.auth = userId ? { userId } : {};
+    logDebug("🔐 [Socket] Auth aplicado:", { hasUserId: !!userId });
+};
 // Listener para eventos de status da consulta (ex: cancelamento automático)
 export const onConsultationStatusChanged = (
     callback: (data: { status: string; consultationId: string }) => void,
@@ -390,6 +413,7 @@ export const getSocket = (): Socket | null => {
         path: string;
         secure?: boolean;
         upgrade?: boolean;
+        auth?: { userId?: string };
     }
 
     const socketOptions: SocketOptions = {
@@ -404,6 +428,9 @@ export const getSocket = (): Socket | null => {
         forceNew: false,
         // Alinha com caminho padrão do Socket.IO no backend (sem barra final evita 404 em reverse proxies)
         path: "/socket.io",
+        auth: {
+            userId: getUserIdFromCookie(),
+        },
     };
 
     // Em produção, força uso de WebSocket seguro
@@ -535,6 +562,7 @@ export const connectSocket = () => {
     if (!s) return logWarn("⚠️ Socket não disponível (SSR)");
     if (!s.connected) {
         logDebug("🔌 [Socket] Conectando sob demanda...");
+        applySocketAuth(s);
         s.connect();
     } else {
         logDebug("✅ Socket já conectado");
@@ -609,6 +637,7 @@ export const ensureSocketConnection = (): Promise<void> => {
                 s.once("connect", onConnect);
                 s.once("connect_error", onError);
 
+                applySocketAuth(s);
                 s.connect();
             });
 
@@ -676,8 +705,9 @@ export const joinConsultation = async (data: ConsultationJoinPayload) => {
 
         // Verifica novamente se está conectado
         if (!s.connected) {
-        logWarn("⚠️ [Socket] Socket não conectado após ensureSocketConnection");
+            logWarn("⚠️ [Socket] Socket não conectado após ensureSocketConnection");
             // Tenta conectar novamente
+            applySocketAuth(s);
             s.connect();
             // Aguarda conexão
             await new Promise<void>((resolve, reject) => {

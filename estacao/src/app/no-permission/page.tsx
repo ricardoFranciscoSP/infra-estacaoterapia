@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import BreadcrumbsVoltar from "@/components/BreadcrumbsVoltar";
 import PainelHeader from "@/components/PainelHeader";
-import PainelFooter from "@/components/PainelFooter";
 
 export default function NoPermissionPage() {
     const router = useRouter();

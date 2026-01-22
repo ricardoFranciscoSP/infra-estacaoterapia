@@ -408,7 +408,19 @@ const ConsultasRealizadas: React.FC = () => {
   const shouldPaginate = consultasElegiveis.length > ITEMS_PER_PAGE;
   const startIndex = shouldPaginate ? (currentPage - 1) * ITEMS_PER_PAGE : 0;
   const endIndex = shouldPaginate ? startIndex + ITEMS_PER_PAGE : consultasElegiveis.length;
-  const consultasVisiveis = consultasElegiveis.slice(startIndex, endIndex);
+  // Remove duplicados por Id antes de paginar
+  const consultasUnicas = React.useMemo(() => {
+    const seen = new Set();
+    return consultasElegiveis.filter((c) => {
+      const id = c.Id || c.id;
+      if (!id) return true;
+      if (seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    });
+  }, [consultasElegiveis]);
+
+  const consultasVisiveis = consultasUnicas.slice(startIndex, endIndex);
 
   const handleNextPage = () => {
     if (currentPage < totalPages) {
@@ -443,21 +455,22 @@ const ConsultasRealizadas: React.FC = () => {
           <div className="flex flex-col gap-3 items-center sm:items-start">
             <AnimatePresence mode="wait">
               {consultasVisiveis.map((consultaRaw, index) => {
-              const consultaApi = converterConsultaRealizadaParaApi(consultaRaw);
-              if (!consultaApi) return null;
+                const consultaApi = converterConsultaRealizadaParaApi(consultaRaw);
+                if (!consultaApi) return null;
 
-              const psicologoId = consultaApi.Psicologo?.Id;
-              
-              return (
-                <motion.div
-                  key={consultaApi.Id || index}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ duration: 0.3, delay: index * 0.05 }}
-                >
-                  <ConsultaCard
-                    consulta={consultaApi}
+                const psicologoId = consultaApi.Psicologo?.Id;
+
+                // Garante key única mesmo se Id vier duplicado
+                return (
+                  <motion.div
+                    key={`${consultaApi.Id}-${index}`}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    transition={{ duration: 0.3, delay: index * 0.05 }}
+                  >
+                    <ConsultaCard
+                      consulta={consultaApi}
                     actions={{
                       onVerPerfil: psicologoId ? () => {
                         // Navega para o perfil do psicólogo

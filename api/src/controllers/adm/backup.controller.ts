@@ -1,9 +1,11 @@
 import { Request, Response } from "express";
 import fs from "fs/promises";
-import path from "path";
 import prisma from "../../prisma/client";
 import { BackupService } from "../../services/adm/backup.service";
 import { scheduleAutomaticBackupGeneration } from "../../jobs/jobGerarBackupAutomatica";
+import { getWebhookQueue } from "../../workers/worker.webhook";
+import { logAuditFromRequest } from "../../utils/auditLogger.util";
+import { ActionType, Module } from "../../generated/prisma";
 
 export class BackupController {
   private getFileNameParam(fileName: string | string[] | undefined): string {
@@ -78,19 +80,82 @@ export class BackupController {
   }
 
   async generate(req: Request, res: Response) {
-    const backup = await BackupService.generateBackup();
-    return res.status(201).json({ backup });
+    const webhookQueue = getWebhookQueue();
+    if (!webhookQueue) {
+      throw Object.assign(new Error("Fila de backup indisponível"), { status: 503 });
+    }
+
+    const requestedBy = req.user?.Id ?? null;
+    const job = await webhookQueue.add(
+      "generateDatabaseBackup",
+      {
+        requestedBy,
+        requestedAt: new Date().toISOString(),
+      },
+      {
+        removeOnComplete: { age: 86400 },
+        removeOnFail: { age: 86400 },
+      }
+    );
+
+    if (requestedBy) {
+      await logAuditFromRequest(
+        req,
+        requestedBy,
+        ActionType.Create,
+        Module.SystemSettings,
+        "Backup do banco solicitado"
+      );
+    }
+
+    return res.status(202).json({
+      message: "Backup agendado para processamento",
+      jobId: job.id,
+    });
   }
 
   async download(req: Request, res: Response) {
     const fileName = this.getFileNameParam(req.params.fileName);
-    const filePath = await BackupService.getBackupFilePath(fileName);
-    return res.download(filePath, path.basename(filePath));
+    const expiresIn =
+      Number(req.query.expiresIn) || Number(process.env.BACKUP_SIGNED_URL_EXPIRES_IN || 600);
+    if (!Number.isFinite(expiresIn) || expiresIn < 300 || expiresIn > 900) {
+      throw Object.assign(new Error("expiresIn inválido (300-900 segundos)"), { status: 400 });
+    }
+
+    const { signedUrl, expiresAt } = await BackupService.createSignedDownloadUrl(
+      fileName,
+      expiresIn
+    );
+
+    return res.json({ signedUrl, expiresAt });
   }
 
   async delete(req: Request, res: Response) {
+    const confirmEnv = process.env.CONFIRM_DELETE === "true";
+    const confirmRequest =
+      req.query.confirm === "true" || (req.body && req.body.confirm === true);
+
+    if (!confirmEnv || !confirmRequest) {
+      throw Object.assign(
+        new Error("Confirmação explícita obrigatória para excluir backup"),
+        { status: 400 }
+      );
+    }
+
     const fileName = this.getFileNameParam(req.params.fileName);
-    await BackupService.deleteBackup(fileName);
+    const backup = await BackupService.deleteBackup(fileName);
+
+    const deletedBy = req.user?.Id;
+    if (deletedBy) {
+      await logAuditFromRequest(
+        req,
+        deletedBy,
+        ActionType.Delete,
+        Module.SystemSettings,
+        `Backup removido: ${backup.filename}`
+      );
+    }
+
     return res.json({ message: "Backup removido com sucesso" });
   }
 

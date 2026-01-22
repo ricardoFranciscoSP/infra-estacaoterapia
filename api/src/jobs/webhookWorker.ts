@@ -181,7 +181,7 @@ export async function startWebhookWorker() {
             if (job.name === 'generateDatabaseBackup') {
                 try {
                     const { handleGenerateDatabaseBackup } = await import('./jobGerarBackupAutomatica');
-                    await handleGenerateDatabaseBackup();
+                    await handleGenerateDatabaseBackup(job.data as { requestedBy?: string | null });
                     const duration = Date.now() - jobStartTime;
                     console.log(`✅ [WebhookWorker] Backup automático concluído (${job.name}) em ${duration}ms`);
                 } catch (err) {

@@ -6,6 +6,7 @@ import prisma from '../prisma/client';
 import { AgendaStatus } from '../generated/prisma';
 import { getTokenGenerationQueue } from '../queues/tokenGenerationQueue';
 import { acquireRedisLock, releaseRedisLock } from '../utils/redisLock';
+import { sanitizeJobId } from '../utils/sanitizeJobId';
 import { TokenGenerationJobPayload } from '../types/tokenGeneration.types';
 
 dayjs.extend(utc);
@@ -29,6 +30,13 @@ export async function scanAndEnqueueTokenGenerationJobs(): Promise<void> {
     const queue = await getTokenGenerationQueue();
     if (!queue) {
         console.warn('[TokenCron] Fila indisponível. Skip desta execução.');
+        return;
+    }
+    try {
+        await queue.waitUntilReady();
+        console.log('[TokenCron] Redis OK - fila pronta para enfileirar jobs');
+    } catch (error) {
+        console.warn('[TokenCron] Redis indisponível para a fila. Skip desta execução.', error);
         return;
     }
 
@@ -88,7 +96,8 @@ export async function scanAndEnqueueTokenGenerationJobs(): Promise<void> {
             continue;
         }
 
-        const jobId = `token-gen-${reserva.Id}`;
+        const jobId = sanitizeJobId(`token-gen-${reserva.Id}`);
+
         try {
             const existingJob = await queue.getJob(jobId);
             if (existingJob) {
@@ -115,11 +124,15 @@ export async function scanAndEnqueueTokenGenerationJobs(): Promise<void> {
             await queue.add('generate-agora-token', payload, {
                 jobId,
             });
+            console.log(
+                `✅ [TokenCron] Enfileirado jobId ${jobId} para consulta ${reserva.ConsultaId}`
+            );
         } catch (error) {
             console.error(
                 `❌ [TokenCron] Erro ao enfileirar consulta ${reserva.ConsultaId}:`,
                 error
             );
+        } finally {
             await releaseRedisLock(lock);
         }
     }

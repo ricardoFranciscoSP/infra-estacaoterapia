@@ -7,6 +7,7 @@ import { SessionDurationService } from './sessionDuration.service';
 import { Server as SocketServer } from 'socket.io';
 import { ConsultaOrigemStatus } from '../constants/consultaStatus.constants';
 import { ConsultaRoomService } from './consultaRoom.service';
+import { sanitizeJobId } from '../utils/sanitizeJobId';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -78,7 +79,7 @@ export class SessionMonitoringService {
                         type: 'exponential',
                         delay: 2000,
                     },
-                    jobId: `token-gen-${consultaId}`,
+                    jobId: sanitizeJobId(`token-gen-${consultaId}`),
                     removeOnComplete: {
                         age: 3600,
                     },
@@ -141,7 +142,7 @@ export class SessionMonitoringService {
                         type: 'fixed',
                         delay: 5000,
                     },
-                    jobId: `presence-check-${consultaId}`,
+                    jobId: sanitizeJobId(`presence-check-${consultaId}`),
                     removeOnComplete: {
                         age: 3600,
                     },
