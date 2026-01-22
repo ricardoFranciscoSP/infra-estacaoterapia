@@ -113,7 +113,6 @@ export default function NoPermissionPage() {
                     </CardContent>
                 </Card>
             </main>
-            <PainelFooter />
         </div>
     );
 }

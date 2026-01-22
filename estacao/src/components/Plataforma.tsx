@@ -40,7 +40,7 @@ const PlataformaBeneficios: React.FC = () => {
                             height={480}
                             className="w-[70vw] max-w-[350px] h-auto sm:w-[250px] sm:h-[245px] md:w-[350px] md:h-[350px] object-contain opacity-100"
                             loading="lazy"
-                            quality={75}
+                            quality={70}
                             sizes="(max-width: 640px) 70vw, (max-width: 768px) 250px, 350px"
                         />
                     </div>

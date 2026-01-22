@@ -150,7 +150,6 @@ const ClientPainelContent: React.FC<{ children: React.ReactNode }> = ({ children
               {children}
             </Suspense>
           </main>
-          {showHeaderFooter && <PainelFooter />}
           {showToastProvider && <CustomToastProvider />}
         </div>
       </UserProvider>

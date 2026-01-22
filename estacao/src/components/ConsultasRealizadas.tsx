@@ -370,11 +370,7 @@ const ConsultasRealizadas: React.FC = () => {
       const statusBruto = statusReservaSessao || statusConsulta || statusAgenda || statusCancelamento;
       const statusNorm = normalizarStatusExibicao(statusBruto).toLowerCase();
 
-      const statusCancelamentoLower = statusCancelamento.toLowerCase();
-      const ehCancelamento = statusCancelamentoLower.includes('deferido')
-        || statusCancelamentoLower.includes('cancelado')
-        || statusCancelamentoLower.includes('emanalise')
-        || statusCancelamentoLower.includes('indeferido');
+      const ehCancelamento = Boolean(statusCancelamento?.trim());
       if (ehCancelamento) return true;
 
       if (!statusBruto) {

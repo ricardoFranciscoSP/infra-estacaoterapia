@@ -8,14 +8,14 @@ export const consultaService = () => {
         getConsultaFuturas: (): Promise<AxiosResponse<Futuras>> => api.get('/reservas/proxima-consulta'),
         getAgendadas: () => api.get('/reservas/consultas-agendadas'),
         getConsultaConcluidas: (timeout?: number) => {
-            // Permite timeout customizado
-            return api.get('/reservas/consultas-realizadas', {
+            // Usa o endpoint correto do backend
+            return api.get('/paciente/consultas/todas-realizadas', {
                 timeout: timeout || 8000, // 8 segundos por padrão
             });
         },
         getConsultasCompletas: (timeout?: number) => {
-            // Permite timeout customizado
-            return api.get('/consultas-paciente/todas-realizadas', {
+            // Usa o endpoint correto do backend
+            return api.get('/paciente/consultas/todas-realizadas', {
                 timeout: timeout || 10000, // 10 segundos por padrão
             });
         },
@@ -23,13 +23,13 @@ export const consultaService = () => {
         getToken: (channel: string) => api.get(`/reservas/token/${channel}`),
         getConsultaDia: (): Promise<AxiosResponse<ConsultaDia>> => api.get(`/reservas/consulta-dia-ou-proxima`),
         finalizarConsulta: (id: string, forceFinalize?: boolean) => {
-            const url = forceFinalize 
+            const url = forceFinalize
                 ? `/consultas-paciente/finalizar/${id}?forceFinalize=true`
                 : `/consultas-paciente/finalizar/${id}`;
             return api.post(url);
         },
         finalizarConsultaComReview: (id: string, forceFinalize?: boolean) => {
-            const url = forceFinalize 
+            const url = forceFinalize
                 ? `/consultas-paciente/finalizar-com-review/${id}?forceFinalize=true`
                 : `/consultas-paciente/finalizar-com-review/${id}`;
             return api.post<{

@@ -261,7 +261,7 @@ export async function scheduleAgoraTokenGenerationWithFallback(
                         type: 'exponential',
                         delay: 5000,
                     },
-                    jobId: `agora-token:${dbJob.Id}`,
+                    jobId: `agora-token-${dbJob.Id}`,
                     removeOnComplete: { age: 86400 },
                     removeOnFail: { age: 86400 },
                 }

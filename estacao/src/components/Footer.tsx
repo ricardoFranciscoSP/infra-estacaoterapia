@@ -12,12 +12,13 @@ import { useUserBasic } from '@/hooks/user/userHook';
 export default function Footer() {
   const router = useRouter();
   const [showScrollTop, setShowScrollTop] = useState(false);
+  const [isClient, setIsClient] = useState(false);
   const { user } = useUserBasic();
+  const isLoggedIn = isClient && user && typeof user === 'object' && user.success !== false;
 
   // Função para tratar links de âncora
   const handleFooterAnchorClick = (href: string) => {
     // Verifica se o usuário está logado e redireciona para área logada se necessário
-    const isLoggedIn = user && typeof user === 'object' && user.success !== false;
     const isPatient = isLoggedIn && user.Role === "Patient";
     
     // Redireciona "Ver psicólogos" para área logada se for paciente
@@ -46,10 +47,13 @@ export default function Footer() {
   
   // Helper para verificar se deve exibir o link "Ver psicólogos"
   const shouldShowVerPsicologos = () => {
-    const isLoggedIn = user && typeof user === 'object' && user.success !== false;
     const isPsychologist = isLoggedIn && user.Role === "Psychologist";
     return !isPsychologist;
   };
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -92,7 +96,6 @@ export default function Footer() {
                 style={{ width: 110, height: 38 }} 
                 priority
                 sizes="110px"
-                quality={75}
                 unoptimized={false}
                 onError={undefined}
               />
@@ -157,7 +160,7 @@ export default function Footer() {
                 onError={undefined}
               />
           </Link>
-          {/* <Link href="#" target="_blank" rel="noopener noreferrer" aria-label="YouTube"><Image src="/assets/icons/youtube.webp" alt="YouTube" className="w-6 h-6" width={24} height={24} /></Link> */}
+          {/* <Link href="#" target="_blank" rel="noopener noreferrer" aria-label="YouTube"><Image src="/assets/icons/youtube.webp" alt="YouTube" className="w-6 h-6" width={24} height={24} quality={80} /></Link> */}
         </div>
         {/* Reclame Aqui Verified Seal */}
         <ReclameAquiSeal />
@@ -188,7 +191,7 @@ export default function Footer() {
                 height={65}
                 className="h-[65px] w-[180px] object-contain"
                 priority
-                quality={75}
+                quality={70}
                 unoptimized={false}
               />
             </Link>
@@ -284,18 +287,18 @@ export default function Footer() {
             <div className="flex flex-col items-start md:items-start md:w-auto">
               <span className="font-semibold text-[#22223B] mb-3 text-left text-base leading-tight" style={{ lineHeight: '1.5' }}>Formas de pagamento:</span>
               <div className="flex gap-3 md:gap-4 justify-start items-center flex-wrap">
-                <Image src="/assets/icons/pix.svg" alt="Pix" className="h-7 w-auto" width={28} height={28} />
-                <Image src="/assets/icons/boleto.svg" alt="Boleto" className="h-7 w-auto" width={28} height={28} />
-                <Image src="/assets/icons/mastercard.svg" alt="Mastercard" className="h-7 w-auto" width={28} height={28} />
-                <Image src="/assets/icons/visa.svg" alt="Visa" className="h-7 w-auto" width={28} height={28} />
-                <Image src="/assets/icons/hipercard.svg" alt="Hipercard" className="h-7 w-auto" width={28} height={28} />
+                <Image src="/assets/icons/pix.svg" alt="Pix" className="h-7 w-auto" width={28} height={28} quality={80} />
+                <Image src="/assets/icons/boleto.svg" alt="Boleto" className="h-7 w-auto" width={28} height={28} quality={80} />
+                <Image src="/assets/icons/mastercard.svg" alt="Mastercard" className="h-7 w-auto" width={28} height={28} quality={80} />
+                <Image src="/assets/icons/visa.svg" alt="Visa" className="h-7 w-auto" width={28} height={28} quality={80} />
+                <Image src="/assets/icons/hipercard.svg" alt="Hipercard" className="h-7 w-auto" width={28} height={28} quality={80} />
               </div>
             </div>
             {/* Ambiente seguro */}
             <div className="flex flex-col items-start md:items-start md:w-auto">
               <span className="font-semibold text-[#22223B] mb-3 text-left text-base leading-tight">Ambiente seguro:</span>
               <div className="flex justify-start items-center">
-                <Image src="/assets/icons/ssl.svg" alt="SSL" className="h-14 w-14 md:h-16 md:w-16" width={64} height={64} />
+                <Image src="/assets/icons/ssl.svg" alt="SSL" className="h-14 w-14 md:h-16 md:w-16" width={64} height={64} quality={80} />
               </div>
             </div>
           </div>

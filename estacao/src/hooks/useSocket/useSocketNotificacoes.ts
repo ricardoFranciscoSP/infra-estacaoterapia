@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useSocket } from "@/components/SocketProvider";
 import { useNotificacoes } from "@/store/useNotificacoes";
 
@@ -118,18 +118,23 @@ export const useSocketNotificationsLegacy = (
     options?: { onNotification?: NotificationCallback }
 ) => {
     const { socket, isConnected } = useSocket();
+    const onNotificationRef = useRef<NotificationCallback | undefined>(options?.onNotification);
+
+    useEffect(() => {
+        onNotificationRef.current = options?.onNotification;
+    }, [options?.onNotification]);
 
     useEffect(() => {
         if (!userId || !socket) return;
 
         const handleNotification = (data: unknown) => {
             console.log("🔔 [useSocketNotifications] Notificação recebida:", data);
-            options?.onNotification?.(data);
+            onNotificationRef.current?.(data);
         };
 
         socket.on("notification", handleNotification);
         return () => { socket.off("notification", handleNotification); };
-    }, [userId, socket, options]);
+    }, [userId, socket]);
 
     return { isConnected };
 };

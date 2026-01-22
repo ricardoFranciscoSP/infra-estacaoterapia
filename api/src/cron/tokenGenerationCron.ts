@@ -88,7 +88,7 @@ export async function scanAndEnqueueTokenGenerationJobs(): Promise<void> {
             continue;
         }
 
-        const jobId = `token-gen:${reserva.Id}`;
+        const jobId = `token-gen-${reserva.Id}`;
         try {
             const existingJob = await queue.getJob(jobId);
             if (existingJob) {

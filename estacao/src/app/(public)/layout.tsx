@@ -1,23 +1,14 @@
 import type { Metadata } from 'next';
-import { Suspense } from 'react';
-import dynamic from 'next/dynamic';
+import ClientPublicHeader from './ClientPublicHeader';
 
 export const metadata: Metadata = {
   title: 'Estação Terapia',
   description: 'Plataforma de terapia online',
 };
 
-import HeaderSkeleton from '@/components/HeaderSkeleton';
 import Footer from '@/components/Footer';
 import ClientPublicLayout from './ClientPublicLayout';
 import PublicProviders from '@/provider/PublicProviders';
-
-// ⚡ OTIMIZAÇÃO: Dynamic import do Header com loading skeleton
-// Isso garante que o Header não bloqueie a renderização inicial
-const Header = dynamic(() => import('@/components/Header'), {
-  loading: () => <HeaderSkeleton />,
-  ssr: process.env.NODE_ENV === 'production', // Evita HMR instável no dev
-});
 
 export default function RootLayout({
   children,
@@ -27,9 +18,7 @@ export default function RootLayout({
   return (
     <PublicProviders>
       <div className="flex flex-col min-h-screen w-full max-w-full overflow-x-hidden" style={{ margin: 0, padding: 0, gap: 0 }}>
-        <Suspense fallback={<HeaderSkeleton />}>
-          <Header />
-        </Suspense>
+        <ClientPublicHeader />
         <ClientPublicLayout>
           <main className="flex-1 w-full max-w-full overflow-x-hidden" style={{ margin: 0, padding: 0 }} role="main">
             {children}

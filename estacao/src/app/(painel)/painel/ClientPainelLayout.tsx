@@ -76,7 +76,6 @@ const ClientPainelLayout: React.FC<{ children: React.ReactNode }> = ({ children 
               {children}
             </Suspense>
           </div>
-          <PainelFooter />
           <CustomToastProvider />
           {/* Botão flutuante do WhatsApp - renderizado apenas após hidratação */}
           {mounted && (

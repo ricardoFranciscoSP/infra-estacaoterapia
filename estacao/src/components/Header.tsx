@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useUserBasic } from '@/hooks/user/userHook';
 import { useAuthStore } from "@/store/authStore";
 import Image from 'next/image'; 
-import Head from 'next/head';
 import { useNotificacoes, type Notificacao } from "@/store/useNotificacoes";
 import { Notificacoes } from "./Notificacoes";
 import { useSocketNotifications } from "@/hooks/useSocket/useSocketNotificacoes";
@@ -72,6 +71,8 @@ const Header: React.FC = () => {
     setMounted(true);
   }, []);
 
+  const isLoggedIn = mounted && user && typeof user === 'object' && user.success !== false;
+
   const rawNotificacoesRef = useRef<RawNotification[]>([]);
   useEffect(() => {
     rawNotificacoesRef.current = rawNotificacoes;
@@ -103,14 +104,14 @@ const Header: React.FC = () => {
 
   // ⚡ OTIMIZAÇÃO: Carrega notificações de forma não-bloqueante (não impede renderização)
   useEffect(() => {
-    if (mounted && user && typeof user === 'object' && user.success !== false) {
+    if (isLoggedIn) {
       // Usa setTimeout para não bloquear a renderização inicial
       const timer = setTimeout(() => {
         fetchNotificacoes();
       }, 0);
       return () => clearTimeout(timer);
     }
-  }, [mounted, fetchNotificacoes, user]);
+  }, [isLoggedIn, fetchNotificacoes]);
 
   const handleNewNotification = useCallback((data: SocketNotification) => {
     const finalId = data.Id || `notif-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -146,7 +147,7 @@ const Header: React.FC = () => {
   }, [addNotificacao, playNotificationSound, fetchNotificacoes]);
 
   const socketOptions = useMemo(() => ({ onNotification: handleNewNotification }), [handleNewNotification]);
-  const userId = user && typeof user === 'object' && user.success !== false ? user.Id || "" : "";
+  const userId = isLoggedIn ? user.Id || "" : "";
   useSocketNotifications(userId, socketOptions);
 
   const notificacoes = useMemo(
@@ -202,7 +203,6 @@ const Header: React.FC = () => {
     }
     
     // Verifica se o usuário está logado e redireciona para área logada se necessário
-    const isLoggedIn = user && typeof user === 'object' && user.success !== false;
     const isPatient = isLoggedIn && user.Role === "Patient";
     
     // Redireciona "Ver psicólogos" para área logada se for paciente
@@ -483,9 +483,6 @@ const Header: React.FC = () => {
 
   return (
     <>
-      <Head>
-        <link rel="icon" href="/favicon.ico" sizes="any" />
-      </Head>
       <motion.header 
         className="bg-[#fcfbf6] w-full sticky top-0 z-50 border-b border-[#E3E6E8] sticky-header"
         initial={mounted ? { opacity: 0, y: -30 } : { opacity: 1, y: 0 }}
@@ -518,7 +515,7 @@ const Header: React.FC = () => {
             </button>
             {/* Avatar ou Botões Cadastro/Login + Menu hamburguer à direita */}
             <div className="flex items-center gap-1.5">
-              {!(user && typeof user === 'object' && user.success !== false)
+              {!isLoggedIn
                 ? <>
                     <button
                       className="px-2.5 py-1.5 border-2 border-[#6D75C0] text-[#6D75C0] rounded-[6px] font-medium text-[13px] bg-transparent hover:bg-[#ecebfa] transition-colors whitespace-nowrap cursor-pointer"
@@ -572,7 +569,6 @@ const Header: React.FC = () => {
               {navLinks
                 .filter((link) => {
                   // Oculta "Ver psicólogos" se o usuário for Psicólogo
-                  const isLoggedIn = user && typeof user === 'object' && user.success !== false;
                   const isPsychologist = isLoggedIn && user.Role === "Psychologist";
                   if (link.href === '/ver-psicologos' && isPsychologist) {
                     return false;
@@ -596,7 +592,7 @@ const Header: React.FC = () => {
               ))}
             </nav>
             {/* Avatar ou Botões Desktop */}
-            {user && typeof user === 'object' && user.success !== false && user.Role !== "Admin"
+            {isLoggedIn && user.Role !== "Admin"
               ? <UserAvatarMenu 
                   user={{
                     Nome: user.Nome,
@@ -712,7 +708,7 @@ const Header: React.FC = () => {
                 </div>
                 {/* Avatar ou Botões Drawer Mobile */}
                 <div className="flex flex-col gap-3 px-4 pb-6">
-                  {user && typeof user === 'object' && user.success !== false
+                  {isLoggedIn
                     ? <>
                         <button
                           className="w-full px-5 py-2 bg-[#c7d0fa] text-[#23253a] rounded-md font-bold hover:bg-[#6c6bb6] hover:text-white transition-colors cursor-pointer"

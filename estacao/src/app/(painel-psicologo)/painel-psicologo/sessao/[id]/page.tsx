@@ -417,7 +417,7 @@ export default function SessaoPage() {
     }> | null)?.PsychologistJoinedAt;
     if (alreadyJoined) return;
 
-    const userId = consulta?.PsicologoId || loggedUserId;
+    const userId = consulta?.psicologoId || loggedUserId;
     if (!userId) return;
 
     await api.post(`/reserva-sessao/${id}/join`, {
@@ -425,7 +425,7 @@ export default function SessaoPage() {
       role: "Psychologist",
     });
     await refetchReservaSessao();
-  }, [id, reservaSessao, consulta?.PsicologoId, loggedUserId, refetchReservaSessao]);
+  }, [id, reservaSessao, consulta?.psicologoId, loggedUserId, refetchReservaSessao]);
 
   const handleEntrarSessao = async () => {
     if (!id) {

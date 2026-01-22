@@ -101,6 +101,7 @@ const nextConfig: NextConfig = {
     // Inclui tamanhos menores para evitar download acima do necessário
     deviceSizes: [320, 480, 500, 576, 640, 750, 828, 1080, 1200, 1920, 2048],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
+    qualities: [70, 75, 80, 85],
     dangerouslyAllowSVG: true,
     contentDispositionType: "inline",
     unoptimized: false,

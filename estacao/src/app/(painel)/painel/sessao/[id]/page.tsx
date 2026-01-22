@@ -388,7 +388,7 @@ export default function SessaoPage() {
     }> | null)?.PatientJoinedAt;
     if (alreadyJoined) return;
 
-    const userId = consulta?.PacienteId || loggedUserId;
+    const userId = consulta?.pacienteId || loggedUserId;
     if (!userId) return;
 
     await api.post(`/reserva-sessao/${id}/join`, {
@@ -396,7 +396,7 @@ export default function SessaoPage() {
       role: "Patient",
     });
     await refetchReservaSessao();
-  }, [id, reservaSessao, consulta?.PacienteId, loggedUserId, refetchReservaSessao]);
+  }, [id, reservaSessao, consulta?.pacienteId, loggedUserId, refetchReservaSessao]);
 
   const handleEntrarSessao = async () => {
     if (!id) {
