@@ -43,6 +43,32 @@ export class BackupService {
   private static parseDatabaseUrl(): DbConfig {
     const urlValue = process.env.BACKUP_DATABASE_URL || process.env.DATABASE_URL;
     if (!urlValue) {
+      const envUser = process.env.POSTGRES_USER;
+      const envDatabase = process.env.POSTGRES_DB;
+      const envPassword =
+        process.env.POSTGRES_PASSWORD ||
+        process.env.BACKUP_DATABASE_PASSWORD ||
+        process.env.PGPASSWORD ||
+        "";
+      const envHost =
+        process.env.PG_HOST_DIRECT ||
+        process.env.PG_HOST ||
+        "";
+      const envPort =
+        process.env.PG_PORT_DIRECT ||
+        process.env.PG_PORT ||
+        "";
+
+      if (envUser && envDatabase) {
+        return {
+          host: envHost || "postgres",
+          port: envPort || "5432",
+          database: envDatabase,
+          user: envUser,
+          password: envPassword,
+        };
+      }
+
       throw Object.assign(new Error("DATABASE_URL não configurada para backup"), { status: 500 });
     }
 
@@ -58,12 +84,19 @@ export class BackupService {
       throw Object.assign(new Error("DATABASE_URL incompleta para backup"), { status: 500 });
     }
 
+    const passwordFromUrl = decodeURIComponent(parsed.password || "");
+    const fallbackPassword =
+      process.env.BACKUP_DATABASE_PASSWORD ||
+      process.env.POSTGRES_PASSWORD ||
+      process.env.PGPASSWORD ||
+      "";
+
     return {
       host: parsed.hostname,
       port: parsed.port || "5432",
       database,
       user: decodeURIComponent(parsed.username),
-      password: decodeURIComponent(parsed.password || "")
+      password: passwordFromUrl || fallbackPassword,
     };
   }
 
