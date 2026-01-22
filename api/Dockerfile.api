@@ -97,6 +97,7 @@ RUN apk add --no-cache \
     netcat-openbsd \
     postgresql-client \
     redis \
+    su-exec \
     chromium \
     nss \
     freetype \

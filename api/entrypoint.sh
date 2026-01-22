@@ -12,17 +12,34 @@ chmod 1777 /tmp /run 2>/dev/null || true
 
 # Diretório de backups
 BACKUP_DIR="${BACKUP_DIR:-/app/backups}"
-mkdir -p "$BACKUP_DIR" 2>/dev/null || true
-# Força posse e permissão (resolve problemas de volume do host)
-chown -R $(id -u):$(id -g) "$BACKUP_DIR" 2>/dev/null || true
-chmod 775 "$BACKUP_DIR" 2>/dev/null || true
-[ ! -w "$BACKUP_DIR" ] && echo "⚠️  Diretório de backups sem permissão de escrita: $BACKUP_DIR"
+BACKUP_OWNER="${BACKUP_OWNER:-deploy:deploy}"
+
+ensure_dir() {
+  dir="$1"
+  owner="$2"
+  perms="$3"
+
+  mkdir -p "$dir" 2>/dev/null || true
+
+  if [ "$(id -u)" = "0" ]; then
+    if id -u "${owner%%:*}" >/dev/null 2>&1; then
+      chown -R "$owner" "$dir" 2>/dev/null || true
+    else
+      chown -R "$(id -u):$(id -g)" "$dir" 2>/dev/null || true
+    fi
+    chmod "$perms" "$dir" 2>/dev/null || true
+  else
+    chmod "$perms" "$dir" 2>/dev/null || true
+  fi
+
+  [ ! -w "$dir" ] && echo "⚠️  Diretório sem permissão de escrita: $dir"
+}
+
+ensure_dir "$BACKUP_DIR" "$BACKUP_OWNER" "775"
 
 # Diretório temporário para restore de backups (admin)
 BACKUP_TMP_DIR="${BACKUP_TMP_DIR:-/app/tmp/backups-restore}"
-mkdir -p "$BACKUP_TMP_DIR" 2>/dev/null || true
-chmod 775 "$BACKUP_TMP_DIR" 2>/dev/null || true
-[ ! -w "$BACKUP_TMP_DIR" ] && echo "⚠️  Diretório temporário sem permissão de escrita: $BACKUP_TMP_DIR"
+ensure_dir "$BACKUP_TMP_DIR" "$BACKUP_OWNER" "775"
 
 # =====================================================
 # Funções utilitárias
@@ -154,6 +171,20 @@ url_encode() {
   fi
 }
 
+run_as_deploy() {
+  if [ "$(id -u)" = "0" ]; then
+    if command -v su-exec >/dev/null 2>&1; then
+      exec su-exec deploy "$@"
+    elif command -v gosu >/dev/null 2>&1; then
+      exec gosu deploy "$@"
+    else
+      exec su -s /bin/sh deploy -c "$*"
+    fi
+  else
+    exec "$@"
+  fi
+}
+
 # =====================================================
 # API
 # =====================================================
@@ -235,7 +266,7 @@ start_api() {
   check_port "$REDIS_HOST" "$REDIS_PORT" "Redis"
   check_port "$PG_HOST" "$PG_PORT" "PgBouncer"
 
-  exec "$@"
+  run_as_deploy "$@"
 }
 
 # =====================================================
@@ -294,7 +325,7 @@ start_socket() {
   echo "   Redis      → $REDIS_HOST:$REDIS_PORT"
   echo "   API        → $API_BASE_URL"
 
-  exec "$@"
+  run_as_deploy "$@"
 }
 
 # =====================================================
