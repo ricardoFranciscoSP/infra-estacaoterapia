@@ -515,32 +515,39 @@ export default function ConsultaAtual({ consulta: consultaProp = null, role = "p
 
   const sessionState = calculateSessionState();
   const { fraseSessao, mostrarContador, contadorSessao, buttons } = sessionState;
-  
-  // Usa o contador atualizado dos 60 minutos se estiver dentro do período
-  const contadorFinal = contador50MinutosAtualizado.estaDentroDoPeriodo 
-    ? contador50MinutosAtualizado.tempoFormatado 
-    : contadorSessao;
 
-
-  const handleSuporte = (): void => {
-    const mensagem = encodeURIComponent("Olá, preciso de suporte técnico na Estação Terapia. Tenho dúvidas ou estou com problemas na plataforma.");
-    window.open(`https://wa.me/5511960892131?text=${mensagem}`, "_blank");
-  };
-
-  // Função para abrir o modal de detalhes da consulta
-  const handleAbrirModalConsulta = () => {
-    if (normalized) {
-      const avatarPsicologo = getContextualAvatar(isInPsicologoPanel, normalized.psicologo, normalized.paciente);
-      const consultaData: ConsultaModalData = {
-        data: normalized.date || "",
-        horario: normalized.time || "",
-        psicologo: normalized.psicologo ? {
-          nome: normalized.psicologo.nome || "",
-          id: String(normalized.psicologoId || normalized.psicologo.id || ""),
-          avatarUrl: normalized.psicologo.imageUrl || avatarPsicologo,
-          Image: normalized.psicologo.imageUrl ? [{ Url: normalized.psicologo.imageUrl }] : (avatarPsicologo ? [{ Url: avatarPsicologo }] : undefined),
-        } : undefined,
-        paciente: normalized.paciente ? {
+  // Se a consulta está cancelada, força esconder contador e botão entrar
+  const isCancelada = statusBadge === "Cancelado";
+  const finalButtons = isCancelada
+    ? { mostrarBotaoEntrar: false, mostrarBotaoSuporte: true, botaoEntrarDesabilitado: true }
+    : buttons;
+  const finalMostrarContador = isCancelada ? false : mostrarContador;
+  const finalContadorSessao = isCancelada ? "" : contadorSessao;
+  return (
+    <motion.section
+      className="w-full flex flex-col items-start"
+      {...ANIMATION_VARIANTS.container}
+    >
+      <h3 className="fira-sans font-semibold text-2xl leading-[40px] tracking-normal align-middle text-[#49525A] mb-4">Consulta Atual</h3>
+      {/* Usa ConsultaCard da lib */}
+      <ConsultaCard
+        consulta={consultaApi}
+        showEntrarButton={finalButtons.mostrarBotaoEntrar}
+        botaoEntrarDesabilitado={finalButtons.botaoEntrarDesabilitado}
+        isLoadingEntry={isCheckingTokens || isProcessingEntry}
+        mostrarBotaoSuporte={finalButtons.mostrarBotaoSuporte}
+        contador={finalMostrarContador && contador50MinutosAtualizado.estaDentroDoPeriodo && contadorFinal ? {
+          frase: fraseSessao,
+          tempo: contadorFinal,
+          mostrar: true,
+        } : undefined}
+        actions={{
+          onEntrar: finalButtons.mostrarBotaoEntrar ? handleEntrarNaConsulta : undefined,
+          onVerDetalhes: handleVerDetalhes,
+          onVerPerfil: shouldShowPerfil && perfilHref ? () => router.push(perfilHref) : undefined,
+          onSuporte: finalButtons.mostrarBotaoSuporte ? handleSuporte : undefined,
+        }}
+      />
           nome: normalized.paciente.nome || "",
           id: String(normalized.pacienteId || normalized.paciente.id || ""),
           avatarUrl: normalized.paciente.imageUrl || avatarPsicologo,

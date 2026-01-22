@@ -206,6 +206,11 @@ const nextConfig: NextConfig = {
       "ws:",
     ];
 
+    const isLocalhost =
+      process.env.NODE_ENV !== "production" ||
+      websiteUrl.includes("localhost") ||
+      websiteUrl.includes("127.0.0.1");
+
     const apiOrigin = toOrigin(apiUrl);
     if (apiOrigin) {
       connectSrcDirectives.push(apiOrigin);
@@ -222,12 +227,20 @@ const nextConfig: NextConfig = {
       }
     }
 
-    // Adiciona localhost em desenvolvimento
+    // Adiciona localhost e domínios permitidos
     if (isLocalhost) {
-      connectSrcDirectives.push("http://localhost:*"); // Permite qualquer porta do localhost
-      connectSrcDirectives.push("ws://localhost:*");
-      connectSrcDirectives.push("wss://localhost:*");
+      connectSrcDirectives.push("http://localhost:3000");
+      connectSrcDirectives.push("http://localhost:3001");
+      connectSrcDirectives.push("ws://localhost:3000");
+      connectSrcDirectives.push("ws://localhost:3001");
+      connectSrcDirectives.push("wss://localhost:3000");
+      connectSrcDirectives.push("wss://localhost:3001");
     }
+    // Sempre permite domínios principais
+    connectSrcDirectives.push("https://estacaoterapia.com.br");
+    connectSrcDirectives.push("https://www.estacaoterapia.com.br");
+    connectSrcDirectives.push("wss://estacaoterapia.com.br");
+    connectSrcDirectives.push("wss://www.estacaoterapia.com.br");
 
     // Diretivas para style-src (CSS)
     const styleSrcDirectives = [
@@ -258,11 +271,6 @@ const nextConfig: NextConfig = {
       "https://kppuuqnpekounoylsdum.supabase.co", // ProTrack tracking script
       "https://*.estacaoterapia.com.br", // Permite scripts de todos os subdomínios
     ];
-
-    const isLocalhost =
-      process.env.NODE_ENV !== "production" ||
-      websiteUrl.includes("localhost") ||
-      websiteUrl.includes("127.0.0.1");
 
     if (isLocalhost) {
       scriptSrcDirectives.push("'unsafe-eval'");
