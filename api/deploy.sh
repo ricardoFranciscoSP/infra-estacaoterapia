@@ -1,4 +1,3 @@
-
 #!/bin/bash
 set -euo pipefail
 set -x
@@ -13,8 +12,20 @@ FORCE_BUILD="${FORCE_BUILD:-false}"
 UPDATE_STATEFUL="${UPDATE_STATEFUL:-false}"
 
 SECRETS_DIR="/opt/secrets"
-STACK_FILES=("docker-stack.redis.yml" "docker-stack.pgbouncer.yml" "docker-stack.api.yml" "docker-stack.socket.yml")
-STACK_NAMES=("estacaoterapia-redis" "estacaoterapia-pgbouncer" "estacaoterapia-api" "estacaoterapia-socket")
+
+STACK_FILES=(
+  "docker-stack.redis.yml"
+  "docker-stack.pgbouncer.yml"
+  "docker-stack.api.yml"
+  "docker-stack.socket.yml"
+)
+
+STACK_NAMES=(
+  "estacaoterapia-redis"
+  "estacaoterapia-pgbouncer"
+  "estacaoterapia-api"
+  "estacaoterapia-socket"
+)
 
 KEEP_VERSIONS=2
 
@@ -27,7 +38,7 @@ TAG="${TIMESTAMP}-${GIT_HASH}"
 
 echo ""
 echo "=============================================="
-echo "🚀 DEPLOY ESTACAOTERAPIA (SWARM)"
+echo "🚀 DEPLOY ESTACAOTERAPIA (DOCKER SWARM)"
 echo "🕒 $(date)"
 echo "🏷️  TAG: $TAG"
 echo "=============================================="
@@ -35,18 +46,14 @@ echo "=============================================="
 # ==============================
 # PRÉ-REQUISITOS
 # ==============================
-
 command -v docker >/dev/null || { echo "❌ Docker não encontrado"; exit 1; }
-
 
 SWARM_STATE="$(docker info --format '{{.Swarm.LocalNodeState}}')"
 [ "$SWARM_STATE" = "active" ] || { echo "❌ Docker Swarm inativo"; exit 1; }
 
-
 for f in "${STACK_FILES[@]}"; do
   [ -f "$f" ] || { echo "❌ Arquivo ausente: $f"; exit 1; }
 done
-
 
 for s in estacao_api.env estacao_socket.env; do
   [ -f "$SECRETS_DIR/$s" ] || { echo "❌ Secret ausente: $SECRETS_DIR/$s"; exit 1; }
@@ -55,13 +62,41 @@ done
 echo "✅ Pré-requisitos OK"
 
 # ==============================
+# LIMPEZA CONTAINERS FORA DO SWARM
+# ==============================
+echo ""
+echo "[CLEANUP] Removendo containers fora do Swarm"
+
+docker ps --filter "label!=com.docker.swarm.service.name" -q | while read -r c; do
+  echo "🗑️ Removendo container standalone: $c"
+  docker rm -f "$c"
+done
+
+# ==============================
+# REMOVER STACKS ANTIGOS
+# ==============================
+echo ""
+echo "[CLEANUP] Removendo stacks antigos (garantia de unicidade)"
+
+for stack in "${STACK_NAMES[@]}"; do
+  if docker stack ls --format '{{.Name}}' | grep -q "^$stack$"; then
+    echo "🧹 Removendo stack: $stack"
+    docker stack rm "$stack"
+    sleep 12
+  fi
+done
+
+# ==============================
 # SECRETS
 # ==============================
 create_secret_if_missing() {
-  local name="$1" file="$2"
+  local name="$1"
+  local file="$2"
+
   if docker secret inspect "$name" >/dev/null 2>&1; then
     return
   fi
+
   docker secret create "$name" "$file"
   echo "✅ Secret $name criado"
 }
@@ -81,70 +116,59 @@ fi
 # ==============================
 # VOLUMES E REDE
 # ==============================
-
 for v in redis_data documentos_data backups_data; do
-  docker volume create "$v"
+  docker volume create "$v" >/dev/null
 done
-
 
 if ! docker network inspect estacaoterapia_backend >/dev/null 2>&1; then
   docker network create --driver overlay --attachable estacaoterapia_backend
 fi
 
 # ==============================
-# BUILD IMAGENS (VERSIONADAS)
+# BUILD IMAGENS
 # ==============================
 echo ""
-echo "[BUILD] Construindo imagens versionadas"
+echo "[BUILD] Construindo imagens"
 
 docker build ${FORCE_BUILD:+--no-cache} \
   --platform linux/amd64 \
   -t estacaoterapia-api:${TAG} \
-  -f Dockerfile.api . || exit 1
+  -f Dockerfile.api .
 
 docker build ${FORCE_BUILD:+--no-cache} \
   --platform linux/amd64 \
   -t estacaoterapia-socket:${TAG} \
-  -f Dockerfile.socket . || exit 1
+  -f Dockerfile.socket .
 
 docker tag estacaoterapia-api:${TAG} estacaoterapia-api:stable
 docker tag estacaoterapia-socket:${TAG} estacaoterapia-socket:stable
 
 if [ "$UPDATE_STATEFUL" = true ]; then
-  docker build ${FORCE_BUILD:+--no-cache} \
-    --platform linux/amd64 \
-    -t estacaoterapia-redis:stable \
-    -f Dockerfile.redis . || exit 1
-
-  docker build ${FORCE_BUILD:+--no-cache} \
-    --platform linux/amd64 \
-    -t estacaoterapia-pgbouncer:stable \
-    -f Dockerfile.pgbouncer . || exit 1
+  docker build --platform linux/amd64 -t estacaoterapia-redis:stable -f Dockerfile.redis .
+  docker build --platform linux/amd64 -t estacaoterapia-pgbouncer:stable -f Dockerfile.pgbouncer .
 fi
 
-
 # ==============================
-# ATUALIZA TAG DA API NO YAML
+# ATUALIZAR TAG DA API
 # ==============================
 echo ""
-echo "[DEPLOY] Atualizando tag da API no docker-stack.api.yml"
+echo "[DEPLOY] Atualizando tag da API"
+
 cp docker-stack.api.yml docker-stack.api.yml.deploy
 sed -i "s|estacaoterapia-api:.*|estacaoterapia-api:${TAG}|g" docker-stack.api.yml.deploy
 
 # ==============================
-# DEPLOY STACKS (SEM FORCE)
+# DEPLOY STACKS
 # ==============================
 echo ""
 echo "[DEPLOY] Aplicando stacks"
 
 for i in "${!STACK_FILES[@]}"; do
-  stack_file="${STACK_FILES[$i]}"
-  # Usa o arquivo modificado para a API
-  if [[ "$stack_file" == "docker-stack.api.yml" ]]; then
-    stack_file="docker-stack.api.yml.deploy"
-  fi
+  file="${STACK_FILES[$i]}"
+  [ "$file" = "docker-stack.api.yml" ] && file="docker-stack.api.yml.deploy"
+
   docker stack deploy \
-    --compose-file "$stack_file" \
+    --compose-file "$file" \
     --resolve-image always \
     "${STACK_NAMES[$i]}"
 done
@@ -153,17 +177,14 @@ done
 # AGUARDAR SERVIÇOS
 # ==============================
 echo ""
-echo "[HEALTH] Aguardando serviços ficarem prontos..."
+echo "[HEALTH] Aguardando serviços"
 
 for stack in "${STACK_NAMES[@]}"; do
   while read -r svc; do
-    echo "⏳ $svc"
     for i in {1..30}; do
       replicas="$(docker service ls --filter name="$svc" --format '{{.Replicas}}')"
       [ -z "$replicas" ] && break
-      running="${replicas%%/*}"
-      desired="${replicas##*/}"
-      [ "$running" = "$desired" ] && break
+      [ "${replicas%%/*}" = "${replicas##*/}" ] && break
       sleep 2
     done
     echo "✅ $svc OK ($replicas)"
@@ -178,16 +199,17 @@ echo "[CLEANUP] Limpando imagens antigas"
 
 declare -A RUNNING_IMAGES
 while read -r img; do
-
   id="$(docker image inspect --format '{{.Id}}' "$img")"
-  [ -n "$id" ] && RUNNING_IMAGES["$id"]=1
+  RUNNING_IMAGES["$id"]=1
 done < <(docker service inspect --format '{{.Spec.TaskTemplate.ContainerSpec.Image}}' $(docker service ls -q))
 
 for repo in estacaoterapia-api estacaoterapia-socket; do
-  docker images "$repo" --format '{{.ID}} {{.CreatedAt}}' | \
-  sort -r | awk "NR>${KEEP_VERSIONS} {print \$1}" | while read -r img; do
-    [ -z "${RUNNING_IMAGES[$img]+x}" ] && docker image rm -f "$img"
-  done
+  docker images "$repo" --format '{{.ID}} {{.CreatedAt}}' \
+  | sort -r \
+  | awk "NR>${KEEP_VERSIONS} {print \$1}" \
+  | while read -r img; do
+      [ -z "${RUNNING_IMAGES[$img]+x}" ] && docker image rm -f "$img"
+    done
 done
 
 # ==============================
@@ -197,12 +219,13 @@ echo ""
 echo "=============================================="
 echo "🎉 DEPLOY CONCLUÍDO COM SUCESSO"
 echo "=============================================="
-echo ""
+
 docker service ls --format "table {{.Name}}\t{{.Replicas}}\t{{.Image}}"
 
 echo ""
-echo "💡 DICAS:"
-echo "  Logs API: docker service logs estacaoterapia-api_api -f"
-echo "  Rollback:"
-echo "    docker service update --image estacaoterapia-api:<TAG_ANTIGA> estacaoterapia-api_api"
+echo "📦 Containers ativos:"
+docker ps --format "table {{.Names}}\t{{.Image}}\t{{.Status}}"
+
 echo ""
+echo "💡 Logs API:"
+echo "docker service logs estacaoterapia-api_api -f"
