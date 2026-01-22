@@ -1150,21 +1150,19 @@ export class ReservationsController {
 
             // Verifica se os tokens foram limpos (consulta concluída mas status não atualizado ainda)
             // IMPORTANTE: Se PatientId ou PsychologistId estiverem vazios, preenche a partir da Consulta
-            let isPatient = reservaSessao.PatientId === userId;
-            let isPsychologist = reservaSessao.PsychologistId === userId;
+            const consultaPatientId = reservaSessao.Consulta?.PacienteId ?? null;
+            const consultaPsychologistId = reservaSessao.Consulta?.PsicologoId ?? null;
+            const inferredPatientId = reservaSessao.PatientId ?? consultaPatientId;
+            const inferredPsychologistId = reservaSessao.PsychologistId ?? consultaPsychologistId;
 
-            // Se não encontrou correspondência, verifica na Consulta e atualiza se necessário
-            if (!isPatient && !isPsychologist && reservaSessao.Consulta) {
-                const consultaPatientId = reservaSessao.Consulta.PacienteId;
-                const consultaPsychologistId = reservaSessao.Consulta.PsicologoId;
+            let isPatient = inferredPatientId === userId;
+            let isPsychologist = inferredPsychologistId === userId;
 
-                if (consultaPatientId === userId) {
-                    isPatient = true;
-                    console.log(`[ReservationsController] ⚠️ PatientId estava vazio, preenchendo a partir da Consulta: ${userId}`);
-                } else if (consultaPsychologistId === userId) {
-                    isPsychologist = true;
-                    console.log(`[ReservationsController] ⚠️ PsychologistId estava vazio, preenchendo a partir da Consulta: ${userId}`);
-                }
+            if (!reservaSessao.PatientId && consultaPatientId) {
+                console.log(`[ReservationsController] ⚠️ PatientId estava vazio, preenchendo a partir da Consulta: ${consultaPatientId}`);
+            }
+            if (!reservaSessao.PsychologistId && consultaPsychologistId) {
+                console.log(`[ReservationsController] ⚠️ PsychologistId estava vazio, preenchendo a partir da Consulta: ${consultaPsychologistId}`);
             }
 
             if (!isPatient && !isPsychologist) {
@@ -1208,16 +1206,16 @@ export class ReservationsController {
             let psychologistUid = reservaSessao.UidPsychologist;
 
             // Gera UIDs se ainda não existirem
-            if (!patientUid && reservaSessao.PatientId) {
+            if (!patientUid && inferredPatientId) {
                 try {
-                    patientUid = deriveUidFromUuid(reservaSessao.PatientId);
+                    patientUid = deriveUidFromUuid(inferredPatientId);
                 } catch (error) {
                     console.error(`[ReservationsController] Erro ao gerar UID do paciente: ${error}`);
                 }
             }
-            if (!psychologistUid && reservaSessao.PsychologistId) {
+            if (!psychologistUid && inferredPsychologistId) {
                 try {
-                    psychologistUid = deriveUidFromUuid(reservaSessao.PsychologistId);
+                    psychologistUid = deriveUidFromUuid(inferredPsychologistId);
                 } catch (error) {
                     console.error(`[ReservationsController] Erro ao gerar UID do psicólogo: ${error}`);
                 }
@@ -1254,6 +1252,14 @@ export class ReservationsController {
                     code: 'TOKEN_GENERATION_ERROR'
                 });
             }
+            if (!token || token.trim().length === 0) {
+                console.error(`[ReservationsController] ❌ Token ausente após geração para ${currentRole} na consulta ${consultationId}`);
+                return res.status(500).json({
+                    error: 'Token não disponível',
+                    message: 'Token ausente após geração',
+                    code: 'TOKEN_MISSING'
+                });
+            }
 
             // Prepara os dados para atualização
             const updateData: {
@@ -1269,6 +1275,12 @@ export class ReservationsController {
 
             // IMPORTANTE: Atualiza PatientId e PsychologistId se estiverem vazios
             // Isso garante que os IDs sejam preenchidos no exato momento que cada um entra na room
+            if (!reservaSessao.PatientId && inferredPatientId) {
+                updateData.PatientId = inferredPatientId;
+            }
+            if (!reservaSessao.PsychologistId && inferredPsychologistId) {
+                updateData.PsychologistId = inferredPsychologistId;
+            }
             if (isPatient && (!reservaSessao.PatientId || reservaSessao.PatientId !== userId)) {
                 updateData.PatientId = userId;
                 console.log(`[ReservationsController] ✅ Atualizando PatientId: ${userId}`);
@@ -1324,6 +1336,25 @@ export class ReservationsController {
             }
 
             // Logs detalhados para debug de áudio e vídeo
+            const missingRoomData: string[] = [];
+            if (!token) missingRoomData.push('token');
+            if (!consultationId) missingRoomData.push('consultationId');
+            if (!channel) missingRoomData.push('channel');
+            if (!inferredPatientId) missingRoomData.push('patientId');
+            if (!inferredPsychologistId) missingRoomData.push('psychologistId');
+            if (!patientUid) missingRoomData.push('patientUid');
+            if (!psychologistUid) missingRoomData.push('psychologistUid');
+            if (!reservaSessao.AgoraChannel) missingRoomData.push('AgoraChannel');
+
+            if (reservaSessao.AgoraChannel && reservaSessao.AgoraChannel !== channel) {
+                console.warn(`[ReservationsController] ⚠️ Channel divergente: param=${channel}, reserva=${reservaSessao.AgoraChannel}`);
+            }
+            if (missingRoomData.length > 0) {
+                console.warn(
+                    `[ReservationsController] ⚠️ Dados ausentes para sala Agora/room (${consultationId}):`,
+                    missingRoomData.join(', ')
+                );
+            }
             console.log(`[ReservationsController] ===== ENTRADA NA SALA =====`);
             console.log(`[ReservationsController] Role: ${currentRole}`);
             console.log(`[ReservationsController] ConsultaId: ${reservaSessao.ConsultaId}`);

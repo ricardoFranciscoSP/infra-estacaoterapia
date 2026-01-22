@@ -102,6 +102,7 @@ RUN apk add --no-cache \
     freetype \
     harfbuzz \
     ttf-freefont \
+    su-exec \
     && update-ca-certificates \
     && rm -rf /var/cache/apk/*
 
@@ -141,7 +142,7 @@ EXPOSE 3333
 HEALTHCHECK --interval=20s --timeout=10s --start-period=120s --retries=5 \
     CMD curl -f http://localhost:3333/health || exit 1
 
-USER deploy
+USER root
 
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["node", "dist/server.js"]

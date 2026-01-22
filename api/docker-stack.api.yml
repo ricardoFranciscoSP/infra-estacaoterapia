@@ -6,7 +6,7 @@ networks:
 services:
   api:
     image: estacaoterapia-api:latest
-    user: 'deploy'
+    user: '0'
     entrypoint: ['/bin/sh', '/entrypoint.sh']
     command: ['node', 'dist/server.js']
     secrets:

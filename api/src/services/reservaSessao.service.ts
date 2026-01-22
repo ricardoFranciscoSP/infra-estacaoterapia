@@ -87,11 +87,15 @@ export class ReservaSessaoService implements IReservaSessaoService {
 
             // Log apenas se dados críticos estiverem ausentes (para debug)
             const dadosAusentes = [];
+            if (!reserva.AgoraChannel) dadosAusentes.push('AgoraChannel');
             if (!reserva.AgoraTokenPatient) dadosAusentes.push('AgoraTokenPatient');
+            if (!reserva.AgoraTokenPsychologist) dadosAusentes.push('AgoraTokenPsychologist');
             if (!reserva.Uid) dadosAusentes.push('Uid');
+            if (!reserva.UidPsychologist) dadosAusentes.push('UidPsychologist');
             if (!consultaDate) dadosAusentes.push('ConsultaDate');
             if (!consultaTime) dadosAusentes.push('ConsultaTime');
             if (!scheduledAt) dadosAusentes.push('ScheduledAt');
+            if (!patientId) dadosAusentes.push('PatientId');
             if (!psychologistId) dadosAusentes.push('PsychologistId');
             
             if (dadosAusentes.length > 0) {
@@ -407,6 +411,7 @@ export class ReservaSessaoService implements IReservaSessaoService {
 
             // Log apenas se dados críticos estiverem ausentes (para debug)
             const dadosAusentes = [];
+            if (!reserva.AgoraChannel) dadosAusentes.push('AgoraChannel');
             if (!reserva.AgoraTokenPatient) dadosAusentes.push('AgoraTokenPatient');
             if (!reserva.AgoraTokenPsychologist) dadosAusentes.push('AgoraTokenPsychologist');
             if (!reserva.Uid) dadosAusentes.push('Uid');
@@ -414,6 +419,7 @@ export class ReservaSessaoService implements IReservaSessaoService {
             if (!consultaDate) dadosAusentes.push('ConsultaDate');
             if (!consultaTime) dadosAusentes.push('ConsultaTime');
             if (!scheduledAt) dadosAusentes.push('ScheduledAt');
+            if (!patientId) dadosAusentes.push('PatientId');
             if (!psychologistId) dadosAusentes.push('PsychologistId');
             
             if (dadosAusentes.length > 0) {

@@ -18,6 +18,9 @@ ensure_dir() {
   perms="$2"
 
   mkdir -p "$dir" 2>/dev/null || true
+  if [ "$(id -u)" = "0" ]; then
+    chown deploy:deploy "$dir" 2>/dev/null || true
+  fi
   chmod "$perms" "$dir" 2>/dev/null || true
   [ ! -w "$dir" ] && echo "⚠️  Diretório sem permissão de escrita: $dir"
 }
@@ -104,6 +107,13 @@ check_port() {
   else
     echo "⚠️  $name não respondeu (retry interno do app)"
   fi
+}
+
+exec_as_deploy() {
+  if [ "$(id -u)" = "0" ] && command -v su-exec >/dev/null 2>&1; then
+    exec su-exec deploy "$@"
+  fi
+  exec "$@"
 }
 
 can_resolve() {
@@ -259,7 +269,7 @@ start_api() {
   check_port "$REDIS_HOST" "$REDIS_PORT" "Redis"
   check_port "$PG_HOST" "$PG_PORT" "PgBouncer"
 
-  exec "$@"
+  exec_as_deploy "$@"
 }
 
 # =====================================================
@@ -318,7 +328,7 @@ start_socket() {
   echo "   Redis      → $REDIS_HOST:$REDIS_PORT"
   echo "   API        → $API_BASE_URL"
 
-  exec "$@"
+  exec_as_deploy "$@"
 }
 
 # =====================================================
