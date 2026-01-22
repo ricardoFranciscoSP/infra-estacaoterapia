@@ -33,6 +33,7 @@ export function useSaveUserAddress() {
 }
 import { previaContrato, uploadContratoStore, gerarContrato } from '@/store/userStore';
 import { useQuery, useMutation } from '@tanstack/react-query';
+import { parseCookies } from 'nookies';
 import React from 'react';
 import { Onboarding, User as UserType } from '../../types/userTypes';
 import { Fatura } from '@/store/controleFaturaStore';
@@ -119,19 +120,31 @@ export interface UserDetails {
   FinanceiroEntries?: Record<string, unknown> | null; 
 }
 
+function hasAuthCookie(): boolean {
+  if (typeof window === 'undefined') return false;
+  const cookies = parseCookies();
+  return !!(cookies.auth || cookies['user-data-client'] || cookies.token);
+}
+
 // Hook para buscar usuário logado básico
 export function useUserBasic() {
   const { setUser } = useUserStore();
+  const enabled = hasAuthCookie();
 
   const query = useQuery<User, Error>({
     queryKey: ['userBasic'],
     queryFn: fetchUserBasic,
     staleTime: 0,  // Sempre busca dados frescos em áreas logadas
     gcTime: 0,   // Não mantém cache em áreas logadas
-    retry: 1,
+    retry: (failureCount, error) => {
+      const status = (error as { response?: { status?: number } })?.response?.status;
+      if (status === 401 || status === 403) return false;
+      return failureCount < 1;
+    },
     refetchOnWindowFocus: true, // Refetch quando a janela ganha foco
     refetchOnMount: true, // Sempre refetch ao montar o componente
     refetchOnReconnect: true, // Refetch ao reconectar
+    enabled,
   });
 
   // ✅ Use useEffect para sincronizar com Zustand após sucesso
@@ -155,16 +168,22 @@ export function useUserBasic() {
 // Hook para buscar usuário logado detalhes
 export function useUserDetails() {
   const { setUser } = useUserStore();
+  const enabled = hasAuthCookie();
 
   const query = useQuery<UserDetails, Error>({
     queryKey: ['userDetails'],
     queryFn: fetchUserDetails,
     staleTime: 0, // Sempre busca dados frescos em áreas logadas
     gcTime: 0, // Não mantém cache em áreas logadas
-    retry: 1,
+    retry: (failureCount, error) => {
+      const status = (error as { response?: { status?: number } })?.response?.status;
+      if (status === 401 || status === 403) return false;
+      return failureCount < 1;
+    },
     refetchOnWindowFocus: true, // Refetch quando a janela ganha foco
     refetchOnMount: true, // Sempre refetch ao montar o componente
     refetchOnReconnect: true, // Refetch ao reconectar
+    enabled,
   });
 
   // ✅ Use useEffect para sincronizar com Zustand após sucesso
@@ -195,16 +214,22 @@ export function useUserDetails() {
 // Hook para buscar usuário logado
 export function useUserMe() {
   const { setUser } = useUserStore();
+  const enabled = hasAuthCookie();
 
   const query = useQuery<UserDetails, Error>({
     queryKey: ['userMe'],
     queryFn: fetchUserMe,
     staleTime: 0, // Sempre busca dados frescos em áreas logadas
     gcTime: 0, // Não mantém cache em áreas logadas
-    retry: 1,
+    retry: (failureCount, error) => {
+      const status = (error as { response?: { status?: number } })?.response?.status;
+      if (status === 401 || status === 403) return false;
+      return failureCount < 1;
+    },
     refetchOnWindowFocus: true, // Refetch quando a janela ganha foco
     refetchOnMount: true, // Sempre refetch ao montar o componente
     refetchOnReconnect: true, // Refetch ao reconectar
+    enabled,
   });
 
   // ✅ Use useEffect para sincronizar com Zustand após sucesso
@@ -436,6 +461,7 @@ export function useUpdateIsOnboardingComplete() {
 }
 
 export function useGetUserPlano() {
+  const enabled = hasAuthCookie();
   const query = useQuery({
     queryKey: ['userPlano'],
     queryFn: getUserPlano,
@@ -446,6 +472,7 @@ export function useGetUserPlano() {
     refetchOnWindowFocus: true, // Refetch quando a janela recebe foco
     refetchOnMount: true, // Sempre refetch ao montar o componente
     refetchOnReconnect: true, // Refetch ao reconectar
+    enabled,
   });
 
   return {

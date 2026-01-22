@@ -150,11 +150,11 @@ const nextConfig: NextConfig = {
       }
     };
 
-    // 🎯 Permissions-Policy: libera recursos do navegador
+    // 🎯 Permissions-Policy: libera microfone e câmera para a própria origem
     const permissionsPolicy = [
       "accelerometer=*",
       "autoplay=*",
-      "camera=*",
+      "camera=(self)",
       "clipboard-read=*",
       "clipboard-write=*",
       "display-capture=*",
@@ -162,7 +162,7 @@ const nextConfig: NextConfig = {
       "geolocation=*",
       "gyroscope=*",
       "magnetometer=*",
-      "microphone=*",
+      "microphone=(self)",
       "payment=*",
       "screen-wake-lock=*",
       "usb=*",

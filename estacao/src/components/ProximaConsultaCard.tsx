@@ -222,13 +222,13 @@ const ProximaConsultaCard: React.FC<ProximaConsultaCardProps> = ({
           const tagInfo = getStatusTagInfo(statusParaExibir);
           
           return (
-            <span className={`absolute top-4 right-4 px-3 py-1 rounded-full text-xs font-semibold ${tagInfo.bg} ${tagInfo.text} shadow z-10`}>
+            <span className={`absolute top-4 left-4 px-3 py-1 rounded-full text-xs font-semibold ${tagInfo.bg} ${tagInfo.text} shadow z-10`}>
               {tagInfo.texto}
             </span>
           );
         })()}
         {/* Título e detalhes */}
-        <div className="flex items-center justify-between mb-0.5 pr-24 sm:pr-0">
+        <div className="flex items-center justify-between mb-0.5 pl-4 sm:pl-0">
           <span className="text-sm lg:text-sm font-semibold text-gray-800 font-fira-sans">Próxima consulta</span>
           <button
             type="button"
@@ -239,7 +239,7 @@ const ProximaConsultaCard: React.FC<ProximaConsultaCardProps> = ({
           </button>
         </div>
         {/* Linha inline: avatar + nome + data/horário (esquerda) | contador (direita) */}
-        <div className="flex items-center justify-between gap-3 mb-2 flex-wrap">
+        <div className="flex items-center justify-between gap-3 mb-2 flex-wrap pl-4 sm:pl-0">
           <div className="flex items-center gap-3 sm:gap-2">
             <div className="bg-[#6D75C0] rounded-full w-10 h-10 sm:w-8 sm:h-8 flex items-center justify-center">
               <Image
@@ -265,7 +265,7 @@ const ProximaConsultaCard: React.FC<ProximaConsultaCardProps> = ({
               </span>
             </div>
           </div>
-          <div className="flex items-center gap-2 sm:gap-1 mt-2 sm:mt-0 pr-20 sm:pr-0">
+          <div className="flex items-center gap-2 sm:gap-1 mt-2 sm:mt-0 pl-2 sm:pl-0">
             {!started ? (
               <div className="flex items-center gap-1 text-[#6D75C0] font-medium text-xs sm:text-xs bg-[#F3F6FB] rounded px-2 py-1 sm:py-0.5 shadow-sm font-fira-sans">
                 <Clock seconds={timeToStart > 600 ? 600 : timeToStart} total={600} color="#6D75C0" />
@@ -287,7 +287,7 @@ const ProximaConsultaCard: React.FC<ProximaConsultaCardProps> = ({
           </div>
         </div>
         {/* Botões - alinhados na base, espaçamento ajustado */}
-        <div className="flex gap-3 sm:gap-2 w-full mt-auto pt-2">
+        <div className="flex gap-3 sm:gap-2 w-full mt-auto pt-2 pl-4 sm:pl-0">
           <button
             className="flex-1 border border-[#6D75C0] text-[#6D75C0] bg-white rounded-[6px] py-2 sm:py-1.5 text-base sm:text-sm font-medium transition hover:bg-[#F3F6FB] font-fira-sans"
           >

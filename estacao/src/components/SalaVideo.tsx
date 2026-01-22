@@ -498,6 +498,7 @@ export default function SalaVideo({ appId, channel, token, uid, role, consultati
 
   // Ref para controlar encerramento automático (evitar múltiplas execuções)
   const autoEndTriggered = useRef(false);
+  const joinFallbackAttemptedRef = useRef(false);
 
   // Ref para controlar sincronização de duração (evitar envios repetidos)
   const lastSyncedDuration = useRef(0);
@@ -589,17 +590,21 @@ export default function SalaVideo({ appId, channel, token, uid, role, consultati
 
         // Converte role para formato do backend
         const backendRole = role === "PATIENT" ? "Patient" : "Psychologist";
+        const joinUserId =
+          (backendRole === "Patient" ? getPacienteId() : getPsicologoId()) ||
+          loggedUserId ||
+          String(uid);
         
         // Notifica o backend via Socket que entrou na consulta
         await joinConsultation({
           consultationId: consultationIdString,
-          userId: uid,
+          userId: joinUserId,
           role: backendRole
         });
 
         console.log("✅ [SalaVideo] Notificado backend - Usuário entrou na consulta", {
           consultationId: consultationIdString,
-          userId: uid,
+          userId: joinUserId,
           role: backendRole
         });
       } catch (error) {
@@ -613,17 +618,77 @@ export default function SalaVideo({ appId, channel, token, uid, role, consultati
       if (joined && socket && socket.connected && consultationIdString) {
         // Notifica o backend via Socket que saiu da consulta
         try {
-          leaveConsultation(consultationIdString, uid);
+          const leaveUserId =
+            (role === "PATIENT" ? getPacienteId() : getPsicologoId()) ||
+            loggedUserId ||
+            String(uid);
+          leaveConsultation(consultationIdString, leaveUserId);
           console.log("🚪 [SalaVideo] Notificado backend - Usuário saiu da consulta", {
             consultationId: consultationIdString,
-            userId: uid
+            userId: leaveUserId
           });
         } catch (error) {
           console.error("❌ [SalaVideo] Erro ao fazer leave da consulta:", error);
         }
       }
     };
-  }, [joined, isConnected, consultationIdString, uid, role, socket]);
+  }, [joined, isConnected, consultationIdString, uid, role, socket, getPacienteId, getPsicologoId, loggedUserId]);
+
+  // Fallback: se o socket não registrar entrada, marca via API ao entrar na /room
+  const markJoinedAtFallback = useCallback(async () => {
+    if (joinFallbackAttemptedRef.current || !consultationIdString) return;
+
+    const backendRole = role === "PATIENT" ? "Patient" : "Psychologist";
+    const userId =
+      (backendRole === "Patient" ? getPacienteId() : getPsicologoId()) ||
+      loggedUserId ||
+      String(uid);
+
+    if (!userId) return;
+
+    const reservaData = (reservaSessaoFinal || reservaSessao) as Partial<{
+      PatientJoinedAt?: string | Date | null;
+      PsychologistJoinedAt?: string | Date | null;
+    }> | null;
+
+    const alreadyJoined =
+      backendRole === "Patient"
+        ? !!reservaData?.PatientJoinedAt
+        : !!reservaData?.PsychologistJoinedAt;
+
+    if (alreadyJoined) return;
+
+    joinFallbackAttemptedRef.current = true;
+
+    try {
+      await api.post(`/reserva-sessao/${consultationIdString}/join`, {
+        userId,
+        role: backendRole,
+      });
+      await refetchReservaSessao();
+      console.log("✅ [SalaVideo] JoinedAt atualizado via fallback", {
+        consultationId: consultationIdString,
+        role: backendRole,
+        userId,
+      });
+    } catch (error) {
+      console.warn("⚠️ [SalaVideo] Falha ao atualizar JoinedAt via fallback:", error);
+    }
+  }, [
+    consultationIdString,
+    role,
+    getPacienteId,
+    getPsicologoId,
+    loggedUserId,
+    uid,
+    reservaSessaoFinal,
+    reservaSessao,
+    refetchReservaSessao,
+  ]);
+
+  useEffect(() => {
+    void markJoinedAtFallback();
+  }, [markJoinedAtFallback]);
 
   // Garante que o socket esteja conectado quando necessário e monitora durante a consulta
   // Também garante que o socket entre na sala da consulta e escute os eventos corretos
@@ -2812,7 +2877,7 @@ export default function SalaVideo({ appId, channel, token, uid, role, consultati
           {/* PiP - Vídeo Local (Você) no canto inferior direito - otimizado para mobile */}
           {/* Quando modal de avaliação está aberto (para paciente), esconde o PiP local */}
           {!(role === "PATIENT" && showEvaluation) && (
-          <div className="absolute bottom-20 sm:bottom-24 md:bottom-28 right-2 sm:right-3 w-[100px] h-[75px] xs:w-[120px] xs:h-[90px] sm:w-[160px] sm:h-[120px] md:w-[200px] md:h-[150px] lg:w-[240px] lg:h-[180px] xl:w-[280px] xl:h-[210px] rounded-lg overflow-hidden shadow-2xl border-2 border-white/90 bg-black z-20">
+          <div className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] sm:bottom-[calc(6rem+env(safe-area-inset-bottom))] right-2 sm:right-3 w-[100px] h-[75px] xs:w-[120px] xs:h-[90px] sm:w-[160px] sm:h-[120px] md:w-[200px] md:h-[150px] lg:w-[240px] lg:h-[180px] xl:w-[280px] xl:h-[210px] rounded-lg overflow-hidden shadow-2xl border-2 border-white/90 bg-black z-40">
             <div 
               ref={localVideoRef}
               id="agora-video-local" 

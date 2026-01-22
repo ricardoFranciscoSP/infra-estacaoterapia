@@ -28,7 +28,10 @@ export function useProtectedRoute(requiredRole?: string) {
 
         // Verifica se há token de autenticação antes de redirecionar
         const hasToken = typeof window !== 'undefined'
-            ? !!parseCookies().token
+            ? (() => {
+                const cookies = parseCookies();
+                return !!(cookies.auth || cookies['user-data-client'] || cookies.token);
+            })()
             : false;
 
         // Se não há usuário, busca do backend (apenas uma vez)
@@ -46,12 +49,17 @@ export function useProtectedRoute(requiredRole?: string) {
                 redirectTimeoutRef.current = setTimeout(() => {
                     // Verifica novamente se ainda não há usuário e não há token
                     const stillNoToken = typeof window !== 'undefined'
-                        ? !parseCookies().token
+                        ? (() => {
+                            const cookies = parseCookies();
+                            return !(cookies.auth || cookies['user-data-client'] || cookies.token);
+                        })()
                         : true;
 
                     if (stillNoToken) {
                         console.warn('[useProtectedRoute] Usuário não encontrado e sem token, redirecionando para login');
-                        router.replace("/login");
+                        const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
+                        const loginPath = currentPath.startsWith('/adm-') ? '/adm-login' : '/login';
+                        router.replace(loginPath);
                     }
                 }, 3000); // Aguarda 3 segundos
             }
@@ -62,7 +70,9 @@ export function useProtectedRoute(requiredRole?: string) {
         // Se usuário existe, mas não tem Role, redireciona para login
         if (!user.Role) {
             console.warn('[useProtectedRoute] Usuário sem Role, redirecionando para login');
-            router.replace("/login");
+            const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
+            const loginPath = currentPath.startsWith('/adm-') ? '/adm-login' : '/login';
+            router.replace(loginPath);
             return;
         }
 

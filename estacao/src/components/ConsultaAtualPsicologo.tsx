@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useMemo } from "react";
+import { useEnsureMediaPermissions } from "../hooks/useEnsureMediaPermissions";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import toast from "react-hot-toast";
@@ -85,6 +86,8 @@ const ANIMATION_VARIANTS = {
 } as const;
 
 export default function ConsultaAtualPsicologo({ consulta: consultaProp = null, hidePerfil = false }: ConsultaAtualPsicologoProps) {
+  // Solicita permissões de mídia ao entrar na sessão
+  const { hasPermissions, loading: loadingPermissions, error: permissionsError } = useEnsureMediaPermissions();
   const router = useRouter();
   const [showModal, setShowModal] = useState<boolean>(false);
   const [showModalCancelar, setShowModalCancelar] = useState<boolean>(false);
@@ -743,8 +746,26 @@ export default function ConsultaAtualPsicologo({ consulta: consultaProp = null, 
     handleAbrirModalConsulta();
   };
 
+
+  // Exibe feedback se estiver carregando permissões ou se houve erro
   if (!deveMostrar || !normalized || !consultaApi) {
     return null;
+  }
+  if (loadingPermissions) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[200px]">
+        <span className="text-lg text-gray-700">Solicitando permissões de câmera e microfone...</span>
+      </div>
+    );
+  }
+  if (!hasPermissions) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[200px]">
+        <span className="text-lg text-red-600 font-semibold mb-2">Permissões de câmera e microfone não concedidas.</span>
+        {permissionsError && <span className="text-sm text-gray-500">{permissionsError}</span>}
+        <span className="text-sm text-gray-500 mt-2">Para acessar a sessão, conceda as permissões solicitadas pelo navegador.</span>
+      </div>
+    );
   }
 
   const isCancelada = statusBadge === "Cancelado";

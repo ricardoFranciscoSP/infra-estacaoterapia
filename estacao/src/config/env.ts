@@ -186,7 +186,7 @@ export function getApiUrl(): string {
     return ENVIRONMENT_URLS.staging;
   }
 
-  if (hostname === 'estacaoterapia.com.br') {
+  if (hostname === 'estacaoterapia.com.br' || hostname === 'www.estacaoterapia.com.br') {
     return ENVIRONMENT_URLS.production;
   }
 

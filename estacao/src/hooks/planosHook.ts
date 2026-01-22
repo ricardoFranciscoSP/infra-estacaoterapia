@@ -35,7 +35,11 @@ export function usePlanoById(id: string) {
             return undefined;
         },
         retry: 1,
-        staleTime: 5 * 60 * 1000,
+        staleTime: 0,
+        gcTime: 0,
+        refetchOnWindowFocus: true,
+        refetchOnMount: true,
+        refetchOnReconnect: true,
         enabled: !!id,
     });
 

@@ -46,6 +46,7 @@ export default function ConsultaModal({
     consultaId,
     sessaoAtiva,
     statusCancelamento,
+    status,
     onAbrirCancelar,
 }: ConsultaModalProps) {
     const router = useRouter();

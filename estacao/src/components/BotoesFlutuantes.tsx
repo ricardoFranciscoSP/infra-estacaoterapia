@@ -52,13 +52,13 @@ export default function BotoesFlutuantes({
   const isPsychologist = role === "PSYCHOLOGIST";
 
   return (
-    <div className="fixed left-1/2 -translate-x-1/2 bottom-3 sm:bottom-4 md:bottom-6 flex flex-row items-center justify-center gap-1.5 sm:gap-2 md:gap-3 w-auto z-40 max-w-[calc(100vw-1rem)] px-2">
-      {/* Microfone - switch - otimizado para mobile */}
-      <div className="flex items-center gap-1 bg-indigo-100/95 backdrop-blur-sm rounded-full px-1.5 sm:px-2 py-1.5 sm:py-1 shadow-lg w-[44px] h-[44px] sm:w-[44px] sm:h-[44px]">
-        <div className="flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-indigo-400 shrink-0">
+    <div className="fixed left-1/2 -translate-x-1/2 bottom-3 sm:bottom-4 md:bottom-6 flex flex-row items-center justify-center gap-2 sm:gap-3 w-auto z-40 max-w-[calc(100vw-1rem)] px-2">
+      {/* Microfone - botão deslizante */}
+      <div className="flex items-center gap-2 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-full px-2 h-11 sm:h-12 shadow-lg">
+        <div className="flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-indigo-500/90 shrink-0">
           <Image src="/assets/icons/Icon-mic.svg" alt="Mic" width={18} height={18} className="sm:w-5 sm:h-5" />
         </div>
-        <label className="flex items-center justify-center cursor-pointer w-full h-full">
+        <label className="flex items-center justify-center cursor-pointer">
           <input
             type="checkbox"
             checked={micOn}
@@ -66,19 +66,20 @@ export default function BotoesFlutuantes({
             className="sr-only"
             aria-label="Alternar microfone"
           />
-          <div className={`w-6 h-3.5 sm:w-7 sm:h-4 flex items-center rounded-full p-0.5 sm:p-1 transition-colors ${micOn ? "bg-indigo-500" : "bg-gray-300"}`}>
+          <div className={`w-10 h-5 sm:w-11 sm:h-6 flex items-center rounded-full p-0.5 transition-colors ${micOn ? "bg-indigo-500" : "bg-gray-300"}`}>
             <div
-              className={`w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 bg-white rounded-full shadow transform transition-transform duration-300 ${micOn ? "translate-x-2.5 sm:translate-x-3" : "translate-x-0"}`}
+              className={`w-4 h-4 sm:w-5 sm:h-5 bg-white rounded-full shadow transform transition-transform duration-200 ${micOn ? "translate-x-5 sm:translate-x-5" : "translate-x-0"}`}
             />
           </div>
         </label>
       </div>
-      {/* Câmera - switch - otimizado para mobile */}
-      <div className="flex items-center gap-1 bg-indigo-100/95 backdrop-blur-sm rounded-full px-1.5 sm:px-2 py-1.5 sm:py-1 shadow-lg w-[44px] h-[44px] sm:w-[44px] sm:h-[44px]">
-        <div className="flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-indigo-400 shrink-0">
+
+      {/* Câmera - botão deslizante */}
+      <div className="flex items-center gap-2 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-full px-2 h-11 sm:h-12 shadow-lg">
+        <div className="flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-indigo-500/90 shrink-0">
           <Image src="/assets/icons/Icon-camera.svg" alt="Cam" width={18} height={18} className="sm:w-5 sm:h-5" />
         </div>
-        <label className="flex items-center justify-center cursor-pointer w-full h-full">
+        <label className="flex items-center justify-center cursor-pointer">
           <input
             type="checkbox"
             checked={camOn}
@@ -86,9 +87,9 @@ export default function BotoesFlutuantes({
             className="sr-only"
             aria-label="Alternar câmera"
           />
-          <div className={`w-6 h-3.5 sm:w-7 sm:h-4 flex items-center rounded-full p-0.5 sm:p-1 transition-colors ${camOn ? "bg-indigo-500" : "bg-gray-300"}`}>
+          <div className={`w-10 h-5 sm:w-11 sm:h-6 flex items-center rounded-full p-0.5 transition-colors ${camOn ? "bg-indigo-500" : "bg-gray-300"}`}>
             <div
-              className={`w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 bg-white rounded-full shadow transform transition-transform duration-300 ${camOn ? "translate-x-2.5 sm:translate-x-3" : "translate-x-0"}`}
+              className={`w-4 h-4 sm:w-5 sm:h-5 bg-white rounded-full shadow transform transition-transform duration-200 ${camOn ? "translate-x-5 sm:translate-x-5" : "translate-x-0"}`}
             />
           </div>
         </label>
@@ -98,8 +99,9 @@ export default function BotoesFlutuantes({
       {isPsychologist && (
         <div className="relative" ref={menuRef}>
           <button
+            type="button"
             onClick={() => setMenuOpen(!menuOpen)}
-            className="flex items-center justify-center w-[44px] h-[44px] sm:w-[44px] sm:h-[44px] rounded-xl bg-gray-200/95 backdrop-blur-sm hover:bg-gray-300 transition-colors shadow-lg"
+            className="flex items-center justify-center w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-white/90 backdrop-blur-sm border border-gray-200 hover:bg-white transition-colors shadow-lg"
             title="Menu de opções"
             aria-label="Menu de opções"
             aria-expanded={menuOpen}
@@ -159,17 +161,20 @@ export default function BotoesFlutuantes({
       
       {/* Encerrar - otimizado para mobile */}
       <button
+        type="button"
         onClick={handleLeave}
         onMouseEnter={() => onLeaveHover?.()}
         disabled={isProcessingExit}
-        className={`flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 h-[44px] sm:h-[44px] rounded-full text-white text-xs sm:text-sm font-semibold shadow-lg transition-colors ${
-          isProcessingExit 
-            ? 'bg-red-500 cursor-not-allowed opacity-70' 
-            : 'bg-red-700 hover:bg-red-800 cursor-pointer'
+        className={`flex items-center gap-2 pl-1.5 pr-4 sm:pr-5 h-11 sm:h-12 rounded-full text-white text-xs sm:text-sm font-semibold shadow-lg transition-colors ${
+          isProcessingExit
+            ? "bg-red-500 cursor-not-allowed opacity-70"
+            : "bg-red-700 hover:bg-red-800 cursor-pointer"
         }`}
       >
-        <Image src="/icons/exit.svg" alt="Sair" width={16} height={16} className="w-4 h-4 sm:w-5 sm:h-5" />
-        <span>{isProcessingExit ? 'Processando...' : 'Sair'}</span>
+        <span className="flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/20">
+          <Image src="/icons/exit.svg" alt="Sair" width={16} height={16} className="w-4 h-4 sm:w-5 sm:h-5" />
+        </span>
+        <span>{isProcessingExit ? "Processando..." : "Sair"}</span>
       </button>
     </div>
   );

@@ -121,7 +121,7 @@ export const tokenManualService = () => {
           params: { limit, consultaId },
         });
         return response.data;
-      } catch (error) {
+      } catch {
         const fallback = await listGeneratedTokensFallback(limit, consultaId);
         return fallback;
       }
