@@ -56,6 +56,11 @@ export default function AdminDashboard() {
   const userName = user?.Nome;
   const [isModalCancelamentosOpen, setIsModalCancelamentosOpen] = useState(false);
   const [isModalConsultasMesOpen, setIsModalConsultasMesOpen] = useState(false);
+  const [now, setNow] = useState<Date | null>(null);
+
+  useEffect(() => {
+    setNow(new Date());
+  }, []);
 
   // Hook para buscar psicólogos
   const { psicologos, isLoading: isPsicologosLoading, refetch } = useAdmPsicologo();
@@ -361,7 +366,15 @@ export default function AdminDashboard() {
               <p className="text-xs sm:text-sm text-[#6C757D] mt-1">Olá, {userName}! Aqui está um resumo do sistema.</p>
             </div>
             <div className="text-xs sm:text-sm text-[#6C757D] font-medium whitespace-nowrap flex-shrink-0">
-              {new Date().toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+              {now
+                ? now.toLocaleString("pt-BR", {
+                    day: "2-digit",
+                    month: "2-digit",
+                    year: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })
+                : "--/--/---- --:--"}
             </div>
           </div>
 

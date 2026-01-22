@@ -13,6 +13,8 @@ chmod 1777 /tmp /run 2>/dev/null || true
 # Diretório de backups
 BACKUP_DIR="${BACKUP_DIR:-/app/backups}"
 mkdir -p "$BACKUP_DIR" 2>/dev/null || true
+# Força posse e permissão (resolve problemas de volume do host)
+chown -R $(id -u):$(id -g) "$BACKUP_DIR" 2>/dev/null || true
 chmod 775 "$BACKUP_DIR" 2>/dev/null || true
 [ ! -w "$BACKUP_DIR" ] && echo "⚠️  Diretório de backups sem permissão de escrita: $BACKUP_DIR"
 

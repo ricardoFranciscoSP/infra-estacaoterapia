@@ -85,6 +85,7 @@ export default function FinanceiroPage() {
   const hoje = new Date();
   const mesAtual = hoje.getMonth();
   const anoAtual = hoje.getFullYear();
+  const [now, setNow] = useState<Date | null>(null);
   
   // Dados do psicólogo
   const { psicologo } = useUserPsicologo();
@@ -105,6 +106,18 @@ export default function FinanceiroPage() {
   const [showFiltroGrafico, setShowFiltroGrafico] = useState(false);
   const [showFiltroHistorico, setShowFiltroHistorico] = useState(false);
   const [showFiltroAtendimentos, setShowFiltroAtendimentos] = useState(false);
+
+  useEffect(() => {
+    setNow(new Date());
+  }, []);
+
+  const currentMonthYearLabel = now
+    ? now.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
+    : '--';
+  const currentMonthLabel = now
+    ? now.toLocaleDateString('pt-BR', { month: 'long' })
+    : '--';
+  const currentYearLabel = now ? String(now.getFullYear()) : '----';
   
   const { historicoSessoes, pagination, isLoading: isLoadingHistorico } = useHistoricoSessoes(mesFiltro, anoFiltro, page, pageSize);
   const { historicoSessoes: historicoSessoesMesAtual } = useHistoricoSessoes(mesAtual, anoAtual, 1, 1000); // Buscar todas as sessões do mês atual
@@ -1002,7 +1015,7 @@ export default function FinanceiroPage() {
                     <div className="p-7 flex-1 overflow-y-auto">
                       <div className="mb-4">
                         <div className="text-[16px] text-gray-700 mb-2 font-semibold">
-                          {`${new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}`}
+                          {currentMonthYearLabel}
                         </div>
                         <div className="text-[14px] text-gray-600">
                           Total recebido: <span className="font-bold text-[#6D75C0]">R$ {valorRecebidoMesAtual.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
@@ -1065,7 +1078,7 @@ export default function FinanceiroPage() {
                 <div className="flex flex-col items-start w-full">
                   <span className="fira-sans font-medium text-[16px] leading-[24px] text-[#26220D] mb-1">Valor total recebido</span>
                   <span className="fira-sans font-normal text-[14px] leading-[24px] text-[#49525A] mb-2">
-                    {`${new Date().toLocaleDateString('pt-BR', { month: 'long' })}/${new Date().getFullYear()}`}
+                    {`${currentMonthLabel}/${currentYearLabel}`}
                   </span>
                   <div className="flex w-full h-full items-center justify-center">
                     <span className="fira-sans font-semibold text-[40px] leading-[64px] text-[#444D9D] mb-2 text-center">
@@ -1091,7 +1104,7 @@ export default function FinanceiroPage() {
                     <div className="text-[13px] text-[#6B7280]">
                       {mesFiltroAtendimentos !== undefined 
                         ? `${mesesNomes[mesFiltroAtendimentos]} de ${anoFiltroAtendimentos}`
-                        : `${new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}`
+                        : currentMonthYearLabel
                       }
                     </div>
                   </div>

@@ -69,6 +69,7 @@ function getReviewRating(review: { Rating?: unknown }) {
 export default function PainelPsicologoPage() {
   const [loading, setLoading] = useState(true);
   const [currentDateTime, setCurrentDateTime] = useState("");
+  const [todayLabel, setTodayLabel] = useState("");
   const [mesSelecionado, setMesSelecionado] = useState<number>(new Date().getMonth());
   const [anoSelecionado, setAnoSelecionado] = useState<number>(new Date().getFullYear());
   const [menuFiltroOpen, setMenuFiltroOpen] = useState(false);
@@ -147,6 +148,7 @@ export default function PainelPsicologoPage() {
       minute: "2-digit",
     };
     setCurrentDateTime(now.toLocaleDateString("pt-BR", options));
+    setTodayLabel(now.toLocaleDateString("pt-BR"));
 
     return () => clearTimeout(timer);
   }, []);
@@ -780,7 +782,7 @@ export default function PainelPsicologoPage() {
                 <div>
                   <h2 className="text-sm sm:text-base font-semibold">Próximas consultas</h2>
                   <span className="text-xs text-gray-600 block mt-1">
-                    Hoje: {new Date().toLocaleDateString("pt-BR")}
+                    Hoje: {todayLabel || "--/--/----"}
                   </span>
                 </div>
                 <button className="flex items-center text-[#6D75C0]">
