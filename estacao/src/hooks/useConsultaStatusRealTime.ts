@@ -19,12 +19,10 @@ export function useConsultaStatusRealTime(consulta: ConsultaApi | null) {
 
         const statusReservaSessao = consulta.ReservaSessao?.Status;
         const statusConsulta = statusReservaSessao || consulta.Status || 'Reservado';
+        const statusLower = String(statusConsulta).toLowerCase();
 
         // Se foi cancelada, retorna Cancelada independente da hora
-        if (
-            statusConsulta.toLowerCase().includes('cancelada') ||
-            statusConsulta.toLowerCase().includes('cancelado')
-        ) {
+        if (statusLower.includes('cancel')) {
             setStatusAtual(statusConsulta);
             setStatusTagInfo(getStatusTagInfo(statusConsulta));
             setEmAndamento(false);

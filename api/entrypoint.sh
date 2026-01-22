@@ -97,9 +97,15 @@ check_port() {
 
 can_resolve() {
   host="$1"
-  getent hosts "$host" >/dev/null 2>&1 && return 0
-  nslookup "$host" >/dev/null 2>&1 && return 0
-  ping -c 1 -W 1 "$host" >/dev/null 2>&1 && return 0
+  if command -v getent >/dev/null 2>&1; then
+    getent hosts "$host" >/dev/null 2>&1 && return 0
+  fi
+  if command -v nslookup >/dev/null 2>&1; then
+    nslookup "$host" >/dev/null 2>&1 && return 0
+  fi
+  if command -v ping >/dev/null 2>&1; then
+    ping -c 1 -W 1 "$host" >/dev/null 2>&1 && return 0
+  fi
   return 1
 }
 
@@ -116,7 +122,8 @@ resolve_host_with_fallback() {
   [ -n "$fallback_env" ] && candidates="$candidates $fallback_env"
   [ -n "$defaults" ] && candidates="$candidates $defaults"
 
-  for attempt in $(seq 1 "$retries"); do
+  attempt=1
+  while [ "$attempt" -le "$retries" ]; do
     for host in $candidates; do
       if can_resolve "$host"; then
         export "$var_name=$host"
@@ -126,6 +133,7 @@ resolve_host_with_fallback() {
     done
     echo "⏳ DNS $label não resolveu ($attempt/$retries), aguardando ${delay}s..."
     sleep "$delay"
+    attempt=$((attempt + 1))
   done
 
   echo "⚠️  DNS $label não resolveu, usando fallback: $primary"

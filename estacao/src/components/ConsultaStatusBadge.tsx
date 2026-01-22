@@ -3,11 +3,14 @@
 import React from 'react';
 import { useConsultaStatusRealTime } from '@/hooks/useConsultaStatusRealTime';
 import { ConsultaApi } from '@/types/consultasTypes';
+import { getStatusTagInfo } from '@/utils/statusConsulta.util';
 
 interface ConsultaStatusBadgeProps {
   consulta: ConsultaApi | null;
   className?: string;
   showTimer?: boolean;
+  forceStatus?: string;
+  showLiveIndicator?: boolean;
 }
 
 /**
@@ -18,27 +21,31 @@ interface ConsultaStatusBadgeProps {
 export function ConsultaStatusBadge({ 
   consulta, 
   className = '',
-  showTimer = false 
+  showTimer = false,
+  forceStatus,
+  showLiveIndicator = true,
 }: ConsultaStatusBadgeProps) {
   const { statusTagInfo, tempoRestante, emAndamento } = useConsultaStatusRealTime(consulta);
+  const isForced = Boolean(forceStatus);
+  const finalStatusTag = isForced ? getStatusTagInfo(forceStatus as string) : statusTagInfo;
 
   return (
     <div className={`flex items-center gap-2 ${className}`}>
       <span 
-        className={`px-3 py-1 rounded-full text-xs font-semibold ${statusTagInfo.bg} ${statusTagInfo.text} shadow`}
+        className={`px-3 py-1 rounded-full text-xs font-semibold ${finalStatusTag.bg} ${finalStatusTag.text} shadow`}
       >
-        {statusTagInfo.texto}
+        {finalStatusTag.texto}
       </span>
       
       {/* Timer de duração da consulta */}
-      {emAndamento && showTimer && tempoRestante && (
+      {!isForced && emAndamento && showTimer && tempoRestante && (
         <span className="px-2 py-1 rounded text-xs font-medium bg-yellow-100 text-yellow-700 animate-pulse">
           ⏱️ {tempoRestante}
         </span>
       )}
 
       {/* Indicador pulsante para em andamento */}
-      {emAndamento && (
+      {!isForced && showLiveIndicator && emAndamento && (
         <div className="flex items-center gap-1">
           <span className="inline-flex h-2 w-2 rounded-full bg-green-500 animate-pulse"></span>
           <span className="text-xs text-green-600 font-medium">Ao vivo</span>

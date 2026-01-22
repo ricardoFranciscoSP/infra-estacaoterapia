@@ -41,6 +41,8 @@ interface ConsultaCardProps {
   onAbrirCancelar?: (consultaId?: string | number) => void;
   // Prop para indicar se é painel do psicólogo (ajusta estilo e remove Reagendar)
   isPsicologoPanel?: boolean;
+  supportOnly?: boolean;
+  statusOverride?: string;
 }
 
 const BADGE_VARIANTS = {
@@ -59,6 +61,8 @@ export function ConsultaCard({
   isLoadingEntry = false,
   onAbrirCancelar,
   isPsicologoPanel = false,
+  supportOnly = false,
+  statusOverride,
 }: ConsultaCardProps) {
   const [showModal, setShowModal] = useState(false);
   const [showModalReagendar, setShowModalReagendar] = useState(false);
@@ -88,6 +92,8 @@ export function ConsultaCard({
       setShowModalReagendar(true);
     }
   };
+
+  const showPrimaryActions = !supportOnly;
 
   return (
     <>
@@ -168,14 +174,19 @@ export function ConsultaCard({
                 transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
                 className="absolute top-4 right-4 sm:hidden z-10"
               >
-                <ConsultaStatusBadge consulta={consulta} showTimer={true} />
+                <ConsultaStatusBadge
+                  consulta={consulta}
+                  showTimer={!supportOnly}
+                  forceStatus={statusOverride}
+                  showLiveIndicator={!supportOnly}
+                />
               </motion.div>
             )}
 
             {/* Mobile Layout */}
             <div className="flex flex-col sm:hidden gap-4 h-full">
               {/* Contador no mobile (se houver) - estilo consultas restantes com ícone de relógio */}
-              {contador?.mostrar && (
+              {contador?.mostrar && !supportOnly && (
                 <div className="flex items-center gap-2 rounded-lg px-3 py-1.5 bg-[#E6E9FF] w-fit mt-2">
                   <ClockIcon className="w-4 h-4 text-[#8494E9] shrink-0" />
                   {contador.frase && (
@@ -240,7 +251,7 @@ export function ConsultaCard({
               {/* Botões de ação no mobile */}
               <div className="flex flex-col gap-2 w-full">
                 {/* Botões condicionais: Acessar consulta ou Reagendar - aparece primeiro */}
-                {actions?.onEntrar ? (
+                {showPrimaryActions && actions?.onEntrar ? (
                   <div className="flex gap-2 w-full">
                     <button
                       onClick={actions.onEntrar}
@@ -266,7 +277,7 @@ export function ConsultaCard({
                   </div>
                 ) : (
                   /* Botão Reagendar - aparece primeiro, oculto quando o botão de suporte está visível ou se for painel do psicólogo */
-                  !mostrarBotaoSuporte && !isPsicologoPanel && (
+                  showPrimaryActions && !mostrarBotaoSuporte && !isPsicologoPanel && (
                     <button
                       onClick={handleReagendar}
                       className="w-full h-[40px] border border-[#6D75C0] text-[#6D75C0] font-medium text-xs rounded-[6px] px-3 transition hover:bg-[#E6E9FF] whitespace-nowrap cursor-pointer"
@@ -287,12 +298,14 @@ export function ConsultaCard({
                 )}
 
                 {/* Ver detalhes aparece por último */}
-                <button
-                  onClick={handleVerDetalhes}
-                  className="w-full h-[40px] bg-[#8494E9] text-white font-medium text-xs rounded-[6px] px-3 transition hover:bg-[#6D75C0] whitespace-nowrap cursor-pointer"
-                >
-                  Ver detalhes
-                </button>
+                {showPrimaryActions && (
+                  <button
+                    onClick={handleVerDetalhes}
+                    className="w-full h-[40px] bg-[#8494E9] text-white font-medium text-xs rounded-[6px] px-3 transition hover:bg-[#6D75C0] whitespace-nowrap cursor-pointer"
+                  >
+                    Ver detalhes
+                  </button>
+                )}
               </div>
             </div>
 
@@ -367,7 +380,12 @@ export function ConsultaCard({
                       animate={{ scale: 1, opacity: 1 }}
                       transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
                     >
-                      <ConsultaStatusBadge consulta={consulta} showTimer={true} />
+                    <ConsultaStatusBadge
+                      consulta={consulta}
+                      showTimer={!supportOnly}
+                      forceStatus={statusOverride}
+                      showLiveIndicator={!supportOnly}
+                    />
                     </motion.div>
                   )}
                 </div>
@@ -394,7 +412,7 @@ export function ConsultaCard({
                 {/* Botões de ação - fixos na parte inferior do card, alinhados à direita */}
                 <div className="flex flex-row gap-3 justify-end">
                   {/* Botões condicionais: Acessar consulta ou Reagendar */}
-                  {actions?.onEntrar ? (
+                  {showPrimaryActions && actions?.onEntrar ? (
                     <>
                       <button
                         onClick={actions.onEntrar}
@@ -420,7 +438,7 @@ export function ConsultaCard({
                     </>
                   ) : (
                     /* Botão Reagendar - à esquerda, oculto se for painel do psicólogo */
-                    !mostrarBotaoSuporte && !isPsicologoPanel && (
+                    showPrimaryActions && !mostrarBotaoSuporte && !isPsicologoPanel && (
                       <button
                         onClick={handleReagendar}
                         className="min-h-[44px] h-11 border border-[#6D75C0] text-[#6D75C0] font-medium text-sm rounded-[6px] px-4 transition hover:bg-[#E6E9FF] hover:text-[#232A5C] whitespace-nowrap cursor-pointer"
@@ -431,12 +449,14 @@ export function ConsultaCard({
                   )}
 
                   {/* Ver detalhes - à direita */}
-                  <button
-                    onClick={handleVerDetalhes}
-                    className="min-h-[44px] h-11 bg-[#8494E9] text-white font-medium text-sm rounded-[6px] px-4 transition hover:bg-[#6D75C0] hover:text-white whitespace-nowrap cursor-pointer"
-                  >
-                    Ver detalhes
-                  </button>
+                  {showPrimaryActions && (
+                    <button
+                      onClick={handleVerDetalhes}
+                      className="min-h-[44px] h-11 bg-[#8494E9] text-white font-medium text-sm rounded-[6px] px-4 transition hover:bg-[#6D75C0] hover:text-white whitespace-nowrap cursor-pointer"
+                    >
+                      Ver detalhes
+                    </button>
+                  )}
 
                   {/* Fale com o Suporte - aparece ao lado se necessário */}
                   {mostrarBotaoSuporte && actions?.onSuporte && (

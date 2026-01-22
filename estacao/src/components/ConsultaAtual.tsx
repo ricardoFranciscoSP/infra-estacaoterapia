@@ -741,10 +741,11 @@ export default function ConsultaAtual({ consulta: consultaProp = null, role = "p
 
   // Se a consulta está cancelada, força esconder contador e botão entrar
   const isCancelada = statusBadge === "Cancelado";
-  const finalButtons = isCancelada
+  const supportOnly = buttons.mostrarBotaoSuporte || isCancelada;
+  const finalButtons = supportOnly
     ? { mostrarBotaoEntrar: false, mostrarBotaoSuporte: true, botaoEntrarDesabilitado: true }
     : buttons;
-  const finalMostrarContador = isCancelada ? false : mostrarContador;
+  const finalMostrarContador = supportOnly ? false : mostrarContador;
   const contadorFinal = contador50MinutosAtualizado.estaDentroDoPeriodo
     ? contador50MinutosAtualizado.tempoFormatado
     : contadorSessao;
@@ -763,14 +764,20 @@ export default function ConsultaAtual({ consulta: consultaProp = null, role = "p
         botaoEntrarDesabilitado={finalButtons.botaoEntrarDesabilitado}
         isLoadingEntry={isCheckingTokens || isProcessingEntry}
         mostrarBotaoSuporte={finalButtons.mostrarBotaoSuporte}
-        contador={finalMostrarContador && contador50MinutosAtualizado.estaDentroDoPeriodo && contadorFinal ? {
-          frase: fraseSessao,
-          tempo: contadorFinal,
-          mostrar: true,
-        } : undefined}
+        supportOnly={supportOnly}
+        statusOverride={isCancelada ? "Cancelado" : undefined}
+        contador={
+          !supportOnly && finalMostrarContador && contador50MinutosAtualizado.estaDentroDoPeriodo && contadorFinal
+            ? {
+                frase: fraseSessao,
+                tempo: contadorFinal,
+                mostrar: true,
+              }
+            : undefined
+        }
         actions={{
-          onEntrar: finalButtons.mostrarBotaoEntrar ? handleEntrarNaConsulta : undefined,
-          onVerDetalhes: handleVerDetalhes,
+          onEntrar: !supportOnly && finalButtons.mostrarBotaoEntrar ? handleEntrarNaConsulta : undefined,
+          onVerDetalhes: supportOnly ? undefined : handleVerDetalhes,
           onVerPerfil: shouldShowPerfil && perfilHref ? () => router.push(perfilHref) : undefined,
           onSuporte: finalButtons.mostrarBotaoSuporte ? handleSuporte : undefined,
         }}

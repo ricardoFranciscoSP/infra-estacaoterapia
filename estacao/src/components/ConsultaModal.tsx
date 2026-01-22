@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { obterPrimeiroUltimoNome } from "@/utils/nomeUtils";
@@ -52,6 +52,7 @@ export default function ConsultaModal({
     const [isMobile, setIsMobile] = useState(false);
     const { checkAndGenerateTokens, isLoading: isCheckingTokens } = useCheckTokens();
     const [isProcessingEntry, setIsProcessingEntry] = useState(false);
+    const [now, setNow] = useState(() => new Date());
 
     // Handler para cancelar consulta
     const handleCancelarConsulta = (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -96,6 +97,15 @@ export default function ConsultaModal({
         window.addEventListener("resize", checkMobile);
         return () => window.removeEventListener("resize", checkMobile);
     }, []);
+
+    useEffect(() => {
+        if (!open) return;
+        setNow(new Date());
+        const interval = setInterval(() => {
+            setNow(new Date());
+        }, 10000);
+        return () => clearInterval(interval);
+    }, [open]);
 
     // Fecha o modal ao pressionar ESC (funciona no Mac também)
     useEscapeKey(open, onClose);
@@ -203,13 +213,35 @@ export default function ConsultaModal({
     // Se a data vier em formato ISO ou com timezone, extrai apenas a parte da data
     const dataParaFormatar = consulta.data ? (consulta.data.includes('T') ? consulta.data.split('T')[0] : consulta.data.split(' ')[0]) : "";
     const dataFormatada = formatarDataCompleta(dataParaFormatar || consulta.data);
+    const isCancelada =
+        statusCancelamento === "Cancelado" ||
+        statusCancelamento === "cancelled_by_patient" ||
+        statusCancelamento === "cancelled_by_psychologist";
+
+    const cancelamentoBloqueado = useMemo(() => {
+        if (isCancelada) return true;
+        if (!dataParaFormatar || !consulta.horario) return false;
+        const [ano, mes, dia] = dataParaFormatar.split("-");
+        const [hora, minuto] = consulta.horario.split(":");
+        if (!ano || !mes || !dia || !hora || !minuto) return false;
+        const inicioSessao = new Date(
+            Number(ano),
+            Number(mes) - 1,
+            Number(dia),
+            Number(hora),
+            Number(minuto),
+            0,
+            0
+        );
+        if (Number.isNaN(inicioSessao.getTime())) return false;
+        return now.getTime() >= inicioSessao.getTime() + 10 * 60 * 1000;
+    }, [consulta.horario, dataParaFormatar, isCancelada, now]);
 
     // Versão Mobile
     if (isMobile) {
-        const isCancelada = statusCancelamento === "Cancelado" || statusCancelamento === "cancelled_by_patient" || statusCancelamento === "cancelled_by_psychologist";
         const motivoCancelamento = statusCancelamento === "cancelled_by_patient"
             ? "Cancelada por ausência do paciente."
-            : statusCancelamento === "cancelled_by_psicologo"
+            : statusCancelamento === "cancelled_by_psychologist"
             ? "Cancelada por ausência do psicólogo."
             : statusCancelamento === "Cancelado"
             ? "Consulta cancelada."
@@ -302,11 +334,17 @@ export default function ConsultaModal({
                                                             <button
                                                                 type="button"
                                                                 onClick={(e) => {
+                                                                    if (cancelamentoBloqueado) return;
                                                                     console.log('[ConsultaModal] Botão Cancelar clicado (mobile)');
                                                                     handleCancelarConsulta(e);
                                                                 }}
                                                                 aria-label="Cancelar consulta"
-                                                                className="w-1/2 h-10 rounded-[6px] fira-sans border border-[#6D75C0] text-[#6D75C0] font-medium text-base bg-white hover:bg-[#E6E9FF] transition cursor-pointer"
+                                                                disabled={cancelamentoBloqueado}
+                                                                className={`w-1/2 h-10 rounded-[6px] fira-sans border font-medium text-base transition ${
+                                                                    cancelamentoBloqueado
+                                                                        ? "border-gray-300 text-gray-400 bg-gray-100 cursor-not-allowed"
+                                                                        : "border-[#6D75C0] text-[#6D75C0] bg-white hover:bg-[#E6E9FF] cursor-pointer"
+                                                                }`}
                                                             >
                                                                 Cancelar consulta
                                                             </button>
@@ -332,11 +370,17 @@ export default function ConsultaModal({
                                                             <button
                                                                 type="button"
                                                                 onClick={(e) => {
+                                                                    if (cancelamentoBloqueado) return;
                                                                     console.log('[ConsultaModal] Botão Cancelar clicado (mobile - após horário/cancelada)');
                                                                     handleCancelarConsulta(e);
                                                                 }}
                                                                 aria-label="Cancelar consulta"
-                                                                className="w-1/2 h-10 rounded-[6px] fira-sans border border-[#6D75C0] text-[#6D75C0] font-medium text-base bg-white hover:bg-[#E6E9FF] transition cursor-pointer"
+                                                                disabled={cancelamentoBloqueado}
+                                                                className={`w-1/2 h-10 rounded-[6px] fira-sans border font-medium text-base transition ${
+                                                                    cancelamentoBloqueado
+                                                                        ? "border-gray-300 text-gray-400 bg-gray-100 cursor-not-allowed"
+                                                                        : "border-[#6D75C0] text-[#6D75C0] bg-white hover:bg-[#E6E9FF] cursor-pointer"
+                                                                }`}
                                                             >
                                                                 Cancelar consulta
                                                             </button>
@@ -385,7 +429,6 @@ export default function ConsultaModal({
     }
 
     // Versão Desktop
-    const isCancelada = statusCancelamento === "Cancelado" || statusCancelamento === "cancelled_by_patient" || statusCancelamento === "cancelled_by_psychologist";
     const motivoCancelamento = statusCancelamento === "cancelled_by_patient"
         ? "Cancelada por ausência do paciente."
         : statusCancelamento === "cancelled_by_psychologist"
@@ -483,11 +526,17 @@ export default function ConsultaModal({
                                                         <button
                                                             type="button"
                                                             onClick={(e) => {
+                                                                if (cancelamentoBloqueado) return;
                                                                 console.log('[ConsultaModal] Botão Cancelar clicado (desktop)');
                                                                 handleCancelarConsulta(e);
                                                             }}
                                                             aria-label="Cancelar consulta"
-                                                            className="w-1/2 h-10 rounded-[6px] border border-[#6D75C0] text-[#6D75C0] font-medium text-base bg-white hover:bg-[#E6E9FF] transition cursor-pointer"
+                                                            disabled={cancelamentoBloqueado}
+                                                            className={`w-1/2 h-10 rounded-[6px] border font-medium text-base transition ${
+                                                                cancelamentoBloqueado
+                                                                    ? "border-gray-300 text-gray-400 bg-gray-100 cursor-not-allowed"
+                                                                    : "border-[#6D75C0] text-[#6D75C0] bg-white hover:bg-[#E6E9FF] cursor-pointer"
+                                                            }`}
                                                         >
                                                             Cancelar consulta
                                                         </button>
@@ -521,11 +570,17 @@ export default function ConsultaModal({
                                                     <button
                                                         type="button"
                                                         onClick={(e) => {
+                                                            if (cancelamentoBloqueado) return;
                                                             console.log('[ConsultaModal] Botão Cancelar clicado (desktop - após horário/cancelada)');
                                                             handleCancelarConsulta(e);
                                                         }}
                                                         aria-label="Cancelar consulta"
-                                                        className="w-1/2 h-10 rounded-[6px] border border-[#6D75C0] text-[#6D75C0] font-medium text-base bg-white hover:bg-[#E6E9FF] transition cursor-pointer"
+                                                        disabled={cancelamentoBloqueado}
+                                                        className={`w-1/2 h-10 rounded-[6px] border font-medium text-base transition ${
+                                                            cancelamentoBloqueado
+                                                                ? "border-gray-300 text-gray-400 bg-gray-100 cursor-not-allowed"
+                                                                : "border-[#6D75C0] text-[#6D75C0] bg-white hover:bg-[#E6E9FF] cursor-pointer"
+                                                        }`}
                                                     >
                                                         Cancelar consulta
                                                     </button>

@@ -569,7 +569,10 @@ export default function ConsultaAtualPsicologo({ consulta: consultaProp = null, 
   };
 
   const handleSuporte = () => {
-    window.open("https://wa.me/SEUNUMEROAQUI", "_blank");
+    const mensagem = encodeURIComponent(
+      "Olá, preciso de suporte técnico na Estação Terapia. Tenho dúvidas ou estou com problemas na plataforma."
+    );
+    window.open(`https://wa.me/5511960892131?text=${mensagem}`, "_blank");
   };
 
   // Função para abrir o modal de detalhes da consulta
@@ -728,6 +731,9 @@ export default function ConsultaAtualPsicologo({ consulta: consultaProp = null, 
     return null;
   }
 
+  const isCancelada = statusBadge === "Cancelado";
+  const supportOnly = sessionState.buttons.mostrarBotaoSuporte || isCancelada;
+
   return (
     <motion.section
       className="w-full flex flex-col items-start"
@@ -745,17 +751,27 @@ export default function ConsultaAtualPsicologo({ consulta: consultaProp = null, 
         isLoadingEntry={isCheckingTokens || isProcessingEntry}
         mostrarBotaoSuporte={sessionState.buttons.mostrarBotaoSuporte}
         isPsicologoPanel={true}
-        contador={sessionState.mostrarContador && contador50MinutosAtualizado.estaDentroDoPeriodo && sessionState.contadorSessao ? {
-          frase: sessionState.fraseSessao,
-          tempo: sessionState.contadorSessao,
-          mostrar: true,
-        } : undefined}
-        onAbrirCancelar={() => {
-          setShowModalCancelar(true);
-        }}
+        supportOnly={supportOnly}
+        statusOverride={isCancelada ? "Cancelado" : undefined}
+        contador={
+          !supportOnly && sessionState.mostrarContador && contador50MinutosAtualizado.estaDentroDoPeriodo && sessionState.contadorSessao
+            ? {
+                frase: sessionState.fraseSessao,
+                tempo: sessionState.contadorSessao,
+                mostrar: true,
+              }
+            : undefined
+        }
+        onAbrirCancelar={
+          supportOnly
+            ? undefined
+            : () => {
+                setShowModalCancelar(true);
+              }
+        }
         actions={{
-          onEntrar: handleEntrarNaConsulta,
-          onVerDetalhes: handleVerDetalhes,
+          onEntrar: supportOnly ? undefined : handleEntrarNaConsulta,
+          onVerDetalhes: supportOnly ? undefined : handleVerDetalhes,
           onVerPerfil: shouldShowPerfil && perfilHref ? () => router.push(perfilHref) : undefined,
           onSuporte: sessionState.buttons.mostrarBotaoSuporte ? handleSuporte : undefined,
         }}
