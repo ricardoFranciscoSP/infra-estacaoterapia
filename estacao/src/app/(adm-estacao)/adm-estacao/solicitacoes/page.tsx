@@ -53,70 +53,6 @@ const PlusIcon = () => (
   </svg>
 );
 
-// Todos os tipos de solicitação para adm-estacao
-const TIPOS_SOLICITACAO = [
-  { value: "Acessibilidade para Pessoas Com Deficiência", label: "Acessibilidade para Pessoas Com Deficiência" },
-  { value: "Alteração de Cartão Crédito", label: "Alteração de Cartão Crédito" },
-  { value: "Atraso no Recebimento do Pagamento", label: "Atraso no Recebimento do Pagamento" },
-  { value: "Atualização de Nome Social ou Gênero", label: "Atualização de Nome Social ou Gênero" },
-  { value: "Ausência/erro de notificação de sessão", label: "Ausência/erro de notificação de sessão" },
-  { value: "Cancelamento de Sessão Indevidamente", label: "Cancelamento de Sessão Indevidamente" },
-  { value: "Cobrança após cancelamento do plano", label: "Cobrança após cancelamento do plano" },
-  { value: "Cobrança de Multa Indevida", label: "Cobrança de Multa Indevida" },
-  { value: "Cobrança Recorrente no Cartão de Crédito", label: "Cobrança Recorrente no Cartão de Crédito" },
-  { value: "Compra Efetuada - Saldo Não Creditada", label: "Compra Efetuada - Saldo Não Creditada" },
-  { value: "Conta comprometida / suspeita de invasão", label: "Conta comprometida / suspeita de invasão" },
-  { value: "Contestação de avaliação baixa/negativa (review)", label: "Contestação de avaliação baixa/negativa (review)" },
-  { value: "Contestação de Classificação Programa de Reconhecimento", label: "Contestação de Classificação Programa de Reconhecimento" },
-  { value: "Contestação de dedução contratual por cancelamento", label: "Contestação de dedução contratual por cancelamento" },
-  { value: "Contestação de Penalização", label: "Contestação de Penalização" },
-  { value: "Contestação de Perda de Prazo para Solicitação de Saque", label: "Contestação de Perda de Prazo para Solicitação de Saque" },
-  { value: "Contestação de Premiação e Reconhecimento", label: "Contestação de Premiação e Reconhecimento" },
-  { value: "Denúncia de comportamento inadequado do paciente", label: "Denúncia de comportamento inadequado do paciente" },
-  { value: "Dúvida", label: "Dúvida" },
-  { value: "Dúvida sobre percentual de repasse contratual", label: "Dúvida sobre percentual de repasse contratual" },
-  { value: "Dúvidas sobre regras de cancelamento e reagendamento", label: "Dúvidas sobre regras de cancelamento e reagendamento" },
-  { value: "Erro de login/autenticação ou acesso", label: "Erro de login/autenticação ou acesso" },
-  { value: "Erro na exibição de dados pessoais/profissionais", label: "Erro na exibição de dados pessoais/profissionais" },
-  { value: "Erro na exibição do extrato financeiro (inconsistência)", label: "Erro na exibição do extrato financeiro (inconsistência)" },
-  { value: "Erro no agendamento ou reagendamento de sessões", label: "Erro no agendamento ou reagendamento de sessões" },
-  { value: "Erro no cadastro/upload de documentação", label: "Erro no cadastro/upload de documentação" },
-  { value: "Erro no cálculo da média de avaliações", label: "Erro no cálculo da média de avaliações" },
-  { value: "Fale Conosco", label: "Fale Conosco" },
-  { value: "Falha de conexão na videoconferência ou chat", label: "Falha de conexão na videoconferência ou chat" },
-  { value: "Falta ética do Psicólogo(a)", label: "Falta ética do Psicólogo(a)" },
-  { value: "Migração de Psicólogo(a) PF para PJ", label: "Migração de Psicólogo(a) PF para PJ" },
-  { value: "Mudança de Plano não ocorreu", label: "Mudança de Plano não ocorreu" },
-  { value: "Não recebi o valor integral correspondente às sessões", label: "Não recebi o valor integral correspondente às sessões" },
-  { value: "Necessidade de documento fiscal (NF/recibo)", label: "Necessidade de documento fiscal (NF/recibo)" },
-  { value: "Outras Solicitações", label: "Outras Solicitações" },
-  { value: "Outros Erros em Compras", label: "Outros Erros em Compras" },
-  { value: "Prazo de apresentação de documentação vencida", label: "Prazo de apresentação de documentação vencida" },
-  { value: "Problema ao solicitar saque", label: "Problema ao solicitar saque" },
-  { value: "Problemas na Transação do Pix", label: "Problemas na Transação do Pix" },
-  { value: "Problemas para Acessar Sessão", label: "Problemas para Acessar Sessão" },
-  { value: "Queixa formal contra conduta profissional", label: "Queixa formal contra conduta profissional" },
-  { value: "Reclamações", label: "Reclamações" },
-  { value: "Reembolso de pagamentos (funcionalidade ausente)", label: "Reembolso de pagamentos (funcionalidade ausente)" },
-  { value: "Solicitação de Exclusão de dados da plataforma", label: "Solicitação de Exclusão de dados da plataforma" },
-  { value: "Solicitação de nova abordagem psicoterapêutica", label: "Solicitação de nova abordagem psicoterapêutica" },
-  { value: "Solicitação de prontuário/histórico para fins éticos/legais", label: "Solicitação de prontuário/histórico para fins éticos/legais" },
-  { value: "Solicitar acesso aos dados pessoais", label: "Solicitar acesso aos dados pessoais" },
-  { value: "Solicitar correção de dados pessoais", label: "Solicitar correção de dados pessoais" },
-  { value: "Solicitar exclusão de dados/conta", label: "Solicitar exclusão de dados/conta" },
-  { value: "Sugestão de novas integrações de pagamento", label: "Sugestão de novas integrações de pagamento" },
-  { value: "Sugestões", label: "Sugestões" },
-  { value: "Transação de compra não efetuada", label: "Transação de compra não efetuada" },
-  { value: "Valor Cobrado Desconhecido", label: "Valor Cobrado Desconhecido" },
-  { value: "Valor Cobrado em Duplicidade", label: "Valor Cobrado em Duplicidade" },
-  { value: "Valor desconhecido na fatura", label: "Valor desconhecido na fatura" },
-  { value: "Solicitação de Descredenciamento Voluntário", label: "Solicitação de Descredenciamento Voluntário" },
-  { value: "Apresentação de Defesa de Não Conformidade", label: "Apresentação de Defesa de Não Conformidade" },
-  { value: "Apresentação de Recurso de Não Conformidade", label: "Apresentação de Recurso de Não Conformidade" },
-  { value: "Contestação por Erro Material Pós-Pagamento", label: "Contestação por Erro Material Pós-Pagamento" },
-  { value: "Contestação de Apuração - Estação Valoriza", label: "Contestação de Apuração - Estação Valoriza" },
-];
-
 export default function SolicitacoesPage() {
   const [pagina, setPagina] = useState(1);
   const porPagina = 5;
@@ -882,7 +818,6 @@ export default function SolicitacoesPage() {
       <ModalCriarSolicitacao
         open={modalCriarAberto}
         onClose={() => setModalCriarAberto(false)}
-        tiposSolicitacao={TIPOS_SOLICITACAO}
         onSubmit={async (data: CreateSolicitacaoData) => {
           try {
             await createSolicitacaoAsync(data);

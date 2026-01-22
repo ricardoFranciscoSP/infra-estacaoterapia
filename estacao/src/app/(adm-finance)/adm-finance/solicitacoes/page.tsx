@@ -1091,7 +1091,6 @@ export default function SolicitacoesPage() {
       <ModalCriarSolicitacao
         open={modalCriarAberto}
         onClose={() => setModalCriarAberto(false)}
-        tiposSolicitacao={TIPOS_FINANCEIROS}
         onSubmit={async (data: CreateSolicitacaoData) => {
           try {
             await createSolicitacaoAsync(data);

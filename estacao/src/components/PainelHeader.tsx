@@ -922,7 +922,7 @@ export default function PainelHeader({ user }: PainelHeaderProps) {
                       }`}
                       onClick={() => {
                         setMenuOpen(false);
-                        router.push(`${getBasePath()}/psicologos-favoritos`);
+                        router.push(`/painel/minha-conta/psicologos-favoritos`);
                       }}
                       role="button"
                       tabIndex={0}
@@ -1214,7 +1214,7 @@ export default function PainelHeader({ user }: PainelHeaderProps) {
                       }`}
                       onClick={() => {
                         setMenuOpen(false);
-                        router.push(`${getBasePath()}/psicologos-favoritos`);
+                        router.push(`/painel/minha-conta/psicologos-favoritos`);
                       }}
                       role="button"
                       tabIndex={0}

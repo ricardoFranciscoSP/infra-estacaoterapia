@@ -7,16 +7,8 @@ import { usePlanosPacienteQuery } from '@/store/planosPacienteStore';
 import { Plano } from '@/store/planoStore';
 
 export default function PainelCardPromocionalAvulsa() {
-  console.log('[PainelCardPromocionalAvulsa] 🚀 COMPONENTE MONTADO - Renderizando card promocional!');
-  
   const router = useRouter();
   const { data: planos = [], isLoading } = usePlanosPacienteQuery();
-
-  console.log('[PainelCardPromocionalAvulsa] Estado inicial:', {
-    isLoading,
-    temPlanos: planos.length > 0,
-    quantidadePlanos: planos.length
-  });
 
   // Função para normalizar string (remove acentos e converte para lowercase)
   const normalize = React.useCallback((value?: string): string => {
@@ -27,76 +19,39 @@ export default function PainelCardPromocionalAvulsa() {
       .trim();
   }, []);
 
-  // Busca o plano com Tipo = "unico"
-  const planoUnico = React.useMemo<Plano | undefined>(() => {
-    console.log('[PainelCardPromocionalAvulsa] Buscando plano tipo "unico":', {
-      planos,
-      quantidadePlanos: planos.length
-    });
-    
-    const encontrado = planos.find((p: Plano) => {
+  // Busca o plano avulso igual ao painel de planos
+  const planoConsultaAvulsa = React.useMemo<Plano | undefined>(() => {
+    if (!planos || planos.length === 0) return undefined;
+    return planos.find((p: Plano) => {
       if (!p) return false;
-      
       const tipo = normalize(p.Tipo || p.Type || "");
+      const nome = normalize(p.Nome || "");
       const tipoOriginal = (p.Tipo || p.Type || "").trim();
-      
-      console.log('[PainelCardPromocionalAvulsa] Verificando plano:', {
-        nome: p.Nome,
-        tipo: p.Tipo,
-        type: p.Type,
-        tipoNormalizado: tipo,
-        tipoOriginal,
-        id: p.Id,
-        preco: p.Preco
-      });
-      
-      // Critério 1: Tipo exato normalizado (case insensitive)
-      if (tipo === "unico" || tipo === "único") return true;
-      
-      // Critério 2: Tipo original (case sensitive) - "Unico" ou "Único"
-      if (tipoOriginal === "Unico" || tipoOriginal === "Único" || tipoOriginal === "unico") return true;
-      
+      // Critério 1: Tipo exato (case insensitive)
+      if (tipo === "avulsa" || tipo === "unico") return true;
+      // Critério 2: Tipo original (case sensitive) - Avulsa
+      if (tipoOriginal === "Avulsa") return true;
+      // Critério 3: Nome contém "avulsa"
+      if (nome.includes("avulsa")) return true;
       return false;
     });
-    
-    console.log('[PainelCardPromocionalAvulsa] Plano tipo "unico" encontrado:', encontrado);
-    return encontrado;
   }, [planos, normalize]);
 
   const handleComprar = () => {
-    const planoId = planoUnico?.Id;
+    const planoId = planoConsultaAvulsa?.Id;
     if (planoId) {
-      console.log('[PainelCardPromocionalAvulsa] Redirecionando para comprar plano unico:', planoId);
       router.push(`/painel/comprar-consulta/${planoId}`);
     } else {
-      console.warn('[PainelCardPromocionalAvulsa] Plano unico não encontrado, redirecionando para planos');
-      // Se não tiver plano unico ainda, redireciona para a página de planos
       router.push('/painel/planos');
     }
   };
 
-  console.log('[PainelCardPromocionalAvulsa] Antes do return:', {
-    isLoading,
-    temPlanoUnico: !!planoUnico,
-    planoUnicoId: planoUnico?.Id,
-    preco: planoUnico?.Preco
-  });
-
-  // Formata o preço do plano unico
-  const precoFormatado = planoUnico?.Preco 
-    ? `R$ ${planoUnico.Preco.toFixed(2).replace('.', ',')}` 
-    : isLoading 
+  const precoFormatado = planoConsultaAvulsa?.Preco
+    ? `R$ ${planoConsultaAvulsa.Preco.toFixed(2).replace('.', ',')}`
+    : isLoading
       ? '...'
       : 'R$ 0,00';
-  
-  const planoUnicoId = planoUnico?.Id;
-  
-  console.log('[PainelCardPromocionalAvulsa] ✅ Renderizando card!', {
-    precoFormatado,
-    planoUnicoId,
-    planoNome: planoUnico?.Nome,
-    isLoading
-  });
+  const planoUnicoId = planoConsultaAvulsa?.Id;
 
   return (
     <motion.aside

@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 import ClientPublicHeader from './ClientPublicHeader';
 
 export const metadata: Metadata = {
-  title: 'Estação Terapia',
-  description: 'Plataforma de terapia online',
+  title: 'Estação Terapia - Terapia online com Psicólogos especializados',
+  description: 'Plataforma de terapia online que conecta você com psicólogos especializados para cuidar da sua saúde mental de forma prática e acessível.',
 };
 
 import Footer from '@/components/Footer';

@@ -169,7 +169,9 @@ export async function handleGenerateDatabaseBackup(payload?: {
     await scheduleAutomaticBackupGeneration();
     return true;
   } catch (error) {
-    console.error("[handleGenerateDatabaseBackup] Erro ao gerar backup:", error);
+    const err =
+      error instanceof Error ? error : new Error("Erro desconhecido ao gerar backup");
+    console.error("[handleGenerateDatabaseBackup] Erro ao gerar backup:", err);
     try {
       await scheduleAutomaticBackupGeneration();
     } catch (rescheduleError) {
@@ -178,6 +180,6 @@ export async function handleGenerateDatabaseBackup(payload?: {
         rescheduleError
       );
     }
-    return false;
+    throw err;
   }
 }

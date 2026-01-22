@@ -4,17 +4,22 @@ import { useQuery } from "@tanstack/react-query";
 import { userService, User } from "@/services/userService";
 
 import { CreateSolicitacaoData } from "@/types/solicitacaoTypes";
+import { TIPOS_SOLICITACAO_FINANCEIRO } from "@/constants/tiposSolicitacao";
+import { TIPOS_SOLICITACAO_SUPORTE } from "@/constants/tiposSolicitacaoSuporte";
 
 interface ModalCriarSolicitacaoProps {
   open: boolean;
   onClose: () => void;
   onSubmit: (data: CreateSolicitacaoData) => Promise<void>;
-  tiposSolicitacao: { value: string; label: string }[];
+  // tiposSolicitacao removido, pois será fixo para paciente
 }
 
-export default function ModalCriarSolicitacao({ open, onClose, onSubmit, tiposSolicitacao }: ModalCriarSolicitacaoProps) {
+export default function ModalCriarSolicitacao({ open, onClose, onSubmit }: ModalCriarSolicitacaoProps) {
   const [title, setTitle] = React.useState("");
   const [tipo, setTipo] = React.useState("");
+  // Listas fixas para paciente
+  const tiposSuporte = TIPOS_SOLICITACAO_SUPORTE;
+  const tiposFinanceiro = TIPOS_SOLICITACAO_FINANCEIRO;
   const [descricao, setDescricao] = React.useState("");
   const [documento, setDocumento] = React.useState<File | null>(null);
   const [isMobile, setIsMobile] = React.useState(false);
@@ -120,30 +125,6 @@ export default function ModalCriarSolicitacao({ open, onClose, onSubmit, tiposSo
     setDocumento(file);
   };
 
-  const handlePublicoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, checked } = e.target;
-    
-    setPublico(prev => {
-      const updates: Partial<typeof prev> = {
-        [name]: checked,
-      };
-      
-      // Se marcar "Todos", desmarca os outros
-      if (name === "all" && checked) {
-        updates.pacientes = false;
-        updates.psicologos = false;
-        updates.financeiro = false;
-        updates.selectedUsers = [];
-      }
-      
-      // Se marcar qualquer outro, desmarca "Todos"
-      if (name !== "all" && checked) {
-        updates.all = false;
-      }
-      
-      return { ...prev, ...updates };
-    });
-  };
 
   const handleUserSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const selected = Array.from(e.target.selectedOptions).map(opt => opt.value);
@@ -221,7 +202,7 @@ export default function ModalCriarSolicitacao({ open, onClose, onSubmit, tiposSo
                     onChange={e => setTipo(e.target.value)}
                   >
                     <option value="">Selecione o tipo...</option>
-                    {tiposSolicitacao.map(opt => (
+                    {TIPOS_SOLICITACAO_SUPORTE.map(opt => (
                       <option key={opt.value} value={opt.value}>{opt.label}</option>
                     ))}
                   </select>
@@ -327,6 +308,7 @@ export default function ModalCriarSolicitacao({ open, onClose, onSubmit, tiposSo
                     maxLength={200}
                   />
                 </label>
+                {/* Apenas Suporte e Financeiro */}
                 <label className="block">
                   <span className="text-sm font-semibold text-gray-700 mb-2 block">Tipo de solicitação</span>
                   <select
@@ -336,9 +318,16 @@ export default function ModalCriarSolicitacao({ open, onClose, onSubmit, tiposSo
                     onChange={e => setTipo(e.target.value)}
                   >
                     <option value="">Selecione o tipo...</option>
-                    {tiposSolicitacao.map(opt => (
-                      <option key={opt.value} value={opt.value}>{opt.label}</option>
-                    ))}
+                    <optgroup label="Suporte">
+                      {tiposSuporte.map(opt => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="Financeiro">
+                      {tiposFinanceiro.map(opt => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
+                    </optgroup>
                   </select>
                 </label>
                 <label className="block">
@@ -376,52 +365,7 @@ export default function ModalCriarSolicitacao({ open, onClose, onSubmit, tiposSo
                 </span>
               </label>
 
-              {/* Campo Público */}
-              <div className="block">
-                <label className="block text-sm font-semibold text-gray-700 mb-3">Públicos</label>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      name="all"
-                      checked={publico.all}
-                      onChange={handlePublicoChange}
-                      className="w-4 h-4 text-[#8494E9] border-gray-300 rounded focus:ring-[#8494E9]"
-                    />
-                    <span className="text-sm text-gray-700">Todos</span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      name="pacientes"
-                      checked={publico.pacientes}
-                      onChange={handlePublicoChange}
-                      className="w-4 h-4 text-[#8494E9] border-gray-300 rounded focus:ring-[#8494E9]"
-                    />
-                    <span className="text-sm text-gray-700">Pacientes</span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      name="psicologos"
-                      checked={publico.psicologos}
-                      onChange={handlePublicoChange}
-                      className="w-4 h-4 text-[#8494E9] border-gray-300 rounded focus:ring-[#8494E9]"
-                    />
-                    <span className="text-sm text-gray-700">Psicólogos</span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      name="financeiro"
-                      checked={publico.financeiro}
-                      onChange={handlePublicoChange}
-                      className="w-4 h-4 text-[#8494E9] border-gray-300 rounded focus:ring-[#8494E9]"
-                    />
-                    <span className="text-sm text-gray-700">Financeiro</span>
-                  </label>
-                </div>
-              </div>
+              {/* Campo Público removido conforme solicitado */}
 
               {/* Busca e Select de usuários */}
               {(publico.pacientes || publico.psicologos || publico.financeiro) && (

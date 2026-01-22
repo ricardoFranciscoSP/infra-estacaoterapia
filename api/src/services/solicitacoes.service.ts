@@ -5,6 +5,14 @@ import { ISolicitacao } from '../types/solicitacoes.types';
 import { supabaseAdmin, STORAGE_BUCKET, uploadFile, createSignedUrl } from './storage.services';
 import { Role } from '../types/permissions.types';
 import { isSolicitacaoFinanceira } from '../constants/tiposSolicitacao';
+import { TIPOS_SOLICITACAO_SUPORTE } from '../constants/tiposSolicitacaoSuporte';
+function isSolicitacaoSuporte(tipo: string | null | undefined): boolean {
+    if (!tipo) return false;
+    return TIPOS_SOLICITACAO_SUPORTE.some(opt =>
+        tipo.toLowerCase() === opt.value.toLowerCase() ||
+        tipo.toLowerCase().includes(opt.value.toLowerCase())
+    );
+}
 import { NotificationService } from './notification.service';
 import { WebSocketNotificationService } from './websocketNotification.service';
 
@@ -273,45 +281,39 @@ export class SolicitacoesService implements ISolicitacoesService {
 
             console.log('[SolicitacoesService] ✅ Solicitação criada com sucesso, protocolo:', finalProtocol);
 
-            // Criar notificações via WebSocket para Admin e Finance (se for solicitação financeira)
+            // Notificações: Suporte → Admin, Financeiro → Finance, ambos notificam criador
             try {
                 const wsService = new WebSocketNotificationService();
                 const notificationService = new NotificationService(wsService);
-
-                // Sempre notificar Admin. Se for solicitação financeira, também notificar Finance
-                const rolesToNotify: Role[] = [Role.Admin];
+                let rolesToNotify: Role[] = [];
                 if (isSolicitacaoFinanceira(data.Tipo)) {
-                    rolesToNotify.push(Role.Finance);
+                    rolesToNotify = [Role.Finance];
+                } else if (isSolicitacaoSuporte(data.Tipo)) {
+                    rolesToNotify = [Role.Admin];
                 }
-
-                const usersToNotify = await prisma.user.findMany({
-                    where: {
-                        Role: { in: rolesToNotify },
-                        Status: 'Ativo'
-                    },
-                    select: { Id: true }
-                });
-
-                console.log(`[SolicitacoesService] 📡 Enviando notificações via WebSocket para ${usersToNotify.length} usuário(s) (roles: ${rolesToNotify.join(', ')})`);
-
-                // Criar notificação para cada usuário (via socket e banco de dados)
-                for (const user of usersToNotify) {
-                    try {
-                        const tipoTexto = isSolicitacaoFinanceira(data.Tipo) ? 'financeira' : '';
-                        await notificationService.sendNotification({
-                            userId: user.Id,
-                            title: `Nova solicitação${tipoTexto ? ` ${tipoTexto}` : ''} criada`,
-                            message: `Protocolo: ${finalProtocol} - ${data.Title}`,
-                            type: 'info'
-                        });
-                        console.log(`[SolicitacoesService] ✅ Notificação enviada via WebSocket para usuário ${user.Id}`);
-                    } catch (notifError) {
-                        console.error(`[SolicitacoesService] ⚠️ Erro ao enviar notificação via WebSocket para usuário ${user.Id}:`, notifError);
-                        // Não falha a criação da solicitação se a notificação falhar
+                if (rolesToNotify.length > 0) {
+                    const usersToNotify = await prisma.user.findMany({
+                        where: {
+                            Role: { in: rolesToNotify },
+                            Status: 'Ativo'
+                        },
+                        select: { Id: true }
+                    });
+                    for (const user of usersToNotify) {
+                        try {
+                            // Notificação persistente (banco + socket) para Admin/Finance
+                            await notificationService.sendNotification({
+                                userId: user.Id,
+                                title: `Nova solicitação ${isSolicitacaoFinanceira(data.Tipo) ? 'financeira' : 'de suporte'} criada`,
+                                message: `Protocolo: ${finalProtocol} - ${data.Title}`,
+                                type: 'info'
+                            });
+                        } catch (notifError) {
+                            console.error(`[SolicitacoesService] ⚠️ Erro ao enviar notificação via WebSocket para usuário ${user.Id}:`, notifError);
+                        }
                     }
                 }
-
-                // Notificar o criador da solicitação
+                // Notificar o criador da solicitação (paciente)
                 try {
                     await notificationService.sendNotification({
                         userId,
@@ -324,7 +326,6 @@ export class SolicitacoesService implements ISolicitacoesService {
                 }
             } catch (notificationError) {
                 console.error('[SolicitacoesService] ⚠️ Erro ao enviar notificações via WebSocket (não impede a criação da solicitação):', notificationError);
-                // Não falha a criação da solicitação se as notificações falharem
             }
 
             return { success: true, message: 'Solicitação criada com sucesso', protocol: finalProtocol };

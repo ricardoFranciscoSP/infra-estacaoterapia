@@ -147,7 +147,7 @@ export class PlanosController {
             // Para rotas públicas sem token, sempre retorna apenas planos ativos
             const userId = this.authService.getLoggedUserId(req);
             let isAdmin = false;
-            
+
             // Só faz query se houver userId (evita query desnecessária para rotas públicas)
             if (userId) {
                 isAdmin = await prisma.user.findUnique({
@@ -198,13 +198,13 @@ export class PlanosController {
                 const tipoB = b.Tipo?.toLowerCase() || '';
                 return (order[tipoA] || 99) - (order[tipoB] || 99);
             });
-            
+
             // ⚡ OTIMIZAÇÃO: Cache HTTP para planos públicos (5 minutos)
             // Planos mudam raramente, então cache é seguro para rotas públicas
             if (!isAdmin) {
                 res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=300, stale-while-revalidate=600');
             }
-            
+
             return res.status(200).json(orderedPlanos);
         } catch (error) {
             console.error("Erro ao buscar planos:", error);
@@ -230,8 +230,7 @@ export class PlanosController {
                 where: {
                     Status: "ativo",
                     NOT: [
-                        { Tipo: "Unica" },
-                        { Tipo: "Avulsa" }
+                        { Tipo: "Unica" }
                     ]
                 },
                 select: {
