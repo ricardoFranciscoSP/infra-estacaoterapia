@@ -10,16 +10,17 @@ const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 // Bucket de documentos: usa variável de ambiente ou fallback baseado no ambiente
 // Em produção, configure SUPABASE_BUCKET=estacao_upload_documents_prd
-// Em pré-produção, configure SUPABASE_BUCKET=estacao_upload_documents_pre
-export const STORAGE_BUCKET = process.env.SUPABASE_BUCKET || "estacao_upload_documents_pre";
+export const STORAGE_BUCKET = process.env.SUPABASE_BUCKET || "estacao_upload_documents_prd";
 
 // Bucket privado para backups de banco
-// Em produção, configure SUPABASE_BUCKET_BACKUPS=estacao_db_backups_prd
-export const STORAGE_BUCKET_BACKUPS = process.env.SUPABASE_BUCKET_BACKUPS || "estacao_db_backups_pre";
+// Em produção, configure SUPABASE_BUCKET_BACKUPS=estacao_terapia_prd_backups
+export const STORAGE_BUCKET_BACKUPS =
+    process.env.SUPABASE_BUCKET_BACKUPS || "estacao_terapia_prd_backups";
 
 // Bucket público para uploads de imagens/avatares (URLs públicas)
 // Em produção, configure SUPABASE_BUCKET_PUBLIC=estacao_upload_img_prd_public
-export const STORAGE_BUCKET_PUBLIC = process.env.SUPABASE_BUCKET_PUBLIC || "estacao_public_uploads";
+export const STORAGE_BUCKET_PUBLIC =
+    process.env.SUPABASE_BUCKET_PUBLIC || "estacao_upload_img_prd_public";
 
 // Bucket público para documentos de políticas e termos (URLs públicas)
 // Use estacao_upload_documents_pub para acesso público aos documentos

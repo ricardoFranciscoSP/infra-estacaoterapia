@@ -6,7 +6,7 @@ import { motion } from 'framer-motion';
 import Image from 'next/image';
 import Link from 'next/link';
 import { getAvatarUrl } from '@/utils/avatarUtils';
-import { formatDateBR } from '@/utils/formatarDataHora';
+import { formatDateBR, formatTimeBR } from '@/utils/formatarDataHora';
 import ConsultaModal from '@/components/ConsultaModal';
 import ModalReagendar from '@/components/ModalReagendar';
 import { obterPrimeiroUltimoNome } from '@/utils/nomeUtils';
@@ -67,8 +67,8 @@ export function ConsultaCard({
   const [showModal, setShowModal] = useState(false);
   const [showModalReagendar, setShowModalReagendar] = useState(false);
 
-  const data = formatDateBR(consulta.Agenda?.Data || consulta.Date || '');
-  const horario = consulta.Agenda?.Horario || consulta.Time;
+  const data = formatDateBR(consulta.Agenda?.Data || consulta.Date || '') || "--/--/----";
+  const horario = formatTimeBR(consulta.Agenda?.Horario || consulta.Time);
   const nomePsicologoCompleto = consulta.Psicologo?.Nome || 'Psicólogo';
   const nomePsicologo = obterPrimeiroUltimoNome(nomePsicologoCompleto) || nomePsicologoCompleto;
   const fotoPsicologo = getAvatarUrl(consulta.Psicologo?.Images?.[0]);
