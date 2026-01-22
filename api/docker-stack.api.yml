@@ -5,10 +5,12 @@ networks:
 
 services:
   api:
-    image: estacaoterapia-api:latest
-    user: '0'
-    entrypoint: ['/bin/sh', '/entrypoint.sh']
+    image: estacaoterapia-api:${TAG}
     command: ['node', 'dist/server.js']
+
+    # ❗ NÃO sobrescreve ENTRYPOINT
+    # ENTRYPOINT vem do Dockerfile (/entrypoint.sh)
+
     secrets:
       - source: estacao_api_env
         target: /run/secrets/estacao_api.env
@@ -16,54 +18,52 @@ services:
       - source: redis_password
         target: /run/secrets/redis_password
         mode: 0444
+
     environment:
       NODE_ENV: production
       PORT: '3333'
       NODE_OPTIONS: '--max-old-space-size=2048'
+
+      # PostgreSQL / PgBouncer
       PG_HOST: pgbouncer
       PG_PORT: '6432'
       PG_HOST_DIRECT: postgres
       PG_PORT_DIRECT: '5432'
-      BACKUP_DIR: /app/backups
+      POSTGRES_DB: estacaoterapia
+
+      # Redis (senha vem EXCLUSIVAMENTE do secret)
       REDIS_HOST: redis
-      REDIS_HOST_FALLBACK: 'estacaoterapia_redis,redis'
       REDIS_PORT: '6379'
       REDIS_DB: '1'
-      REDIS_PASSWORD: 'REdnRHkZLnQpK1rcoKsseO3pX4GNIRR'
+
+      # Backups
+      BACKUP_DIR: /app/backups
+
     volumes:
       - documentos_data:/app/documentos
       - backups_data:/app/backups
-    tmpfs:
-      - /tmp
-      - /app/data
-    expose:
-      - '3333'
-    healthcheck:
-      test: ['CMD', 'curl', '-f', 'http://localhost:3333/health']
-      interval: 30s
-      timeout: 15s
-      retries: 3
-      start_period: 180s
+
     deploy:
-      replicas: 1
+      replicas: 2 # Para zero downtime, use pelo menos 2 réplicas
       placement:
         constraints:
           - node.role == manager
       update_config:
+        order: start-first # Garante que a nova instância suba antes de remover a antiga
         parallelism: 1
-        delay: 30s
-        order: start-first
+        delay: 10s
         failure_action: rollback
         monitor: 60s
       restart_policy:
         condition: any
-        delay: 15s
-        window: 180s
+        delay: 10s
+        window: 120s
+
     networks:
       estacaoterapia_backend:
         aliases:
-          - estacaoterapia_api
           - api
+          - estacaoterapia_api
 
 volumes:
   documentos_data:
