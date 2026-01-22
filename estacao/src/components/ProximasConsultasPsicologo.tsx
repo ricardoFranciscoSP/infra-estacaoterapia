@@ -35,6 +35,8 @@ import {
   onConsultationCancelled,
   onConsultationCancelledByPatient,
   onConsultationCancelledByPsychologist,
+  onConsultationInactivity,
+  offConsultationInactivity,
   onConsultationStatusChanged,
   offConsultationStatusChanged,
   ConsultationEventData,
@@ -236,14 +238,19 @@ export default function ProximaConsultaPsicologo({ consultas = null, role = "pac
 
     // Função para mapear status do backend para status do frontend
     const mapStatusToFrontend = (status: string): ConsultationEventData["status"] | null => {
-      const statusMap: Record<string, ConsultationEventData["status"]> = {
-        "Andamento": "started",
-        "Concluido": "Concluido",
-        "Cancelado": "Cancelado",
-        "cancelled_by_patient": "cancelled_by_patient",
-        "cancelled_by_psychologist": "cancelled_by_psychologist",
-      };
-      return statusMap[status] || null;
+      const statusValue = String(status || "").toLowerCase();
+      if (statusValue.includes("cancel") || statusValue.includes("naocompareceu") || statusValue === "deferido") {
+        return "Cancelado";
+      }
+      if (statusValue.includes("conclu") || statusValue.includes("realiz")) {
+        return "Concluido";
+      }
+      if (statusValue === "andamento" || statusValue === "emandamento") {
+        return "started";
+      }
+      if (statusValue === "cancelled_by_patient") return "cancelled_by_patient";
+      if (statusValue === "cancelled_by_psychologist") return "cancelled_by_psychologist";
+      return null;
     };
 
     onConsultationStartingSoon(() => {
@@ -274,6 +281,14 @@ export default function ProximaConsultaPsicologo({ consultas = null, role = "pac
       setSocketStatus("cancelled_by_psychologist");
     }, idStr);
 
+    onConsultationInactivity(() => {
+      setSocketStatus("Cancelado");
+      queryClient.invalidateQueries({ queryKey: ['proximaConsultaPsicologo'] });
+      queryClient.invalidateQueries({ queryKey: ['consultas-psicologo'] });
+      queryClient.invalidateQueries({ queryKey: ['reserva-sessao', idStr] });
+      queryClient.invalidateQueries({ queryKey: ['consulta', idStr] });
+    }, idStr);
+
     // Listener para mudanças de status gerais (ex: cancelamento automático)
     onConsultationStatusChanged((data) => {
       const mappedStatus = mapStatusToFrontend(data.status);
@@ -292,6 +307,7 @@ export default function ProximaConsultaPsicologo({ consultas = null, role = "pac
       if (!socket) return;
       socket.off(`consultation:${idStr}`);
       offConsultationStatusChanged(idStr);
+      offConsultationInactivity(idStr);
     };
   }, [normalized?.id]);
 

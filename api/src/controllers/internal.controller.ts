@@ -1,6 +1,11 @@
 import { Request, Response } from "express";
 import prisma from "../prisma/client";
 import { ConsultaStatusService } from "../services/consultaStatus.service";
+import { SessionStatusService } from "../services/sessionStatus.service";
+import { getEventSyncService } from "../services/eventSync.service";
+import dayjs from "dayjs";
+import timezone from "dayjs/plugin/timezone";
+import utc from "dayjs/plugin/utc";
 import { ProximaConsultaService } from "../services/proximaConsulta.service";
 import { AutorTipoCancelamento } from "../types/permissions.types";
 import { nowBrasiliaDate } from "../utils/timezone.util";
@@ -13,10 +18,14 @@ import { normalizeParamString, normalizeQueryString } from "../utils/validation.
 export class InternalController {
     private consultaStatusService: ConsultaStatusService;
     private proximaConsultaService: ProximaConsultaService;
+    private sessionStatusService: SessionStatusService;
 
     constructor() {
         this.consultaStatusService = new ConsultaStatusService();
         this.proximaConsultaService = new ProximaConsultaService();
+        this.sessionStatusService = new SessionStatusService();
+        dayjs.extend(utc);
+        dayjs.extend(timezone);
     }
 
     /**
@@ -95,11 +104,74 @@ export class InternalController {
                 return;
             }
 
-            const reservaSessao = await prisma.reservaSessao.update({
+            const reservaSessaoAtual = await prisma.reservaSessao.findUnique({
                 where: { ConsultaId: consultationId },
-                data: { [field]: new Date(timestamp) },
                 include: { Consulta: true }
             });
+
+            if (!reservaSessaoAtual) {
+                res.status(404).json({
+                    success: false,
+                    error: "Reserva de sessão não encontrada"
+                });
+                return;
+            }
+
+            const dataUpdate: Record<string, Date> = {};
+            const existingValue = reservaSessaoAtual[field];
+            if (!existingValue) {
+                dataUpdate[field] = new Date(timestamp);
+            }
+
+            const reservaSessao = Object.keys(dataUpdate).length > 0
+                ? await prisma.reservaSessao.update({
+                    where: { ConsultaId: consultationId },
+                    data: dataUpdate,
+                    include: { Consulta: true }
+                })
+                : reservaSessaoAtual;
+
+            const ambosEntraram =
+                reservaSessao.PatientJoinedAt !== null &&
+                reservaSessao.PatientJoinedAt !== undefined &&
+                reservaSessao.PsychologistJoinedAt !== null &&
+                reservaSessao.PsychologistJoinedAt !== undefined;
+
+            if (ambosEntraram && reservaSessao.Consulta) {
+                const statusAtual = String(reservaSessao.Consulta.Status || "");
+                const statusLower = statusAtual.toLowerCase();
+                const isCancelada = statusLower.includes("cancel");
+                const isConcluida =
+                    statusLower.includes("realiz") || statusLower.includes("conclu");
+
+                if (!isCancelada && !isConcluida) {
+                    // Atualiza status para EmAndamento apenas se já passou do ScheduledAt
+                    const scheduledAt = reservaSessao.ScheduledAt;
+                    if (scheduledAt) {
+                        const inicio = dayjs.tz(
+                            scheduledAt,
+                            "YYYY-MM-DD HH:mm:ss",
+                            "America/Sao_Paulo"
+                        );
+                        const agora = dayjs().tz("America/Sao_Paulo");
+                        if (inicio.isValid() && agora.isSameOrAfter(inicio)) {
+                            await this.consultaStatusService.iniciarConsulta(consultationId);
+
+                            // Atualiza status da sessão no Redis + notifica via Event Sync
+                            await this.sessionStatusService.setSessionStatus(
+                                consultationId,
+                                "active",
+                                60 * 60
+                            );
+                            const eventSync = getEventSyncService();
+                            await eventSync.notifyConsultationStatusChange(
+                                consultationId,
+                                "EmAndamento"
+                            );
+                        }
+                    }
+                }
+            }
 
             res.status(200).json({
                 success: true,

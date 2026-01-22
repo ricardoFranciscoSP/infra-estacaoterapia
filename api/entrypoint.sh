@@ -23,6 +23,17 @@ ensure_dir() {
 }
 
 ensure_dir "$BACKUP_DIR" "775"
+if [ ! -w "$BACKUP_DIR" ]; then
+  BACKUP_FALLBACK_DIR="/app/documentos/backups"
+  ensure_dir "$BACKUP_FALLBACK_DIR" "775"
+  if [ -w "$BACKUP_FALLBACK_DIR" ]; then
+    echo "⚠️  Usando fallback de backups em $BACKUP_FALLBACK_DIR"
+    BACKUP_DIR="$BACKUP_FALLBACK_DIR"
+    export BACKUP_DIR
+  else
+    echo "❌ Nenhum diretório de backups com permissão de escrita disponível"
+  fi
+fi
 
 # Diretório temporário para restore de backups (admin)
 BACKUP_TMP_DIR="${BACKUP_TMP_DIR:-/app/tmp/backups-restore}"
@@ -138,7 +149,7 @@ resolve_host_with_fallback() {
 
   echo "⚠️  DNS $label não resolveu, usando fallback: $primary"
   export "$var_name=$primary"
-  return 1
+  return 0
 }
 
 rewrite_url_host_port() {

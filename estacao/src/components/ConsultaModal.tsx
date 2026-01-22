@@ -213,10 +213,25 @@ export default function ConsultaModal({
     // Se a data vier em formato ISO ou com timezone, extrai apenas a parte da data
     const dataParaFormatar = consulta.data ? (consulta.data.includes('T') ? consulta.data.split('T')[0] : consulta.data.split(' ')[0]) : "";
     const dataFormatada = formatarDataCompleta(dataParaFormatar || consulta.data);
-    const isCancelada =
-        statusCancelamento === "Cancelado" ||
-        statusCancelamento === "cancelled_by_patient" ||
-        statusCancelamento === "cancelled_by_psychologist";
+    const statusCancelamentoValue = useMemo(() => {
+        return String(statusCancelamento || status || "").toLowerCase();
+    }, [statusCancelamento, status]);
+
+    const isCancelada = useMemo(() => {
+        if (!statusCancelamentoValue) return false;
+        return statusCancelamentoValue.includes("cancel") || statusCancelamentoValue === "deferido";
+    }, [statusCancelamentoValue]);
+
+    const motivoCancelamento = useMemo(() => {
+        if (!isCancelada) return "";
+        if (statusCancelamentoValue.includes("patient") || statusCancelamentoValue.includes("paciente")) {
+            return "Cancelada por ausência do paciente.";
+        }
+        if (statusCancelamentoValue.includes("psychologist") || statusCancelamentoValue.includes("psicologo")) {
+            return "Cancelada por ausência do psicólogo.";
+        }
+        return "Consulta cancelada.";
+    }, [isCancelada, statusCancelamentoValue]);
 
     const cancelamentoBloqueado = useMemo(() => {
         if (isCancelada) return true;
@@ -239,13 +254,6 @@ export default function ConsultaModal({
 
     // Versão Mobile
     if (isMobile) {
-        const motivoCancelamento = statusCancelamento === "cancelled_by_patient"
-            ? "Cancelada por ausência do paciente."
-            : statusCancelamento === "cancelled_by_psychologist"
-            ? "Cancelada por ausência do psicólogo."
-            : statusCancelamento === "Cancelado"
-            ? "Consulta cancelada."
-            : "";
         return (
             <AnimatePresence mode="wait">
                 {open && (
@@ -429,13 +437,6 @@ export default function ConsultaModal({
     }
 
     // Versão Desktop
-    const motivoCancelamento = statusCancelamento === "cancelled_by_patient"
-        ? "Cancelada por ausência do paciente."
-        : statusCancelamento === "cancelled_by_psychologist"
-        ? "Cancelada por ausência do psicólogo."
-        : statusCancelamento === "Cancelado"
-        ? "Consulta cancelada."
-        : "";
     return (
         <AnimatePresence mode="wait">
             {open && (

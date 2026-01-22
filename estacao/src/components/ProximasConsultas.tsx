@@ -35,6 +35,8 @@ import {
   onConsultationCancelled,
   onConsultationCancelledByPatient,
   onConsultationCancelledByPsychologist,
+  onConsultationInactivity,
+  offConsultationInactivity,
   onConsultationStatusChanged,
   offConsultationStatusChanged,
   ensureSocketConnection,
@@ -600,14 +602,19 @@ export default function ProximasConsultas({ consultas: consultasProp = null, rol
     
     // Função para mapear status do backend para status do frontend
     const mapStatusToFrontend = (status: string): ConsultationStatus | null => {
-      const statusMap: Record<string, ConsultationStatus> = {
-        "Andamento": "started",
-        "Concluido": "Concluido",
-        "Cancelado": "Cancelado",
-        "cancelled_by_patient": "cancelled_by_patient",
-        "cancelled_by_psychologist": "cancelled_by_psychologist",
-      };
-      return statusMap[status] || null;
+      const statusValue = String(status || "").toLowerCase();
+      if (statusValue.includes("cancel") || statusValue.includes("naocompareceu") || statusValue === "deferido") {
+        return "Cancelado";
+      }
+      if (statusValue.includes("conclu") || statusValue.includes("realiz")) {
+        return "Concluido";
+      }
+      if (statusValue === "andamento" || statusValue === "emandamento") {
+        return "started";
+      }
+      if (statusValue === "cancelled_by_patient") return "cancelled_by_patient";
+      if (statusValue === "cancelled_by_psychologist") return "cancelled_by_psychologist";
+      return null;
     };
 
     // Listeners para eventos específicos da consulta
@@ -618,6 +625,15 @@ export default function ProximasConsultas({ consultas: consultasProp = null, rol
     onConsultationCancelled(() => setSocketStatus("Cancelado"), consultaId);
     onConsultationCancelledByPatient(() => setSocketStatus("cancelled_by_patient"), consultaId);
     onConsultationCancelledByPsychologist(() => setSocketStatus("cancelled_by_psychologist"), consultaId);
+    onConsultationInactivity(() => {
+      setSocketStatus("Cancelado");
+      queryClient.invalidateQueries({ queryKey: ['reservas/consultas-agendadas'] });
+      queryClient.invalidateQueries({ queryKey: ['consultaAtualEmAndamento'] });
+      queryClient.invalidateQueries({ queryKey: ['reserva-sessao', consultaId] });
+      queryClient.invalidateQueries({ queryKey: ['consulta', consultaId] });
+      queryClient.invalidateQueries({ queryKey: ['consultasFuturas'] });
+      queryClient.invalidateQueries({ queryKey: ['consultasAgendadas'] });
+    }, consultaId);
     
     // Listener para mudanças de status gerais (ex: cancelamento automático)
     onConsultationStatusChanged((data) => {
@@ -639,6 +655,7 @@ export default function ProximasConsultas({ consultas: consultasProp = null, rol
       if (!socket) return;
       socket.off(`consultation:${consultaId}`);
       offConsultationStatusChanged(consultaId);
+      offConsultationInactivity(consultaId);
     };
   }, [normalized?.id, queryClient]);
 

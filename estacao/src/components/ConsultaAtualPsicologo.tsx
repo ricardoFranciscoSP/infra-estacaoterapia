@@ -27,6 +27,8 @@ import {
   onConsultationCancelled,
   onConsultationCancelledByPatient,
   onConsultationCancelledByPsychologist,
+  onConsultationInactivity,
+  offConsultationInactivity,
   onConsultationStatusChanged,
   offConsultationStatusChanged,
   onSessionStatusUpdated,
@@ -320,14 +322,19 @@ export default function ConsultaAtualPsicologo({ consulta: consultaProp = null, 
     }, idStr);
 
     onConsultationStatusChanged((data: { status: string; consultationId: string }) => {
-      const statusMap: Record<string, ConsultationStatus> = {
-        "Andamento": "started",
-        "Concluido": "Concluido",
-        "Cancelado": "Cancelado",
-        "cancelled_by_patient": "cancelled_by_patient",
-        "cancelled_by_psychologist": "cancelled_by_psychologist",
-      };
-      const mappedStatus = statusMap[data.status];
+      const statusValue = String(data.status || "").toLowerCase();
+      let mappedStatus: ConsultationStatus | undefined;
+      if (statusValue.includes("cancel") || statusValue.includes("naocompareceu") || statusValue === "deferido") {
+        mappedStatus = "Cancelado";
+      } else if (statusValue.includes("conclu") || statusValue.includes("realiz")) {
+        mappedStatus = "Concluido";
+      } else if (statusValue === "andamento" || statusValue === "emandamento") {
+        mappedStatus = "started";
+      } else if (statusValue === "cancelled_by_patient") {
+        mappedStatus = "cancelled_by_patient";
+      } else if (statusValue === "cancelled_by_psychologist") {
+        mappedStatus = "cancelled_by_psychologist";
+      }
       if (mappedStatus) {
         setSocketStatus(mappedStatus);
         // Invalida queries para atualizar em tempo real
@@ -336,6 +343,14 @@ export default function ConsultaAtualPsicologo({ consulta: consultaProp = null, 
         queryClient.invalidateQueries({ queryKey: ['reserva-sessao', data.consultationId] });
         queryClient.invalidateQueries({ queryKey: ['consulta', data.consultationId] });
       }
+    }, idStr);
+
+    onConsultationInactivity(() => {
+      setSocketStatus("Cancelado");
+      queryClient.invalidateQueries({ queryKey: ['proximaConsultaPsicologo'] });
+      queryClient.invalidateQueries({ queryKey: ['consultas-psicologo'] });
+      queryClient.invalidateQueries({ queryKey: ['reserva-sessao', idStr] });
+      queryClient.invalidateQueries({ queryKey: ['consulta', idStr] });
     }, idStr);
 
     // Listener para eventos de status de sessão (Redis-based)
@@ -354,6 +369,7 @@ export default function ConsultaAtualPsicologo({ consulta: consultaProp = null, 
         socket.off(`consultation:${idStr}`);
       }
       offConsultationStatusChanged(idStr);
+      offConsultationInactivity(idStr);
       offSessionStatusUpdated(idStr);
     };
   }, [normalized?.id]);

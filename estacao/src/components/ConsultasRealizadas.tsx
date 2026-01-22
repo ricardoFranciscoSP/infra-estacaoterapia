@@ -91,6 +91,22 @@ interface RawConsulta {
   }>;
 }
 
+type CancelamentoSessaoRaw = {
+  Status?: string;
+  status?: string;
+  Tipo?: string;
+  tipo?: string;
+};
+
+function getCancelamentoStatus(raw: RawConsulta | null | undefined): string {
+  if (!raw) return "";
+  const cancelamento = raw.CancelamentoSessao ?? raw.cancelamentoSessao;
+  const item = Array.isArray(cancelamento) ? cancelamento[0] : cancelamento;
+  if (!item || typeof item !== "object") return "";
+  const cancelamentoObj = item as CancelamentoSessaoRaw;
+  return String(cancelamentoObj.Status ?? cancelamentoObj.status ?? "");
+}
+
 /**
  * Converte dados de consulta realizada para ConsultaApi
  */
@@ -113,6 +129,18 @@ function converterConsultaRealizadaParaApi(raw: RawConsulta | null | undefined):
   if (!date) date = raw.Date ?? raw.date ?? '';
   if (!time) time = raw.Time ?? raw.time ?? '';
   if (!status) status = raw.Status ?? raw.status ?? '';
+
+  const cancelamentoStatus = getCancelamentoStatus(raw);
+  const cancelamentoStatusLower = cancelamentoStatus.toLowerCase();
+  if (cancelamentoStatusLower.includes('deferido') || cancelamentoStatusLower.includes('cancelado')) {
+    status = 'Cancelado';
+  } else if (cancelamentoStatusLower.includes('emanalise')) {
+    status = 'EmAnalise';
+  } else if (cancelamentoStatusLower.includes('indeferido')) {
+    status = 'Indeferido';
+  } else if (!status && cancelamentoStatus) {
+    status = cancelamentoStatus;
+  }
 
   const psic = raw.Psicologo ?? raw.psicologo ?? null;
   const psImages = psic?.Images ?? psic?.images ?? [];
@@ -226,8 +254,9 @@ function extrairConsultasNaoReservadas(payload: HistoricoConsultasPayload | Hist
 
     const statusConsulta = consulta?.Status ?? consulta?.status ?? "";
     const statusAgenda = consulta?.Agenda?.Status ?? consulta?.agenda?.status ?? "";
+    const statusCancelamento = getCancelamentoStatus(consulta);
 
-    const statusBruto = statusReservaSessao || statusConsulta || statusAgenda;
+    const statusBruto = statusReservaSessao || statusConsulta || statusAgenda || statusCancelamento;
     
     // Se não tiver status, ainda pode ser válida se tiver data e psicólogo
     if (!statusBruto) {
@@ -318,25 +347,6 @@ const ConsultasRealizadas: React.FC = () => {
       (consultasConcluidas as HistoricoConsultasPayload | HistoricoConsultasPayload[] | null) ?? null,
     );
 
-    // Filtra apenas: Concluídas/Realizadas, Reagendadas e Canceladas
-    const apenasCategoriasDesejadas = todasNaoReservadas.filter((c) => {
-      const consulta = c as RawConsulta;
-      const statusReservaSessao = consulta?.ReservaSessao?.Status
-        ?? consulta?.reservaSessao?.Status
-        ?? consulta?.reservaSessao?.status
-        ?? '';
-      const statusConsulta = consulta?.Status ?? consulta?.status ?? '';
-      const statusAgenda = consulta?.Agenda?.Status ?? consulta?.agenda?.status ?? '';
-      const statusBruto = statusReservaSessao || statusConsulta || statusAgenda;
-      const statusNorm = normalizarStatusExibicao(statusBruto).toLowerCase();
-
-      const ehConcluida = statusNorm.includes('concluída') || statusNorm.includes('realizada');
-      const ehReagendada = statusNorm.includes('reagendada');
-      const ehCancelada = statusNorm.includes('cancelada');
-      return ehConcluida || ehReagendada || ehCancelada;
-    });
-
-    // Ordena por data/hora desc (mais recentes primeiro)
     const parseDataHora = (item: RawConsulta) => {
       const consultaItem = item as RawConsulta;
       const data = consultaItem?.Date ?? consultaItem?.date ?? consultaItem?.Agenda?.Data ?? consultaItem?.agenda?.data ?? '';
@@ -347,6 +357,39 @@ const ConsultasRealizadas: React.FC = () => {
       return new Date(dt).getTime() || 0;
     };
 
+    // Filtra apenas: Concluídas/Realizadas, Reagendadas e Canceladas
+    const apenasCategoriasDesejadas = todasNaoReservadas.filter((c) => {
+      const consulta = c as RawConsulta;
+      const statusReservaSessao = consulta?.ReservaSessao?.Status
+        ?? consulta?.reservaSessao?.Status
+        ?? consulta?.reservaSessao?.status
+        ?? '';
+      const statusConsulta = consulta?.Status ?? consulta?.status ?? '';
+      const statusAgenda = consulta?.Agenda?.Status ?? consulta?.agenda?.status ?? '';
+      const statusCancelamento = getCancelamentoStatus(consulta);
+      const statusBruto = statusReservaSessao || statusConsulta || statusAgenda || statusCancelamento;
+      const statusNorm = normalizarStatusExibicao(statusBruto).toLowerCase();
+
+      const statusCancelamentoLower = statusCancelamento.toLowerCase();
+      const ehCancelamento = statusCancelamentoLower.includes('deferido')
+        || statusCancelamentoLower.includes('cancelado')
+        || statusCancelamentoLower.includes('emanalise')
+        || statusCancelamentoLower.includes('indeferido');
+      if (ehCancelamento) return true;
+
+      if (!statusBruto) {
+        // Se não há status, inclui se a data já passou
+        const timestamp = parseDataHora(consulta);
+        return timestamp > 0 && timestamp < Date.now();
+      }
+
+      const ehConcluida = statusNorm.includes('concluída') || statusNorm.includes('realizada');
+      const ehReagendada = statusNorm.includes('reagendada');
+      const ehCancelada = statusNorm.includes('cancelada') || statusNorm.includes('cancelado');
+      return ehConcluida || ehReagendada || ehCancelada;
+    });
+
+    // Ordena por data/hora desc (mais recentes primeiro)
     return apenasCategoriasDesejadas.sort((a, b) => parseDataHora(b) - parseDataHora(a));
   }, [consultasConcluidas]);
 

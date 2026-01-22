@@ -6,6 +6,7 @@ import {
   ConsultaTelaGatilho,
   ConsultaAcaoSaldo,
 } from "../constants/consultaStatus.constants";
+import { getEventSyncService } from "../services/eventSync.service";
 
 export interface AtualizarConsultaStatusDTO {
   consultaId: string;
@@ -697,7 +698,7 @@ export class ConsultaStatusService {
     }
 
     // Processa em transação para garantir atomicidade
-    return await prisma.$transaction(async (tx) => {
+    const consultaAtualizada = await prisma.$transaction(async (tx) => {
       // Atualiza o status da consulta
       // Nota: Faturada=true indica que deve processar repasse depois, não significa que já foi faturada
       const consultaAtualizada = await tx.consulta.update({
@@ -762,6 +763,29 @@ export class ConsultaStatusService {
 
       return consultaAtualizada;
     });
+
+    // Notifica via Redis (Event Sync) para atualização imediata no frontend
+    try {
+      const eventSync = getEventSyncService();
+      const motivo = "Cancelamento automático por inatividade";
+      await eventSync.notifyInactivityCancellation(
+        consultaId,
+        motivo,
+        missingRole
+      );
+      await eventSync.notifyConsultationStatusChange(consultaId, "Cancelado", {
+        reason: "inactivity",
+        missingRole,
+        status: "Cancelado",
+      });
+    } catch (notifyError) {
+      console.error(
+        "❌ [processarInatividade] Falha ao notificar via Event Sync:",
+        notifyError
+      );
+    }
+
+    return consultaAtualizada;
   }
 
   /**
