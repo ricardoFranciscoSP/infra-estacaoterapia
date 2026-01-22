@@ -67,10 +67,17 @@ echo "✅ Pré-requisitos OK"
 echo ""
 echo "[CLEANUP] Removendo containers fora do Swarm"
 
-docker ps --filter "label!=com.docker.swarm.service.name" -q | while read -r c; do
-  echo "🗑️ Removendo container standalone: $c"
-  docker rm -f "$c"
-done
+declare -A SWARM_CONTAINERS
+while read -r c; do
+  [ -n "$c" ] && SWARM_CONTAINERS["$c"]=1
+done < <(docker ps -q --filter "label=com.docker.swarm.service.name")
+
+while read -r c; do
+  if [ -n "$c" ] && [ -z "${SWARM_CONTAINERS[$c]+x}" ]; then
+    echo "🗑️ Removendo container standalone: $c"
+    docker rm -f "$c"
+  fi
+done < <(docker ps -q)
 
 # ==============================
 # REMOVER STACKS ANTIGOS
