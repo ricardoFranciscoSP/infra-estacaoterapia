@@ -516,49 +516,6 @@ export default function ConsultaAtual({ consulta: consultaProp = null, role = "p
   const sessionState = calculateSessionState();
   const { fraseSessao, mostrarContador, contadorSessao, buttons } = sessionState;
 
-  // Se a consulta está cancelada, força esconder contador e botão entrar
-  const isCancelada = statusBadge === "Cancelado";
-  const finalButtons = isCancelada
-    ? { mostrarBotaoEntrar: false, mostrarBotaoSuporte: true, botaoEntrarDesabilitado: true }
-    : buttons;
-  const finalMostrarContador = isCancelada ? false : mostrarContador;
-  const finalContadorSessao = isCancelada ? "" : contadorSessao;
-  return (
-    <motion.section
-      className="w-full flex flex-col items-start"
-      {...ANIMATION_VARIANTS.container}
-    >
-      <h3 className="fira-sans font-semibold text-2xl leading-[40px] tracking-normal align-middle text-[#49525A] mb-4">Consulta Atual</h3>
-      {/* Usa ConsultaCard da lib */}
-      <ConsultaCard
-        consulta={consultaApi}
-        showEntrarButton={finalButtons.mostrarBotaoEntrar}
-        botaoEntrarDesabilitado={finalButtons.botaoEntrarDesabilitado}
-        isLoadingEntry={isCheckingTokens || isProcessingEntry}
-        mostrarBotaoSuporte={finalButtons.mostrarBotaoSuporte}
-        contador={finalMostrarContador && contador50MinutosAtualizado.estaDentroDoPeriodo && contadorFinal ? {
-          frase: fraseSessao,
-          tempo: contadorFinal,
-          mostrar: true,
-        } : undefined}
-        actions={{
-          onEntrar: finalButtons.mostrarBotaoEntrar ? handleEntrarNaConsulta : undefined,
-          onVerDetalhes: handleVerDetalhes,
-          onVerPerfil: shouldShowPerfil && perfilHref ? () => router.push(perfilHref) : undefined,
-          onSuporte: finalButtons.mostrarBotaoSuporte ? handleSuporte : undefined,
-        }}
-      />
-          nome: normalized.paciente.nome || "",
-          id: String(normalized.pacienteId || normalized.paciente.id || ""),
-          avatarUrl: normalized.paciente.imageUrl || avatarPsicologo,
-          Image: normalized.paciente.imageUrl ? [{ Url: normalized.paciente.imageUrl }] : (avatarPsicologo ? [{ Url: avatarPsicologo }] : undefined),
-        } : undefined,
-      };
-      setConsultaSelecionada(consultaData);
-    }
-    setShowModal(true);
-  };
-
   // Determina o status da consulta para exibição do badge
   const statusBadge: string = useMemo(() => {
     // Prioridade 1: Status do socket (eventos em tempo real)
@@ -737,6 +694,37 @@ export default function ConsultaAtual({ consulta: consultaProp = null, role = "p
     }
   };
 
+  // Função para abrir o modal de detalhes da consulta
+  const handleAbrirModalConsulta = () => {
+    if (normalized) {
+      const avatarPsicologo = getContextualAvatar(isInPsicologoPanel, normalized.psicologo, normalized.paciente);
+      const rawData = normalized.raw && typeof normalized.raw === 'object' && normalized.raw !== null
+        ? normalized.raw as { Date?: string; Time?: string; Agenda?: { Data?: string; Horario?: string } }
+        : null;
+      const dataParaModal = normalized.date || rawData?.Date || rawData?.Agenda?.Data || "";
+      const horarioParaModal = normalized.time || rawData?.Time || rawData?.Agenda?.Horario || "";
+
+      const consultaData: ConsultaModalData = {
+        data: dataParaModal,
+        horario: horarioParaModal,
+        psicologo: normalized.psicologo ? {
+          nome: normalized.psicologo.nome || "",
+          id: String(normalized.psicologoId || normalized.psicologo.id || ""),
+          avatarUrl: normalized.psicologo.imageUrl || avatarPsicologo,
+          Image: normalized.psicologo.imageUrl ? [{ Url: normalized.psicologo.imageUrl }] : (avatarPsicologo ? [{ Url: avatarPsicologo }] : undefined),
+        } : undefined,
+        paciente: normalized.paciente ? {
+          nome: normalized.paciente.nome || "",
+          id: String(normalized.pacienteId || normalized.paciente.id || ""),
+          avatarUrl: normalized.paciente.imageUrl || avatarPsicologo,
+          Image: normalized.paciente.imageUrl ? [{ Url: normalized.paciente.imageUrl }] : (avatarPsicologo ? [{ Url: avatarPsicologo }] : undefined),
+        } : undefined,
+      };
+      setConsultaSelecionada(consultaData);
+    }
+    setShowModal(true);
+  };
+
   // Handler para ver detalhes (abre modal)
   const handleVerDetalhes = () => {
     handleAbrirModalConsulta();
@@ -745,6 +733,13 @@ export default function ConsultaAtual({ consulta: consultaProp = null, role = "p
   if (!normalized || !deveMostrar || !consultaApi) {
     return null;
   }
+
+  // Se a consulta está cancelada, força esconder contador e botão entrar
+  const isCancelada = statusBadge === "Cancelado";
+  const finalButtons = isCancelada
+    ? { mostrarBotaoEntrar: false, mostrarBotaoSuporte: true, botaoEntrarDesabilitado: true }
+    : buttons;
+  const finalMostrarContador = isCancelada ? false : mostrarContador;
 
   return (
     <motion.section
@@ -756,20 +751,20 @@ export default function ConsultaAtual({ consulta: consultaProp = null, role = "p
       {/* Usa ConsultaCard da lib */}
       <ConsultaCard
         consulta={consultaApi}
-        showEntrarButton={buttons.mostrarBotaoEntrar}
-        botaoEntrarDesabilitado={buttons.botaoEntrarDesabilitado}
+        showEntrarButton={finalButtons.mostrarBotaoEntrar}
+        botaoEntrarDesabilitado={finalButtons.botaoEntrarDesabilitado}
         isLoadingEntry={isCheckingTokens || isProcessingEntry}
-        mostrarBotaoSuporte={buttons.mostrarBotaoSuporte}
-        contador={mostrarContador && contador50MinutosAtualizado.estaDentroDoPeriodo && contadorFinal ? {
+        mostrarBotaoSuporte={finalButtons.mostrarBotaoSuporte}
+        contador={finalMostrarContador && contador50MinutosAtualizado.estaDentroDoPeriodo && contadorFinal ? {
           frase: fraseSessao,
           tempo: contadorFinal,
           mostrar: true,
         } : undefined}
         actions={{
-          onEntrar: handleEntrarNaConsulta,
+          onEntrar: finalButtons.mostrarBotaoEntrar ? handleEntrarNaConsulta : undefined,
           onVerDetalhes: handleVerDetalhes,
           onVerPerfil: shouldShowPerfil && perfilHref ? () => router.push(perfilHref) : undefined,
-          onSuporte: buttons.mostrarBotaoSuporte ? handleSuporte : undefined,
+          onSuporte: finalButtons.mostrarBotaoSuporte ? handleSuporte : undefined,
         }}
       />
 
@@ -793,7 +788,7 @@ export default function ConsultaAtual({ consulta: consultaProp = null, role = "p
               avatarUrl: consultaSelecionada.paciente.avatarUrl,
             } : undefined,
           }}
-          botaoEntrarDesabilitado={buttons.botaoEntrarDesabilitado}
+          botaoEntrarDesabilitado={finalButtons.botaoEntrarDesabilitado}
           consultaId={normalized?.id ? String(normalized.id) : undefined}
           sessaoAtiva={sessaoConsulta.sessaoAtiva}
           statusCancelamento={socketStatus ? String(socketStatus) : null}
