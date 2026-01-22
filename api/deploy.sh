@@ -59,6 +59,10 @@ for s in estacao_api.env estacao_socket.env; do
   [ -f "$SECRETS_DIR/$s" ] || { echo "❌ Secret ausente: $SECRETS_DIR/$s"; exit 1; }
 done
 
+for s in postgres.env pgbouncer/pgbouncer.ini pgbouncer/userlist.txt; do
+  [ -f "$SECRETS_DIR/$s" ] || { echo "❌ Secret ausente: $SECRETS_DIR/$s"; exit 1; }
+done
+
 echo "✅ Pré-requisitos OK"
 
 # ==============================
@@ -110,6 +114,7 @@ create_secret_if_missing() {
 
 create_secret_if_missing estacao_api_env "$SECRETS_DIR/estacao_api.env"
 create_secret_if_missing estacao_socket_env "$SECRETS_DIR/estacao_socket.env"
+create_secret_if_missing postgres_env "$SECRETS_DIR/postgres.env"
 create_secret_if_missing pgbouncer.ini "$SECRETS_DIR/pgbouncer/pgbouncer.ini"
 create_secret_if_missing userlist.txt "$SECRETS_DIR/pgbouncer/userlist.txt"
 
@@ -119,6 +124,25 @@ if ! docker secret inspect redis_password >/dev/null 2>&1; then
   printf '%s' "$REDIS_PASS" | docker secret create redis_password -
   echo "✅ Secret redis_password criado"
 fi
+
+echo ""
+echo "[SECRETS] Validando secrets no Swarm"
+REQUIRED_SECRETS=(
+  "estacao_api_env"
+  "estacao_socket_env"
+  "postgres_env"
+  "pgbouncer.ini"
+  "userlist.txt"
+  "redis_password"
+)
+
+for s in "${REQUIRED_SECRETS[@]}"; do
+  docker secret inspect "$s" >/dev/null 2>&1 || {
+    echo "❌ Secret não encontrado no Swarm: $s"
+    exit 1
+  }
+done
+echo "✅ Todos os secrets disponíveis"
 
 # ==============================
 # VOLUMES E REDE
@@ -205,10 +229,26 @@ echo ""
 echo "[CLEANUP] Limpando imagens antigas"
 
 declare -A RUNNING_IMAGES
+declare -A RUNNING_IMAGE_NAMES
 while read -r img; do
   id="$(docker image inspect --format '{{.Id}}' "$img")"
   RUNNING_IMAGES["$id"]=1
+  RUNNING_IMAGE_NAMES["$img"]=1
 done < <(docker service inspect --format '{{.Spec.TaskTemplate.ContainerSpec.Image}}' $(docker service ls -q))
+
+while read -r img; do
+  [ -z "$img" ] && continue
+  id="$(docker image inspect --format '{{.Id}}' "$img")"
+  RUNNING_IMAGES["$id"]=1
+  RUNNING_IMAGE_NAMES["$img"]=1
+done < <(docker ps --format '{{.Image}}')
+
+if [ "${#RUNNING_IMAGE_NAMES[@]}" -gt 0 ]; then
+  echo "🔒 Imagens em uso (preservadas):"
+  for name in "${!RUNNING_IMAGE_NAMES[@]}"; do
+    echo " - $name"
+  done
+fi
 
 for repo in estacaoterapia-api estacaoterapia-socket; do
   docker images "$repo" --format '{{.ID}} {{.CreatedAt}}' \

@@ -44,7 +44,7 @@ services:
       - backups_data:/app/backups
 
     deploy:
-      replicas: 2 # Para zero downtime, use pelo menos 2 réplicas
+      replicas: 2
       placement:
         constraints:
           - node.role == manager

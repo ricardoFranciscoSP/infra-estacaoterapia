@@ -41,7 +41,7 @@ services:
         max-size: "10m"
         max-file: "3"
     deploy:
-      replicas: 1
+      replicas: 2
       placement:
         constraints:
           - node.role == manager
