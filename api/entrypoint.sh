@@ -12,34 +12,21 @@ chmod 1777 /tmp /run 2>/dev/null || true
 
 # Diretório de backups
 BACKUP_DIR="${BACKUP_DIR:-/app/backups}"
-BACKUP_OWNER="${BACKUP_OWNER:-deploy:deploy}"
 
 ensure_dir() {
   dir="$1"
-  owner="$2"
-  perms="$3"
+  perms="$2"
 
   mkdir -p "$dir" 2>/dev/null || true
-
-  if [ "$(id -u)" = "0" ]; then
-    if id -u "${owner%%:*}" >/dev/null 2>&1; then
-      chown -R "$owner" "$dir" 2>/dev/null || true
-    else
-      chown -R "$(id -u):$(id -g)" "$dir" 2>/dev/null || true
-    fi
-    chmod "$perms" "$dir" 2>/dev/null || true
-  else
-    chmod "$perms" "$dir" 2>/dev/null || true
-  fi
-
+  chmod "$perms" "$dir" 2>/dev/null || true
   [ ! -w "$dir" ] && echo "⚠️  Diretório sem permissão de escrita: $dir"
 }
 
-ensure_dir "$BACKUP_DIR" "$BACKUP_OWNER" "775"
+ensure_dir "$BACKUP_DIR" "775"
 
 # Diretório temporário para restore de backups (admin)
 BACKUP_TMP_DIR="${BACKUP_TMP_DIR:-/app/tmp/backups-restore}"
-ensure_dir "$BACKUP_TMP_DIR" "$BACKUP_OWNER" "775"
+ensure_dir "$BACKUP_TMP_DIR" "775"
 
 # =====================================================
 # Funções utilitárias
@@ -171,19 +158,6 @@ url_encode() {
   fi
 }
 
-run_as_deploy() {
-  if [ "$(id -u)" = "0" ]; then
-    if command -v su-exec >/dev/null 2>&1; then
-      exec su-exec deploy "$@"
-    elif command -v gosu >/dev/null 2>&1; then
-      exec gosu deploy "$@"
-    else
-      exec su -s /bin/sh deploy -c "$*"
-    fi
-  else
-    exec "$@"
-  fi
-}
 
 # =====================================================
 # API
@@ -266,7 +240,7 @@ start_api() {
   check_port "$REDIS_HOST" "$REDIS_PORT" "Redis"
   check_port "$PG_HOST" "$PG_PORT" "PgBouncer"
 
-  run_as_deploy "$@"
+  exec "$@"
 }
 
 # =====================================================
@@ -325,7 +299,7 @@ start_socket() {
   echo "   Redis      → $REDIS_HOST:$REDIS_PORT"
   echo "   API        → $API_BASE_URL"
 
-  run_as_deploy "$@"
+  exec "$@"
 }
 
 # =====================================================

@@ -730,6 +730,11 @@ export default function ConsultaAtual({ consulta: consultaProp = null, role = "p
     handleAbrirModalConsulta();
   };
 
+  const handleSuporte = (): void => {
+    const mensagem = encodeURIComponent("Olá, preciso de suporte técnico na Estação Terapia. Tenho dúvidas ou estou com problemas na plataforma.");
+    window.open(`https://wa.me/5511960892131?text=${mensagem}`, "_blank");
+  };
+
   if (!normalized || !deveMostrar || !consultaApi) {
     return null;
   }
@@ -740,6 +745,9 @@ export default function ConsultaAtual({ consulta: consultaProp = null, role = "p
     ? { mostrarBotaoEntrar: false, mostrarBotaoSuporte: true, botaoEntrarDesabilitado: true }
     : buttons;
   const finalMostrarContador = isCancelada ? false : mostrarContador;
+  const contadorFinal = contador50MinutosAtualizado.estaDentroDoPeriodo
+    ? contador50MinutosAtualizado.tempoFormatado
+    : contadorSessao;
 
   return (
     <motion.section

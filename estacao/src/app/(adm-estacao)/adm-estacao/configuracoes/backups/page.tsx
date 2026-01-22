@@ -361,6 +361,7 @@ export default function BackupsPage() {
           <table className="min-w-full text-sm">
             <thead className="text-left text-gray-500">
               <tr>
+                <th className="py-2 px-3">Versão</th>
                 <th className="py-2 px-3">Arquivo</th>
                 <th className="py-2 px-3">Tamanho</th>
                 <th className="py-2 px-3">Criado em</th>
@@ -371,13 +372,14 @@ export default function BackupsPage() {
             <tbody className="divide-y divide-gray-100 text-gray-700">
               {sortedBackups.length === 0 && (
                 <tr>
-                  <td className="py-4 px-3 text-center text-gray-500" colSpan={5}>
+                  <td className="py-4 px-3 text-center text-gray-500" colSpan={6}>
                     {loadingList ? "Carregando..." : "Nenhum backup encontrado"}
                   </td>
                 </tr>
               )}
-              {sortedBackups.map((backup) => (
+              {sortedBackups.map((backup, index) => (
                 <tr key={backup.name}>
+                  <td className="py-2 px-3 text-gray-500">{String(index + 1).padStart(2, "0")}</td>
                   <td className="py-2 px-3 font-medium">{backup.name}</td>
                   <td className="py-2 px-3">{formatBytes(backup.size)}</td>
                   <td className="py-2 px-3">{formatDate(backup.createdAt)}</td>
@@ -388,15 +390,26 @@ export default function BackupsPage() {
                         type="button"
                         onClick={() => handleDownload(backup.name)}
                         disabled={action.isLoading && action.fileName === backup.name}
-                        className="px-3 py-1.5 text-sm rounded-md border border-[#E5E9FA] hover:bg-[#F2F4FD]"
+                        className="p-2 rounded-md border border-[#E5E9FA] hover:bg-[#F2F4FD]"
+                        title="Baixar"
+                        aria-label={`Baixar ${backup.name}`}
                       >
-                        Baixar
+                        <svg
+                          className="w-4 h-4 text-[#8494E9]"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          viewBox="0 0 24 24"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v12m0 0l4-4m-4 4l-4-4" />
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M4 17v3h16v-3" />
+                        </svg>
                       </button>
                       <button
                         type="button"
                         onClick={() => handleDelete(backup.name)}
                         disabled={action.isLoading && action.fileName === backup.name}
-                        className="px-3 py-1.5 text-sm rounded-md border border-red-200 text-red-600 hover:bg-red-50"
+                        className="text-sm text-red-600 hover:text-red-700 hover:underline"
                       >
                         Excluir
                       </button>

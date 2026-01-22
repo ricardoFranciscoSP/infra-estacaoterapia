@@ -314,7 +314,7 @@ services:
       - no-new-privileges:true
 
     read_only: true
-    user: "0"
+    user: "997:1001"
 
   # ============================================
   # SOCKET SERVER (WebSocket)

@@ -56,10 +56,11 @@ export default function GerarTokenManualPage() {
         50,
         consultaId && consultaId.trim() ? consultaId.trim() : undefined
       );
-      setTokenLogs(response.data.items);
+      setTokenLogs(response.items ?? []);
     } catch (error) {
       console.error("Erro ao carregar logs de tokens:", error);
       toast.error("Não foi possível carregar a lista de tokens.");
+      setTokenLogs([]);
     } finally {
       setIsLoadingLogs(false);
     }

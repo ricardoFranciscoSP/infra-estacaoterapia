@@ -40,13 +40,12 @@ tmp/
 temp/
 *.tmp
 
-# Backups (but keep deploy backup structure)
+# Backups (keep backups directory and .sql files)
 *.backup
 *.bak
 *.tar.gz
-backups/*.sql
-backups/*.dump
-!backups/.gitkeep
+!backups/
+!backups/**/*.sql
 
 # Service account
 .service-account.json
