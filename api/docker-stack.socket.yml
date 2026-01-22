@@ -1,0 +1,69 @@
+networks:
+  estacaoterapia_backend:
+    external: true
+    name: estacaoterapia_backend
+
+services:
+  socket-server:
+    image: estacaoterapia-socket:latest
+    user: 'deploy'
+    entrypoint: ['/bin/sh', '/entrypoint.sh']
+    command: ['node', 'dist/socket/server.js']
+    secrets:
+      - source: estacao_socket_env
+        target: /run/secrets/estacao_socket.env
+        mode: 0444
+      - source: redis_password
+        target: /run/secrets/redis_password
+        mode: 0444
+    environment:
+      NODE_ENV: production
+      PORT: '3334'
+      SOCKET_SERVER: 'true'
+      SERVER_TYPE: socket
+      PG_HOST: pgbouncer
+      PG_PORT: '6432'
+      REDIS_HOST: redis
+      REDIS_HOST_FALLBACK: 'estacaoterapia_redis,redis'
+      REDIS_PORT: '6379'
+      REDIS_DB: '1'
+      REDIS_PASSWORD: 'REdnRHkZLnQpK1rcoKsseO3pX4GNIRR'
+      API_BASE_URL: 'http://api:3333'
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:3334/health']
+      interval: 30s
+      timeout: 15s
+      retries: 3
+      start_period: 180s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      update_config:
+        parallelism: 1
+        delay: 30s
+        order: start-first
+        failure_action: rollback
+        monitor: 60s
+      restart_policy:
+        condition: any
+        delay: 15s
+        window: 180s
+    networks:
+      estacaoterapia_backend:
+        aliases:
+          - socket-server
+          - estacaoterapia_socket-server
+          - ws
+
+secrets:
+  estacao_socket_env:
+    external: true
+  redis_password:
+    external: true

@@ -1,9 +1,9 @@
 #!/bin/bash
 # Deploy individual do Socket Server no Swarm
 set -euo pipefail
-STACK_NAME="estacaoterapia_api"
+STACK_NAME="estacaoterapia-socket"
 SERVICE="socket-server"
-YML="$(dirname "$0")/docker-stack.yml"
+YML="$(dirname "$0")/docker-stack.socket.yml"
 
 echo "[INFO] Fazendo deploy do serviço Socket Server..."
 docker stack deploy -c "$YML" "$STACK_NAME"

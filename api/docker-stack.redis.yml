@@ -1,0 +1,57 @@
+networks:
+  estacaoterapia_backend:
+    external: true
+    name: estacaoterapia_backend
+
+services:
+  redis:
+    image: estacaoterapia-redis:stable
+    secrets:
+      - source: redis_password
+        target: /run/secrets/redis_password
+        mode: 0444
+    volumes:
+      - redis_data:/data
+    networks:
+      estacaoterapia_backend:
+        aliases:
+          - redis
+          - estacaoterapia_redis
+          - redis.estacaoterapia_backend
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      update_config:
+        parallelism: 1
+        delay: 30s
+        order: start-first
+        failure_action: rollback
+        monitor: 60s
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 5
+        window: 120s
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+volumes:
+  redis_data:
+    external: true
+
+secrets:
+  redis_password:
+    external: true

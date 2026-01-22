@@ -1,9 +1,9 @@
 #!/bin/bash
 # Deploy individual da API no Swarm
 set -euo pipefail
-STACK_NAME="estacaoterapia_api"
+STACK_NAME="estacaoterapia-api"
 SERVICE="api"
-YML="$(dirname "$0")/docker-stack.yml"
+YML="$(dirname "$0")/docker-stack.api.yml"
 
 echo "[INFO] Fazendo deploy do serviço API..."
 docker stack deploy -c "$YML" "$STACK_NAME"

@@ -1,0 +1,78 @@
+networks:
+  estacaoterapia_backend:
+    external: true
+    name: estacaoterapia_backend
+
+services:
+  api:
+    image: estacaoterapia-api:latest
+    user: 'deploy'
+    entrypoint: ['/bin/sh', '/entrypoint.sh']
+    command: ['node', 'dist/server.js']
+    secrets:
+      - source: estacao_api_env
+        target: /run/secrets/estacao_api.env
+        mode: 0444
+      - source: redis_password
+        target: /run/secrets/redis_password
+        mode: 0444
+    environment:
+      NODE_ENV: production
+      PORT: '3333'
+      NODE_OPTIONS: '--max-old-space-size=2048'
+      PG_HOST: pgbouncer
+      PG_PORT: '6432'
+      PG_HOST_DIRECT: postgres
+      PG_PORT_DIRECT: '5432'
+      BACKUP_DIR: /app/backups
+      REDIS_HOST: redis
+      REDIS_HOST_FALLBACK: 'estacaoterapia_redis,redis'
+      REDIS_PORT: '6379'
+      REDIS_DB: '1'
+      REDIS_PASSWORD: 'REdnRHkZLnQpK1rcoKsseO3pX4GNIRR'
+    volumes:
+      - documentos_data:/app/documentos
+      - backups_data:/app/backups
+    tmpfs:
+      - /tmp
+      - /app/data
+    expose:
+      - '3333'
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:3333/health']
+      interval: 30s
+      timeout: 15s
+      retries: 3
+      start_period: 180s
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      update_config:
+        parallelism: 1
+        delay: 30s
+        order: start-first
+        failure_action: rollback
+        monitor: 60s
+      restart_policy:
+        condition: any
+        delay: 15s
+        window: 180s
+    networks:
+      estacaoterapia_backend:
+        aliases:
+          - estacaoterapia_api
+          - api
+
+volumes:
+  documentos_data:
+    external: true
+  backups_data:
+    external: true
+
+secrets:
+  estacao_api_env:
+    external: true
+  redis_password:
+    external: true

@@ -1,9 +1,9 @@
 #!/bin/bash
 # Deploy individual do Redis no Swarm
 set -euo pipefail
-STACK_NAME="estacaoterapia_api"
+STACK_NAME="estacaoterapia-redis"
 SERVICE="redis"
-YML="$(dirname "$0")/docker-stack.yml"
+YML="$(dirname "$0")/docker-stack.redis.yml"
 
 echo "[INFO] Fazendo deploy do serviço Redis..."
 docker stack deploy -c "$YML" "$STACK_NAME"

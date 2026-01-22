@@ -11,8 +11,10 @@ UPDATE_STATEFUL="${UPDATE_STATEFUL:-false}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SECRETS_DIR="/opt/secrets"
-STACK_NAME="estacaoterapia"
+STACK_PREFIX="estacaoterapia"
 KEEP_VERSIONS=1  # Manter última versão + 1 anterior (rollback)
+STACK_FILES=("docker-stack.redis.yml" "docker-stack.pgbouncer.yml" "docker-stack.api.yml" "docker-stack.socket.yml")
+STACK_NAMES=("estacaoterapia-redis" "estacaoterapia-pgbouncer" "estacaoterapia-api" "estacaoterapia-socket")
 
 echo ""
 echo "==============================="
@@ -43,9 +45,12 @@ command -v docker >/dev/null || { echo "❌ Docker não encontrado"; exit 1; }
 SWARM_STATE="$(docker info --format '{{.Swarm.LocalNodeState}}' 2>/dev/null || echo inactive)"
 [ "$SWARM_STATE" = "active" ] || { echo "❌ Docker Swarm inativo"; exit 1; }
 
-[ -f docker-stack.yml ] || { echo "❌ docker-stack.yml não encontrado"; exit 1; }
+[ -f docker-stack.api.yml ] || { echo "❌ docker-stack.api.yml não encontrado"; exit 1; }
+[ -f docker-stack.redis.yml ] || { echo "❌ docker-stack.redis.yml não encontrado"; exit 1; }
+[ -f docker-stack.pgbouncer.yml ] || { echo "❌ docker-stack.pgbouncer.yml não encontrado"; exit 1; }
+[ -f docker-stack.socket.yml ] || { echo "❌ docker-stack.socket.yml não encontrado"; exit 1; }
 
-for f in postgres.env estacao_api.env estacao_socket.env; do
+for f in estacao_api.env estacao_socket.env; do
   [ -f "$SECRETS_DIR/$f" ] || { echo "❌ Secret ausente: $SECRETS_DIR/$f"; exit 1; }
 done
 
@@ -56,8 +61,10 @@ echo "✅ Pré-requisitos OK"
 # ==============================
 if [ "$CLEAN_DEPLOY" = true ]; then
   echo "⚠️  CLEAN_DEPLOY=true pode causar downtime (stack será removida)"
-  echo "🧹 Removendo stack anterior para deploy limpo..."
-  docker stack rm "$STACK_NAME" || true
+  echo "🧹 Removendo stacks de aplicação para deploy limpo..."
+  for stack in "${STACK_NAMES[@]}"; do
+    docker stack rm "$stack" || true
+  done
   sleep 10
 fi
 
@@ -83,7 +90,6 @@ create_secret_if_missing() {
 }
 
 # Secrets principais
-create_secret_if_missing postgres_env "$SECRETS_DIR/postgres.env"
 create_secret_if_missing estacao_api_env "$SECRETS_DIR/estacao_api.env"
 create_secret_if_missing estacao_socket_env "$SECRETS_DIR/estacao_socket.env"
 create_secret_if_missing pgbouncer.ini "/opt/secrets/pgbouncer/pgbouncer.ini"
@@ -108,7 +114,7 @@ fi
 # ==============================
 # 4. VOLUMES + REDE
 # ==============================
-for v in postgres_data redis_data documentos_data backups_data; do
+for v in redis_data documentos_data backups_data; do
   docker volume create "$v" >/dev/null 2>&1 || true
 done
 
@@ -162,20 +168,25 @@ docker image prune -f --filter "dangling=true" 2>/dev/null || true
 # 6. DEPLOY
 # ==============================
 
-echo "[LOG] Iniciando deploy da stack com arquivo: docker-stack.yml"
-echo "📡 Deploy stack $STACK_NAME"
-docker stack deploy \
-  --compose-file docker-stack.yml \
-  --resolve-image always \
-  "$STACK_NAME"
-DEPLOY_EXIT_CODE=$?
-if [ $DEPLOY_EXIT_CODE -ne 0 ]; then
-  echo "❌ Erro ao executar docker stack deploy. Código de saída: $DEPLOY_EXIT_CODE"
-  echo "[LOG] Verifique o arquivo docker-stack.yml para possíveis erros de sintaxe."
-  exit 1
-else
-  echo "[LOG] docker stack deploy executado com sucesso."
-fi
+for i in "${!STACK_FILES[@]}"; do
+  file="${STACK_FILES[$i]}"
+  stack="${STACK_NAMES[$i]}"
+
+  echo "[LOG] Iniciando deploy da stack com arquivo: $file"
+  echo "📡 Deploy stack $stack"
+  docker stack deploy \
+    --compose-file "$file" \
+    --resolve-image always \
+    "$stack"
+  DEPLOY_EXIT_CODE=$?
+  if [ $DEPLOY_EXIT_CODE -ne 0 ]; then
+    echo "❌ Erro ao executar docker stack deploy. Código de saída: $DEPLOY_EXIT_CODE"
+    echo "[LOG] Verifique o arquivo $file para possíveis erros de sintaxe."
+    exit 1
+  else
+    echo "[LOG] docker stack deploy executado com sucesso."
+  fi
+done
 
 # ==============================
 # 7. HEALTH CHECK
@@ -183,10 +194,17 @@ fi
 
 echo "[LOG] ⏳ Aguardando serviços ficarem estáveis..."
 
-services=(postgres pgbouncer redis api socket-server)
+service_pairs=(
+  "estacaoterapia-redis:redis"
+  "estacaoterapia-pgbouncer:pgbouncer"
+  "estacaoterapia-api:api"
+  "estacaoterapia-socket:socket-server"
+)
 
-for svc in "${services[@]}"; do
-  full="${STACK_NAME}_${svc}"
+for pair in "${service_pairs[@]}"; do
+  stack="${pair%%:*}"
+  svc="${pair##*:}"
+  full="${stack}_${svc}"
   echo "🔄 $full"
 
   for i in {1..30}; do
@@ -198,7 +216,7 @@ for svc in "${services[@]}"; do
     sleep 2
   done
 
-  echo "✅ $svc OK ($replicas)"
+  echo "✅ $full OK ($replicas)"
 done
 
 # ==============================
@@ -223,10 +241,12 @@ echo ""
 echo "[LOG] 🎉 DEPLOY CONCLUÍDO COM SUCESSO!"
 echo ""
 echo "[LOG] 📡 SERVIÇOS EM EXECUÇÃO:"
-docker service ls --filter name="$STACK_NAME" --format "table {{.Name}}\t{{.Replicas}}\t{{.Image}}"
+for stack in "${STACK_NAMES[@]}"; do
+  docker service ls --filter name="$stack" --format "table {{.Name}}\t{{.Replicas}}\t{{.Image}}"
+done
 
 echo ""
 echo "[LOG] 💡 DICAS:"
-echo "   - Ver logs:  docker service logs estacaoterapia_api -f"
-echo "   - Revert:    docker service update --force --image estacaoterapia-api:latest estacaoterapia_api"
+echo "   - Ver logs:  docker service logs estacaoterapia-api_api -f"
+echo "   - Revert:    docker service update --force --image estacaoterapia-api:latest estacaoterapia-api_api"
 echo "   - Versões:   docker images | grep estacaoterapia"
