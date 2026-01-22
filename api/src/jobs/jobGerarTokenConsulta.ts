@@ -88,7 +88,11 @@ export async function jobGerarTokenConsulta() {
                 
                 // Gera tokens diretamente (fallback quando Redis falha)
                 // A função generateAgoraTokensForConsulta já verifica se os tokens existem antes de gerar
-                await generateAgoraTokensForConsulta(reservaSessao.ConsultaId);
+                await generateAgoraTokensForConsulta(
+                    reservaSessao.ConsultaId,
+                    undefined,
+                    'cron'
+                );
                 console.log(`✅ [jobGerarTokenConsulta] Tokens gerados para consulta ${reservaSessao.ConsultaId}`);
             } catch (error) {
                 console.error(`❌ [jobGerarTokenConsulta] Erro ao gerar tokens para consulta ${reservaSessao.ConsultaId}:`, error);

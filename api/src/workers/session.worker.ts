@@ -127,7 +127,11 @@ async function handleGenerateTokens(
     try {
         console.log(`🎫 [SessionWorker] Gerando tokens para consulta ${consultaId}`);
 
-        const success = await generateAgoraTokensForConsulta(consultaId);
+        const success = await generateAgoraTokensForConsulta(
+            consultaId,
+            undefined,
+            'worker'
+        );
 
         if (!success) {
             throw new Error(

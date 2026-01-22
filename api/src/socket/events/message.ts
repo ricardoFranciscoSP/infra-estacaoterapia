@@ -236,7 +236,11 @@ export function handleMessage(io: Server, socket: Socket) {
                     try {
                         console.log(`🎫 [consultation:join] Token ausente para ${role}. Gerando on-demand...`);
                         const { generateAgoraTokensForConsulta } = await import('../../utils/scheduleAgoraToken');
-                        await generateAgoraTokensForConsulta(consultationId);
+                        await generateAgoraTokensForConsulta(
+                            consultationId,
+                            undefined,
+                            'socket'
+                        );
 
                         // Recarrega reserva para obter os tokens recém-gerados
                         const updated = await apiClient.getReservaSessao(consultationId);

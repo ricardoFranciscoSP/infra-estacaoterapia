@@ -11,6 +11,7 @@ const ALL_QUEUE_NAMES = [
     'notificacao-controle-consulta',
     'emailQueue',
     'notificationQueue',
+    'tokenGenerationQueue',
     'delayedJobs',
     'databaseJobs',
 ];

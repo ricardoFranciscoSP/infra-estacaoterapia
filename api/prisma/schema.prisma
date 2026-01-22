@@ -608,6 +608,8 @@ model ReservaSessao {
   UidPsychologist        Int?
   Consulta               Consulta              @relation("ConsultaToReservaSessao", fields: [ConsultaId], references: [Id], onDelete: Cascade)
   FinanceiroPsicologo    FinanceiroPsicologo[] @relation("ReservaSessaoFinanceiroPsicologo")
+
+  @@index([ScheduledAt])
 }
 
 model ControleConsultaMensal {

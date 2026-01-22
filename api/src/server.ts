@@ -12,6 +12,7 @@ import {
     forceHttps
 } from "./middlewares/security";
 import { logInfo, logDebug } from "./utils/logger";
+import { startTokenGenerationCron } from "./cron/tokenGenerationCron";
 
 
 const app = express();
@@ -207,6 +208,14 @@ async function startWorkersAfterReady(): Promise<void> {
             return;
         }
 
+        const shouldStartTokenCron = process.env.TOKEN_CRON_ENABLED !== "false";
+        if (shouldStartTokenCron) {
+            startTokenGenerationCron();
+            console.log("✅ Cron de geração de tokens iniciado após saúde da API");
+        } else {
+            console.log("ℹ️ TOKEN_CRON_ENABLED=false — cron de tokens desativado");
+        }
+
         // Zera filas BullMQ no deploy para evitar jobs travados
         const shouldResetQueues = process.env.RESET_BULLMQ_ON_DEPLOY !== "false";
         if (shouldResetQueues) {
@@ -260,7 +269,8 @@ async function startWorkersAfterReady(): Promise<void> {
                     "renovacao-controle-consulta",
                     "pagamento-controle-consulta",
                     "notificacao-controle-consulta",
-                    "emailQueue"
+                    "emailQueue",
+                    "tokenGenerationQueue"
                 ];
                 for (const fila of filas) {
                     await cleanDelayedJobs(fila, 24 * 60 * 60 * 1000); // 24h

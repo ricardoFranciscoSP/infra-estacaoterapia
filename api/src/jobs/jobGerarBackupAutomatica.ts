@@ -138,7 +138,7 @@ export async function scheduleAutomaticBackupGeneration(): Promise<boolean> {
           delay: 5000,
         },
         jobId: BACKUP_JOB_ID,
-        removeOnComplete: { age: 3600 },
+        removeOnComplete: { age: 86400 },
         removeOnFail: { age: 86400 },
       }
     );

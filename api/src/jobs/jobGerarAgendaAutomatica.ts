@@ -59,7 +59,7 @@ export async function scheduleAutomaticAgendaGeneration(): Promise<boolean> {
                     delay: 5000,
                 },
                 jobId: 'agenda-generation-daily',
-                removeOnComplete: { age: 3600 },
+                removeOnComplete: { age: 86400 },
                 removeOnFail: { age: 86400 },
             }
         );

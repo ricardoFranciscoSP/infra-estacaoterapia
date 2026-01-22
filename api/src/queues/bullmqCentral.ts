@@ -76,8 +76,8 @@ export const getAgendaQueue = async (): Promise<Queue | null> => {
             connection: getBullMQConnectionOptions(),
             defaultJobOptions: {
                 removeOnComplete: {
-                    age: 3600, // mantém por 1 hora
-                    count: 100, // mantém últimos 100
+                    age: 86400, // mantém por 24 horas
+                    count: 500, // mantém últimos 500
                 },
                 removeOnFail: {
                     age: 86400, // mantém por 24 horas
@@ -119,8 +119,8 @@ export const getWebhookQueue = async (): Promise<Queue | null> => {
             connection: getBullMQConnectionOptions(),
             defaultJobOptions: {
                 removeOnComplete: {
-                    age: 3600,
-                    count: 100,
+                    age: 86400,
+                    count: 500,
                 },
                 removeOnFail: {
                     age: 86400,
@@ -162,8 +162,8 @@ export const getNotificationQueue = async (): Promise<Queue | null> => {
             connection: getBullMQConnectionOptions(),
             defaultJobOptions: {
                 removeOnComplete: {
-                    age: 3600,
-                    count: 50,
+                    age: 86400,
+                    count: 500,
                 },
                 removeOnFail: {
                     age: 86400,
@@ -205,8 +205,8 @@ export const getRenovacaoQueue = async (): Promise<Queue<RenovacaoJobData> | nul
             connection: getBullMQConnectionOptions(),
             defaultJobOptions: {
                 removeOnComplete: {
-                    age: 3600,
-                    count: 100,
+                    age: 86400,
+                    count: 500,
                 },
                 removeOnFail: {
                     age: 86400,

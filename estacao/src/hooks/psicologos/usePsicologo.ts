@@ -6,7 +6,8 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePsicologoFilterStore } from "@/store/filters/psicologoFilterStore";
 import {
-    hasIntersection,
+    hasAllSelected,
+    hasRelatedMatch,
     normalizeFilterValue,
     normalizarStatus,
     periodoRange,
@@ -80,6 +81,7 @@ export function usePsicologoPage() {
         const agora = new Date();
         const minutosAgora = agora.getHours() * 60 + agora.getMinutes();
         const hojeYMD = formatDateToYMD(hoje);
+        const periodoMinMax = periodoRange(periodoFiltro);
 
         return psicologos.map((p) => {
             const agendaArray = Array.isArray(p.PsychologistAgendas) ? p.PsychologistAgendas : [];
@@ -103,6 +105,15 @@ export function usePsicologoPage() {
                             const minutosHorario = horarioStringParaMinutos(agenda.Horario);
                             if (minutosHorario <= minutosAgora) return false;
                         }
+
+                        // Aplica filtro de período na lista de horários do card
+                        if (periodoMinMax) {
+                            const minutosHorario = toMinutes(agenda.Horario);
+                            if (!Number.isFinite(minutosHorario)) return false;
+                            if (minutosHorario < periodoMinMax[0] || minutosHorario > periodoMinMax[1]) {
+                                return false;
+                            }
+                        }
                         return true;
                     })
                     .sort((a, b) => a.Horario.localeCompare(b.Horario))
@@ -124,19 +135,22 @@ export function usePsicologoPage() {
         const texto = normalizeFilterValue(busca);
         if (texto) {
             const nomeOk = normalizeFilterValue(p.Nome).includes(texto);
-            const profile = p.ProfessionalProfiles?.[0];
-            const extras = [
-                ...(profile?.Queixas ?? []),
-                ...(profile?.Abordagens ?? []),
-            ].map(normalizeFilterValue).join(' ');
+            const profiles = Array.isArray(p.ProfessionalProfiles) ? p.ProfessionalProfiles : [];
+            const extras = profiles
+                .flatMap((profile) => [
+                    ...(profile?.Queixas ?? []),
+                    ...(profile?.Abordagens ?? []),
+                ])
+                .map(normalizeFilterValue)
+                .join(' ');
             if (!nomeOk && !extras.includes(texto)) return false;
         }
 
-        const profile = p.ProfessionalProfiles?.[0];
-        const idiomasArr = profile?.Idiomas ?? [];
-        const abordArr = profile?.Abordagens ?? [];
-        const queixasArr = profile?.Queixas ?? [];
-        const atendArr = profile?.TipoAtendimento ?? [];
+        const profiles = Array.isArray(p.ProfessionalProfiles) ? p.ProfessionalProfiles : [];
+        const idiomasArr = profiles.flatMap((profile) => profile?.Idiomas ?? []);
+        const abordArr = profiles.flatMap((profile) => profile?.Abordagens ?? []);
+        const queixasArr = profiles.flatMap((profile) => profile?.Queixas ?? []);
+        const atendArr = profiles.flatMap((profile) => profile?.TipoAtendimento ?? []);
 
         // Sexo: o resumo pode não conter. Se ausente, não filtra por sexo.
         if (sexoFiltro) {
@@ -150,15 +164,15 @@ export function usePsicologoPage() {
             }
         }
 
-        if (!hasIntersection(idiomasFiltro, idiomasArr)) return false;
-        if (!hasIntersection(abordagensFiltro, abordArr)) return false;
-        if (!hasIntersection(queixasFiltro, queixasArr)) return false;
-        if (!hasIntersection(atendimentosFiltro, atendArr)) return false;
+        if (!hasAllSelected(idiomasFiltro, idiomasArr)) return false;
+        if (!hasRelatedMatch(abordagensFiltro, abordArr)) return false;
+        if (!hasRelatedMatch(queixasFiltro, queixasArr)) return false;
+        if (!hasAllSelected(atendimentosFiltro, atendArr)) return false;
 
         // Data/Período: requer pelo menos 1 agenda compatível
         if (dataFiltro || periodoFiltro) {
             const agendas = p.PsychologistAgendas ?? [];
-        const pr = periodoRange(periodoFiltro);
+            const pr = periodoRange(periodoFiltro);
             const ok = agendas.some((a) => {
                 // Filtra APENAS agendas com status de disponível (com/sem acento)
                 const statusAgenda = normalizarStatus(a.Status);
@@ -166,6 +180,7 @@ export function usePsicologoPage() {
                 if (dataFiltro && ymd(a.Data) < (dataFiltro as string)) return false; // a partir de
                 if (pr) {
                     const m = toMinutes(a.Horario);
+                    if (!Number.isFinite(m)) return false;
                     return m >= pr[0] && m <= pr[1];
                 }
                 return true;

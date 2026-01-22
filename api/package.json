@@ -13,6 +13,8 @@
     "prisma:generate": "prisma generate",
     "render-build": "npm run build",
     "start": "node dist/server.js",
+    "start:token-cron": "node dist/cron/tokenGenerationCronRunner.js",
+    "start:token-worker": "node dist/workers/tokenGenerationWorkerRunner.js",
     "copy-templates": "ts-node scripts/copy-templates.ts",
     "backfill:ratings": "ts-node scripts/backfill-rating.ts",
     "refresh:agenda-view": "ts-node scripts/refresh-agenda-view.ts",

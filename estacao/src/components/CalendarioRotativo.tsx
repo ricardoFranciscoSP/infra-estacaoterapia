@@ -77,11 +77,21 @@ export default function CalendarioRotativo({ dataSelecionada, horariosPorData = 
   const diasVisiveis = 7;
   const [startIdx, setStartIdx] = useState(0);
 
-  // Estado de seleção (precisa estar antes do useEffect)
-  const [selected, setSelected] = useState<{ diaIdx: number | null; hora: string | null; agendaId?: string }>({
-    diaIdx: null,
-    hora: null,
-    agendaId: undefined,
+  // Estado de seleção sincronizado com dataSelecionada
+  const [selected, setSelected] = useState<{ diaIdx: number | null; hora: string | null; agendaId?: string }>(() => {
+    if (dataSelecionada) {
+      const dataSelecionadaNormalizada = new Date(dataSelecionada);
+      dataSelecionadaNormalizada.setHours(0, 0, 0, 0);
+      const idx = dias.findIndex(dia => {
+        const diaNormalizado = new Date(dia.date);
+        diaNormalizado.setHours(0, 0, 0, 0);
+        return diaNormalizado.getTime() === dataSelecionadaNormalizada.getTime();
+      });
+      if (idx !== -1) {
+        return { diaIdx: idx, hora: null, agendaId: undefined };
+      }
+    }
+    return { diaIdx: null, hora: null, agendaId: undefined };
   });
   
   // Ref para rastrear se o usuário selecionou manualmente um horário
@@ -200,7 +210,13 @@ export default function CalendarioRotativo({ dataSelecionada, horariosPorData = 
             const diaComparacao = new Date(dia.date);
             diaComparacao.setHours(0, 0, 0, 0); // Normaliza para início do dia
             const diaIdxReal = startIdx + idx; // Índice real no array completo de dias
-            const isSelecionado = selected.diaIdx === diaIdxReal;
+            // O dia selecionado é sempre o que corresponde à dataSelecionada
+            const isSelecionado = (() => {
+              if (!dataSelecionada) return selected.diaIdx === diaIdxReal;
+              const dataSelecionadaNormalizada = new Date(dataSelecionada);
+              dataSelecionadaNormalizada.setHours(0, 0, 0, 0);
+              return diaComparacao.getTime() === dataSelecionadaNormalizada.getTime();
+            })();
             const isHoje = diaComparacao.getTime() === hoje.getTime();
             return (
               <button

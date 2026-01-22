@@ -25,8 +25,8 @@ const createDatabaseJobsQueue = async (): Promise<Queue | null> => {
                     delay: 2000,
                 },
                 removeOnComplete: {
-                    age: 3600, // Mantém jobs completos por 1 hora
-                    count: 1000,
+                    age: 86400, // Mantém jobs completos por 24 horas
+                    count: 5000,
                 },
                 removeOnFail: {
                     age: 86400, // Mantém jobs falhos por 24 horas

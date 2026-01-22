@@ -313,7 +313,7 @@ export async function agendarVerificacaoPresenca(consultaId: string, scheduledAt
                         delay: 5000
                     },
                     jobId: `presenca-10min-${consultaId}`,
-                    removeOnComplete: { age: 3600 },
+                    removeOnComplete: { age: 86400 },
                     removeOnFail: { age: 86400 }
                 }
             );

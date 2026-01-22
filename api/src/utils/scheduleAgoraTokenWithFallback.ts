@@ -237,7 +237,11 @@ export async function scheduleAgoraTokenGenerationWithFallback(
                 const { generateAgoraTokensForConsulta } = await import(
                     './scheduleAgoraToken'
                 );
-                return await generateAgoraTokensForConsulta(consultaId, dbJob.Id);
+                return await generateAgoraTokensForConsulta(
+                    consultaId,
+                    dbJob.Id,
+                    'schedule'
+                );
             }
 
             // ✅ Agenda para o horário EXATO do ScheduledAt (não antes, não depois)
@@ -258,7 +262,7 @@ export async function scheduleAgoraTokenGenerationWithFallback(
                         delay: 5000,
                     },
                     jobId: `agora-token:${dbJob.Id}`,
-                    removeOnComplete: { age: 3600 },
+                    removeOnComplete: { age: 86400 },
                     removeOnFail: { age: 86400 },
                 }
             );

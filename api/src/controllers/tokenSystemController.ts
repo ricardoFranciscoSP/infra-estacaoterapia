@@ -165,7 +165,11 @@ router.post('/generate-missing', async (req: Request, res: Response): Promise<Re
 
         for (const { ConsultaId } of pendentes) {
             try {
-                await generateAgoraTokensForConsulta(ConsultaId);
+                await generateAgoraTokensForConsulta(
+                    ConsultaId,
+                    undefined,
+                    'admin'
+                );
                 sucessos++;
             } catch (error) {
                 erros++;
@@ -283,7 +287,7 @@ router.post('/generate-manual', async (req: Request, res: Response): Promise<Res
         const tokenResult = await ensureAgoraTokensForConsulta(prisma, consulta.Id, {
             actorId: adminId,
             actorIp: getClientIp(req),
-            source: 'admin-manual',
+            source: 'admin',
         });
 
         console.log(`🧾 [token-system] Tokens gerados manualmente`, {

@@ -51,16 +51,22 @@ export const fetchPsicologoByFilter = async (filtros: PsicologoFilterParams): Pr
     try {
         // Monta query string com todos os filtros
         const params = new URLSearchParams();
+        const keyMap: Record<string, string> = {
+            atendimentos: "atende",
+            idiomas: "languages",
+            data: "dataDisponivel",
+        };
         Object.entries(filtros).forEach(([key, value]) => {
             if (value === null || value === undefined || value === '') {
                 return; // Ignora valores vazios
             }
+            const paramKey = keyMap[key] ?? key;
             if (Array.isArray(value)) {
                 if (value.length > 0) {
-                    value.forEach(v => params.append(key, String(v)));
+                    value.forEach(v => params.append(paramKey, String(v)));
                 }
             } else {
-                params.append(key, String(value));
+                params.append(paramKey, String(value));
             }
         });
         const response = await psicologoService().getPsicologoByFilter(params.toString());

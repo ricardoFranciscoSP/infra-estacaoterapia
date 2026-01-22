@@ -76,8 +76,6 @@ const nextConfig: NextConfig = {
     serverActions: {
       bodySizeLimit: "1mb",
     },
-    // Reduz consumo de memória no build (evita otimizações extras)
-    optimizeServerReact: false,
   },
 
   webpack: (config, { isServer, dev }) => {

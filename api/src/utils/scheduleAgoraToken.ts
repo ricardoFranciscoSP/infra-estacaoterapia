@@ -37,11 +37,12 @@ export async function scheduleAgoraTokenGeneration(
  */
 export async function generateAgoraTokensForConsulta(
     consultaId: string,
-    jobId?: string
+    jobId?: string,
+    source: string = 'schedule'
 ): Promise<boolean> {
     try {
         const { ensureAgoraTokensForConsulta } = await import('../services/agoraToken.service');
-        await ensureAgoraTokensForConsulta(prisma, consultaId, { source: 'schedule' });
+        await ensureAgoraTokensForConsulta(prisma, consultaId, { source });
 
         // Atualiza status das tabelas (Consulta, ReservaSessao, Agenda) para EmAndamento
         try {

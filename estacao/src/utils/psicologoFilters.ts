@@ -1,15 +1,35 @@
 export const normalizeFilterValue = (value: string) =>
   (value || "")
+    // Separate camelCase/PascalCase tokens for matching with labels
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2")
     .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
-    .replace(/_/g, " ")
+    .replace(/[_/\\-]+/g, " ")
+    .replace(/\s+/g, " ")
     .trim();
 
 export const hasIntersection = (selected: string[] | undefined, target: string[] | undefined) => {
   if (!selected || selected.length === 0) return true;
   const targetSet = new Set((target ?? []).map(normalizeFilterValue));
   return selected.some((item) => targetSet.has(normalizeFilterValue(item)));
+};
+
+export const hasAllSelected = (selected: string[] | undefined, target: string[] | undefined) => {
+  if (!selected || selected.length === 0) return true;
+  const targetSet = new Set((target ?? []).map(normalizeFilterValue));
+  return selected.every((item) => targetSet.has(normalizeFilterValue(item)));
+};
+
+export const hasRelatedMatch = (selected: string[] | undefined, target: string[] | undefined) => {
+  if (!selected || selected.length === 0) return true;
+  const targetNorms = (target ?? []).map(normalizeFilterValue);
+  return selected.some((item) => {
+    const itemNorm = normalizeFilterValue(item);
+    if (!itemNorm) return false;
+    return targetNorms.some((t) => t === itemNorm || t.includes(itemNorm) || itemNorm.includes(t));
+  });
 };
 
 export const normalizarStatus = (status?: string | null) =>
@@ -19,15 +39,20 @@ export const normalizarStatus = (status?: string | null) =>
     .toLowerCase();
 
 export const periodoRange = (periodo?: string | null): [number, number] | null => {
-  if (periodo === "manha") return [6 * 60, 12 * 60 - 1];
-  if (periodo === "tarde") return [12 * 60, 18 * 60 - 1];
-  if (periodo === "noite") return [18 * 60, 23 * 60 + 59];
+  // Manhã: 06:00–12:00, Tarde: 12:01–18:00, Noite: 18:01–23:00
+  if (periodo === "manha") return [6 * 60, 12 * 60];
+  if (periodo === "tarde") return [12 * 60 + 1, 18 * 60];
+  if (periodo === "noite") return [18 * 60 + 1, 23 * 60];
   return null;
 };
 
 export const toMinutes = (horario: string) => {
-  const [hh, mm] = horario.split(":").map(Number);
-  return hh * 60 + (mm || 0);
+  if (!horario) return NaN;
+  const match = horario.match(/(\d{1,2}):(\d{2})/);
+  if (!match) return NaN;
+  const hh = Number(match[1]);
+  const mm = Number(match[2]);
+  return hh * 60 + mm;
 };
 
 export const ymd = (value: string) => value.slice(0, 10);
@@ -70,18 +95,14 @@ export const calcularCompatibilidade = (
   if (filtros.abordagens && filtros.abordagens.length > 0) {
     totalFiltros++;
     const abordagensPsicologo = profile.Abordagens || [];
-    const temAbordagem = filtros.abordagens.some((a) =>
-      abordagensPsicologo.some((ap) => normalizeFilterValue(ap) === normalizeFilterValue(a))
-    );
+    const temAbordagem = hasRelatedMatch(filtros.abordagens, abordagensPsicologo);
     if (temAbordagem) filtrosCorrespondentes++;
   }
 
   if (filtros.queixas && filtros.queixas.length > 0) {
     totalFiltros++;
     const queixasPsicologo = profile.Queixas || [];
-    const temQueixa = filtros.queixas.some((q) =>
-      queixasPsicologo.some((qp) => normalizeFilterValue(qp) === normalizeFilterValue(q))
-    );
+    const temQueixa = hasRelatedMatch(filtros.queixas, queixasPsicologo);
     if (temQueixa) filtrosCorrespondentes++;
   }
 
@@ -113,6 +134,7 @@ export const calcularCompatibilidade = (
       if (filtros.data && ymd(agenda.Data) < (filtros.data as string)) return false;
       if (range) {
         const m = toMinutes(agenda.Horario);
+        if (!Number.isFinite(m)) return false;
         return m >= range[0] && m <= range[1];
       }
       return true;

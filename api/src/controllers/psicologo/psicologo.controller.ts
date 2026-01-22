@@ -150,49 +150,114 @@ function normalizeTipoPessoaJuridicaEnum(value: unknown): TipoPessoaJuridica | n
 /**
  * Converte array de strings para array de enum TipoAtendimento
  */
-function normalizeTipoAtendimentoArray(value: unknown): TipoAtendimento[] {
+function normalizeEnumToken(value: string): string {
+    return value
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[\s_\-]+/g, "");
+}
+
+function normalizeEnumArray<T extends string>(value: unknown, validValues: T[]): T[] {
     if (!value) return [];
-    const validValues = Object.values(TipoAtendimento) as TipoAtendimento[];
     const stringArray = Array.isArray(value) ? value.map(String) : [String(value)];
     return stringArray
-        .map(v => validValues.find(ev => ev === v))
-        .filter((v): v is TipoAtendimento => v !== undefined);
+        .map((v) => {
+            const direct = validValues.find((ev) => ev === v);
+            if (direct) return direct;
+            const normalized = normalizeEnumToken(v);
+            return validValues.find((ev) => normalizeEnumToken(String(ev)) === normalized);
+        })
+        .filter((v): v is T => v !== undefined);
+}
+
+function normalizeEnumArrayWithPartial<T extends string>(value: unknown, validValues: T[]): T[] {
+    if (!value) return [];
+    const stringArray = Array.isArray(value) ? value.map(String) : [String(value)];
+    const normalizedTerms = stringArray.map((v) => normalizeEnumToken(v)).filter(Boolean);
+    const matches = new Set<T>();
+    validValues.forEach((ev) => {
+        const normalizedEv = normalizeEnumToken(String(ev));
+        if (!normalizedEv) return;
+        normalizedTerms.forEach((term) => {
+            if (normalizedEv.includes(term)) {
+                matches.add(ev);
+            }
+        });
+    });
+    return Array.from(matches);
+}
+
+function normalizeTipoAtendimentoArray(value: unknown): TipoAtendimento[] {
+    const validValues = Object.values(TipoAtendimento) as TipoAtendimento[];
+    return normalizeEnumArray(value, validValues);
 }
 
 /**
  * Converte array de strings para array de enum Queixa
  */
 function normalizeQueixaArray(value: unknown): Queixa[] {
-    if (!value) return [];
     const validValues = Object.values(Queixa) as Queixa[];
-    const stringArray = Array.isArray(value) ? value.map(String) : [String(value)];
-    return stringArray
-        .map(v => validValues.find(ev => ev === v))
-        .filter((v): v is Queixa => v !== undefined);
+    // Mapeamento explícito de nomes exibidos para enums técnicos
+    const queixaMap: Record<string, Queixa> = {
+        "Ansiedade": "Ansiedade",
+        "Depressão": "Depressao",
+        "Compulsão Alimentar": "CompulsaoAlimentar",
+        "Borderline": "Borderline",
+        "Agressividade": "Agressividade",
+        "Alteração de Humor": "AlteracaoHumor",
+        "Conflitos Amorosos": "ConflitosAmorosos",
+        "Descontrole Emocional": "DescontroleEmocional",
+        "Desmotivação": "Desmotivacao",
+        "Falta de Propósito de Vida": "FaltaPropositoVida",
+        "Impulsividade": "Impulsividade",
+        "LGBTQIA+ / Identidade de Gênero": "LgbtqiapnIdentidadeGenero",
+        "Procrastinação": "Procrastinacao",
+        "Transtorno Bipolar": "TranstornoBipolar",
+        "Supervisão Clínica de Psicologia": "SupervisaoClinicaPsicologia",
+        "Transtorno do Pânico": "TranstornoPanico",
+        "Transtorno Obsessivo Compulsivo": "TranstornoObsessivoCompulsivo",
+        "Vícios/Jogos": "ViciosJogos"
+        // Adicione todos os demais nomes exibidos aqui
+    };
+    let inputArray = Array.isArray(value) ? value : [value];
+    inputArray = inputArray.map((v) => queixaMap[v] || v);
+    const partialMatches = normalizeEnumArrayWithPartial(inputArray, validValues);
+    return partialMatches.length > 0 ? partialMatches : normalizeEnumArray(inputArray, validValues);
 }
 
 /**
  * Converte array de strings para array de enum Abordagem
  */
 function normalizeAbordagemArray(value: unknown): Abordagem[] {
-    if (!value) return [];
     const validValues = Object.values(Abordagem) as Abordagem[];
-    const stringArray = Array.isArray(value) ? value.map(String) : [String(value)];
-    return stringArray
-        .map(v => validValues.find(ev => ev === v))
-        .filter((v): v is Abordagem => v !== undefined);
+    // Mapeamento explícito de nomes exibidos para enums técnicos
+    const abordagemMap: Record<string, Abordagem> = {
+        "Terapia Cognitivo-Comportamental (TCC)": "TerapiaCognitivaComportamentalTcc",
+        "Terapia do Esquema": "TerapiaEsquemaJeffreyYoungTe",
+        "Mindfulness": "Mindfulness",
+        "Evolução Emocional": "EvolucaoEmocional",
+        "Terapia Baseada em Mindfulness": "TerapiaBaseadaMindfulnessTbm",
+        "Terapia Cognitiva-Comportamental Baseada em Processos": "TerapiaCognitivaComportamentalBaseadaProcessos",
+        "Análise Existencial": "AnaliseExistencial",
+        "Análise do Comportamento": "AnaliseComportamento",
+        "Cuidados Paliativos": "CuidadosPaliativos",
+        "Neurociências": "Neurociencias",
+        "Psicologia Organizacional e do Trabalho": "PsicologiaOrganizacionalTrabalho"
+        // Adicione todos os demais nomes exibidos aqui
+    };
+    let inputArray = Array.isArray(value) ? value : [value];
+    inputArray = inputArray.map((v) => abordagemMap[v] || v);
+    const partialMatches = normalizeEnumArrayWithPartial(inputArray, validValues);
+    return partialMatches.length > 0 ? partialMatches : normalizeEnumArray(inputArray, validValues);
 }
 
 /**
  * Converte array de strings para array de enum Languages
  */
 function normalizeLanguagesArray(value: unknown): Languages[] {
-    if (!value) return [];
     const validValues = Object.values(Languages) as Languages[];
-    const stringArray = Array.isArray(value) ? value.map(String) : [String(value)];
-    return stringArray
-        .map(v => validValues.find(ev => ev === v))
-        .filter((v): v is Languages => v !== undefined);
+    return normalizeEnumArray(value, validValues);
 }
 
 /**
@@ -926,7 +991,7 @@ export class PsicologoController {
                 andConditions.push({
                     ProfessionalProfiles: {
                         some: {
-                            TipoAtendimento: { hasSome: atendeArray }
+                            TipoAtendimento: { hasEvery: atendeArray }
                         }
                     }
                 });
@@ -939,7 +1004,7 @@ export class PsicologoController {
                 andConditions.push({
                     ProfessionalProfiles: {
                         some: {
-                            Idiomas: { hasSome: languagesArray }
+                            Idiomas: { hasEvery: languagesArray }
                         }
                     }
                 });
@@ -990,11 +1055,11 @@ export class PsicologoController {
     private getPeriodTimeRange(periodo: TimePeriod): { gte?: string; lt?: string } {
         switch (periodo) {
             case TimePeriod.MORNING:
-                return { gte: "06:00", lt: "12:00" };
+                return { gte: "06:00", lt: "12:01" };
             case TimePeriod.AFTERNOON:
-                return { gte: "12:00", lt: "18:00" };
+                return { gte: "12:01", lt: "18:01" };
             case TimePeriod.EVENING:
-                return { gte: "18:00", lt: "23:59" };
+                return { gte: "18:01", lt: "23:01" };
             default:
                 return {};
         }

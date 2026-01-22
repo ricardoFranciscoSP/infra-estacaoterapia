@@ -55,7 +55,11 @@ export async function startWebhookWorker() {
 
                     // Usa função utilitária centralizada para gerar tokens
                     const { generateAgoraTokensForConsulta } = await import('../utils/scheduleAgoraToken');
-                    await generateAgoraTokensForConsulta(consultaId);
+                    await generateAgoraTokensForConsulta(
+                        consultaId,
+                        undefined,
+                        'webhook'
+                    );
 
                     const duration = Date.now() - jobStartTime;
                     console.log(`✅ [WebhookWorker] Tokens gerados (executarTarefaReserva) para consulta ${consultaId} em ${duration}ms`);
@@ -97,7 +101,11 @@ export async function startWebhookWorker() {
                             data: { Status: "processing" }
                         }).catch(() => undefined);
                     }
-                    await generateAgoraTokensForConsulta(consultaId, jobId);
+                    await generateAgoraTokensForConsulta(
+                        consultaId,
+                        jobId,
+                        'webhook'
+                    );
 
                     const duration = Date.now() - jobStartTime;
                     console.log(`✅ [WebhookWorker] Tokens Agora gerados (generateAgoraTokens) para consulta ${consultaId} em ${duration}ms`);

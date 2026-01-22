@@ -3,7 +3,7 @@ import React, { useState, useMemo, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
 import { jobsService, JobInfo } from "@/services/jobsService";
-import { ActionType, Module } from "@/types/auditoria";
+import { ActionType, Module, AuditoriaItem } from "@/types/auditoria";
 import { useAudits } from "@/hooks/auditHook";
 
 // Mapeamento de ActionType para exibição
@@ -47,6 +47,7 @@ export default function LogsPage() {
   const [filtroDataFim, setFiltroDataFim] = useState("");
   const [busca, setBusca] = useState("");
   const [filtroStatusJob, setFiltroStatusJob] = useState<string>("");
+  const [selectedAudit, setSelectedAudit] = useState<AuditoriaItem | null>(null);
 
   // Resetar página quando filtros mudarem
   useEffect(() => {
@@ -171,6 +172,16 @@ export default function LogsPage() {
       minute: '2-digit',
       second: '2-digit',
     });
+  };
+
+  const formatAuditMetadata = (metadata?: string | null): string => {
+    if (!metadata) return "-";
+    try {
+      const parsed = JSON.parse(metadata);
+      return JSON.stringify(parsed, null, 2);
+    } catch {
+      return metadata;
+    }
   };
 
   // Listas únicas para os filtros
@@ -469,15 +480,14 @@ export default function LogsPage() {
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Usuário</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Módulo</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Ação</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Descrição</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">IP</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Status</th>
+                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider">Ver</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {isLoading ? (
                   <tr>
-                    <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
+                    <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
                       <div className="flex items-center justify-center gap-2">
                         <svg className="animate-spin h-5 w-5 text-[#8494E9]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -489,7 +499,7 @@ export default function LogsPage() {
                   </tr>
                 ) : audits.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
+                    <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
                       Nenhum log encontrado
                     </td>
                   </tr>
@@ -508,14 +518,26 @@ export default function LogsPage() {
                       <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
                         {actionTypeLabels[audit.ActionType] || audit.ActionType}
                       </td>
-                      <td className="px-4 py-3 text-sm text-gray-900 max-w-md truncate" title={audit.Description}>
-                        {audit.Description}
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                        {audit.IpAddress || "-"}
-                      </td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         <StatusBadge status={audit.Status} />
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedAudit(audit)}
+                          className="inline-flex items-center justify-center text-[#8494E9] hover:text-[#6B7DE0]"
+                          title="Ver detalhes"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                            />
+                            <circle cx="12" cy="12" r="3" />
+                          </svg>
+                        </button>
                       </td>
                     </tr>
                   ))
@@ -648,6 +670,58 @@ export default function LogsPage() {
           </div>
         )}
       </motion.div>
+
+      {selectedAudit && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-3xl bg-white rounded-xl shadow-lg p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-800">Detalhes do log</h3>
+              <button
+                onClick={() => setSelectedAudit(null)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm text-gray-700">
+              <div>
+                <span className="text-gray-500">Data/Hora</span>
+                <div>{formatarDataHora(selectedAudit.Timestamp)}</div>
+              </div>
+              <div>
+                <span className="text-gray-500">Usuário</span>
+                <div>{selectedAudit.User?.Nome || selectedAudit.UserId}</div>
+              </div>
+              <div>
+                <span className="text-gray-500">Módulo</span>
+                <div>{moduleLabels[selectedAudit.Module] || selectedAudit.Module}</div>
+              </div>
+              <div>
+                <span className="text-gray-500">Ação</span>
+                <div>{actionTypeLabels[selectedAudit.ActionType] || selectedAudit.ActionType}</div>
+              </div>
+              <div>
+                <span className="text-gray-500">Status</span>
+                <div>{selectedAudit.Status || "-"}</div>
+              </div>
+              <div>
+                <span className="text-gray-500">IP</span>
+                <div>{selectedAudit.IpAddress || "-"}</div>
+              </div>
+              <div className="sm:col-span-2">
+                <span className="text-gray-500">Descrição</span>
+                <div className="whitespace-pre-wrap">{selectedAudit.Description}</div>
+              </div>
+              <div className="sm:col-span-2">
+                <span className="text-gray-500">Metadata</span>
+                <pre className="mt-1 whitespace-pre-wrap rounded-lg bg-gray-50 p-3 text-xs text-gray-700 border border-gray-200">
+                  {formatAuditMetadata(selectedAudit.Metadata)}
+                </pre>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

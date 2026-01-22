@@ -91,7 +91,9 @@ export async function cronCheckAndGenerateTokens(): Promise<void> {
                     '../utils/scheduleAgoraToken'
                 );
                 const success = await generateAgoraTokensForConsulta(
-                    reserva.ConsultaId
+                    reserva.ConsultaId,
+                    undefined,
+                    'cron'
                 );
 
                 if (success) {

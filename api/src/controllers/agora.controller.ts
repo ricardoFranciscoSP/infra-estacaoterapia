@@ -42,7 +42,7 @@ export class AgoraController {
             const tokenResult = await ensureAgoraTokensForConsulta(this.prisma, consultaId, {
                 actorId,
                 actorIp,
-                source: 'room-check',
+                source: 'room',
             });
 
             console.log(
@@ -616,7 +616,7 @@ export class AgoraController {
             const tokenResult = await ensureAgoraTokensForConsulta(this.prisma, consultaId, {
                 actorId: userId,
                 actorIp: getClientIp(req),
-                source: 'manual-room',
+                source: 'admin',
             });
 
             console.log(`✅ [AgoraController] Tokens garantidos manualmente para consulta ${consultaId}`);

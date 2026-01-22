@@ -441,7 +441,7 @@ export async function startConsultationWorker() {
                             try {
                                 const { ensureAgoraTokensForConsulta } = await import('../services/agoraToken.service');
                                 const tokenResult = await ensureAgoraTokensForConsulta(prisma, consultationId, {
-                                    source: 'startConsultation',
+                                    source: 'worker',
                                 });
 
                                 const patientToken = tokenResult.patientToken;

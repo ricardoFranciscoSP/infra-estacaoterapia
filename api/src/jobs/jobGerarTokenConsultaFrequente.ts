@@ -93,7 +93,11 @@ export async function jobGerarTokenConsultaFrequente() {
                 }
 
                 // Gera tokens diretamente
-                const success = await generateAgoraTokensForConsulta(reservaSessao.ConsultaId);
+                const success = await generateAgoraTokensForConsulta(
+                    reservaSessao.ConsultaId,
+                    undefined,
+                    'cron'
+                );
                 
                 if (success) {
                     geradas++;

@@ -10,7 +10,8 @@ import Image from "next/image";
 import { usePsicologoSearch } from '@/hooks/usePsicologoSearch';
 import { usePsicologoFilterStore } from "@/store/filters/psicologoFilterStore";
 import {
-  hasIntersection,
+  hasAllSelected,
+  hasRelatedMatch,
   normalizeFilterValue,
   normalizarStatus,
   periodoRange,
@@ -146,7 +147,10 @@ function PsicologosPage() {
     !!periodo;
 
   const psicologosBase = React.useMemo(() => {
-    if (hasFiltroSelecionado) return psicologos ?? [];
+    if (hasFiltroSelecionado) {
+      if (Array.isArray(psicologos) && psicologos.length > 0) return psicologos;
+      return psicologosAtivos ?? [];
+    }
     if (Array.isArray(psicologos) && psicologos.length > 0) return psicologos;
     return psicologosAtivos ?? [];
   }, [hasFiltroSelecionado, psicologos, psicologosAtivos]);
@@ -154,11 +158,11 @@ function PsicologosPage() {
   const psicologosFiltrados = React.useMemo(() => {
     if (!Array.isArray(psicologosBase)) return [];
     return psicologosBase.filter((p: PsicologoAtivo) => {
-      const profile = p.ProfessionalProfiles?.[0];
-      const idiomasArr = profile?.Idiomas ?? [];
-      const abordArr = profile?.Abordagens ?? [];
-      const queixasArr = profile?.Queixas ?? [];
-      const atendArr = profile?.TipoAtendimento ?? [];
+      const profiles = Array.isArray(p.ProfessionalProfiles) ? p.ProfessionalProfiles : [];
+      const idiomasArr = profiles.flatMap((profile) => profile?.Idiomas ?? []);
+      const abordArr = profiles.flatMap((profile) => profile?.Abordagens ?? []);
+      const queixasArr = profiles.flatMap((profile) => profile?.Queixas ?? []);
+      const atendArr = profiles.flatMap((profile) => profile?.TipoAtendimento ?? []);
 
       if (sexo) {
         const sexoValue = (p as PsicologoAtivo & { Sexo?: string }).Sexo ?? null;
@@ -170,10 +174,10 @@ function PsicologosPage() {
         }
       }
 
-      if (!hasIntersection(idiomas, idiomasArr)) return false;
-      if (!hasIntersection(abordagens, abordArr)) return false;
-      if (!hasIntersection(queixas, queixasArr)) return false;
-      if (!hasIntersection(atendimentos, atendArr)) return false;
+      if (!hasAllSelected(idiomas, idiomasArr)) return false;
+      if (!hasRelatedMatch(abordagens, abordArr)) return false;
+      if (!hasRelatedMatch(queixas, queixasArr)) return false;
+      if (!hasAllSelected(atendimentos, atendArr)) return false;
 
       if (data || periodo) {
         const agendas = p.PsychologistAgendas ?? [];
