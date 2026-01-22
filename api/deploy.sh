@@ -12,9 +12,15 @@ UPDATE_STATEFUL="${UPDATE_STATEFUL:-false}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SECRETS_DIR="/opt/secrets"
 STACK_PREFIX="estacaoterapia"
-KEEP_VERSIONS=1  # Manter última versão + 1 anterior (rollback)
+KEEP_VERSIONS=1  # Manter somente a última versão (sem rollback)
 STACK_FILES=("docker-stack.redis.yml" "docker-stack.pgbouncer.yml" "docker-stack.api.yml" "docker-stack.socket.yml")
 STACK_NAMES=("estacaoterapia-redis" "estacaoterapia-pgbouncer" "estacaoterapia-api" "estacaoterapia-socket")
+service_pairs=(
+  "estacaoterapia-redis:redis"
+  "estacaoterapia-pgbouncer:pgbouncer"
+  "estacaoterapia-api:api"
+  "estacaoterapia-socket:socket-server"
+)
 
 echo ""
 echo "==============================="
@@ -60,12 +66,8 @@ echo "✅ Pré-requisitos OK"
 # 2. CLEAN DEPLOY (OPCIONAL)
 # ==============================
 if [ "$CLEAN_DEPLOY" = true ]; then
-  echo "⚠️  CLEAN_DEPLOY=true pode causar downtime (stack será removida)"
-  echo "🧹 Removendo stacks de aplicação para deploy limpo..."
-  for stack in "${STACK_NAMES[@]}"; do
-    docker stack rm "$stack" || true
-  done
-  sleep 10
+  echo "⚠️  CLEAN_DEPLOY=true foi solicitado, mas foi desabilitado para evitar downtime."
+  echo "ℹ️  O deploy seguirá com update in-place dos serviços."
 fi
 
 
@@ -188,18 +190,27 @@ for i in "${!STACK_FILES[@]}"; do
   fi
 done
 
+echo ""
+echo "[LOG] Forçando atualização dos serviços (sempre imagens novas)..."
+for pair in "${service_pairs[@]}"; do
+  stack="${pair%%:*}"
+  svc="${pair##*:}"
+  full="${stack}_${svc}"
+
+  if [ "$UPDATE_STATEFUL" != true ] && { [ "$svc" = "redis" ] || [ "$svc" = "pgbouncer" ]; }; then
+    echo "ℹ️  UPDATE_STATEFUL=false: mantendo $full sem restart"
+    continue
+  fi
+
+  echo "🔁 Atualizando $full"
+  docker service update --force "$full"
+done
+
 # ==============================
 # 7. HEALTH CHECK
 # ==============================
 
 echo "[LOG] ⏳ Aguardando serviços ficarem estáveis..."
-
-service_pairs=(
-  "estacaoterapia-redis:redis"
-  "estacaoterapia-pgbouncer:pgbouncer"
-  "estacaoterapia-api:api"
-  "estacaoterapia-socket:socket-server"
-)
 
 for pair in "${service_pairs[@]}"; do
   stack="${pair%%:*}"
@@ -217,6 +228,37 @@ for pair in "${service_pairs[@]}"; do
   done
 
   echo "✅ $full OK ($replicas)"
+done
+
+echo ""
+echo "[CLEANUP] Removendo imagens antigas (mantendo $KEEP_VERSIONS por serviço)..."
+
+declare -A RUNNING_IMAGE_IDS
+for stack in "${STACK_NAMES[@]}"; do
+  while IFS= read -r service_name; do
+    [ -z "$service_name" ] && continue
+    image_ref="$(docker service inspect --format '{{.Spec.TaskTemplate.ContainerSpec.Image}}' "$service_name" 2>/dev/null || true)"
+    [ -z "$image_ref" ] && continue
+    image_id="$(docker image inspect --format '{{.Id}}' "$image_ref" 2>/dev/null || true)"
+    [ -n "$image_id" ] && RUNNING_IMAGE_IDS["$image_id"]=1
+  done < <(docker service ls --filter name="$stack" --format '{{.Name}}')
+done
+
+for service in redis api socket pgbouncer; do
+  repo="estacaoterapia-${service}"
+  images=$(docker images --format "{{.Repository}}:{{.Tag}} {{.ID}} {{.CreatedAt}}" | awk -v r="${repo}:" '$1 ~ "^"r {print $0}' | sort -r)
+  if [ -n "$images" ]; then
+    to_remove=$(echo "$images" | awk -v keep="$KEEP_VERSIONS" 'NR>keep {print $2}')
+    if [ -n "$to_remove" ]; then
+      while IFS= read -r img_id; do
+        [ -z "$img_id" ] && continue
+        if [ -n "${RUNNING_IMAGE_IDS[$img_id]+x}" ]; then
+          continue
+        fi
+        docker image rm -f "$img_id" 2>/dev/null || true
+      done <<< "$to_remove"
+    fi
+  fi
 done
 
 # ==============================

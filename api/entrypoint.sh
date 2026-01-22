@@ -71,6 +71,15 @@ require_secret_file() {
   fi
 }
 
+require_env() {
+  name="$1"
+  value="$(printenv "$name" 2>/dev/null || true)"
+  if [ -z "$value" ]; then
+    echo "❌ Variável de ambiente obrigatória ausente: $name"
+    exit 1
+  fi
+}
+
 check_port() {
   host="$1"; port="$2"; name="$3"
   if timeout 2 nc -z "$host" "$port" 2>/dev/null; then
@@ -182,6 +191,12 @@ start_api() {
     echo "🔐 Senha Redis carregada do secret (${#REDIS_PASSWORD} chars)"
   fi
 
+  # Valida variáveis obrigatórias
+  require_env POSTGRES_USER
+  require_env POSTGRES_PASSWORD
+  require_env POSTGRES_DB
+  require_env REDIS_PASSWORD
+
   # Resolver DNS
   resolve_host_with_fallback "PG_HOST" "$PG_HOST" "" "tasks.pgbouncer pgbouncer estacaoterapia_pgbouncer" "PgBouncer"
   resolve_host_with_fallback "REDIS_HOST" "$REDIS_HOST" "" "tasks.redis redis estacaoterapia_redis" "Redis"
@@ -253,6 +268,12 @@ start_socket() {
     REDIS_PASSWORD="$(tr -d '\n\r' < /run/secrets/redis_password)"
     export REDIS_PASSWORD
   fi
+
+  require_env POSTGRES_USER
+  require_env POSTGRES_PASSWORD
+  require_env POSTGRES_DB
+  require_env REDIS_PASSWORD
+  require_env API_BASE_URL
 
   resolve_host_with_fallback "PG_HOST" "$PG_HOST" "" "tasks.pgbouncer pgbouncer estacaoterapia_pgbouncer" "PgBouncer"
   resolve_host_with_fallback "REDIS_HOST" "$REDIS_HOST" "" "tasks.redis redis estacaoterapia_redis" "Redis"

@@ -418,67 +418,75 @@ function PsicologosPage() {
               </button>
             </div>
             {/* Fim do input de pesquisa */}
-            {(isLoading || (!hasFiltroSelecionado && isLoadingAtivos)) ? (
-              <div className="text-center py-8 text-[#8494E9]"></div>
-            ) : psicologosOrdenados.length === 0 ? (
-              <div className="text-center py-8 text-[#8494E9]">Nenhum psicólogo encontrado...</div>
-            ) : (
-              <AnimatePresence>
-                {psicologosOrdenados.slice(0, cardsVisiveis).map((p: PsicologoAtivo, idx: number) => {
-                  const avatarUrl = Array.isArray(p.Images) && p.Images.length > 0 && p.Images[0]?.Url ? p.Images[0].Url : "/assets/avatar-placeholder.svg";
-                  const nome = p.Nome ?? "";
-                  const crp = p.Crp ?? "";
-                  const sobreMim = Array.isArray(p.ProfessionalProfiles) && p.ProfessionalProfiles.length > 0 && p.ProfessionalProfiles[0]?.SobreMim ? p.ProfessionalProfiles[0].SobreMim : "";
-                  return (
-                    <motion.div
-                      key={p.Id || `psicologo-${idx}`}
-                      initial={{ opacity: 0, y: 30 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: 30 }}
-                      transition={{ duration: 0.3, delay: idx * 0.07 }}
-                      className="w-full h-[344px] md:w-full md:max-w-7xl md:h-[450px] mx-auto flex flex-col md:flex-row opacity-100 rounded-[8px] overflow-hidden border border-[#9BA9ED] bg-[#FCFBF6] mb-3 md:mb-0"
-                      style={{ height: "344px" }}
-                    >
-                      <CardPsicologos
-                        p={p}
-                        avatarUrl={avatarUrl}
-                        nome={nome}
-                        crp={crp}
-                        sobreMim={sobreMim}
-                        router={router}
-                        idx={idx}
-                        motion={motion}
-                      />
-                      <ListPsicologo
-                        idx={idx}
-                        p={p}
-                        datas={datas}
-                        startIdx={startIdx}
-                        setStartIdx={setStartIdx}
-                        totalDias={totalDias}
-                        diasVisiveis={diasVisiveis}
-                        diaSelecionado={diaSelecionado ?? 0}
-                        setDiaSelecionado={setDiaSelecionado}
-                        horariosPorData={horariosPorData}
-                        horariosSelecionados={horariosSelecionados}
-                        setHorariosSelecionados={setHorariosSelecionados}
-                        selecionarHorario={selecionarHorario}
-                        bloqueioHorarios={bloqueioHorarios}
-                        abrirResumoAgenda={abrirResumoAgenda}
-                      />
-                    </motion.div>
-                  );
-                })}
-              </AnimatePresence>
-            )}
-            {cardsVisiveis < psicologosOrdenados.length && (
-              <button
-                className="mx-auto mt-4 md:mt-6 bg-[#8494E9] text-white font-bold rounded-md px-6 md:px-8 py-2 text-base hover:bg-[#6c6bb6] w-full md:w-auto"
-                onClick={() => setCardsVisiveis((prev) => Math.min(prev + PAGE_SIZE, psicologosOrdenados.length))}
-              >
-                Ver mais
-              </button>
-            )}
+              {(isLoading || (!hasFiltroSelecionado && isLoadingAtivos)) ? (
+                <div className="flex flex-col items-center justify-center py-16">
+                  <svg className="animate-spin h-8 w-8 text-[#8494E9] mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                  </svg>
+                  <span className="text-[#8494E9] text-lg font-semibold">Carregando...</span>
+                </div>
+              ) : psicologosOrdenados.length === 0 ? (
+                <div className="text-center py-8 text-[#8494E9]">Nenhum psicólogo encontrado...</div>
+              ) : (
+                <AnimatePresence>
+                  {psicologosOrdenados.slice(0, cardsVisiveis).map((p: PsicologoAtivo, idx: number) => {
+                    const avatarUrl = Array.isArray(p.Images) && p.Images.length > 0 && p.Images[0]?.Url ? p.Images[0].Url : "/assets/avatar-placeholder.svg";
+                    const nome = p.Nome ?? "";
+                    const crp = p.Crp ?? "";
+                    const sobreMim = Array.isArray(p.ProfessionalProfiles) && p.ProfessionalProfiles.length > 0 && p.ProfessionalProfiles[0]?.SobreMim ? p.ProfessionalProfiles[0].SobreMim : "";
+                    return (
+                      <motion.div
+                        key={p.Id || `psicologo-${idx}`}
+                        initial={{ opacity: 0, y: 30 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 30 }}
+                        transition={{ duration: 0.3, delay: idx * 0.07 }}
+                        className="w-full h-[344px] md:w-full md:max-w-7xl md:h-[450px] mx-auto flex flex-col md:flex-row opacity-100 rounded-[8px] overflow-hidden border border-[#9BA9ED] bg-[#FCFBF6] mb-3 md:mb-0"
+                        style={{ height: "344px" }}
+                      >
+                        <CardPsicologos
+                          p={p}
+                          avatarUrl={avatarUrl}
+                          nome={nome}
+                          crp={crp}
+                          sobreMim={sobreMim}
+                          router={router}
+                          idx={idx}
+                          motion={motion}
+                        />
+                        <ListPsicologo
+                          idx={idx}
+                          p={p}
+                          datas={datas}
+                          startIdx={startIdx}
+                          setStartIdx={setStartIdx}
+                          totalDias={totalDias}
+                          diasVisiveis={diasVisiveis}
+                          diaSelecionado={diaSelecionado ?? 0}
+                          setDiaSelecionado={setDiaSelecionado}
+                          horariosPorData={horariosPorData}
+                          horariosSelecionados={horariosSelecionados}
+                          setHorariosSelecionados={setHorariosSelecionados}
+                          selecionarHorario={selecionarHorario}
+                          bloqueioHorarios={bloqueioHorarios}
+                          abrirResumoAgenda={abrirResumoAgenda}
+                        />
+                      </motion.div>
+                    );
+                  })}
+                </AnimatePresence>
+              )}
+              {(isLoading || (!hasFiltroSelecionado && isLoadingAtivos)) ? null : (
+                cardsVisiveis < psicologosOrdenados.length && (
+                  <button
+                    className="mx-auto mt-4 md:mt-6 bg-[#8494E9] text-white font-bold rounded-md px-6 md:px-8 py-2 text-base hover:bg-[#6c6bb6] w-full md:w-auto"
+                    onClick={() => setCardsVisiveis((prev) => Math.min(prev + PAGE_SIZE, psicologosOrdenados.length))}
+                  >
+                    Ver mais
+                  </button>
+                )
+              )}
           </div>
         </main>
       </div>
