@@ -54,7 +54,7 @@ api-prd.estacaoterapia.com.br {
 		X-Content-Type-Options "nosniff"
 		X-Frame-Options "DENY"
 		Referrer-Policy "strict-origin-when-cross-origin"
-		Permissions-Policy "geolocation=(), microphone=(), camera=()"
+		Permissions-Policy "accelerometer=(), autoplay=(), camera=(self), clipboard-read=(), clipboard-write=(), display-capture=(), fullscreen=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(self), payment=(), screen-wake-lock=(), usb=()"
 
 		-Server
 		-X-Powered-By
@@ -155,7 +155,7 @@ estacaoterapia.com.br, www.estacaoterapia.com.br {
 		X-Content-Type-Options "nosniff"
 		X-Frame-Options "SAMEORIGIN"
 		Referrer-Policy "strict-origin-when-cross-origin"
-		Permissions-Policy "geolocation=(), microphone=(), camera=()"
+		Permissions-Policy "accelerometer=(), autoplay=(), camera=(self), clipboard-read=(), clipboard-write=(), display-capture=(), fullscreen=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(self), payment=(), screen-wake-lock=(), usb=()"
 		# CSP é definido no Next.js (next.config.ts)
 
 		-Server
