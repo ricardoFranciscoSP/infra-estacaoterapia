@@ -141,7 +141,6 @@ start_api() {
   echo "🚀 Iniciando API"
 
   require_secret_file /run/secrets/estacao_api.env "estacao_api.env"
-  require_secret_file /run/secrets/redis_password "redis_password"
 
   load_secrets /run/secrets/estacao_api.env
 
@@ -160,20 +159,32 @@ start_api() {
 
   export POSTGRES_USER
   export POSTGRES_PASSWORD
-  export REDIS_PASSWORD="$(tr -d '\n\r' < /run/secrets/redis_password)"
+  export REDIS_PASSWORD="REdnRHkZLnQpK1rcoKsseO3pX4GNIRR"
 
-  require_env POSTGRES_USER
-  require_env POSTGRES_PASSWORD
-  require_env POSTGRES_DB
   require_env REDIS_PASSWORD
 
   resolve_host_with_fallback PG_HOST "$PG_HOST" "" "tasks.pgbouncer pgbouncer" "PgBouncer"
   resolve_host_with_fallback REDIS_HOST "$REDIS_HOST" "" "tasks.redis redis" "Redis"
 
-  ENCODED_PG_PASSWORD="$(url_encode "$POSTGRES_PASSWORD")"
+  if [ -n "${DATABASE_URL:-}" ]; then
+    echo "✅ DATABASE_URL fornecida via secrets"
+  else
+    require_env POSTGRES_USER
+    require_env POSTGRES_PASSWORD
+    require_env POSTGRES_DB
+    ENCODED_PG_PASSWORD="$(url_encode "$POSTGRES_PASSWORD")"
+    export DATABASE_URL="postgresql://${POSTGRES_USER}:${ENCODED_PG_PASSWORD}@${PG_HOST}:${PG_PORT}/${POSTGRES_DB}?schema=public"
+  fi
 
-  export DATABASE_URL="postgresql://${POSTGRES_USER}:${ENCODED_PG_PASSWORD}@${PG_HOST}:${PG_PORT}/${POSTGRES_DB}?schema=public"
-  export BACKUP_DATABASE_URL="postgresql://${POSTGRES_USER}:${ENCODED_PG_PASSWORD}@${PG_HOST_DIRECT}:${PG_PORT_DIRECT}/${POSTGRES_DB}?schema=public"
+  if [ -n "${BACKUP_DATABASE_URL:-}" ]; then
+    echo "✅ BACKUP_DATABASE_URL fornecida via secrets"
+  else
+    require_env POSTGRES_USER
+    require_env POSTGRES_PASSWORD
+    require_env POSTGRES_DB
+    ENCODED_PG_PASSWORD="${ENCODED_PG_PASSWORD:-$(url_encode "$POSTGRES_PASSWORD")}"
+    export BACKUP_DATABASE_URL="postgresql://${POSTGRES_USER}:${ENCODED_PG_PASSWORD}@${PG_HOST_DIRECT}:${PG_PORT_DIRECT}/${POSTGRES_DB}?schema=public"
+  fi
   export REDIS_URL="redis://:${REDIS_PASSWORD}@${REDIS_HOST}:${REDIS_PORT}/${REDIS_DB}"
 
   cleanup_bullmq
@@ -195,13 +206,12 @@ start_socket() {
   echo "🚀 Iniciando Socket Server"
 
   require_secret_file /run/secrets/estacao_socket.env "estacao_socket.env"
-  require_secret_file /run/secrets/redis_password "redis_password"
 
   load_secrets /run/secrets/estacao_socket.env
 
   export NODE_ENV="${NODE_ENV:-production}"
   export PORT="${PORT:-3334}"
-  export REDIS_PASSWORD="$(tr -d '\n\r' < /run/secrets/redis_password)"
+  export REDIS_PASSWORD="REdnRHkZLnQpK1rcoKsseO3pX4GNIRR"
 
   require_env REDIS_PASSWORD
   require_env API_BASE_URL
