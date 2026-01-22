@@ -150,18 +150,23 @@ const nextConfig: NextConfig = {
       }
     };
 
-    const isLocalhost =
-      process.env.NODE_ENV !== "production" ||
-      websiteUrl.includes("localhost") ||
-      websiteUrl.includes("127.0.0.1");
-
-    // 🎯 Permissions-Policy: Permite câmera e microfone no contexto atual
-    // Usa '*' para permitir em qualquer contexto dentro do mesmo origin
-    // Em localhost: permite tudo
-    // Em produção: permite apenas no self
-    const permissionsPolicy = isLocalhost
-      ? "camera=*, microphone=*, geolocation=()"
-      : "camera=(self), microphone=(self), geolocation=()";
+    // 🎯 Permissions-Policy: libera recursos do navegador
+    const permissionsPolicy = [
+      "accelerometer=*",
+      "autoplay=*",
+      "camera=*",
+      "clipboard-read=*",
+      "clipboard-write=*",
+      "display-capture=*",
+      "fullscreen=*",
+      "geolocation=*",
+      "gyroscope=*",
+      "magnetometer=*",
+      "microphone=*",
+      "payment=*",
+      "screen-wake-lock=*",
+      "usb=*",
+    ].join(", ");
 
     const isPre = websiteUrl.includes("pre.");
 
@@ -254,6 +259,11 @@ const nextConfig: NextConfig = {
       "https://*.estacaoterapia.com.br", // Permite scripts de todos os subdomínios
     ];
 
+    const isLocalhost =
+      process.env.NODE_ENV !== "production" ||
+      websiteUrl.includes("localhost") ||
+      websiteUrl.includes("127.0.0.1");
+
     if (isLocalhost) {
       scriptSrcDirectives.push("'unsafe-eval'");
     }
@@ -268,19 +278,18 @@ const nextConfig: NextConfig = {
       `style-src-elem ${styleSrcDirectives.join(" ")}`,
       "font-src 'self' https://fonts.gstatic.com data: blob:",
       "img-src 'self' data: blob: https:",
-      `connect-src ${connectSrcDirectives.join(" ")}`,
-      "media-src 'self' blob: data: mediastream: https:",
+      "connect-src *",
+      "media-src * blob: data: mediastream:",
       "object-src 'none'",
       "base-uri 'self'",
       "form-action 'self'",
-      "frame-src 'self' blob: https://www.googletagmanager.com https://www.google.com https://www.gstatic.com https://googleads.g.doubleclick.net https://www.googleadservices.com https://*.goadopt.io https://docs.google.com https://view.officeapps.live.com",
-      "frame-ancestors 'self'",
+      "frame-src *",
+      "frame-ancestors *",
     ].join("; ");
 
     const baseHeaders = [
       { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
       { key: "X-Content-Type-Options", value: "nosniff" },
-      { key: "X-Frame-Options", value: "SAMEORIGIN" },
       {
         key: "Content-Security-Policy",
         value: cspDirectives,
