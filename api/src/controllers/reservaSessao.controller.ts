@@ -1,12 +1,65 @@
+
 import { Request, Response } from "express";
 import { AuthorizationService } from "../services/authorization.service";
 import { ReservaSessaoService } from "../services/reservaSessao.service";
 import { normalizeParamString } from "../utils/validation.util";
 
-
 export class ReservaSessaoController {
     constructor(private authService: AuthorizationService,
         private reservaSessaoService: ReservaSessaoService) { }
+
+    /**
+     * Busca reservas do dia atual para um par psicólogo/paciente
+     * GET /reserva-sessao/dia-atual?psicologoId=...&pacienteId=...
+     */
+    async getReservasDiaAtualByPsicologoPaciente(req: Request, res: Response): Promise<Response> {
+        try {
+            const userId = this.authService.getLoggedUserId(req);
+            if (!userId) {
+                return res.status(401).json({ error: 'Unauthorized' });
+            }
+            const { psicologoId, pacienteId } = req.query;
+            if (!psicologoId || !pacienteId) {
+                return res.status(400).json({ error: 'psicologoId e pacienteId são obrigatórios' });
+            }
+            const reservas = await this.reservaSessaoService.getReservasDiaAtualByPsicologoPaciente(String(psicologoId), String(pacienteId));
+            return res.status(200).json({ success: true, reservas });
+        } catch (error) {
+            console.error('Erro ao buscar reservas do dia atual:', error);
+            return res.status(500).json({ error: 'Erro interno no servidor.' });
+        }
+    }
+
+    /**
+     * Atualiza os tokens de uma reserva
+     * POST /reserva-sessao/:id/atualizar-tokens
+     */
+    async updateTokensReservaSessao(req: Request, res: Response): Promise<Response> {
+        try {
+            const userId = this.authService.getLoggedUserId(req);
+            if (!userId) {
+                return res.status(401).json({ error: 'Unauthorized' });
+            }
+            const id = normalizeParamString(req.params.id);
+            if (!id) {
+                return res.status(400).json({ error: 'ID da reserva é obrigatório' });
+            }
+            const { patientToken, psychologistToken, patientUid, psychologistUid } = req.body;
+            if (!patientToken || !psychologistToken || !patientUid || !psychologistUid) {
+                return res.status(400).json({ error: 'Dados de tokens e UIDs são obrigatórios' });
+            }
+            const updated = await this.reservaSessaoService.updateTokensReservaSessao(id, {
+                patientToken,
+                psychologistToken,
+                patientUid,
+                psychologistUid,
+            });
+            return res.status(200).json({ success: true, updated });
+        } catch (error) {
+            console.error('Erro ao atualizar tokens da reserva:', error);
+            return res.status(500).json({ error: 'Erro interno no servidor.' });
+        }
+    }
 
     /**
      * Busca a reserva de sessão pelo ID para o usuário autenticado.
@@ -84,7 +137,7 @@ export class ReservaSessaoController {
             }
 
             const result = await this.reservaSessaoService.getConsultaCompleta(consultationId);
-            
+
             if (!result.success) {
                 return res.status(404).json(result);
             }
@@ -111,13 +164,13 @@ export class ReservaSessaoController {
             }
 
             const channel = normalizeParamString(req.params.channel);
-            
+
             if (!channel || channel.trim() === '') {
                 return res.status(400).json({ error: 'Channel é obrigatório' });
             }
 
             const result = await this.reservaSessaoService.getReservaSessaoByChannel(channel);
-            
+
             if (!result.success) {
                 return res.status(404).json(result);
             }

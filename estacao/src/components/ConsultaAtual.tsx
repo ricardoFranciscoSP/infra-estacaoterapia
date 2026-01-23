@@ -22,7 +22,7 @@ dayjs.extend(timezone);
 import { normalizeConsulta, type GenericObject } from "@/utils/normalizarConsulta";
 import { useQueryClient } from '@tanstack/react-query';
 import { ConsultaCard } from "@/lib/consultas/ConsultaCard";
-import { calcularTempoRestante60Minutos, isConsultaDentro60MinutosComScheduledAt } from "@/utils/consultaTempoUtils";
+import { calcularTempoRestante60Minutos, isConsultaDentro60MinutosComScheduledAt, shouldEnableEntrarConsulta } from "@/utils/consultaTempoUtils";
 import {
   onConsultationStarted,
   onConsultationEnded,
@@ -759,9 +759,21 @@ export default function ConsultaAtual({ consulta: consultaProp = null, role = "p
   // Se a consulta está cancelada, força esconder contador e botão entrar
   const isCancelada = statusBadge === "Cancelado";
   const supportOnly = buttons.mostrarBotaoSuporte || isCancelada;
+  const statusBase =
+    socketStatus ||
+    (normalized?.raw as { Status?: string; ReservaSessao?: { Status?: string } })?.Status ||
+    (normalized?.raw as { ReservaSessao?: { Status?: string } })?.ReservaSessao?.Status ||
+    normalized?.status ||
+    null;
+  const podeEntrarNaJanela = shouldEnableEntrarConsulta({
+    scheduledAt: scheduledAtFromReserva ?? null,
+    date: normalized?.date ?? null,
+    time: normalized?.time ?? null,
+    status: statusBase,
+  });
   const finalButtons = supportOnly
     ? { mostrarBotaoEntrar: false, mostrarBotaoSuporte: true, botaoEntrarDesabilitado: true }
-    : buttons;
+    : { ...buttons, botaoEntrarDesabilitado: !podeEntrarNaJanela };
   const finalMostrarContador = supportOnly ? false : mostrarContador;
   const contadorFinal = contador50MinutosAtualizado.estaDentroDoPeriodo
     ? contador50MinutosAtualizado.tempoFormatado

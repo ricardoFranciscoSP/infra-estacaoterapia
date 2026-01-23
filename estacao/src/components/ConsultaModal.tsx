@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { obterPrimeiroUltimoNome } from "@/utils/nomeUtils";
 import { getContextualAvatar, isPsicologoPanel } from "@/utils/avatarUtils";
 import { formatarDataCompleta } from "@/utils/consultaUtils";
+import { shouldEnableEntrarConsulta } from "@/utils/consultaTempoUtils";
 import { onConsultationStarted, ensureSocketConnection, getSocket } from "@/lib/socket";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { useCheckTokens } from "@/hooks/useCheckTokens";
@@ -133,8 +134,8 @@ export default function ConsultaModal({
     const isInPsicologoPanel = isPsicologoPanel(pathname);
 
 
-    // O botão só é habilitado se a sessão estiver ativa (contador disparado) e não estiver desabilitado por outro motivo
-    const habilitarEntrar = !!sessaoAtiva && !botaoEntrarDesabilitado;
+    const statusBase = statusCancelamento ?? status ?? null;
+    void sessaoAtiva;
 
     // Verifica se o horário da consulta já passou
     const horarioPassou = React.useMemo(() => {
@@ -214,6 +215,11 @@ export default function ConsultaModal({
     // Se a data vier em formato ISO ou com timezone, extrai apenas a parte da data
     const dataParaFormatar = consulta.data ? (consulta.data.includes('T') ? consulta.data.split('T')[0] : consulta.data.split(' ')[0]) : "";
     const dataFormatada = formatarDataCompleta(dataParaFormatar || consulta.data);
+    const habilitarEntrar = shouldEnableEntrarConsulta({
+        date: dataParaFormatar || consulta.data,
+        time: consulta.horario,
+        status: statusBase,
+    }) && !botaoEntrarDesabilitado;
     const statusCancelamentoValue = useMemo(() => {
         return String(statusCancelamento || status || "").toLowerCase();
     }, [statusCancelamento, status]);

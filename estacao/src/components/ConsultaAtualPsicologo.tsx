@@ -19,7 +19,7 @@ import timezone from "dayjs/plugin/timezone";
 dayjs.extend(utc);
 dayjs.extend(timezone);
 import { normalizeConsulta, type GenericObject } from "@/utils/normalizarConsulta";
-import { calcularTempoRestante60Minutos, isConsultaDentro60MinutosComScheduledAt } from "@/utils/consultaTempoUtils";
+import { calcularTempoRestante60Minutos, isConsultaDentro60MinutosComScheduledAt, shouldEnableEntrarConsulta } from "@/utils/consultaTempoUtils";
 import {
   onConsultationStarted,
   onConsultationEnded,
@@ -770,6 +770,21 @@ export default function ConsultaAtualPsicologo({ consulta: consultaProp = null, 
 
   const isCancelada = statusBadge === "Cancelado";
   const supportOnly = sessionState.buttons.mostrarBotaoSuporte || isCancelada;
+  const statusBase =
+    socketStatus ||
+    (normalized?.raw as { Status?: string; ReservaSessao?: { Status?: string } })?.Status ||
+    (normalized?.raw as { ReservaSessao?: { Status?: string } })?.ReservaSessao?.Status ||
+    normalized?.status ||
+    null;
+  const podeEntrarNaJanela = shouldEnableEntrarConsulta({
+    scheduledAt: scheduledAtFromReserva ?? null,
+    date: normalized?.date ?? null,
+    time: normalized?.time ?? null,
+    status: statusBase,
+  });
+  const finalButtons = supportOnly
+    ? { mostrarBotaoEntrar: false, mostrarBotaoSuporte: true, botaoEntrarDesabilitado: true }
+    : { ...sessionState.buttons, botaoEntrarDesabilitado: !podeEntrarNaJanela };
 
   return (
     <motion.section
@@ -783,10 +798,10 @@ export default function ConsultaAtualPsicologo({ consulta: consultaProp = null, 
       {/* Usa ConsultaCard da lib - igual ao do paciente, mas com estilo do psicólogo */}
       <ConsultaCard
         consulta={consultaApi}
-        showEntrarButton={sessionState.buttons.mostrarBotaoEntrar}
-        botaoEntrarDesabilitado={sessionState.buttons.botaoEntrarDesabilitado}
+        showEntrarButton={finalButtons.mostrarBotaoEntrar}
+        botaoEntrarDesabilitado={finalButtons.botaoEntrarDesabilitado}
         isLoadingEntry={isCheckingTokens || isProcessingEntry}
-        mostrarBotaoSuporte={sessionState.buttons.mostrarBotaoSuporte}
+        mostrarBotaoSuporte={finalButtons.mostrarBotaoSuporte}
         isPsicologoPanel={true}
         supportOnly={supportOnly}
         statusOverride={isCancelada ? "Cancelado" : undefined}
@@ -810,7 +825,7 @@ export default function ConsultaAtualPsicologo({ consulta: consultaProp = null, 
           onEntrar: supportOnly ? undefined : handleEntrarNaConsulta,
           onVerDetalhes: supportOnly ? undefined : handleVerDetalhes,
           onVerPerfil: shouldShowPerfil && perfilHref ? () => router.push(perfilHref) : undefined,
-          onSuporte: sessionState.buttons.mostrarBotaoSuporte ? handleSuporte : undefined,
+          onSuporte: finalButtons.mostrarBotaoSuporte ? handleSuporte : undefined,
         }}
       />
 

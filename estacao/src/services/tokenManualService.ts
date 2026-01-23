@@ -28,6 +28,7 @@ export interface TokenAuditItem {
   status: string | null;
   user: TokenAuditUser | null;
   metadata: TokenAuditMetadata | null;
+  origin?: "manual" | "system";
 }
 
 export interface TokenAuditListResponse {
@@ -76,17 +77,22 @@ export const tokenManualService = () => {
       status: audit.Status ?? null,
       user: audit.User
         ? {
-            id: audit.User.Id,
-            nome: audit.User.Nome,
-            email: audit.User.Email,
-            role: audit.User.Role,
-          }
+          id: audit.User.Id,
+          nome: audit.User.Nome,
+          email: audit.User.Email,
+          role: audit.User.Role,
+        }
         : null,
       metadata: mapAuditMetadata(audit.Metadata),
+      origin: audit.Metadata?.includes('"source":"manual"') ? "manual" : "system",
     }));
   };
 
-  const listGeneratedTokensFallback = async (limit: number, consultaId?: string) => {
+  const listGeneratedTokensFallback = async (
+    limit: number,
+    consultaId?: string,
+    source?: "manual" | "system" | "all"
+  ) => {
     const response = await api.get<{
       success: boolean;
       data: { audits: AuditoriaItem[] };
@@ -101,6 +107,12 @@ export const tokenManualService = () => {
     const audits = response.data?.data?.audits ?? [];
     let items = mapAuditItemsToTokenLogs(audits);
 
+    if (source === "manual") {
+      items = items.filter((item) => item.metadata?.source === "manual");
+    } else if (source === "system") {
+      items = items.filter((item) => item.metadata?.source !== "manual");
+    }
+
     if (consultaId && consultaId.trim()) {
       const consultaIdTrimmed = consultaId.trim();
       items = items.filter((item) => {
@@ -113,17 +125,48 @@ export const tokenManualService = () => {
   };
 
   return {
-    generateManualTokens: (payload: { patientId: string; psychologistId: string }) =>
-      api.post<GenerateManualTokensResponse>("/admin/token-system/generate-manual", payload),
-    listGeneratedTokens: async (limit: number = 50, consultaId?: string) => {
+    /**
+     * Gera tokens manualmente (rota nova e fallback)
+     */
+    generateManualTokens: async (payload: { patientId: string; psychologistId: string }) => {
+      // Tenta rota nova
       try {
-        const response = await api.get<TokenAuditListResponse>("/admin/token-system/generated", {
-          params: { limit, consultaId },
+        return await api.post<GenerateManualTokensResponse>("/api/admin/token-system/generate-manual", payload);
+      } catch (err) {
+        // Fallback para rota antiga, se necessário (exemplo)
+        return await api.post<GenerateManualTokensResponse>("/admin/token-system/generate-manual", payload);
+      }
+    },
+    /**
+     * Lista tokens gerados (rota nova e fallback)
+     */
+    listGeneratedTokens: async ({
+      page = 1,
+      limit = 20,
+      consultaId,
+      source = "all",
+    }: {
+      page?: number;
+      limit?: number;
+      consultaId?: string;
+      source?: "manual" | "system" | "all";
+    }) => {
+      try {
+        const response = await api.get<TokenAuditListResponse>("/api/admin/token-system/tokens", {
+          params: { limit, page, consultaId, source },
         });
         return response.data;
       } catch {
-        const fallback = await listGeneratedTokensFallback(limit, consultaId);
-        return fallback;
+        // Fallback para rota antiga, se necessário
+        try {
+          const response = await api.get<TokenAuditListResponse>("/admin/token-system/tokens", {
+            params: { limit, page, consultaId, source },
+          });
+          return response.data;
+        } catch {
+          const fallback = await listGeneratedTokensFallback(limit, consultaId, source);
+          return fallback;
+        }
       }
     },
   };

@@ -277,6 +277,14 @@ async function startServer() {
             res.json({ success: true });
         });
 
+        // Registra o io globalmente para jobs
+        try {
+            const { setSocketServer } = await import("./serverInstance");
+            setSocketServer(io);
+            console.log("[Socket] io registrado globalmente para jobs");
+        } catch (err) {
+            console.error("[Socket] Falha ao registrar io global para jobs", err);
+        }
         server.listen(PORT, "0.0.0.0", () => {
             console.log(`🚀 Socket Server rodando na porta ${PORT}`);
             console.log(`📡 WebSocket disponível em: wss://ws.estacaoterapia.com.br/socket.io/`);

@@ -5,6 +5,7 @@ import Image from 'next/image';
 
 
 import type { ConsultaApi } from "@/types/consultasTypes";
+import { shouldEnableEntrarConsulta } from "@/utils/consultaTempoUtils";
 
 type PacienteType = { nome?: string };
 type PsicologoType = { nome?: string };
@@ -41,6 +42,17 @@ export const ConsultaEmAndamento: React.FC<ConsultaEmAndamentoProps> = ({ consul
     }
   }
 
+  const statusBase =
+    consulta.Status ||
+    (consulta as { status?: string }).status ||
+    consulta.ReservaSessao?.Status ||
+    null;
+  const podeEntrar = shouldEnableEntrarConsulta({
+    date: data || null,
+    time: hora || null,
+    status: statusBase,
+  });
+
   return (
     <div className="bg-white rounded-lg shadow p-6 flex flex-col gap-4 border-l-4 border-[#6D75C0] relative">
       <span className="absolute top-4 right-4 bg-[#F3F4F6] text-[#6D75C0] px-3 py-1 rounded-full text-xs font-bold">Em Andamento</span>
@@ -60,8 +72,13 @@ export const ConsultaEmAndamento: React.FC<ConsultaEmAndamentoProps> = ({ consul
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mt-2">
         <span className="text-xs text-gray-500">Início: {inicio ? inicio.format('DD/MM/YYYY HH:mm') : '--/--/---- --:--'}</span>
         <button
-          className="bg-[#6D75C0] hover:bg-[#575fa8] text-white px-5 py-2 rounded font-semibold text-sm shadow transition"
+          className={`px-5 py-2 rounded font-semibold text-sm shadow transition ${
+            podeEntrar
+              ? "bg-[#6D75C0] hover:bg-[#575fa8] text-white"
+              : "bg-gray-300 text-gray-500 cursor-not-allowed"
+          }`}
           onClick={onEntrar}
+          disabled={!podeEntrar}
         >
           Entrar na consulta
         </button>

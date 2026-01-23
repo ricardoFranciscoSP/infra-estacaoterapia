@@ -29,10 +29,9 @@ export default function PainelFooter() {
     return null;
   }
 
-  return ( 
+  return (
     <>
-
-     {/* Botão flutuante para voltar ao topo - mobile e desktop */}
+      {/* Botão flutuante para voltar ao topo - mobile e desktop */}
       {showScrollTop && (
         <button
           onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
@@ -47,94 +46,86 @@ export default function PainelFooter() {
         </button>
       )}
 
-
       {/* Botão flutuante e modal de agendamento rápido alinhado à esquerda - APENAS em páginas do /painel (NUNCA em /painel-psicologo) */}
       {pathname?.startsWith("/painel")
-        && !pathname?.startsWith("/painel-psicologo") // NUNCA mostrar em rotas do psicólogo
-        && !pathname?.startsWith("/painel/room") // Não mostrar na sala de vídeo
-        && !pathname?.startsWith("/painel/sessao") // Não mostrar na página de sessão
-        && !pathname?.startsWith("/painel/psicologos") // Não mostrar na listagem de psicólogos
-        && !pathname?.startsWith("/painel/psicologo") // Não mostrar nas páginas de perfil do psicólogo
-        && !pathname?.startsWith("/painel/comprar-consulta") // Não mostrar na página de compra
-        && !pathname?.startsWith("/painel/checkout-planos") // Não mostrar no checkout
-        && !pathname?.startsWith("/painel/minha-conta/meus-planos") // Não mostrar na página de planos
-        && pathname !== "/painel/planos" // Não mostrar na página de planos
-        && pathname !== "/painel/success" // Não mostrar na página de sucesso
-        && pathname !== "/painel/error" // Não mostrar na página de erro
-        && pathname !== "/painel/pix" // Não mostrar na página de PIX
+        && !pathname?.startsWith("/painel-psicologo")
+        && !pathname?.startsWith("/painel/room")
+        && !pathname?.startsWith("/painel/sessao")
+        && !pathname?.startsWith("/painel/psicologos")
+        && !pathname?.startsWith("/painel/psicologo")
+        && !pathname?.startsWith("/painel/comprar-consulta")
+        && !pathname?.startsWith("/painel/checkout-planos")
+        && !pathname?.startsWith("/painel/minha-conta/meus-planos")
+        && pathname !== "/painel/planos"
+        && pathname !== "/painel/success"
+        && pathname !== "/painel/error"
+        && pathname !== "/painel/pix"
         && (
-          <div
-            className="fixed left-4 bottom-32 md:bottom-8 z-[1] flex items-start pointer-events-auto">
+          <div className="fixed left-4 bottom-32 md:bottom-8 z-[1] flex items-start pointer-events-auto">
             <AgendamentoRapido />
           </div>
         )}
-     
-      {/* Footer fixo mobile */}
-      {pathname?.startsWith("/painel-psicologo") ? (
+
+      {/* Footer fixo mobile - PACIENTE */}
+      {!pathname?.startsWith("/painel-psicologo") && (
         <nav className="fixed bottom-0 left-0 right-0 z-40 bg-[#23264A] border-t border-[#23264A] flex md:hidden justify-between px-2 py-1 shadow-lg" style={{boxShadow:'0 0 8px rgba(35,38,74,0.10)'}}>
-          <Link href="/painel-psicologo" className="flex flex-col items-center flex-1 py-1 text-[#B6B9D6] hover:text-white transition-colors group">
-            <Image 
-              src="/assets/icons/inicio.svg" 
-              alt="Início" 
-              width={24} 
-              height={24} 
-              className="w-6 h-6 mb-1 group-hover:opacity-100 transition-opacity" 
-              style={{ filter: 'brightness(0) invert(1)', opacity: 0.7 }}
-            />
-            <span className="text-xs font-medium group-hover:text-white">Início</span>
-          </Link>
-          <Link href="/painel-psicologo/agenda" className="flex flex-col items-center flex-1 py-1 text-[#B6B9D6] hover:text-white transition-colors group">
-            <Image 
-              src="/assets/icons/icon-calendar.svg" 
-              alt="Agenda" 
-              width={24} 
-              height={24} 
-              className="w-6 h-6 mb-1 group-hover:opacity-100 transition-opacity" 
-              style={{ filter: 'brightness(0) invert(1)', opacity: 0.7 }}
-            />
-            <span className="text-xs font-medium group-hover:text-white">Agenda</span>
-          </Link>
-          <Link href="/painel-psicologo/consultas" className="flex flex-col items-center flex-1 py-1 text-[#B6B9D6] hover:text-white transition-colors group">
-            <Image 
-              src="/assets/icons/icon-message.svg" 
-              alt="Meus pacientes" 
-              width={24} 
-              height={24} 
-              className="w-6 h-6 mb-1 group-hover:opacity-100 transition-opacity" 
-              style={{ filter: 'brightness(0) invert(1)', opacity: 0.7 }}
-            />
-            <span className="text-xs font-medium group-hover:text-white">Meus pacientes</span>
-          </Link>
-          <Link href="/painel-psicologo/meu-perfil" className="flex flex-col items-center flex-1 py-1 text-[#B6B9D6] hover:text-white transition-colors group">
-            <Image 
-              src="/assets/icons/user.svg" 
-              alt="Perfil" 
-              width={24} 
-              height={24} 
-              className="w-6 h-6 mb-1 group-hover:opacity-100 transition-opacity" 
-              style={{ filter: 'brightness(0) invert(1)', opacity: 0.7 }}
-            />
-            <span className="text-xs font-medium group-hover:text-white">Perfil</span>
-          </Link>
+          {[
+            { href: "/painel", icon: "/assets/icons/inicio.svg", label: "Início", match: (p: string) => p === "/painel" },
+            { href: "/painel/consultas", icon: "/assets/icons/consultas.svg", label: "Consultas", match: (p: string) => p.startsWith("/painel/consultas") },
+            { href: "/painel/minha-conta/meus-planos", icon: "/assets/icons/planos.svg", label: "Planos", match: (p: string) => p.startsWith("/painel/minha-conta/meus-planos") || p === "/painel/planos" },
+            { href: "/painel/psicologos", icon: "/assets/icons/psicologos.svg", label: "Psicólogos", match: (p: string) => p.startsWith("/painel/psicologos") },
+          ].map((item, idx) => {
+            const ativo = item.match(pathname || "");
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`flex flex-col items-center flex-1 py-1 transition-colors group rounded-xl mx-1 ${ativo ? "bg-[#6D75C0] text-white" : "text-[#B6B9D6] hover:text-white"}`}
+                style={ativo ? { boxShadow: '0 2px 8px rgba(109,117,192,0.10)' } : {}}
+              >
+                <Image
+                  src={item.icon}
+                  alt={item.label}
+                  width={24}
+                  height={24}
+                  className={`w-6 h-6 mb-1 ${ativo ? "" : "opacity-80"}`}
+                  style={ativo ? { filter: 'brightness(0) invert(1)' } : { filter: 'brightness(0.7) invert(0.7)' }}
+                />
+                <span className={`text-xs font-medium ${ativo ? "text-white" : "group-hover:text-white"}`}>{item.label}</span>
+              </Link>
+            );
+          })}
         </nav>
-      ) : (
-        <nav className="fixed bottom-0 left-0 right-0 z-40 bg-[#23264A] border-t border-[#23264A] flex md:hidden justify-between px-2 py-1 shadow-lg" style={{boxShadow:'0 0 8px rgba(35,38,74,0.10)'}}>
-          <Link href="/painel" className="flex flex-col items-center flex-1 py-1 text-[#B6B9D6] hover:text-white transition-colors group">
-            <Image src="/assets/icons/inicio.svg" alt="Início" width={24} height={24} className="w-6 h-6 mb-1" />
-            <span className="text-xs font-medium group-hover:text-white">Início</span>
-          </Link>
-          <a href="/painel/consultas" className="flex flex-col items-center flex-1 py-1 text-[#B6B9D6] hover:text-white transition-colors group">
-            <Image src="/assets/icons/consultas.svg" alt="Consultas" width={24} height={24} className="w-6 h-6 mb-1" />
-            <span className="text-xs font-medium group-hover:text-white">Consultas</span>
-          </a>
-          <a href="/painel/minha-conta/meus-planos" className="flex flex-col items-center flex-1 py-1 text-[#B6B9D6] hover:text-white transition-colors group">
-            <Image src="/assets/icons/planos.svg" alt="Meu plano" width={24} height={24} className="w-6 h-6 mb-1" />
-            <span className="text-xs font-medium group-hover:text-white">Meu plano</span>
-          </a>
-          <a href="/painel/psicologos" className="flex flex-col items-center flex-1 py-1 text-[#B6B9D6] hover:text-white transition-colors group">
-            <Image src="/assets/icons/psicologos.svg" alt="Psicólogos" width={24} height={24} className="w-6 h-6 mb-1" />
-            <span className="text-xs font-medium group-hover:text-white">Psicólogos</span>
-          </a>
+      )}
+
+      {/* Footer fixo mobile - PSICÓLOGO (novo layout) */}
+      {pathname?.startsWith("/painel-psicologo") && (
+        <nav className="fixed bottom-0 left-0 right-0 z-40 bg-[#23264A] border-t border-[#23264A] flex md:hidden justify-between px-1 py-2 shadow-lg" style={{boxShadow:'0 0 8px rgba(35,38,74,0.10)', minHeight: 64}}>
+          {[
+            { href: "/painel-psicologo", icon: "/assets/icons/grid.svg", label: "Painel geral", match: (p: string) => p === "/painel-psicologo" },
+            { href: "/painel-psicologo/agenda", icon: "/assets/icons/calendar.svg", label: "Agenda", match: (p: string) => p.startsWith("/painel-psicologo/agenda") },
+            { href: "/painel-psicologo/financeiro", icon: "/assets/icons/financeiro.svg", label: "Financeiro", match: (p: string) => p.startsWith("/painel-psicologo/financeiro") },
+          ].map((item, idx) => {
+            const ativo = item.match(pathname || "");
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`flex flex-col items-center flex-1 px-1 py-1 transition-colors group rounded-xl mx-0 ${ativo ? "bg-[#6D75C0] text-white w-[110px]" : "text-[#B6B9D6] hover:text-white"}`}
+                style={ativo ? { boxShadow: '0 2px 8px rgba(109,117,192,0.10)', minHeight: 56, maxWidth: 120 } : { minHeight: 56 }}
+              >
+                <Image
+                  src={item.icon}
+                  alt={item.label}
+                  width={24}
+                  height={24}
+                  className={`w-6 h-6 mb-1 ${ativo ? "" : "opacity-80"}`}
+                  style={ativo ? { filter: 'brightness(0) invert(1)' } : { filter: 'brightness(0.7) invert(0.7)' }}
+                />
+                <span className={`text-xs font-medium ${ativo ? "text-white" : "group-hover:text-white"}`}>{item.label}</span>
+              </Link>
+            );
+          })}
         </nav>
       )}
       {/* Footer padrão (apenas desktop) */}

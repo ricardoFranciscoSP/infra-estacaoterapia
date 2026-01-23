@@ -90,6 +90,9 @@ export interface ConsultaApi {
     ReservaSessao?: {
         VideoCallLink?: string | null;
         Status: string;
+        AgoraChannel?: string | null;
+        Uid?: number | null;
+        UidPsychologist?: number | null;
     };
 }
 

@@ -16,7 +16,7 @@ import { ComprehensiveReportsController } from '../../controllers/adm/comprehens
 import { QueueController } from '../../controllers/adm/queue.controller';
 import { AtribuirConsultaAvulsaController } from '../../controllers/adm/atribuirConsultaAvulsa.controller';
 import { BackupController } from '../../controllers/adm/backup.controller';
-import tokenSystemRouter from '../../controllers/tokenSystemController';
+import tokenSystemRouter from './tokenSystem.routes';
 import multer from 'multer';
 import fs from 'fs';
 import path from 'path';
@@ -77,6 +77,7 @@ router.get('/consultas/mensais-todas', authorize('Admin', 'Management'), asyncHa
 router.get('/consultas/canceladas', authorize('Admin', 'Management'), asyncHandler(consultasController.getConsultasCanceladas.bind(consultasController)));
 router.get('/consultas/mes-atual', authorize('Admin', 'Management'), asyncHandler(consultasController.getConsultasMesAtual.bind(consultasController)));
 router.get('/consultas/mes-atual-lista', authorize('Admin', 'Management'), asyncHandler(consultasController.getConsultasMesAtualLista.bind(consultasController)));
+router.get('/consultas/por-data', authorize('Admin', 'Management'), asyncHandler(consultasController.getConsultasPorData.bind(consultasController)));
 
 // Rotas para gerenciamento de avaliações
 router.get('/reviews', asyncHandler(reviewsController.list.bind(reviewsController)));

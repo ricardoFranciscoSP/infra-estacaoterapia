@@ -7,4 +7,5 @@ export interface IConsultas {
     getConsultasCanceladas(req: Request, res: Response): Promise<Response>;
     getConsultasMesAtual(req: Request, res: Response): Promise<Response>;
     getConsultasMesAtualLista(req: Request, res: Response): Promise<Response>;
+    getConsultasPorData(req: Request, res: Response): Promise<Response>;
 }

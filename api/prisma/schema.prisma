@@ -435,6 +435,30 @@ model AdminActionLog {
   User        User       @relation("UserAdminActionLog", fields: [UserId], references: [Id], onDelete: Cascade)
 }
 
+/// Tokens Agora gerados manualmente via admin
+model ManualAgoraToken {
+  Id                String   @id @default(uuid())
+  ConsultaId        String
+  PatientId         String
+  PsychologistId    String
+  ChannelName       String
+  PatientToken      String
+  PsychologistToken String
+  PatientUid        Int
+  PsychologistUid   Int
+  CreatedAt         DateTime @default(now())
+  CreatedById       String
+  IpAddress         String?
+  Source            String   @default("manual")
+  Consulta          Consulta @relation(fields: [ConsultaId], references: [Id], onDelete: Cascade)
+  CreatedBy         User     @relation(fields: [CreatedById], references: [Id], onDelete: Cascade)
+
+  @@index([CreatedAt])
+  @@index([ConsultaId])
+  @@index([PatientId])
+  @@index([PsychologistId])
+}
+
 /// Backups do banco de dados (metadados, sem conteúdo do arquivo)
 model DatabaseBackup {
   Id                String          @id @default(uuid())

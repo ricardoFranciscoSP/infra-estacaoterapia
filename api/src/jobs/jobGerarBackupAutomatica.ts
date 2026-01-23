@@ -180,6 +180,27 @@ export async function handleGenerateDatabaseBackup(payload?: {
         rescheduleError
       );
     }
-    throw err;
+    try {
+      console.log("[handleGenerateDatabaseBackup] Iniciando backup automático...");
+      const { generateBackupAndNotifyUser } = await import("./generateBackupAndNotifyUser");
+      await generateBackupAndNotifyUser(payload?.requestedBy ?? null);
+      console.log("✅ [handleGenerateDatabaseBackup] Backup gerado com sucesso");
+
+      await scheduleAutomaticBackupGeneration();
+      return true;
+    } catch (error) {
+      const err =
+        error instanceof Error ? error : new Error("Erro desconhecido ao gerar backup");
+      console.error("[handleGenerateDatabaseBackup] Erro ao gerar backup:", err);
+      try {
+        await scheduleAutomaticBackupGeneration();
+      } catch (rescheduleError) {
+        console.error(
+          "[handleGenerateDatabaseBackup] Erro ao re-agendar backup:",
+          rescheduleError
+        );
+      }
+      return false;
+    }
   }
 }

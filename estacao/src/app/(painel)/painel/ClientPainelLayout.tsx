@@ -14,6 +14,7 @@ import { useClearFiltersOnNavigation } from '@/hooks/useClearFiltersOnNavigation
 import WhatsAppFloatingButton from '@/components/WhatsAppFloatingButton';
 import { useRouter } from 'next/navigation';
 import { getRedirectRouteByRole } from '@/utils/redirectByRole';
+import PainelFooter from '@/components/PainelFooter';
 
 // ⚡ OTIMIZAÇÃO: Dynamic import do PainelHeader com loading skeleton
 const PainelHeader = dynamic(() => import('@/components/PainelHeader'), {
@@ -75,11 +76,8 @@ const ClientPainelLayout: React.FC<{ children: React.ReactNode }> = ({ children 
               {children}
             </Suspense>
           </div>
-          <footer className="w-full border-t border-[#dbeafe] bg-[#E9ECFA] px-4 py-4 md:py-6">
-            <p className="text-center text-xs text-[#22223B] font-normal leading-relaxed">
-              © 2026 MINDFLUENCE PSICOLOGIA LTDA - CNPJ: 54.222.003/0001-07 | Endereço: Al. Rio Negro, 503 - Sala 2020, CEP: 06454-000 - Alphaville Industrial - Barueri, SP - Brasil - Todos os direitos reservados.
-            </p>
-          </footer>
+          {/* Footer fixo mobile/logado - só renderiza se usuário estiver logado (paciente) */}
+          {user?.Id && user?.Role === 'Patient' && <PainelFooter />}
           <CustomToastProvider />
           {/* Botão flutuante do WhatsApp - renderizado apenas após hidratação */}
           {mounted && (

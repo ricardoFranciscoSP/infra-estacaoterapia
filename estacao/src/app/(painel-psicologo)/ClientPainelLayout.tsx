@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic';
 import PainelHeaderSkeleton from '@/components/PainelHeaderSkeleton';
 import { PainelLoadingSkeleton } from '@/components/PainelLoadingSkeleton';
 import { useAuthStore } from "@/store/authStore";
+import PainelFooter from '@/components/PainelFooter';
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useUserBasic } from "@/hooks/user/userHook";
 import { UserProvider } from "@/contexts/UserContext";
@@ -149,13 +150,8 @@ const ClientPainelContent: React.FC<{ children: React.ReactNode }> = ({ children
               {children}
             </Suspense>
           </main>
-          {showHeaderFooter && (
-            <footer className="w-full border-t border-[#dbeafe] bg-[#E9ECFA] px-4 py-4 md:py-6">
-              <p className="text-center text-xs text-[#22223B] font-normal leading-relaxed">
-                © 2026 MINDFLUENCE PSICOLOGIA LTDA - CNPJ: 54.222.003/0001-07 | Endereço: Al. Rio Negro, 503 - Sala 2020, CEP: 06454-000 - Alphaville Industrial - Barueri, SP - Brasil - Todos os direitos reservados.
-              </p>
-            </footer>
-          )}
+          {/* Footer fixo mobile/desktop - PSICÓLOGO */}
+          {showHeaderFooter && <PainelFooter />}
           {showToastProvider && <CustomToastProvider />}
         </div>
       </UserProvider>

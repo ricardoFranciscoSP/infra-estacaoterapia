@@ -253,36 +253,67 @@ export class PacienteService {
         // Atualiza endereço de cobrança se fornecido
         if (data.BillingAddress && typeof data.BillingAddress === 'object') {
             const billingData = data.BillingAddress as Record<string, unknown>;
+            const billingPayload = {
+                Rua: typeof billingData.Rua === 'string' ? billingData.Rua : undefined,
+                Numero:
+                    typeof billingData.Numero === 'string'
+                        ? billingData.Numero
+                        : billingData.Numero === null
+                            ? null
+                            : undefined,
+                Complemento:
+                    typeof billingData.Complemento === 'string'
+                        ? billingData.Complemento
+                        : billingData.Complemento === null
+                            ? null
+                            : undefined,
+                Bairro: typeof billingData.Bairro === 'string' ? billingData.Bairro : undefined,
+                Cidade: typeof billingData.Cidade === 'string' ? billingData.Cidade : undefined,
+                Estado: typeof billingData.Estado === 'string' ? billingData.Estado : undefined,
+                Cep: typeof billingData.Cep === 'string' ? billingData.Cep : undefined,
+            };
+            const hasBillingFields = Object.values(billingPayload).some((value) => value !== undefined);
             const existingBilling = await prisma.billingAddress.findFirst({
                 where: { UserId: id }
             });
-            
-            if (existingBilling) {
-                await prisma.billingAddress.update({
-                    where: { Id: existingBilling.Id },
-                    data: {
-                        Rua: billingData.Rua as string,
-                        Numero: billingData.Numero as string | null,
-                        Complemento: billingData.Complemento as string | null,
-                        Bairro: billingData.Bairro as string,
-                        Cidade: billingData.Cidade as string,
-                        Estado: billingData.Estado as string,
-                        Cep: billingData.Cep as string,
-                    }
-                });
-            } else {
-                await prisma.billingAddress.create({
-                    data: {
-                        UserId: id,
-                        Rua: billingData.Rua as string,
-                        Numero: billingData.Numero as string | null,
-                        Complemento: billingData.Complemento as string | null,
-                        Bairro: billingData.Bairro as string,
-                        Cidade: billingData.Cidade as string,
-                        Estado: billingData.Estado as string,
-                        Cep: billingData.Cep as string,
-                    }
-                });
+
+            if (hasBillingFields && existingBilling) {
+                const billingUpdate: Record<string, string | null> = {};
+                if (billingPayload.Rua !== undefined) billingUpdate.Rua = billingPayload.Rua;
+                if (billingPayload.Numero !== undefined) billingUpdate.Numero = billingPayload.Numero;
+                if (billingPayload.Complemento !== undefined) billingUpdate.Complemento = billingPayload.Complemento;
+                if (billingPayload.Bairro !== undefined) billingUpdate.Bairro = billingPayload.Bairro;
+                if (billingPayload.Cidade !== undefined) billingUpdate.Cidade = billingPayload.Cidade;
+                if (billingPayload.Estado !== undefined) billingUpdate.Estado = billingPayload.Estado;
+                if (billingPayload.Cep !== undefined) billingUpdate.Cep = billingPayload.Cep;
+
+                if (Object.keys(billingUpdate).length > 0) {
+                    await prisma.billingAddress.update({
+                        where: { Id: existingBilling.Id },
+                        data: billingUpdate,
+                    });
+                }
+            } else if (hasBillingFields && !existingBilling) {
+                if (
+                    billingPayload.Rua &&
+                    billingPayload.Bairro &&
+                    billingPayload.Cidade &&
+                    billingPayload.Estado &&
+                    billingPayload.Cep
+                ) {
+                    await prisma.billingAddress.create({
+                        data: {
+                            UserId: id,
+                            Rua: billingPayload.Rua,
+                            Numero: billingPayload.Numero ?? undefined,
+                            Complemento: billingPayload.Complemento ?? undefined,
+                            Bairro: billingPayload.Bairro,
+                            Cidade: billingPayload.Cidade,
+                            Estado: billingPayload.Estado,
+                            Cep: billingPayload.Cep,
+                        }
+                    });
+                }
             }
         }
 

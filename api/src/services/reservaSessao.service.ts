@@ -4,6 +4,57 @@ import { ReservaSessaoResponse } from '../types/reservaSessao.types';
 import type { Prisma } from '../generated/prisma';
 
 export class ReservaSessaoService implements IReservaSessaoService {
+    /**
+     * Busca reservas do dia atual para um par psicólogo/paciente
+     */
+    async getReservasDiaAtualByPsicologoPaciente(psicologoId: string, pacienteId: string) {
+        // Considera o timezone do servidor (ajuste se necessário)
+        const hoje = new Date();
+        hoje.setHours(0, 0, 0, 0);
+        const amanha = new Date(hoje);
+        amanha.setDate(hoje.getDate() + 1);
+        const reservas = await prisma.reservaSessao.findMany({
+            where: {
+                PsychologistId: psicologoId,
+                PatientId: pacienteId,
+                ScheduledAt: {
+                    gte: hoje,
+                    lt: amanha,
+                },
+            },
+            include: {
+                Consulta: { select: { Id: true, Date: true, Time: true, Status: true } },
+                Agenda: { select: { Id: true, Data: true, Horario: true } },
+            },
+            orderBy: { ScheduledAt: 'asc' },
+        });
+        return reservas;
+    }
+
+    /**
+     * Atualiza os tokens de uma reserva
+     */
+    async updateTokensReservaSessao(
+        id: string,
+        data: {
+            patientToken: string;
+            psychologistToken: string;
+            patientUid: number;
+            psychologistUid: number;
+        }
+    ) {
+        const updated = await prisma.reservaSessao.update({
+            where: { Id: id },
+            data: {
+                AgoraTokenPatient: data.patientToken,
+                AgoraTokenPsychologist: data.psychologistToken,
+                Uid: data.patientUid,
+                UidPsychologist: data.psychologistUid,
+            },
+        });
+        return updated;
+    }
+
     async getReservaSessao(id: string): Promise<ReservaSessaoResponse> {
         try {
             // Log removido para reduzir poluição - só loga em caso de erro
@@ -40,21 +91,21 @@ export class ReservaSessaoService implements IReservaSessaoService {
 
             // Converte Date para string ISO se necessário
             // Consulta.Date é DateTime no Prisma, então pode ser Date ou string
-            const consultaDate = reserva.Consulta?.Date 
-                ? (reserva.Consulta.Date instanceof Date 
-                    ? reserva.Consulta.Date.toISOString() 
+            const consultaDate = reserva.Consulta?.Date
+                ? (reserva.Consulta.Date instanceof Date
+                    ? reserva.Consulta.Date.toISOString()
                     : typeof reserva.Consulta.Date === 'string'
                         ? reserva.Consulta.Date
                         : String(reserva.Consulta.Date))
                 : undefined;
-            
-            const consultaTime = reserva.Consulta?.Time 
+
+            const consultaTime = reserva.Consulta?.Time
                 ? String(reserva.Consulta.Time)
                 : undefined;
-            
+
             // ScheduledAt é String? no schema, então sempre é string ou null/undefined
             // Não precisa verificar instanceof Date
-            const scheduledAt = reserva.ScheduledAt 
+            const scheduledAt = reserva.ScheduledAt
                 ? String(reserva.ScheduledAt)
                 : undefined;
 
@@ -97,7 +148,7 @@ export class ReservaSessaoService implements IReservaSessaoService {
             if (!scheduledAt) dadosAusentes.push('ScheduledAt');
             if (!patientId) dadosAusentes.push('PatientId');
             if (!psychologistId) dadosAusentes.push('PsychologistId');
-            
+
             if (dadosAusentes.length > 0) {
                 console.warn(`[ReservaSessaoService] ⚠️ Dados ausentes para ${id}:`, dadosAusentes.join(', '));
             }
@@ -211,7 +262,7 @@ export class ReservaSessaoService implements IReservaSessaoService {
     }> {
         try {
             console.log(`[ReservaSessaoService] Buscando consulta completa para: ${consultationId}`);
-            
+
             // Busca a consulta com todas as relações
             const consulta = await prisma.consulta.findUnique({
                 where: { Id: consultationId },
@@ -279,7 +330,7 @@ export class ReservaSessaoService implements IReservaSessaoService {
                     message: `Consulta não encontrada para ID: ${consultationId}`
                 };
             }
-            
+
             // Validação adicional: garante que a consulta tem PacienteId preenchido
             if (!consulta.PacienteId) {
                 console.error(`[ReservaSessaoService] Consulta encontrada mas sem PacienteId: ${consultationId}`);
@@ -367,26 +418,26 @@ export class ReservaSessaoService implements IReservaSessaoService {
             }
 
             // Converte Date para string ISO se necessário
-            const consultaDate = reserva.Consulta?.Date 
-                ? (reserva.Consulta.Date instanceof Date 
-                    ? reserva.Consulta.Date.toISOString() 
+            const consultaDate = reserva.Consulta?.Date
+                ? (reserva.Consulta.Date instanceof Date
+                    ? reserva.Consulta.Date.toISOString()
                     : typeof reserva.Consulta.Date === 'string'
                         ? reserva.Consulta.Date
                         : String(reserva.Consulta.Date))
                 : undefined;
-            
-            const consultaTime = reserva.Consulta?.Time 
+
+            const consultaTime = reserva.Consulta?.Time
                 ? String(reserva.Consulta.Time)
                 : undefined;
-            
-            const scheduledAt = reserva.ScheduledAt 
+
+            const scheduledAt = reserva.ScheduledAt
                 ? String(reserva.ScheduledAt)
                 : undefined;
 
             // 🎯 IMPORTANTE: Preenche PsychologistId e PatientId se estiverem vazios
             let psychologistId = reserva.PsychologistId;
             let patientId = reserva.PatientId;
-            
+
             if (!psychologistId && reserva.Consulta?.PsicologoId) {
                 psychologistId = reserva.Consulta.PsicologoId;
                 // Atualiza no banco para futuras consultas
@@ -421,7 +472,7 @@ export class ReservaSessaoService implements IReservaSessaoService {
             if (!scheduledAt) dadosAusentes.push('ScheduledAt');
             if (!patientId) dadosAusentes.push('PatientId');
             if (!psychologistId) dadosAusentes.push('PsychologistId');
-            
+
             if (dadosAusentes.length > 0) {
                 console.warn(`[ReservaSessaoService] ⚠️ Dados ausentes para channel ${channel}:`, dadosAusentes.join(', '));
             }

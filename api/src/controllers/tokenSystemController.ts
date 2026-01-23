@@ -6,8 +6,9 @@ import utc from 'dayjs/plugin/utc';
 import { getSchedulersStatus } from '../config/setupSchedulers';
 import { AuthorizationService } from '../services/authorization.service';
 import { deriveUidFromUuid } from '../utils/uid.util';
-import { ensureAgoraTokensForConsulta } from '../services/agoraToken.service';
+import { ensureAgoraTokensForConsulta, generateFreshAgoraTokensForConsulta } from '../services/agoraToken.service';
 import { getClientIp } from '../utils/getClientIp.util';
+import { Prisma } from '../generated/prisma';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -15,6 +16,15 @@ dayjs.extend(timezone);
 const BRASILIA_TIMEZONE = 'America/Sao_Paulo';
 const router = Router();
 const authService = new AuthorizationService();
+
+const parseTokenMetadata = (raw: string | null): Record<string, unknown> | null => {
+    if (!raw) return null;
+    try {
+        return JSON.parse(raw) as Record<string, unknown>;
+    } catch {
+        return null;
+    }
+};
 
 /**
  * GET /api/admin/token-system/status
@@ -212,9 +222,15 @@ router.post('/generate-manual', async (req: Request, res: Response): Promise<Res
             consultaId?: string;
         };
 
-        if (!patientId || !psychologistId) {
+        const normalizedPatientId = typeof patientId === 'string' ? patientId.trim() : '';
+        const normalizedPsychologistId =
+            typeof psychologistId === 'string' ? psychologistId.trim() : '';
+        const normalizedConsultaId = typeof consultaId === 'string' ? consultaId.trim() : '';
+
+        if (!normalizedConsultaId && (!normalizedPatientId || !normalizedPsychologistId)) {
             return res.status(400).json({
-                error: 'patientId e psychologistId são obrigatórios',
+                error: 'patientId e psychologistId são obrigatórios quando consultaId não é informado',
+                code: 'MISSING_REQUIRED_IDS',
             });
         }
 
@@ -226,9 +242,9 @@ router.post('/generate-manual', async (req: Request, res: Response): Promise<Res
             Status: string | null;
         };
 
-        if (consultaId) {
+        if (normalizedConsultaId) {
             consulta = await prisma.consulta.findUnique({
-                where: { Id: consultaId },
+                where: { Id: normalizedConsultaId },
                 select: {
                     Id: true,
                     PacienteId: true,
@@ -237,12 +253,89 @@ router.post('/generate-manual', async (req: Request, res: Response): Promise<Res
                     Status: true,
                 },
             });
+        }
+
+        if (consulta) {
+            if (normalizedPatientId && consulta.PacienteId && consulta.PacienteId !== normalizedPatientId) {
+                return res.status(409).json({
+                    error: 'Consulta não pertence ao paciente informado',
+                    code: 'CONSULTA_PATIENT_MISMATCH',
+                });
+            }
+            if (
+                normalizedPsychologistId &&
+                consulta.PsicologoId &&
+                consulta.PsicologoId !== normalizedPsychologistId
+            ) {
+                return res.status(409).json({
+                    error: 'Consulta não pertence ao psicólogo informado',
+                    code: 'CONSULTA_PSYCHOLOGIST_MISMATCH',
+                });
+            }
+        }
+
+        const resolvedPatientId = normalizedPatientId || consulta?.PacienteId || '';
+        const resolvedPsychologistId = normalizedPsychologistId || consulta?.PsicologoId || '';
+
+        if (!resolvedPatientId || !resolvedPsychologistId) {
+            return res.status(400).json({
+                error: 'patientId e psychologistId são obrigatórios',
+                code: 'MISSING_REQUIRED_IDS',
+            });
         } else {
+            const reservaComTokenAusente = await prisma.reservaSessao.findFirst({
+                where: {
+                    PatientId: resolvedPatientId,
+                    PsychologistId: resolvedPsychologistId,
+                    OR: [
+                        { AgoraTokenPatient: null },
+                        { AgoraTokenPatient: '' },
+                        { AgoraTokenPsychologist: null },
+                        { AgoraTokenPsychologist: '' },
+                    ],
+                },
+                orderBy: { ScheduledAt: 'desc' },
+                include: {
+                    Consulta: {
+                        select: {
+                            Id: true,
+                            PacienteId: true,
+                            PsicologoId: true,
+                            AgendaId: true,
+                            Status: true,
+                        },
+                    },
+                },
+            });
+
+            if (reservaComTokenAusente?.Consulta) {
+                consulta = reservaComTokenAusente.Consulta;
+            }
+        }
+
+        if (!consulta) {
             consulta = await prisma.consulta.findFirst({
                 where: {
-                    PacienteId: patientId,
-                    PsicologoId: psychologistId,
+                    PacienteId: resolvedPatientId,
+                    PsicologoId: resolvedPsychologistId,
                     Status: { notIn: ['Cancelado', 'Realizada'] },
+                },
+                orderBy: { Date: 'desc' },
+                select: {
+                    Id: true,
+                    PacienteId: true,
+                    PsicologoId: true,
+                    AgendaId: true,
+                    Status: true,
+                },
+            });
+        }
+
+        if (!consulta) {
+            consulta = await prisma.consulta.findFirst({
+                where: {
+                    PacienteId: resolvedPatientId,
+                    PsicologoId: resolvedPsychologistId,
                 },
                 orderBy: { Date: 'desc' },
                 select: {
@@ -258,6 +351,7 @@ router.post('/generate-manual', async (req: Request, res: Response): Promise<Res
         if (!consulta || !consulta.Id) {
             return res.status(404).json({
                 error: 'Consulta não encontrada para o par paciente/psicólogo',
+                code: 'CONSULTA_NOT_FOUND',
             });
         }
 
@@ -266,29 +360,93 @@ router.post('/generate-manual', async (req: Request, res: Response): Promise<Res
         });
 
         if (!reservaSessao) {
-            const uidPaciente = deriveUidFromUuid(patientId);
-            const uidPsicologo = deriveUidFromUuid(psychologistId);
+            const uidPaciente = deriveUidFromUuid(resolvedPatientId);
+            const uidPsicologo = deriveUidFromUuid(resolvedPsychologistId);
 
             reservaSessao = await prisma.reservaSessao.create({
                 data: {
                     ConsultaId: consulta.Id,
                     ReservationId: consulta.Id,
                     Status: 'Reservado',
-                    PatientId: patientId,
-                    PsychologistId: psychologistId,
+                    PatientId: resolvedPatientId,
+                    PsychologistId: resolvedPsychologistId,
                     AgoraChannel: `sala_${consulta.Id}`,
                     Uid: uidPaciente,
                     UidPsychologist: uidPsicologo,
                     AgendaId: consulta.AgendaId,
                 },
             });
+        } else {
+            const updateData: {
+                PatientId?: string;
+                PsychologistId?: string;
+                Uid?: number;
+                UidPsychologist?: number;
+                AgoraChannel?: string;
+                AgendaId?: string | null;
+            } = {};
+
+            if (!reservaSessao.PatientId) {
+                updateData.PatientId = resolvedPatientId;
+            }
+            if (!reservaSessao.PsychologistId) {
+                updateData.PsychologistId = resolvedPsychologistId;
+            }
+            if (!reservaSessao.Uid) {
+                updateData.Uid = deriveUidFromUuid(resolvedPatientId);
+            }
+            if (!reservaSessao.UidPsychologist) {
+                updateData.UidPsychologist = deriveUidFromUuid(resolvedPsychologistId);
+            }
+            if (!reservaSessao.AgoraChannel) {
+                updateData.AgoraChannel = `sala_${consulta.Id}`;
+            }
+            if (!reservaSessao.AgendaId && consulta.AgendaId) {
+                updateData.AgendaId = consulta.AgendaId;
+            }
+
+            if (Object.keys(updateData).length > 0) {
+                reservaSessao = await prisma.reservaSessao.update({
+                    where: { Id: reservaSessao.Id },
+                    data: updateData,
+                });
+            }
         }
 
-        const tokenResult = await ensureAgoraTokensForConsulta(prisma, consulta.Id, {
+        const actorIp = getClientIp(req);
+        const tokenResult = await generateFreshAgoraTokensForConsulta(prisma, consulta.Id, {
             actorId: adminId,
-            actorIp: getClientIp(req),
-            source: 'admin',
+            actorIp,
+            source: 'manual',
         });
+
+        await prisma.$queryRaw`
+            INSERT INTO "ManualAgoraToken" (
+                "ConsultaId",
+                "PatientId",
+                "PsychologistId",
+                "ChannelName",
+                "PatientToken",
+                "PsychologistToken",
+                "PatientUid",
+                "PsychologistUid",
+                "CreatedById",
+                "IpAddress",
+                "Source"
+            ) VALUES (
+                ${consulta.Id},
+                ${resolvedPatientId},
+                ${resolvedPsychologistId},
+                ${tokenResult.channelName},
+                ${tokenResult.patientToken},
+                ${tokenResult.psychologistToken},
+                ${tokenResult.patientUid},
+                ${tokenResult.psychologistUid},
+                ${adminId},
+                ${actorIp},
+                ${'manual'}
+            )
+        `;
 
         console.log(`🧾 [token-system] Tokens gerados manualmente`, {
             consultaId: consulta.Id,
@@ -310,6 +468,303 @@ router.post('/generate-manual', async (req: Request, res: Response): Promise<Res
         console.error('[tokenSystemGenerateManual] Erro:', error);
         return res.status(500).json({
             error: 'Erro ao gerar tokens manualmente',
+            message: error instanceof Error ? error.message : 'Erro desconhecido',
+        });
+    }
+});
+
+/**
+ * GET /api/admin/token-system/tokens
+ * Lista tokens gerados (manual + sistema) com paginação
+ */
+router.get('/tokens', async (req: Request, res: Response): Promise<Response> => {
+    try {
+        const limitParam = typeof req.query.limit === 'string' ? parseInt(req.query.limit, 10) : 20;
+        const pageParam = typeof req.query.page === 'string' ? parseInt(req.query.page, 10) : 1;
+        const limit = Number.isNaN(limitParam) ? 20 : Math.min(Math.max(limitParam, 1), 100);
+        const page = Number.isNaN(pageParam) ? 1 : Math.max(pageParam, 1);
+        const offset = (page - 1) * limit;
+        const fetchSize = page * limit;
+
+        const consultaId = typeof req.query.consultaId === 'string' ? req.query.consultaId.trim() : '';
+        const sourceRaw = typeof req.query.source === 'string' ? req.query.source.trim().toLowerCase() : 'all';
+        const source = sourceRaw === 'manual' || sourceRaw === 'system' ? sourceRaw : 'all';
+
+        const manualFilters: Prisma.Sql[] = [];
+        if (consultaId) {
+            manualFilters.push(Prisma.sql`m."ConsultaId" = ${consultaId}`);
+        }
+        const manualWhere =
+            manualFilters.length > 0
+                ? Prisma.sql`WHERE ${Prisma.join(manualFilters, ' AND ')}`
+                : Prisma.empty;
+
+        const systemWhereBase: {
+            Module: 'SystemSettings';
+            ActionType: 'Create';
+            Description: { contains: string };
+            AND?: Array<Record<string, unknown>>;
+        } = {
+            Module: 'SystemSettings',
+            ActionType: 'Create',
+            Description: { contains: 'Agora tokens gerados' },
+        };
+
+        if (consultaId) {
+            systemWhereBase.AND = [
+                { Metadata: { contains: consultaId } },
+                { NOT: { Metadata: { contains: '"source":"manual"' } } },
+            ];
+        } else {
+            systemWhereBase.AND = [{ NOT: { Metadata: { contains: '"source":"manual"' } } }];
+        }
+
+        if (source === 'manual') {
+            const manualCountRows = await prisma.$queryRaw<Array<{ count: bigint }>>`
+                SELECT COUNT(*)::bigint as count
+                FROM "ManualAgoraToken" m
+                ${manualWhere}
+            `;
+            const totalCount = Number(manualCountRows[0]?.count ?? 0);
+
+            const manualRows = await prisma.$queryRaw<
+                Array<{
+                    Id: string;
+                    ConsultaId: string;
+                    PatientId: string;
+                    PsychologistId: string;
+                    ChannelName: string;
+                    PatientToken: string;
+                    PsychologistToken: string;
+                    PatientUid: number;
+                    PsychologistUid: number;
+                    CreatedAt: Date;
+                    CreatedById: string;
+                    Source: string;
+                    UserNome: string | null;
+                    UserEmail: string | null;
+                    UserRole: string | null;
+                }>
+            >`
+                SELECT
+                    m."Id",
+                    m."ConsultaId",
+                    m."PatientId",
+                    m."PsychologistId",
+                    m."ChannelName",
+                    m."PatientToken",
+                    m."PsychologistToken",
+                    m."PatientUid",
+                    m."PsychologistUid",
+                    m."CreatedAt",
+                    m."CreatedById",
+                    m."Source",
+                    u."Nome" as "UserNome",
+                    u."Email" as "UserEmail",
+                    u."Role" as "UserRole"
+                FROM "ManualAgoraToken" m
+                LEFT JOIN "User" u ON u."Id" = m."CreatedById"
+                ${manualWhere}
+                ORDER BY m."CreatedAt" DESC
+                LIMIT ${limit}
+                OFFSET ${offset}
+            `;
+
+            const items = manualRows.map((row) => ({
+                id: row.Id,
+                timestamp: row.CreatedAt,
+                description: `Tokens gerados manualmente para consulta ${row.ConsultaId}`,
+                status: 'Sucesso',
+                user: row.UserNome
+                    ? {
+                          id: row.CreatedById,
+                          nome: row.UserNome,
+                          email: row.UserEmail,
+                          role: row.UserRole,
+                      }
+                    : null,
+                metadata: {
+                    consultaId: row.ConsultaId,
+                    channelName: row.ChannelName,
+                    patientId: row.PatientId,
+                    psychologistId: row.PsychologistId,
+                    patientUid: row.PatientUid,
+                    psychologistUid: row.PsychologistUid,
+                    patientToken: row.PatientToken,
+                    psychologistToken: row.PsychologistToken,
+                    source: row.Source ?? 'manual',
+                    actorId: row.CreatedById,
+                },
+                origin: 'manual',
+            }));
+
+            return res.json({ count: totalCount, items });
+        }
+
+        if (source === 'system') {
+            const totalCount = await prisma.adminActionLog.count({
+                where: systemWhereBase,
+            });
+            const logs = await prisma.adminActionLog.findMany({
+                where: systemWhereBase,
+                orderBy: { Timestamp: 'desc' },
+                take: limit,
+                skip: offset,
+                include: {
+                    User: {
+                        select: {
+                            Id: true,
+                            Nome: true,
+                            Email: true,
+                            Role: true,
+                        },
+                    },
+                },
+            });
+
+            const items = logs.map((log) => ({
+                id: log.Id,
+                timestamp: log.Timestamp,
+                description: log.Description,
+                status: log.Status,
+                user: log.User
+                    ? {
+                          id: log.User.Id,
+                          nome: log.User.Nome,
+                          email: log.User.Email,
+                          role: log.User.Role,
+                      }
+                    : null,
+                metadata: parseTokenMetadata(log.Metadata),
+                origin: 'system',
+            }));
+
+            return res.json({ count: totalCount, items });
+        }
+
+        const manualCountRows = await prisma.$queryRaw<Array<{ count: bigint }>>`
+            SELECT COUNT(*)::bigint as count
+            FROM "ManualAgoraToken" m
+            ${manualWhere}
+        `;
+        const manualCount = Number(manualCountRows[0]?.count ?? 0);
+        const systemCount = await prisma.adminActionLog.count({
+            where: systemWhereBase,
+        });
+
+        const manualRows = await prisma.$queryRaw<
+            Array<{
+                Id: string;
+                ConsultaId: string;
+                PatientId: string;
+                PsychologistId: string;
+                ChannelName: string;
+                PatientToken: string;
+                PsychologistToken: string;
+                PatientUid: number;
+                PsychologistUid: number;
+                CreatedAt: Date;
+                CreatedById: string;
+                Source: string;
+                UserNome: string | null;
+                UserEmail: string | null;
+                UserRole: string | null;
+            }>
+        >`
+            SELECT
+                m."Id",
+                m."ConsultaId",
+                m."PatientId",
+                m."PsychologistId",
+                m."ChannelName",
+                m."PatientToken",
+                m."PsychologistToken",
+                m."PatientUid",
+                m."PsychologistUid",
+                m."CreatedAt",
+                m."CreatedById",
+                m."Source",
+                u."Nome" as "UserNome",
+                u."Email" as "UserEmail",
+                u."Role" as "UserRole"
+            FROM "ManualAgoraToken" m
+            LEFT JOIN "User" u ON u."Id" = m."CreatedById"
+            ${manualWhere}
+            ORDER BY m."CreatedAt" DESC
+            LIMIT ${fetchSize}
+        `;
+
+        const logs = await prisma.adminActionLog.findMany({
+            where: systemWhereBase,
+            orderBy: { Timestamp: 'desc' },
+            take: fetchSize,
+            include: {
+                User: {
+                    select: {
+                        Id: true,
+                        Nome: true,
+                        Email: true,
+                        Role: true,
+                    },
+                },
+            },
+        });
+
+        const manualItems = manualRows.map((row) => ({
+            id: row.Id,
+            timestamp: row.CreatedAt,
+            description: `Tokens gerados manualmente para consulta ${row.ConsultaId}`,
+            status: 'Sucesso',
+            user: row.UserNome
+                ? {
+                      id: row.CreatedById,
+                      nome: row.UserNome,
+                      email: row.UserEmail,
+                      role: row.UserRole,
+                  }
+                : null,
+            metadata: {
+                consultaId: row.ConsultaId,
+                channelName: row.ChannelName,
+                patientId: row.PatientId,
+                psychologistId: row.PsychologistId,
+                patientUid: row.PatientUid,
+                psychologistUid: row.PsychologistUid,
+                patientToken: row.PatientToken,
+                psychologistToken: row.PsychologistToken,
+                source: row.Source ?? 'manual',
+                actorId: row.CreatedById,
+            },
+            origin: 'manual',
+        }));
+
+        const systemItems = logs.map((log) => ({
+            id: log.Id,
+            timestamp: log.Timestamp,
+            description: log.Description,
+            status: log.Status,
+            user: log.User
+                ? {
+                      id: log.User.Id,
+                      nome: log.User.Nome,
+                      email: log.User.Email,
+                      role: log.User.Role,
+                  }
+                : null,
+            metadata: parseTokenMetadata(log.Metadata),
+            origin: 'system',
+        }));
+
+        const merged = [...manualItems, ...systemItems].sort(
+            (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+        );
+        const pagedItems = merged.slice(offset, offset + limit);
+
+        return res.json({ count: manualCount + systemCount, items: pagedItems });
+    } catch (error) {
+        console.error('[tokenSystemTokens] Erro:', error);
+        return res.status(500).json({
+            error: 'Erro ao listar tokens',
             message: error instanceof Error ? error.message : 'Erro desconhecido',
         });
     }
@@ -354,32 +809,21 @@ router.get('/generated', async (req: Request, res: Response): Promise<Response> 
             },
         });
 
-        const items = logs.map((log) => {
-            let metadata: Record<string, unknown> | null = null;
-            if (log.Metadata) {
-                try {
-                    metadata = JSON.parse(log.Metadata) as Record<string, unknown>;
-                } catch {
-                    metadata = null;
-                }
-            }
-
-            return {
-                id: log.Id,
-                timestamp: log.Timestamp,
-                description: log.Description,
-                status: log.Status,
-                user: log.User
-                    ? {
-                        id: log.User.Id,
-                        nome: log.User.Nome,
-                        email: log.User.Email,
-                        role: log.User.Role,
-                    }
-                    : null,
-                metadata,
-            };
-        });
+        const items = logs.map((log) => ({
+            id: log.Id,
+            timestamp: log.Timestamp,
+            description: log.Description,
+            status: log.Status,
+            user: log.User
+                ? {
+                      id: log.User.Id,
+                      nome: log.User.Nome,
+                      email: log.User.Email,
+                      role: log.User.Role,
+                  }
+                : null,
+            metadata: parseTokenMetadata(log.Metadata),
+        }));
 
         return res.json({ count: items.length, items });
     } catch (error) {

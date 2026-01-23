@@ -20,7 +20,11 @@ export default function GerarTokenManualPage() {
   const [isLoadingLogs, setIsLoadingLogs] = useState(true);
   const [consultaFilter, setConsultaFilter] = useState<string>("");
   const [nameFilter, setNameFilter] = useState<string>("");
+  const [sourceFilter, setSourceFilter] = useState<"all" | "manual" | "system">("all");
   const [showTokens, setShowTokens] = useState(false);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(20);
+  const [totalCount, setTotalCount] = useState(0);
   const [debouncedConsultaId, setDebouncedConsultaId] = useState<string>("");
   const [debouncedNameFilter, setDebouncedNameFilter] = useState<string>("");
   const [selectedLog, setSelectedLog] = useState<TokenAuditItem | null>(null);
@@ -49,26 +53,27 @@ export default function GerarTokenManualPage() {
     return new Map<string, string>(entries);
   }, [psicologos]);
 
-  const fetchLogs = useCallback(async (consultaId?: string) => {
+  const fetchLogs = useCallback(
+    async (consultaId?: string, nextPage: number = page, nextSource = sourceFilter) => {
     try {
       setIsLoadingLogs(true);
-      const response = await tokenManualService().listGeneratedTokens(
-        50,
-        consultaId && consultaId.trim() ? consultaId.trim() : undefined
-      );
+      const response = await tokenManualService().listGeneratedTokens({
+        page: nextPage,
+        limit,
+        consultaId: consultaId && consultaId.trim() ? consultaId.trim() : undefined,
+        source: nextSource,
+      });
       setTokenLogs(response.items ?? []);
+      setTotalCount(response.count ?? 0);
     } catch (error) {
       console.error("Erro ao carregar logs de tokens:", error);
       toast.error("Não foi possível carregar a lista de tokens.");
       setTokenLogs([]);
+      setTotalCount(0);
     } finally {
       setIsLoadingLogs(false);
     }
-  }, []);
-
-  useEffect(() => {
-    fetchLogs();
-  }, [fetchLogs]);
+  }, [limit, page, sourceFilter]);
 
   useEffect(() => {
     const handle = setTimeout(() => {
@@ -85,12 +90,18 @@ export default function GerarTokenManualPage() {
   }, [nameFilter]);
 
   useEffect(() => {
+    setPage(1);
     if (debouncedConsultaId !== "") {
-      fetchLogs(debouncedConsultaId);
+      fetchLogs(debouncedConsultaId, 1, sourceFilter);
     } else {
-      fetchLogs(undefined);
+      fetchLogs(undefined, 1, sourceFilter);
     }
-  }, [debouncedConsultaId, fetchLogs]);
+  }, [debouncedConsultaId, fetchLogs, sourceFilter]);
+
+  useEffect(() => {
+    const consultaId = debouncedConsultaId ? debouncedConsultaId : undefined;
+    fetchLogs(consultaId, page, sourceFilter);
+  }, [debouncedConsultaId, fetchLogs, page, limit, sourceFilter]);
 
   const handleOpenModal = () => {
     setIsModalOpen(true);
@@ -116,43 +127,32 @@ export default function GerarTokenManualPage() {
         psychologistId: selectedPsychologistId,
       });
 
-      if (response.data.success) {
+      if (response.data?.success) {
         toast.success("Tokens gerados com sucesso!");
         handleCloseModal();
-        await fetchLogs();
+        setPage(1);
+        await fetchLogs(consultaFilter.trim() || undefined, 1, sourceFilter);
       } else {
-        toast.error("Falha ao gerar tokens.");
+        const msg = response.data?.error || response.data?.message || "Falha ao gerar tokens.";
+        toast.error(msg);
       }
-    } catch (error) {
+    } catch (error: any) {
+      let backendMsg = "Erro ao gerar tokens manualmente.";
+      if (error?.response) {
+        if (typeof error.response.data === "string") {
+          backendMsg = error.response.data;
+        } else if (error.response.data?.message) {
+          backendMsg = error.response.data.message;
+        } else if (error.response.data?.error) {
+          backendMsg = error.response.data.error;
+        }
+      } else if (error?.message) {
+        backendMsg = error.message;
+      }
       console.error("Erro ao gerar tokens manualmente:", error);
-      toast.error("Erro ao gerar tokens manualmente.");
+      toast.error(backendMsg);
     } finally {
       setIsSubmitting(false);
-    }
-  };
-
-  const maskToken = (token?: string) => {
-    if (!token) return "-";
-    if (showTokens) return token;
-    if (token.length <= 8) return "••••";
-    return `${token.slice(0, 4)}••••${token.slice(-4)}`;
-  };
-
-  const handleCopyToken = async (token?: string) => {
-    if (!token) {
-      toast.error("Token indisponível.");
-      return;
-    }
-    if (!showTokens) {
-      toast.error("Ative a exibição dos tokens para copiar.");
-      return;
-    }
-    try {
-      await navigator.clipboard.writeText(token);
-      toast.success("Token copiado.");
-    } catch (error) {
-      console.error("Erro ao copiar token:", error);
-      toast.error("Não foi possível copiar o token.");
     }
   };
 
@@ -162,6 +162,27 @@ export default function GerarTokenManualPage() {
 
   const handleCloseDetails = () => {
     setSelectedLog(null);
+  };
+
+  const maskToken = (token?: string | null) => {
+    if (!token) return "-";
+    if (showTokens) return token;
+    if (token.length <= 8) return "****";
+    return `${token.slice(0, 4)}****${token.slice(-4)}`;
+  };
+
+  const handleCopyToken = async (token?: string | null) => {
+    if (!token) {
+      toast.error("Token não disponível.");
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(token);
+      toast.success("Token copiado.");
+    } catch (error) {
+      console.error("Erro ao copiar token:", error);
+      toast.error("Não foi possível copiar o token.");
+    }
   };
 
   const filteredLogs = useMemo(() => {
@@ -175,6 +196,8 @@ export default function GerarTokenManualPage() {
       return searchable.includes(debouncedNameFilter);
     });
   }, [debouncedNameFilter, patientNameById, psychologistNameById, tokenLogs]);
+
+  const totalPages = Math.max(1, Math.ceil(totalCount / limit));
 
   return (
     <main className="w-full p-4 sm:p-6 lg:p-8">
@@ -237,9 +260,33 @@ export default function GerarTokenManualPage() {
               placeholder="Buscar por nome (paciente ou psicólogo)"
               className="w-full sm:max-w-md border rounded-lg px-3 py-2 text-sm"
             />
+            <select
+              value={sourceFilter}
+              onChange={(event) => setSourceFilter(event.target.value as "all" | "manual" | "system")}
+              className="w-full sm:max-w-xs border rounded-lg px-3 py-2 text-sm"
+            >
+              <option value="all">Todas as origens</option>
+              <option value="manual">Manual</option>
+              <option value="system">Sistema</option>
+            </select>
+            <select
+              value={String(limit)}
+              onChange={(event) => {
+                setLimit(Number(event.target.value));
+                setPage(1);
+              }}
+              className="w-full sm:max-w-[140px] border rounded-lg px-3 py-2 text-sm"
+            >
+              <option value="10">10 por página</option>
+              <option value="20">20 por página</option>
+              <option value="50">50 por página</option>
+            </select>
             <div className="flex gap-2">
               <button
-                onClick={() => fetchLogs(consultaFilter.trim() || undefined)}
+                onClick={() => {
+                  setPage(1);
+                  fetchLogs(consultaFilter.trim() || undefined, 1, sourceFilter);
+                }}
                 className="px-4 py-2 rounded-lg text-sm font-medium bg-[#8494E9] text-white hover:bg-[#6B7DE0]"
               >
                 Filtrar
@@ -248,7 +295,9 @@ export default function GerarTokenManualPage() {
                 onClick={() => {
                   setConsultaFilter("");
                   setNameFilter("");
-                  fetchLogs();
+                  setSourceFilter("all");
+                  setPage(1);
+                  fetchLogs(undefined, 1, "all");
                 }}
                 className="px-4 py-2 rounded-lg text-sm font-medium border border-gray-300 text-gray-600 hover:bg-gray-50"
               >
@@ -260,7 +309,7 @@ export default function GerarTokenManualPage() {
         {isLoadingLogs ? (
           <p className="text-sm text-gray-500">Carregando...</p>
         ) : filteredLogs.length === 0 ? (
-          <p className="text-sm text-gray-500">Nenhum token gerado ainda.</p>
+          <p className="text-sm text-gray-500">Nenhum resultado para os filtros.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">
@@ -291,7 +340,9 @@ export default function GerarTokenManualPage() {
                         : "-"}
                     </td>
                     <td className="py-2 pr-4 text-gray-700">
-                      {item.metadata?.source ?? "-"}
+                      {item.origin === "manual"
+                        ? "manual"
+                        : item.metadata?.source ?? "system"}
                     </td>
                     <td className="py-2 pr-4 text-gray-700">
                       <button
@@ -320,6 +371,38 @@ export default function GerarTokenManualPage() {
                 ))}
               </tbody>
             </table>
+            <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <span className="text-xs text-gray-500">
+                Exibindo {filteredLogs.length} de {totalCount} registros
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
+                  disabled={page <= 1}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium border ${
+                    page <= 1
+                      ? "border-gray-200 text-gray-300"
+                      : "border-gray-300 text-gray-600 hover:bg-gray-50"
+                  }`}
+                >
+                  Anterior
+                </button>
+                <span className="text-xs text-gray-600">
+                  Página {page} de {totalPages}
+                </span>
+                <button
+                  onClick={() => setPage((prev) => Math.min(prev + 1, totalPages))}
+                  disabled={page >= totalPages}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium border ${
+                    page >= totalPages
+                      ? "border-gray-200 text-gray-300"
+                      : "border-gray-300 text-gray-600 hover:bg-gray-50"
+                  }`}
+                >
+                  Próxima
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </section>

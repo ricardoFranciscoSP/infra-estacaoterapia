@@ -200,6 +200,43 @@ export class ConsultasController implements IConsultas {
     }
 
     /**
+     * Retorna a lista de consultas de uma data específica (YYYY-MM-DD)
+     */
+    async getConsultasPorData(req: Request, res: Response): Promise<Response> {
+        const user = req.user;
+        if (!user) {
+            return res.status(401).json({ success: false, error: 'Unauthorized', data: [] });
+        }
+
+        const hasPermission = await this.authService.checkPermission(
+            user.Id,
+            Module.Sessions,
+            ActionType.Read
+        );
+        if (!hasPermission) {
+            return res.status(403).json({ success: false, message: "Acesso negado", data: [] });
+        }
+
+        const dateParam = typeof req.query.date === "string" ? req.query.date.trim() : "";
+        if (!dateParam) {
+            return res.status(400).json({ success: false, error: "Data é obrigatória.", data: [] });
+        }
+
+        try {
+            const consultas = await this.service.getConsultasPorData(user, dateParam);
+            return res.json({ success: true, data: consultas });
+        } catch (error: any) {
+            const message = error?.message || "Erro ao buscar consultas por data";
+            const status = message === "Data inválida." ? 400 : 500;
+            return res.status(status).json({
+                success: false,
+                error: message,
+                data: []
+            });
+        }
+    }
+
+    /**
      * Retorna contagem mensal de TODAS as consultas para o ano informado (ou atual).
      * Query param: year (opcional)
      */

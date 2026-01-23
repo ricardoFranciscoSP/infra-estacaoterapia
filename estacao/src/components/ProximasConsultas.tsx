@@ -24,6 +24,7 @@ import { normalizeConsulta, type GenericObject } from "@/utils/normalizarConsult
 import { obterPrimeiroUltimoNome } from "@/utils/nomeUtils";
 import { getStatusTagInfo } from "@/utils/statusConsulta.util";
 import { extractScheduledAtFromNormalized, scheduledAtToTimestamp } from "@/utils/reservaSessaoUtils";
+import { shouldEnableEntrarConsulta } from "@/utils/consultaTempoUtils";
 import { useReservaSessaoData } from "@/hooks/useReservaSessaoData";
 import { useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent } from "@/components/ui/card";
@@ -794,6 +795,7 @@ export default function ProximasConsultas({ consultas: consultasProp = null, rol
 
   const sessionState = calculateSessionState();
   const { fraseSessao, mostrarContador, contadorSessao, buttons } = sessionState;
+  const finalButtons = { ...buttons, botaoEntrarDesabilitado: !podeEntrarNaSessao };
 
   // Verifica se pode reagendar (mais de 24h antes da consulta)
   const podeReagendar = (() => {
@@ -869,41 +871,24 @@ export default function ProximasConsultas({ consultas: consultasProp = null, rol
     }
   }
 
-  // 🎯 Verifica se pode entrar na sessão baseado no ScheduledAt
+  const statusBase =
+    socketStatus ||
+    (normalized?.raw as { Status?: string; status?: string; ReservaSessao?: { Status?: string; status?: string } })?.Status ||
+    (normalized?.raw as { Status?: string; status?: string; ReservaSessao?: { Status?: string; status?: string } })?.status ||
+    (normalized?.raw as { ReservaSessao?: { Status?: string; status?: string } })?.ReservaSessao?.Status ||
+    (normalized?.raw as { ReservaSessao?: { Status?: string; status?: string } })?.ReservaSessao?.status ||
+    normalized?.status ||
+    null;
+
+  // 🎯 Verifica se pode entrar na sessão baseado no ScheduledAt e status
   const podeEntrarNaSessao = useMemo(() => {
-    if (!normalized?.date || !normalized?.time) return false;
-    
-    try {
-      let inicioConsulta: number | null = null;
-      
-      // Prioriza ScheduledAt da ReservaSessao usando função helper type-safe
-      if (scheduledAtFromReserva) {
-        inicioConsulta = scheduledAtToTimestamp(scheduledAtFromReserva);
-      }
-      
-      // Fallback: usa date/time se ScheduledAt não estiver disponível
-      if (!inicioConsulta) {
-        const dateOnly = extractDateOnly(normalized.date);
-        if (!dateOnly) return false;
-        
-        const [hh, mm] = normalized.time.split(':').map(Number);
-        inicioConsulta = dayjs.tz(`${dateOnly} ${hh}:${mm}:00`, 'America/Sao_Paulo').valueOf();
-      }
-      
-      if (inicioConsulta) {
-        const agoraBr = dayjs().tz('America/Sao_Paulo');
-        const agoraTimestamp = agoraBr.valueOf();
-        const fimConsulta = inicioConsulta + (60 * 60 * 1000); // 60 minutos
-        
-        // 🎯 Habilita exatamente no ScheduledAt até 60 minutos depois
-        return agoraTimestamp >= inicioConsulta && agoraTimestamp <= fimConsulta;
-      }
-    } catch {
-      return false;
-    }
-    
-    return false;
-  }, [normalized?.date, normalized?.time, scheduledAtFromReserva]);
+    return shouldEnableEntrarConsulta({
+      scheduledAt: scheduledAtFromReserva ?? null,
+      date: normalized?.date ?? null,
+      time: normalized?.time ?? null,
+      status: statusBase,
+    });
+  }, [normalized?.date, normalized?.time, scheduledAtFromReserva, statusBase]);
 
   // Função para obter tag de status
   const obterTagStatus = (consulta: typeof normalizedList[0]) => {
@@ -1730,7 +1715,7 @@ export default function ProximasConsultas({ consultas: consultasProp = null, rol
               avatarUrl: consultaSelecionada.paciente.avatarUrl,
             } : undefined,
           }}
-          botaoEntrarDesabilitado={buttons.botaoEntrarDesabilitado}
+          botaoEntrarDesabilitado={finalButtons.botaoEntrarDesabilitado}
           consultaId={consultaNormalizadaSelecionada?.id ? String(consultaNormalizadaSelecionada.id) : undefined}
           sessaoAtiva={sessaoConsulta.sessaoAtiva}
           statusCancelamento={socketStatus ? String(socketStatus) : null}

@@ -676,7 +676,15 @@ export default function PainelHeader({ user }: PainelHeaderProps) {
     <motion.header
       className={`w-full shadow-sm sticky top-0 z-50 sticky-header ${
         isPainelPsicologo ? "bg-[#8494E9]" : "bg-white"
-      }`}
+      } fixed md:sticky left-0 right-0 top-0 md:top-0 md:left-auto md:right-auto`}
+      style={{
+        width: '100vw',
+        maxWidth: '100vw',
+        left: 0,
+        right: 0,
+        top: 0,
+        zIndex: 50,
+      }}
       initial={mounted ? { opacity: 0, y: -30 } : { opacity: 1, y: 0 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: "easeOut" }}

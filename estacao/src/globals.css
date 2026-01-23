@@ -1,3 +1,26 @@
+/* Header fixo no mobile para Painel */
+@media (max-width: 768px) {
+  .sticky-header {
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    right: 0;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    z-index: 50;
+  }
+  body {
+    padding-top: 64px !important;
+  }
+}
+/* Ajuste para botão de consentimento GoAdopt não sobrepor footer/botões no mobile */
+@media (max-width: 768px) {
+  .adopt-cmp-floating-button {
+    bottom: 90px !important; /* Sobe o botão para cima do footer fixo */
+    left: 16px !important;
+    z-index: 10001 !important;
+  }
+}
 @import "tailwindcss";
 
 @plugin "tailwindcss-animate";

@@ -1,4 +1,5 @@
 import { ConsultaApi } from '@/types/consultasTypes';
+import { shouldEnableEntrarConsulta } from '@/utils/consultaTempoUtils';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
@@ -291,54 +292,17 @@ export function selecionarProximaConsulta(
 export function podeEntrarNaConsulta(consulta: ConsultaApi | null): boolean {
     if (!consulta) return false;
 
-    try {
-        const dataConsulta = consulta.Date || consulta.Agenda?.Data;
-        const horarioConsulta = consulta.Time || consulta.Agenda?.Horario;
+    const dataConsulta = consulta.Date || consulta.Agenda?.Data;
+    const horarioConsulta = consulta.Time || consulta.Agenda?.Horario;
+    const statusBase =
+        consulta.Status ||
+        (consulta as { status?: string }).status ||
+        consulta.ReservaSessao?.Status ||
+        null;
 
-        if (!dataConsulta || !horarioConsulta) return false;
-
-        // Normaliza data e horário
-        // Extrai apenas YYYY-MM-DD se vier como ISO string
-        const dateOnly = dataConsulta.split('T')[0].split(' ')[0];
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(dateOnly)) {
-            return false;
-        }
-
-        // Normaliza horário para HH:mm
-        const horarioTrimmed = horarioConsulta.trim();
-        if (!/^\d{1,2}:\d{2}$/.test(horarioTrimmed)) {
-            return false;
-        }
-
-        const [hora, minuto] = horarioTrimmed.split(':').map(Number);
-        if (hora < 0 || hora >= 24 || minuto < 0 || minuto >= 60) {
-            return false;
-        }
-
-        const horarioNormalizado = `${String(hora).padStart(2, '0')}:${String(minuto).padStart(2, '0')}`;
-
-        const agora = dayjs().tz('America/Sao_Paulo');
-        const dataHoraConsulta = dayjs.tz(
-            `${dateOnly} ${horarioNormalizado}`,
-            'America/Sao_Paulo'
-        );
-
-        if (!dataHoraConsulta.isValid()) {
-            return false;
-        }
-
-        // 15 minutos antes
-        const inicioJanela = dataHoraConsulta.subtract(15, 'minute');
-        // Fim da consulta (60 minutos de duração)
-        const fimJanela = dataHoraConsulta.add(60, 'minute');
-
-        if (!inicioJanela.isValid() || !fimJanela.isValid()) {
-            return false;
-        }
-
-        return agora.isSameOrAfter(inicioJanela) && agora.isSameOrBefore(fimJanela);
-    } catch (error) {
-        console.error('Erro ao verificar se pode entrar na consulta:', error);
-        return false;
-    }
+    return shouldEnableEntrarConsulta({
+        date: dataConsulta || null,
+        time: horarioConsulta || null,
+        status: statusBase,
+    });
 }

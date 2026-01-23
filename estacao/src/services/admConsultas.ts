@@ -8,5 +8,6 @@ export const admConsultasService = () => {
         getConsultasCanceladas: () => api.get('/admin/consultas/canceladas'),
         getConsultasMesAtual: () => api.get('/admin/consultas/mes-atual'),
         getConsultasMesAtualLista: () => api.get('/admin/consultas/mes-atual-lista'),
+        getConsultasPorData: (date: string) => api.get('/admin/consultas/por-data', { params: { date } }),
     };
 }

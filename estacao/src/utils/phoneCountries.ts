@@ -268,7 +268,17 @@ export function cleanPhoneNumber(digits: string, countryCode: string): string {
                 return withoutCountry;
             }
         }
+        return d;
     }
+
+    const dialDigits = onlyDigits(PHONE_COUNTRIES.find(c => c.code === countryCode)?.dial || "");
+    if (dialDigits && d.startsWith(dialDigits)) {
+        const withoutCountry = d.slice(dialDigits.length);
+        if (withoutCountry.length >= 6) {
+            return withoutCountry;
+        }
+    }
+
     return d;
 }
 
@@ -276,7 +286,7 @@ export function cleanPhoneNumber(digits: string, countryCode: string): string {
 export function maskTelefoneByCountry(countryCode: string, digits: string): string {
     // Limpa o número removendo código do país se presente
     const cleaned = cleanPhoneNumber(digits, countryCode);
-    const d = cleaned.slice(0, 15);
+    const d = cleaned.slice(0, countryCode === "BR" ? 11 : 15);
     
     switch (countryCode) {
         case "BR": {

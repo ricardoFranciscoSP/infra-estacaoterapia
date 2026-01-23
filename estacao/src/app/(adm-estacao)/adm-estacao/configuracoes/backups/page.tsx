@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import getSocket from "@/lib/socket";
 import { motion } from "framer-motion";
 import toast from "react-hot-toast";
 import { BackupItem, BackupSchedule, backupService } from "@/services/backupService";
@@ -60,6 +61,7 @@ export default function BackupsPage() {
   const [backups, setBackups] = useState<BackupItem[]>([]);
   const [loadingList, setLoadingList] = useState(false);
   const [action, setAction] = useState<ActionState>({ isLoading: false });
+  const [isBackupProcessing, setIsBackupProcessing] = useState(false);
   const [restoreFile, setRestoreFile] = useState<File | null>(null);
   const [schedule, setSchedule] = useState<BackupSchedule>(defaultSchedule);
   const [scheduleDraft, setScheduleDraft] = useState<BackupSchedule>(defaultSchedule);
@@ -100,25 +102,40 @@ export default function BackupsPage() {
     }
   }, []);
 
+
   useEffect(() => {
     fetchBackups();
     fetchSchedule();
+
+    // Listener para status em tempo real do backup
+    const socket = getSocket?.();
+    if (socket) {
+      const handler = (data: { status: string; backup: BackupItem }) => {
+        if (data.status === "completed") {
+          toast.success(`Backup "${data.backup.name}" concluído e disponível para download!`);
+          setIsBackupProcessing(false);
+          fetchBackups();
+        }
+      };
+      socket.on("backup:status", handler);
+      // Cleanup
+      return () => {
+        socket.off("backup:status", handler);
+      };
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleGenerate = async () => {
     try {
       setAction({ isLoading: true });
-      const response = await backupService.generate();
-      const backup = response.data.backup;
-      toast.success("Backup gerado com sucesso");
-      await fetchBackups();
-      if (backup?.name) {
-        await handleDownload(backup.name);
-      }
+      setIsBackupProcessing(true);
+      await backupService.generate();
+      toast.success("Backup agendado! Você será avisado assim que o arquivo estiver pronto.");
     } catch (error) {
-      console.error("Erro ao gerar backup:", error);
-      toast.error("Erro ao gerar backup");
+      console.error("Erro ao agendar backup:", error);
+      toast.error("Erro ao agendar backup");
+      setIsBackupProcessing(false);
     } finally {
       setAction({ isLoading: false });
     }
@@ -229,6 +246,17 @@ export default function BackupsPage() {
 
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        {isBackupProcessing && (
+          <div className="col-span-2 flex items-center justify-center mb-4">
+            <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 animate-pulse">
+              <svg className="w-5 h-5 text-blue-500 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+              </svg>
+              <span className="text-blue-700 font-medium">Processando backup... Aguarde, você será avisado!</span>
+            </div>
+          </div>
+        )}
         <motion.section
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}

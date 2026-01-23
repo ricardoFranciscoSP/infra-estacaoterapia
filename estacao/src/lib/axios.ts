@@ -148,11 +148,16 @@ api.interceptors.response.use(
             // Continua o processamento normal, mas sem logar como erro crítico
         } else {
             // Para outros erros, loga normalmente
+            const responseData = error.response?.data;
+            const responsePreview = typeof responseData === 'string'
+                ? responseData.substring(0, 500)
+                : responseData;
             console.error(`❌ [Axios] Erro na requisição ${method} ${fullUrl}:`, {
                 message: error.message,
                 code: error.code,
                 status: statusCode,
                 statusText: error.response?.statusText,
+                response: responsePreview ?? null,
             });
         }
 

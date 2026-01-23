@@ -11,6 +11,7 @@ import { useCancelamentoConsulta } from "@/hooks/useCancelamentoConsulta";
 import toast from "react-hot-toast";
 import { useUserBasic } from "@/hooks/user/userHook";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
+import { shouldEnableEntrarConsulta } from "@/utils/consultaTempoUtils";
 
 interface PessoaConsulta {
   nome: string;
@@ -115,22 +116,10 @@ export default function ConsultaModalMobile({ open, onClose, consulta, botaoEntr
     }
   };
 
-  // Habilita botão entrar apenas no dia e horário da consulta OU pelo controle externo
-  let habilitarEntrar = false;
-  if (typeof botaoEntrarDesabilitado === "boolean") {
-    habilitarEntrar = !botaoEntrarDesabilitado;
-  } else {
-    try {
-      if (consulta.data && consulta.horario) {
-        const dataConsulta = new Date(consulta.data + 'T' + consulta.horario);
-        const agora = new Date();
-        // Considera tolerância de 10 minutos após horário
-        const inicio = new Date(dataConsulta.getTime());
-        const fim = new Date(dataConsulta.getTime() + 10 * 60000);
-        habilitarEntrar = agora >= inicio && agora <= fim;
-      }
-    } catch {}
-  }
+  // Habilita botão entrar apenas dentro da janela de 60 minutos OU pelo controle externo
+  const habilitarEntrar = typeof botaoEntrarDesabilitado === "boolean"
+    ? !botaoEntrarDesabilitado
+    : shouldEnableEntrarConsulta({ date: consulta.data, time: consulta.horario });
 
   return (
     <AnimatePresence>

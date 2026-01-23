@@ -209,6 +209,75 @@ export class ConsultasService {
                 },
                 ReservaSessao: {
                     select: {
+                        Status: true,
+                        AgoraChannel: true,
+                        Uid: true,
+                        UidPsychologist: true,
+                    }
+                }
+            },
+            orderBy: [
+                { Date: 'asc' },
+                { Time: 'asc' }
+            ]
+        });
+
+        return consultas;
+    }
+
+    /**
+     * Retorna a lista de consultas de uma data específica (todas, independente do status)
+     * @param user - Usuário autenticado
+     * @param date - Data no formato YYYY-MM-DD
+     */
+    async getConsultasPorData(user: User, date: string) {
+        if (this.authorizationService && typeof this.authorizationService.checkPermission === "function") {
+            const hasPermission = await this.authorizationService.checkPermission(
+                user.Id,
+                Module.Sessions,
+                ActionType.Read
+            );
+            if (!hasPermission) {
+                throw new Error("Acesso negado ao módulo de consultas.");
+            }
+        }
+
+        const [yearStr, monthStr, dayStr] = date.split("-");
+        const year = Number(yearStr);
+        const month = Number(monthStr);
+        const day = Number(dayStr);
+
+        if (!year || !month || !day) {
+            throw new Error("Data inválida.");
+        }
+
+        const startDate = new Date(year, month - 1, day, 0, 0, 0, 0);
+        const endDate = new Date(year, month - 1, day, 23, 59, 59, 999);
+
+        const consultas = await prisma.consulta.findMany({
+            where: {
+                Date: {
+                    gte: startDate,
+                    lte: endDate
+                }
+            },
+            include: {
+                Paciente: {
+                    select: {
+                        Id: true,
+                        Nome: true,
+                        Email: true
+                    }
+                },
+                Psicologo: {
+                    select: {
+                        Id: true,
+                        Nome: true,
+                        Email: true
+                    }
+                },
+                ReservaSessao: {
+                    select: {
                         Status: true
                     }
                 }

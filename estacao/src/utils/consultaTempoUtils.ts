@@ -96,3 +96,31 @@ export function isConsultaDentro60MinutosComScheduledAt(
   return estaDentroDoPeriodo;
 }
 
+export function isStatusFinalizadoOuCancelado(status?: string | null): boolean {
+  if (!status) return false;
+  const normalized = String(status).toLowerCase();
+  if (!normalized) return false;
+  return (
+    normalized.includes("cancel") ||
+    normalized.includes("conclu") ||
+    normalized.includes("realiz") ||
+    normalized.includes("finaliz") ||
+    normalized.includes("encerr") ||
+    normalized.includes("nao compareceu") ||
+    normalized.includes("naocompareceu") ||
+    normalized.includes("ausent") ||
+    normalized.includes("deferid")
+  );
+}
+
+export function shouldEnableEntrarConsulta(params: {
+  scheduledAt?: string | null;
+  date?: string | null;
+  time?: string | null;
+  status?: string | null;
+}): boolean {
+  const { scheduledAt, date, time, status } = params;
+  if (isStatusFinalizadoOuCancelado(status)) return false;
+  return isConsultaDentro60MinutosComScheduledAt(scheduledAt, date, time);
+}
+

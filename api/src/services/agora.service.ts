@@ -13,6 +13,11 @@ export class AgoraService {
      * @returns Token de acesso do Agora
      */
     async generateToken(channelName: string, uid: number | string, role: 'patient' | 'psychologist' = 'patient'): Promise<string> {
+        if (!appId || !appCertificate) {
+            throw new Error(
+                'AGORA_APP_ID ou AGORA_APP_CERTIFICATE não configurados para geração de token.'
+            );
+        }
         const ttlInSeconds = 3600; // 1 hora
         const rtcRole = RtcRole.PUBLISHER;
 
