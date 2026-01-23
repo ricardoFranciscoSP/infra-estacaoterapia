@@ -135,16 +135,16 @@ export default function SalaVideo({ appId, channel, token, uid, role, consultati
         }
       }
       
-      if (consultaDate && consultaTime) {
+      if (consultaDateFinal && consultaTimeFinal) {
         let inicioConsulta: Date;
-        if (typeof consultaDate === 'string') {
-          const dateStr = consultaDate.includes('T') ? consultaDate.split('T')[0] : consultaDate.split(' ')[0];
+        if (typeof consultaDateFinal === 'string') {
+          const dateStr = consultaDateFinal.includes('T') ? consultaDateFinal.split('T')[0] : consultaDateFinal.split(' ')[0];
           const [year, month, day] = dateStr.split('-').map(Number);
-          const [hour, minute] = consultaTime.split(':').map(Number);
+          const [hour, minute] = consultaTimeFinal.split(':').map(Number);
           inicioConsulta = new Date(year, month - 1, day, hour, minute, 0);
         } else {
-          inicioConsulta = new Date(consultaDate);
-          const [hour, minute] = consultaTime.split(':').map(Number);
+          inicioConsulta = new Date(consultaDateFinal);
+          const [hour, minute] = consultaTimeFinal.split(':').map(Number);
           inicioConsulta.setHours(hour, minute, 0, 0);
         }
         const agora = new Date();
@@ -158,7 +158,7 @@ export default function SalaVideo({ appId, channel, token, uid, role, consultati
       console.error('[SalaVideo] Erro ao calcular duração inicial:', error);
       return 0;
     }
-  }, [scheduledAtFinal, consultaDate, consultaTime]);
+  }, [scheduledAtFinal, consultaDateFinal, consultaTimeFinal]);
 
   // Inicializa callDuration com o valor calculado
   // IMPORTANTE: Calcula a diferença entre ScheduledAt e agora, mesmo antes de entrar na sala
@@ -235,21 +235,21 @@ export default function SalaVideo({ appId, channel, token, uid, role, consultati
     }
     
     // Fallback: usa consultaDate e consultaTime se ScheduledAt não estiver disponível
-    if (consultaDate && consultaTime) {
+    if (consultaDateFinal && consultaTimeFinal) {
       try {
         // Cria a data/hora de início da consulta
         let inicioConsulta: Date;
         
-        if (typeof consultaDate === 'string') {
+        if (typeof consultaDateFinal === 'string') {
           // Se for string, tenta parsear
-          const dateStr = consultaDate.includes('T') ? consultaDate.split('T')[0] : consultaDate;
+          const dateStr = consultaDateFinal.includes('T') ? consultaDateFinal.split('T')[0] : consultaDateFinal;
           const [year, month, day] = dateStr.split('-').map(Number);
-          const [hour, minute] = consultaTime.split(':').map(Number);
+          const [hour, minute] = consultaTimeFinal.split(':').map(Number);
           inicioConsulta = new Date(year, month - 1, day, hour, minute, 0);
         } else {
           // Se for Date, usa diretamente e ajusta o horário
-          inicioConsulta = new Date(consultaDate);
-          const [hour, minute] = consultaTime.split(':').map(Number);
+          inicioConsulta = new Date(consultaDateFinal);
+          const [hour, minute] = consultaTimeFinal.split(':').map(Number);
           inicioConsulta.setHours(hour, minute, 0, 0);
         }
 
@@ -270,7 +270,7 @@ export default function SalaVideo({ appId, channel, token, uid, role, consultati
     
     // Fallback final: retorna 60 minutos se não tiver dados
     return 3600;
-  }, [scheduledAtFinal, consultaDate, consultaTime]);
+  }, [scheduledAtFinal, consultaDateFinal, consultaTimeFinal]);
 
   const [timeRemaining, setTimeRemaining] = useState(() => calculateTimeRemaining());
   const [micOn, setMicOn] = useState(true);
@@ -1129,11 +1129,11 @@ export default function SalaVideo({ appId, channel, token, uid, role, consultati
     try {
       // Prioriza: ScheduledAt (que já vem do banco em horário de Brasília) > consultaDate/Time
       // IMPORTANTE: Usa consultaData como fallback se reservaSessao não estiver disponível
-      const scheduledAtToUse = scheduledAt || reservaSessao?.ScheduledAt;
+      const scheduledAtToUse = scheduledAtFinal;
       // Usa type casting para acessar propriedades que podem estar em diferentes formatos
       const consultaDataTyped = consultaData as Partial<{ Date?: string; date?: string; Time?: string; time?: string; Agenda?: { Data?: string; Horario?: string }; agenda?: { Data?: string; Horario?: string } }>;
-      const consultaDateToUse = consultaDate || reservaSessao?.ConsultaDate || consultaDataTyped?.Date || consultaDataTyped?.date || consultaDataTyped?.Agenda?.Data || consultaDataTyped?.agenda?.Data;
-      const consultaTimeToUse = consultaTime || reservaSessao?.ConsultaTime || consultaDataTyped?.Time || consultaDataTyped?.time || consultaDataTyped?.Agenda?.Horario || consultaDataTyped?.agenda?.Horario;
+      const consultaDateToUse = consultaDateFinal || consultaDataTyped?.Date || consultaDataTyped?.date || consultaDataTyped?.Agenda?.Data || consultaDataTyped?.agenda?.Data;
+      const consultaTimeToUse = consultaTimeFinal || consultaDataTyped?.Time || consultaDataTyped?.time || consultaDataTyped?.Agenda?.Horario || consultaDataTyped?.agenda?.Horario;
       
       console.log('⏱️ [calculateCallDuration] DEBUG - Verificando dados:', {
         scheduledAt,
@@ -1225,11 +1225,90 @@ export default function SalaVideo({ appId, channel, token, uid, role, consultati
       console.error('[SalaVideo] Erro ao calcular duração:', error);
       return 0;
     }
-  }, [scheduledAt, reservaSessao?.ScheduledAt, reservaSessao?.ConsultaDate, reservaSessao?.ConsultaTime, consultaDate, consultaTime, consultaData]);
+  }, [scheduledAtFinal, consultaDateFinal, consultaTimeFinal, consultaData, scheduledAt, reservaSessao?.ScheduledAt, consultaDate, consultaTime]);
 
   // Usa o contador global compartilhado em vez de criar múltiplos setInterval
   // Isso reduz drasticamente o uso de CPU ao usar um único timer compartilhado
   const { timestamp } = useContadorGlobal();
+  const startStatusConfirmedRef = useRef(false);
+  const lastStartAttemptAtRef = useRef(0);
+
+  const getConsultaStartDate = useCallback((): Date | null => {
+    if (scheduledAtFinal) {
+      const [datePart, timePart] = scheduledAtFinal.split(' ');
+      if (!datePart || !timePart) return null;
+      const [year, month, day] = datePart.split('-').map(Number);
+      const [hour, minute, second = 0] = timePart.split(':').map(Number);
+      return new Date(year, month - 1, day, hour, minute, second);
+    }
+
+    if (consultaDateFinal && consultaTimeFinal) {
+      if (typeof consultaDateFinal === 'string') {
+        const dateStr = consultaDateFinal.includes('T') ? consultaDateFinal.split('T')[0] : consultaDateFinal.split(' ')[0];
+        const [year, month, day] = dateStr.split('-').map(Number);
+        const [hour, minute] = consultaTimeFinal.split(':').map(Number);
+        return new Date(year, month - 1, day, hour, minute, 0);
+      }
+
+      const inicio = new Date(consultaDateFinal);
+      const [hour, minute] = consultaTimeFinal.split(':').map(Number);
+      inicio.setHours(hour, minute, 0, 0);
+      return inicio;
+    }
+
+    return null;
+  }, [scheduledAtFinal, consultaDateFinal, consultaTimeFinal]);
+
+  // Garante atualização de status para EmAndamento ao iniciar o horário da reserva
+  useEffect(() => {
+    if (!consultationIdString || startStatusConfirmedRef.current) return;
+
+    const inicioConsulta = getConsultaStartDate();
+    if (!inicioConsulta) return;
+
+    const now = new Date();
+    if (now < inicioConsulta) return;
+
+    const consultaStatus =
+      (consultaCompletaData as Partial<{ Status?: string }> | null)?.Status ||
+      (consultaData as Partial<{ Status?: string; status?: string }> | null)?.Status ||
+      (consultaData as Partial<{ Status?: string; status?: string }> | null)?.status ||
+      "";
+
+    const normalizedStatus = consultaStatus.replace(/\s/g, "");
+    const alreadyStartedOrFinal =
+      normalizedStatus === "EmAndamento" ||
+      normalizedStatus === "Realizada" ||
+      normalizedStatus === "Concluido" ||
+      normalizedStatus === "Cancelado" ||
+      normalizedStatus.startsWith("Cancelada") ||
+      normalizedStatus === "PacienteNaoCompareceu" ||
+      normalizedStatus === "PsicologoNaoCompareceu" ||
+      normalizedStatus.startsWith("Reagendada");
+
+    if (alreadyStartedOrFinal) {
+      startStatusConfirmedRef.current = true;
+      return;
+    }
+
+    const nowMs = Date.now();
+    if (nowMs - lastStartAttemptAtRef.current < 15000) return;
+    lastStartAttemptAtRef.current = nowMs;
+
+    const endpoint =
+      role === "PATIENT"
+        ? `/paciente/consultas/iniciar/${consultationIdString}`
+        : `/psicologo/consultas/iniciar/${consultationIdString}`;
+
+    api.post(endpoint)
+      .then(() => {
+        startStatusConfirmedRef.current = true;
+        console.log("✅ [SalaVideo] Status EmAndamento sincronizado com a reserva.");
+      })
+      .catch((error) => {
+        console.warn("⚠️ [SalaVideo] Falha ao atualizar status para EmAndamento:", error);
+      });
+  }, [timestamp, consultationIdString, role, consultaCompletaData, consultaData, getConsultaStartDate]);
   
   // Refs para as funções de cálculo para evitar recriação
   const calculateCallDurationRef = useRef(calculateCallDuration);
@@ -1244,12 +1323,12 @@ export default function SalaVideo({ appId, channel, token, uid, role, consultati
   // Atualiza duração imediatamente quando dados de scheduledAt/consultaDate/consultaTime mudarem
   // Isso garante que o timer mostre a duração correta mesmo antes de entrar na sala
   useEffect(() => {
-    if (scheduledAtFinal || (consultaDate && consultaTime)) {
+    if (scheduledAtFinal || (consultaDateFinal && consultaTimeFinal)) {
       const currentDuration = calculateCallDuration();
       console.log('⏱️ [SalaVideo] Dados de horário mudaram - atualizando duração:', currentDuration, 'segundos');
       setCallDuration(currentDuration);
     }
-  }, [scheduledAtFinal, consultaDate, consultaTime, calculateCallDuration]);
+  }, [scheduledAtFinal, consultaDateFinal, consultaTimeFinal, calculateCallDuration]);
 
   // Inicializa duração quando entrar na sala, baseado no horário da Agenda/ScheduledAt
   // IMPORTANTE: Calcula a diferença exata entre ScheduledAt e agora
@@ -1296,7 +1375,7 @@ export default function SalaVideo({ appId, channel, token, uid, role, consultati
     } else {
       console.log('⏱️ [SalaVideo] Aguardando joined=true para iniciar timer...');
     }
-  }, [joined, scheduledAtFinal, reservaSessao?.ScheduledAt, scheduledAt, consultaDate, consultaTime, calculateCallDuration, calculateTimeRemaining]);
+  }, [joined, scheduledAtFinal, consultaDateFinal, consultaTimeFinal, calculateCallDuration, calculateTimeRemaining]);
 
   // Busca duração inicial do Redis quando entrar na sala
   // IMPORTANTE: ScheduledAt é sempre a fonte da verdade - recalcula se necessário
@@ -1454,8 +1533,8 @@ export default function SalaVideo({ appId, channel, token, uid, role, consultati
   // OTIMIZAÇÃO: Usa um único timer global compartilhado em vez de múltiplos setInterval
   useEffect(() => {
     // Verifica se tem dados de horário (ScheduledAt é prioridade)
-    const scheduledAtToUse = scheduledAt || reservaSessao?.ScheduledAt;
-    const hasTimeData = scheduledAtToUse || (consultaDate && consultaTime);
+    const scheduledAtToUse = scheduledAtFinal;
+    const hasTimeData = scheduledAtToUse || (consultaDateFinal && consultaTimeFinal);
     
     if (hasTimeData) {
       // SEMPRE calcula baseado no ScheduledAt (fonte da verdade)
@@ -1467,7 +1546,7 @@ export default function SalaVideo({ appId, channel, token, uid, role, consultati
       setTimeRemaining(currentTimeRemaining);
     }
     // Atualiza quando o timestamp global muda (a cada segundo) ou quando dados de horário mudam
-  }, [timestamp, scheduledAt, reservaSessao?.ScheduledAt, consultaDate, consultaTime]);
+  }, [timestamp, scheduledAtFinal, consultaDateFinal, consultaTimeFinal]);
 
   // Resetar estado quando entrar na sala
   useEffect(() => {
@@ -1489,8 +1568,8 @@ export default function SalaVideo({ appId, channel, token, uid, role, consultati
     
     // Recalcula o tempo restante baseado em ScheduledAt quando o timestamp global atualiza
     // Usa ScheduledAt da prop, ReservaSessao ou consultaDate/Time
-    const scheduledAtToUse = scheduledAt || reservaSessao?.ScheduledAt;
-    const hasTimeData = scheduledAtToUse || (consultaDate && consultaTime);
+    const scheduledAtToUse = scheduledAtFinal;
+    const hasTimeData = scheduledAtToUse || (consultaDateFinal && consultaTimeFinal);
     
     if (hasTimeData) {
       const newTimeRemaining = calculateTimeRemainingRef.current();
@@ -1499,7 +1578,7 @@ export default function SalaVideo({ appId, channel, token, uid, role, consultati
         setTimeRemaining(newTimeRemaining);
       }
     }
-  }, [timestamp, scheduledAt, reservaSessao?.ScheduledAt, consultaDate, consultaTime]);
+  }, [timestamp, scheduledAtFinal, consultaDateFinal, consultaTimeFinal]);
 
   // Encerramento automático quando o tempo chegar a 0
   useEffect(() => {
@@ -2720,7 +2799,7 @@ export default function SalaVideo({ appId, channel, token, uid, role, consultati
             )}
             
             {/* Contador de Sessão - SEMPRE visível quando tiver dados de horário */}
-            {(joined || scheduledAt || reservaSessao?.ScheduledAt || (consultaDate && consultaTime)) && (
+            {(joined || scheduledAtFinal || reservaSessaoFinal?.ScheduledAt || (consultaDateFinal && consultaTimeFinal)) && (
               <ContadorSessao 
                 duracao={Math.max(0, callDuration)} 
                 tempoRestante={Math.max(0, timeRemaining)} 

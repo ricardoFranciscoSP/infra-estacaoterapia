@@ -99,10 +99,18 @@ export default function FormDadosPessoaisAdmin({ psicologo, enums, onSuccess }: 
 
   // Atualiza dados pessoais quando o psicologo mudar
   React.useEffect(() => {
+    // Extrai sempre o formato YYYY-MM-DD da data recebida do backend (evita bug de UTC)
+    let dataNasc = psicologo?.DataNascimento ?? "";
+    if (typeof dataNasc === "string") {
+      const match = dataNasc.match(/^(\d{4}-\d{2}-\d{2})/);
+      if (match) {
+        dataNasc = match[1];
+      }
+    }
     setDadosPessoais({
       Nome: psicologo?.Nome ?? "",
       Email: psicologo?.Email ?? "",
-      DataNascimento: psicologo?.DataNascimento ?? "",
+      DataNascimento: dataNasc,
       Sexo: psicologo?.Sexo ?? "",
       Pronome: psicologo?.Pronome ?? "",
       RacaCor: psicologo?.RacaCor ?? "",

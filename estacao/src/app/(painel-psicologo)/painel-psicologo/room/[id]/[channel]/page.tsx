@@ -5,6 +5,7 @@ import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { useReservaSessao } from '@/hooks/reservaSessao';
 import type { ReservaSessao } from '@/types/reservaSessaoTypes';
 import { consultaService } from '@/services/consultaService';
+import { reservaSessaoService } from '@/services/reservaSessaoService';
 import { useAuthStore } from '@/store/authStore';
 import toast from 'react-hot-toast'; 
 
@@ -49,6 +50,8 @@ export default function Room() {
 
   const { reservaSessao, refetch, isLoading: isLoadingReserva, isError: isErrorReserva } = useReservaSessao(id);
   const rs = reservaSessao as ReservaSessao | undefined;
+  const [reservaSessaoFromChannel, setReservaSessaoFromChannel] = useState<ReservaSessao | null>(null);
+  const [isLoadingFromChannel, setIsLoadingFromChannel] = useState(false);
   
   // Obtém o ID do psicólogo logado diretamente do authStore
   const loggedUser = useAuthStore((state) => state.user);
@@ -70,13 +73,63 @@ export default function Room() {
   const [tokenFetchAttempts, setTokenFetchAttempts] = useState(0);
   const tokenFetchTimeoutRef = useRef<NodeJS.Timeout | null>(null); // Ref para timeout do token
 
+  // Busca dados completos pelo channel quando necessário
+  useEffect(() => {
+    const hasAllData = rs &&
+      rs.AgoraTokenPsychologist &&
+      rs.UidPsychologist &&
+      rs.ConsultaDate &&
+      rs.ConsultaTime &&
+      rs.ScheduledAt &&
+      rs.PsychologistId;
+
+    if (channelParam && !isLoadingFromChannel && !hasAllData && !reservaSessaoFromChannel) {
+      setIsLoadingFromChannel(true);
+      try {
+        const service = reservaSessaoService();
+        if (!service || typeof service?.getByChannel !== 'function') {
+          console.error('❌ [Room Psychologist] reservaSessaoService inválido', {
+            service,
+            hasGetByChannel: !!service?.getByChannel,
+            type: typeof service?.getByChannel
+          });
+          setIsLoadingFromChannel(false);
+          return;
+        }
+
+        service.getByChannel(channelParam)
+          .then((response) => {
+            const data = response.data?.data;
+            if (data) {
+              setReservaSessaoFromChannel(data);
+              import('@/store/reservaSessaoStore').then(({ useReservaSessaoStore }) => {
+                useReservaSessaoStore.getState().setReservaSessao(data);
+              });
+            }
+          })
+          .catch((err) => {
+            console.error('❌ [Room Psychologist] Erro ao buscar ReservaSessao pelo channel:', err);
+          })
+          .finally(() => {
+            setIsLoadingFromChannel(false);
+          });
+      } catch (fetchError) {
+        console.error('❌ [Room Psychologist] Erro ao chamar reservaSessaoService:', fetchError);
+        setIsLoadingFromChannel(false);
+      }
+    }
+  }, [channelParam, rs, isLoadingFromChannel, reservaSessaoFromChannel]);
+
+  // Prioriza dados do channel se disponíveis
+  const finalReservaSessao = reservaSessaoFromChannel || rs;
+
   // Valores estáveis usando useMemo para garantir que o array de dependências não mude de tamanho
   // IMPORTANTE: Sala do psicólogo usa APENAS AgoraTokenPsychologist (não usa token do paciente)
   // FONTE DOS TOKENS: Sempre vem da tabela ReservaSessao via useReservaSessao(id)
   const existingTokenValue = useMemo(() => {
     // Usa APENAS AgoraTokenPsychologist - NUNCA usa tokens alternativos
-    return rs?.AgoraTokenPsychologist || '';
-  }, [rs?.AgoraTokenPsychologist]);
+    return finalReservaSessao?.AgoraTokenPsychologist || '';
+  }, [finalReservaSessao?.AgoraTokenPsychologist]);
 
   // Busca token pelo channel se necessário (quando reserva não encontrada ou token não disponível)
   // IMPORTANTE: Sempre tenta buscar/gerar token se não existir, garantindo que esteja disponível no horário marcado
@@ -252,15 +305,15 @@ export default function Room() {
   // 1. AgoraTokenPsychologist da reserva (fonte primária)
   // 2. tokenFromChannel (gerado via API /reservas/token/{channel} se necessário)
   // NUNCA usa: TokenPsicologo, TokenPaciente, AgoraTokenPatient ou qualquer outro token
-  const tokenForPsychologist = rs?.AgoraTokenPsychologist || tokenFromChannel || "";
-  const channel = rs?.AgoraChannel || rs?.Channel || channelParam || "";
-  const uidPsychologist = rs?.UidPsychologist || uidFromChannel || 0;
+  const tokenForPsychologist = finalReservaSessao?.AgoraTokenPsychologist || tokenFromChannel || "";
+  const channel = finalReservaSessao?.AgoraChannel || finalReservaSessao?.Channel || channelParam || "";
+  const uidPsychologist = finalReservaSessao?.UidPsychologist || uidFromChannel || 0;
   
   // Extrai dados da consulta com múltiplos fallbacks
-  const finalConsultaDate = rs?.ConsultaDate || "";
-  const finalConsultaTime = rs?.ConsultaTime || "";
-  const finalScheduledAt = rs?.ScheduledAt || "";
-  const finalPsychologistId = loggedUserId || rs?.PsychologistId || "";
+  const finalConsultaDate = finalReservaSessao?.ConsultaDate || "";
+  const finalConsultaTime = finalReservaSessao?.ConsultaTime || "";
+  const finalScheduledAt = finalReservaSessao?.ScheduledAt || "";
+  const finalPsychologistId = loggedUserId || finalReservaSessao?.PsychologistId || "";
   
   console.log("🔑 [Psychologist] Token (AgoraTokenPsychologist):", tokenForPsychologist ? "✅ Presente" : "❌ Ausente");
   console.log("📺 [Psychologist] Channel:", channel || "❌ Ausente");
@@ -271,14 +324,16 @@ export default function Room() {
   console.log("📆 [Psychologist] ScheduledAt:", finalScheduledAt || "❌ Ausente");
   console.log("👨‍⚕️ [Psychologist] PsychologistId (final):", finalPsychologistId || "❌ Ausente");
   console.log("🔍 [Psychologist] Token source:", {
-    AgoraTokenPsychologist: rs?.AgoraTokenPsychologist ? "✅" : "❌",
+    AgoraTokenPsychologist: finalReservaSessao?.AgoraTokenPsychologist ? "✅" : "❌",
     tokenFromChannel: tokenFromChannel ? "✅" : "❌",
-    finalToken: tokenForPsychologist ? "✅ Presente" : "❌ Ausente"
+    finalToken: tokenForPsychologist ? "✅ Presente" : "❌ Ausente",
+    source: reservaSessaoFromChannel ? "channel" : "id"
   });
   
   const isReady =
     !isLoadingReserva &&
     !isLoadingToken &&
+    !isLoadingFromChannel &&
     (!isErrorReserva || tokenFromChannel) && // Permite se tiver token alternativo mesmo com erro
     typeof tokenForPsychologist === "string" && tokenForPsychologist.trim().length > 0 &&
     typeof channel === "string" && channel.trim().length > 0 &&
@@ -398,7 +453,7 @@ export default function Room() {
   console.log("  - loggedUserId (do useAuthStore):", loggedUserId);
   console.log("  - rs?.PsychologistId:", rs?.PsychologistId);
   console.log("  - finalPsychologistId (escolhido):", finalPsychologistId);
-  console.log("  - consultationId:", rs?.ConsultaId || id);
+  console.log("  - consultationId:", finalReservaSessao?.ConsultaId || id);
   console.log("  - finalConsultaDate:", finalConsultaDate);
   console.log("  - finalConsultaTime:", finalConsultaTime);
   console.log("  - finalScheduledAt:", finalScheduledAt);
@@ -420,7 +475,7 @@ export default function Room() {
       channel={channel}
       uid={String(uidPsychologist || uidFromChannel || 0)}
       role="PSYCHOLOGIST"
-      consultationId={rs?.ConsultaId || id}
+      consultationId={finalReservaSessao?.ConsultaId || id}
       PsychologistId={finalPsychologistId}
       consultaDate={finalConsultaDate}
       consultaTime={finalConsultaTime}

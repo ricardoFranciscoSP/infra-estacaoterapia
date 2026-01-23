@@ -570,12 +570,26 @@ export class ConsultaRoomService {
 
         try {
             const durationKey = this.getSessionDurationKey(consultationId);
+            let lastWarningMinutesSent: number | undefined;
+            const existingDataStr = await this.redis.get(durationKey);
+            if (existingDataStr) {
+                try {
+                    const existingData = JSON.parse(existingDataStr);
+                    if (typeof existingData?.lastWarningMinutesSent === 'number') {
+                        lastWarningMinutesSent = existingData.lastWarningMinutesSent;
+                    }
+                } catch (parseError) {
+                    console.warn(`⚠️ [ConsultaRoomService] Erro ao parsear duração existente:`, parseError);
+                }
+            }
+
             const durationData = {
                 consultationId,
                 duration, // em segundos
                 timeRemaining, // em segundos
                 timestamp,
-                updatedAt: new Date().toISOString()
+                updatedAt: new Date().toISOString(),
+                lastWarningMinutesSent
             };
 
             // Salva por 2 horas (tempo máximo de uma consulta + margem)
@@ -595,7 +609,9 @@ export class ConsultaRoomService {
      * Obtém a duração atual da sessão do Redis
      * Retorna null se não encontrar ou se Redis não estiver disponível
      */
-    async getSessionDuration(consultationId: string): Promise<{ duration: number; timeRemaining: number; timestamp: number } | null> {
+    async getSessionDuration(
+        consultationId: string
+    ): Promise<{ duration: number; timeRemaining: number; timestamp: number; lastWarningMinutesSent?: number } | null> {
         if (!this.redis) {
             return null;
         }
@@ -613,11 +629,46 @@ export class ConsultaRoomService {
             return {
                 duration: durationData.duration || 0,
                 timeRemaining: durationData.timeRemaining || 0,
-                timestamp: durationData.timestamp || Date.now()
+                timestamp: durationData.timestamp || Date.now(),
+                lastWarningMinutesSent: typeof durationData.lastWarningMinutesSent === 'number'
+                    ? durationData.lastWarningMinutesSent
+                    : undefined
             };
         } catch (error) {
             console.error(`❌ [ConsultaRoomService] Erro ao obter duração:`, error);
             return null;
+        }
+    }
+
+    /**
+     * Salva o último aviso de tempo restante enviado para evitar duplicações
+     */
+    async saveLastWarningMinutes(
+        consultationId: string,
+        minutesRemaining: number
+    ): Promise<void> {
+        if (!this.redis) {
+            return;
+        }
+
+        try {
+            const durationKey = this.getSessionDurationKey(consultationId);
+            const durationDataStr = await this.redis.get(durationKey);
+            if (!durationDataStr) {
+                return;
+            }
+
+            const durationData = JSON.parse(durationDataStr);
+            durationData.lastWarningMinutesSent = minutesRemaining;
+            durationData.updatedAt = new Date().toISOString();
+
+            await this.redis.setex(
+                durationKey,
+                7200,
+                JSON.stringify(durationData)
+            );
+        } catch (error) {
+            console.error(`❌ [ConsultaRoomService] Erro ao salvar último aviso:`, error);
         }
     }
 

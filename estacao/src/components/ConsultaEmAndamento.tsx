@@ -31,8 +31,15 @@ export const ConsultaEmAndamento: React.FC<ConsultaEmAndamentoProps> = ({ consul
     : consulta.Psicologo?.Images?.[0]?.Url || '/icons/avatar-psicologo.svg';
   const data = consulta.Date || consulta.Agenda?.Data;
   const hora = consulta.Time || consulta.Agenda?.Horario;
-  const inicio = data && hora ? dayjs(`${data}T${hora}`) : null;
-  const fim = inicio ? inicio.add(1, 'hour') : null;
+  let inicio: dayjs.Dayjs | null = null;
+  let fim: dayjs.Dayjs | null = null;
+  if (data && hora) {
+    const tentativa = dayjs(`${data}T${hora}`);
+    if (tentativa.isValid()) {
+      inicio = tentativa;
+      fim = inicio.add(1, 'hour');
+    }
+  }
 
   return (
     <div className="bg-white rounded-lg shadow p-6 flex flex-col gap-4 border-l-4 border-[#6D75C0] relative">

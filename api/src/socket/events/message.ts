@@ -513,6 +513,29 @@ export function handleMessage(io: Server, socket: Socket) {
 
             console.log(`📤 [session:sync-duration] Recebido de ${userId} (${role}): ${currentDuration}s (restam ${timeRemaining}s) na consulta ${consultationId}`);
 
+            // Notifica tempo restante a cada 5 minutos quando faltar 15 minutos
+            const minutesRemaining = Math.ceil(timeRemaining / 60);
+            const warningThresholds = [15, 10, 5];
+            if (warningThresholds.includes(minutesRemaining)) {
+                const durationData = await roomService.getSessionDuration(consultationId);
+                const lastWarning = durationData?.lastWarningMinutesSent;
+
+                if (lastWarning !== minutesRemaining) {
+                    const warningPayload = {
+                        event: 'time-remaining-warning' as const,
+                        consultationId,
+                        message: `Faltam ${minutesRemaining} minuto(s) para encerrar a sessão.`,
+                        minutesRemaining,
+                        timestamp: new Date().toISOString()
+                    };
+
+                    io.to(roomName).emit('time-remaining-warning', warningPayload);
+                    io.to(roomName).emit(`consultation:${consultationId}`, warningPayload);
+                    await roomService.saveLastWarningMinutes(consultationId, minutesRemaining);
+                    console.log(`⏰ [session:sync-duration] Aviso enviado: ${minutesRemaining} minutos restantes`);
+                }
+            }
+
             // Emite para todos os outros na sala (exceto o remetente)
             socket.to(roomName).emit("session:duration-synced", {
                 consultationId,

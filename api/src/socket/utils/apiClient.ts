@@ -7,7 +7,35 @@
 // No Docker Swarm, os serviços se comunicam pelo nome do serviço na mesma rede
 // O serviço da API se chama "api" e roda na porta 3333 em produção
 // Pode ser sobrescrita via variável de ambiente API_BASE_URL ou API_URL
-const API_BASE_URL = process.env.API_BASE_URL || process.env.API_URL || 'http://localhost:3333';
+const API_BASE_URL_RAW = process.env.API_BASE_URL || process.env.API_URL || 'http://localhost:3333';
+const INTERNAL_HOSTS = new Set([
+    'api',
+    'estacaoterapia_api',
+    'localhost',
+    '127.0.0.1',
+]);
+
+const normalizeApiBaseUrl = (rawUrl: string): string => {
+    let urlText = rawUrl?.trim() || 'http://localhost:3333';
+    if (!/^https?:\/\//i.test(urlText)) {
+        urlText = `http://${urlText}`;
+    }
+
+    try {
+        const parsed = new URL(urlText);
+        const isInternalHost = INTERNAL_HOSTS.has(parsed.hostname) || parsed.hostname.endsWith('.internal');
+        const isInternalPort = parsed.port === '3333' || parsed.port === '80';
+        if (parsed.protocol === 'https:' && (isInternalHost || isInternalPort)) {
+            parsed.protocol = 'http:';
+        }
+        return parsed.toString().replace(/\/$/, '');
+    } catch (error) {
+        console.warn('⚠️ [API Client] URL inválida, usando fallback HTTP:', error);
+        return 'http://localhost:3333';
+    }
+};
+
+const API_BASE_URL = normalizeApiBaseUrl(API_BASE_URL_RAW);
 
 interface ApiResponse<T = unknown> {
     success: boolean;

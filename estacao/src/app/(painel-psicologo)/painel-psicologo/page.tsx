@@ -569,21 +569,33 @@ export default function PainelPsicologoPage() {
                       )}
                       {!consultaAtualFromHook && consultaEmAndamento && (
                         <ConsultaEmAndamento
-                          consulta={consultaEmAndamento}
+                          consulta={{
+                            ...consultaEmAndamento,
+                            Date: isNaN(new Date(consultaEmAndamento.Date).getTime()) ? '' : consultaEmAndamento.Date || '',
+                            Time: consultaEmAndamento.Time && /^\d{2}:\d{2}$/.test(consultaEmAndamento.Time) ? consultaEmAndamento.Time : '',
+                          }}
                           role="psicologo"
                           onEntrar={() => window.open(`/consulta/${consultaEmAndamento.Id}`, '_blank')}
                         />
                       )}
                     </>
                   ) : null}
-                  
+
                   {/* PRIORIDADE 2: Próxima consulta - mostra se não houver consulta atual dentro do período OU se ConsultaAtualPsicologo retornou null */}
-                  {proximaConsultaLive ? (
+                  {proximaConsultaLive && proximaConsultaLive.Date && !isNaN(new Date(proximaConsultaLive.Date).getTime()) ? (
                     <>
                       <h3 className="fira-sans font-semibold text-xl sm:text-2xl leading-tight tracking-normal text-[#49525A] mb-4">
                         Próxima consulta
                       </h3>
-                      <ProximaConsultaPsicologo consultas={proximaConsultaLive} role="psicologo" hidePerfil />
+                      <ProximaConsultaPsicologo
+                        consultas={{
+                          ...proximaConsultaLive,
+                          Date: isNaN(new Date(proximaConsultaLive.Date).getTime()) ? '' : proximaConsultaLive.Date || '',
+                          Time: proximaConsultaLive.Time && /^\d{2}:\d{2}$/.test(proximaConsultaLive.Time) ? proximaConsultaLive.Time : '',
+                        }}
+                        role="psicologo"
+                        hidePerfil
+                      />
                     </>
                   ) : (
                     <>
