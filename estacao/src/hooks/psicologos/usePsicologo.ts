@@ -24,7 +24,8 @@ export function usePsicologoPage() {
     const sexoFiltro = usePsicologoFilterStore((s) => s.sexo);
     const atendimentosFiltro = usePsicologoFilterStore((s) => s.atendimentos);
     const idiomasFiltro = usePsicologoFilterStore((s) => s.idiomas);
-    const dataFiltro = usePsicologoFilterStore((s) => s.data);
+    const dataInicioFiltro = usePsicologoFilterStore((s) => s.dataInicio);
+    const dataFimFiltro = usePsicologoFilterStore((s) => s.dataFim);
     const periodoFiltro = usePsicologoFilterStore((s) => s.periodo);
 
     const router = useRouter();
@@ -170,14 +171,18 @@ export function usePsicologoPage() {
         if (!hasAllSelected(atendimentosFiltro, atendArr)) return false;
 
         // Data/Período: requer pelo menos 1 agenda compatível
-        if (dataFiltro || periodoFiltro) {
+        if (dataInicioFiltro || dataFimFiltro || periodoFiltro) {
             const agendas = p.PsychologistAgendas ?? [];
             const pr = periodoRange(periodoFiltro);
             const ok = agendas.some((a) => {
                 // Filtra APENAS agendas com status de disponível (com/sem acento)
                 const statusAgenda = normalizarStatus(a.Status);
                 if (statusAgenda !== 'disponivel') return false;
-                if (dataFiltro && ymd(a.Data) < (dataFiltro as string)) return false; // a partir de
+                const dataAgenda = ymd(a.Data);
+                // Verifica data início (a partir de)
+                if (dataInicioFiltro && dataAgenda < dataInicioFiltro) return false;
+                // Verifica data fim (até)
+                if (dataFimFiltro && dataAgenda > dataFimFiltro) return false;
                 if (pr) {
                     const m = toMinutes(a.Horario);
                     if (!Number.isFinite(m)) return false;

@@ -42,7 +42,8 @@ interface PsicologoFilterParams {
     sexo?: 'feminino' | 'masculino' | 'outros' | null;
     atendimentos?: string[];
     idiomas?: string[];
-    data?: string | null;
+    dataInicio?: string | null;
+    dataFim?: string | null;
     periodo?: string;
     nome?: string;
 }
@@ -54,7 +55,8 @@ export const fetchPsicologoByFilter = async (filtros: PsicologoFilterParams): Pr
         const keyMap: Record<string, string> = {
             atendimentos: "atende",
             idiomas: "languages",
-            data: "dataDisponivel",
+            dataInicio: "dataInicio",
+            dataFim: "dataFim",
         };
         Object.entries(filtros).forEach(([key, value]) => {
             if (value === null || value === undefined || value === '') {

@@ -107,9 +107,10 @@ export default function GestaoConsultasListaPage() {
       toast.success("Consulta atualizada com sucesso.");
       setEditar(null);
       await refetch();
-    } catch (error: any) {
-      console.error("Erro ao atualizar consulta:", error);
-      const errorMessage = error?.response?.data?.error || error?.response?.data?.message || error?.message || "Não foi possível atualizar a consulta.";
+    } catch (err: unknown) {
+      console.error("Erro ao atualizar consulta:", err);
+      const e = err as { response?: { data?: { error?: string; message?: string } }; message?: string };
+      const errorMessage = e?.response?.data?.error || e?.response?.data?.message || e?.message || "Não foi possível atualizar a consulta.";
       toast.error(errorMessage);
     }
   };

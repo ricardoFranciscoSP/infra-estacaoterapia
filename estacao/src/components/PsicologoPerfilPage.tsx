@@ -7,7 +7,6 @@ import BreadcrumbsVoltar from "@/components/BreadcrumbsVoltar";
 import ModalQueixas from "@/components/ModalQueixas";
 import ModalAbordagens from "@/components/ModalAbordagens";
 import Image from "next/image";
-import { FiX } from 'react-icons/fi';
 import ModalReview from "@/components/ModalReview";
 import CalendarioRotativo from "@/components/CalendarioRotativo";
 import React, { useState, useEffect, useCallback } from "react";
@@ -31,6 +30,7 @@ const Calendar = dynamic(
 import ModalCadastroAgendamento from "./ModalCadastroAgendamento";
 import { useDraftSession } from "@/hooks/useDraftSession";
 import Link from "next/link";
+import { FiX } from 'react-icons/fi';
 import { Formacao, ProfessionalProfiles } from '@/types/psicologoTypes';
 import { normalizeEnum, normalizeExperienciaClinica } from "@/utils/enumUtils";
 import { agendamentoService } from '@/services/agendamentoService';
@@ -38,8 +38,6 @@ import { HorarioAgendamento } from '@/types/agendamentoTypes';
 import toast from "react-hot-toast";
 
 export default function PsicologoPerfilPage() {
-  // Estado para loading de remoção de imagem
-  const [removendoImagem, setRemovendoImagem] = useState(false);
   const { iniciarDraftSession } = useDraftSession();
   const params = useParams();
   const id = params && 'id' in params ? params.id : undefined;
@@ -64,6 +62,7 @@ export default function PsicologoPerfilPage() {
   const [agendamentoModal, setAgendamentoModal] = useState<{ data: string; hora: string; agendaId?: string } | null>(null);
   const [isQueixasModalOpen, setIsQueixasModalOpen] = useState(false);
   const [isAbordagensModalOpen, setIsAbordagensModalOpen] = useState(false);
+  const [removendoImagem, setRemovendoImagem] = useState(false);
   const { reviews = []} = useReviews(idStr?.toString() || "");
   const { averageRating } = useAverageRating(idStr?.toString() || "");
   
@@ -85,6 +84,12 @@ export default function PsicologoPerfilPage() {
   // Função para formatar data para YYYY-MM-DD
   const formatDateToYMD = useCallback((date: Date) => {
     return date.toISOString().split("T")[0];
+  }, []);
+
+  const handleRemoverImagem = useCallback(() => {
+    setRemovendoImagem(true);
+    toast('Remoção de imagem em desenvolvimento.');
+    setRemovendoImagem(false);
   }, []);
 
   // Busca TODAS as agendas disponíveis do psicólogo (para todos os dias)
@@ -349,9 +354,7 @@ export default function PsicologoPerfilPage() {
   const allQueixas = mapQueixas(perfilProfissional?.Queixas);
 
   // Função auxiliar para obter a imagem do psicólogo ou avatar padrão
-  const [imagemRemovida, setImagemRemovida] = useState(false);
   const getPsicologoImage = () => {
-    if (imagemRemovida) return '/assets/avatar-placeholder.svg';
     // Verifica tanto Image (singular) quanto Images (plural) - a API pode retornar qualquer um
     const images = psicologo?.Image || psicologo?.Images || [];
     const imageUrl = images?.[0]?.Url;
@@ -359,29 +362,6 @@ export default function PsicologoPerfilPage() {
       return imageUrl;
     }
     return '/assets/avatar-placeholder.svg';
-  };
-
-  // Função para remover imagem do psicólogo
-  const handleRemoverImagem = async () => {
-    if (!psicologo?.Id) return;
-    setRemovendoImagem(true);
-    try {
-      // Chama endpoint de remoção de imagem (ajuste a URL se necessário)
-      const res = await fetch(`/api/psicologos/${psicologo.Id}/imagem`, {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-      });
-      if (res.ok) {
-        setImagemRemovida(true);
-        toast.success('Imagem removida com sucesso!');
-      } else {
-        toast.error('Erro ao remover imagem.');
-      }
-    } catch {
-      toast.error('Erro ao remover imagem.');
-    } finally {
-      setRemovendoImagem(false);
-    }
   };
 
   const [abordagensToShow, setAbordagensToShow] = useState(4);

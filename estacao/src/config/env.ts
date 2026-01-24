@@ -179,8 +179,9 @@ export function getApiUrl(): string {
     );
   }
 
-  // Cliente pode usar hostname como fallback
+  // Cliente: API segue o mesmo host que o frontend (fiel ao localhost:3000 ou ao IP)
   const hostname = window.location.hostname;
+  const protocol = window.location.protocol || 'http:';
 
   if (hostname === 'pre.estacaoterapia.com.br') {
     return ENVIRONMENT_URLS.staging;
@@ -188,6 +189,14 @@ export function getApiUrl(): string {
 
   if (hostname === 'estacaoterapia.com.br' || hostname === 'www.estacaoterapia.com.br') {
     return ENVIRONMENT_URLS.production;
+  }
+
+  // Desenvolvimento: localhost → localhost:3333; IP (192.168.x.x, 10.x.x.x) → mesmo host:3333
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    return ENVIRONMENT_URLS.development;
+  }
+  if (/^192\.168\.\d{1,3}\.\d{1,3}$/.test(hostname) || /^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(hostname)) {
+    return `${protocol}//${hostname}:3333`;
   }
 
   return ENVIRONMENT_URLS.development;

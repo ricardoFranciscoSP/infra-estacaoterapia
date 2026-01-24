@@ -54,7 +54,6 @@ import { loadDevicePreferences } from "@/utils/devicePreferences";
 import { api } from "@/lib/axios";
 import { reviewService } from "@/services/reviewService";
 import { isAxiosError } from "@/types/axiosError.types";
-import NotificationToast from "./NotificationToast";
 import TimeRemainingBanner from "./TimeRemainingBanner";
 
 type SalaProps = {

@@ -46,7 +46,12 @@ type EnderecoCobrancaData = {
 
 export const fetchUserBasic = async (): Promise<User> => {
     const response = await userService().getUserBasic();
-    return response.data as User;
+    const data = response.data as User & { success?: boolean; message?: string } | null;
+    if (!data || (typeof data === 'object' && data.success === false)) {
+        const msg = (data && typeof data === 'object' && data.message) || 'Usuário não autenticado';
+        throw new Error(msg);
+    }
+    return data as User;
 };
 export const fetchUserDetails = async () => {
     const response = await userService().getUserDetails();

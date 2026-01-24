@@ -7,7 +7,8 @@ interface PsicologoSearchFilters {
     sexo?: 'feminino' | 'masculino' | 'outros' | null;
     atendimentos?: string[];
     idiomas?: string[];
-    data?: string | null;
+    dataInicio?: string | null;
+    dataFim?: string | null;
     periodo?: string;
     nome?: string;
 }
@@ -23,9 +24,9 @@ export function usePsicologoSearch() {
         setIsError(false);
         try {
             // Se todos os filtros estiverem "vazios", busca todos
-            const isBuscaVazia = Object.values(filtros).every(v => 
-                v === "" || 
-                v === null || 
+            const isBuscaVazia = Object.values(filtros).every(v =>
+                v === "" ||
+                v === null ||
                 v === undefined ||
                 (Array.isArray(v) && v.length === 0)
             );

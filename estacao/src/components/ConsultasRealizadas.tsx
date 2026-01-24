@@ -300,7 +300,7 @@ type StatusFilter = 'todas' | 'canceladas' | 'concluidas' | 'reagendadas';
 const ConsultasRealizadas: React.FC = () => {
   const ITEMS_PER_PAGE = 10; // Aumentado de 5 para 10
   const [currentPage, setCurrentPage] = useState(1);
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('todas');
+  const [statusFilter] = useState<StatusFilter>('todas');
   const { consultasConcluidas, isError } = useConsultasConcluidas();
 
   // Remove refetch automático - o hook já busca automaticamente e não precisa de refetch manual

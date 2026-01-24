@@ -1,11 +1,13 @@
 // components/filtrosPsicologo.tsx
 import React, { useEffect } from "react";
 import Select, { MultiValue, StylesConfig } from "react-select";
-import DatePicker from "react-datepicker";
-import "react-datepicker/dist/react-datepicker.css"; 
+import DatePicker, { registerLocale } from "react-datepicker";
+import { ptBR } from "date-fns/locale/pt-BR";
+import "react-datepicker/dist/react-datepicker.css";
+// Registrar locale pt-BR para o calendário
+registerLocale("pt-BR", ptBR);
 import { useEnums } from "@/hooks/enumsHook";
 import { usePsicologoSearch } from "@/hooks/usePsicologoSearch";
-import Image from "next/image";
 import { usePsicologoFilterStore } from "@/store/filters/psicologoFilterStore";
 import { normalizeEnum } from "@/utils/enumUtils";
 
@@ -119,20 +121,23 @@ export const FiltrosPsicologo: React.FC<FiltrosPsicologoProps> = ({ autoTrigger 
     sexo,
     atendimentos,
     idiomas,
-    data,
+    dataInicio,
+    dataFim,
     periodo,
     setQueixas,
     setAbordagens,
     setSexo,
     setAtendimentos,
     setIdiomas,
-    setData,
+    setDataInicio,
+    setDataFim,
     setPeriodo,
     reset,
   } = usePsicologoFilterStore();
 
   // Converte string YYYY-MM-DD -> Date (apenas para exibir no DatePicker)
-  const dataSelecionada: Date | null = data ? new Date(data + "T00:00:00") : new Date();
+  const dataInicioSelecionada: Date | null = dataInicio ? new Date(dataInicio + "T00:00:00") : null;
+  const dataFimSelecionada: Date | null = dataFim ? new Date(dataFim + "T00:00:00") : null;
   const { enums, isLoading, refetch } = useEnums();
 
   // Corrige para acessar os enums do backend corretamente
@@ -170,7 +175,8 @@ export const FiltrosPsicologo: React.FC<FiltrosPsicologoProps> = ({ autoTrigger 
             sexo: currentState.sexo,
             atendimentos: currentState.atendimentos,
             idiomas: currentState.idiomas,
-            data: currentState.data,
+            dataInicio: currentState.dataInicio,
+            dataFim: currentState.dataFim,
             periodo: currentState.periodo,
           });
         }, 0);
@@ -189,7 +195,8 @@ export const FiltrosPsicologo: React.FC<FiltrosPsicologoProps> = ({ autoTrigger 
         sexo: null,
         atendimentos: [],
         idiomas: [],
-        data: null,
+        dataInicio: null,
+        dataFim: null,
         periodo: "",
       });
     }, 0);
@@ -202,7 +209,7 @@ export const FiltrosPsicologo: React.FC<FiltrosPsicologoProps> = ({ autoTrigger 
   sexo !== null ||
   atendimentos.length > 0 ||
   idiomas.length > 0 ||
-  !!data ||
+  !!dataInicio || !!dataFim ||
   periodo !== "";
 
   return (
@@ -253,7 +260,8 @@ export const FiltrosPsicologo: React.FC<FiltrosPsicologoProps> = ({ autoTrigger 
                       sexo: currentState.sexo,
                       atendimentos: currentState.atendimentos,
                       idiomas: currentState.idiomas,
-                      data: currentState.data,
+                      dataInicio: currentState.dataInicio,
+                      dataFim: currentState.dataFim,
                       periodo: currentState.periodo,
                     });
                   }, 0);
@@ -302,7 +310,8 @@ export const FiltrosPsicologo: React.FC<FiltrosPsicologoProps> = ({ autoTrigger 
                       sexo: currentState.sexo,
                       atendimentos: currentState.atendimentos,
                       idiomas: currentState.idiomas,
-                      data: currentState.data,
+                      dataInicio: currentState.dataInicio,
+                      dataFim: currentState.dataFim,
                       periodo: currentState.periodo,
                     });
                   }, 0);
@@ -349,7 +358,8 @@ export const FiltrosPsicologo: React.FC<FiltrosPsicologoProps> = ({ autoTrigger 
                             sexo: currentState.sexo,
                             atendimentos: currentState.atendimentos,
                             idiomas: currentState.idiomas,
-                            data: currentState.data,
+                            dataInicio: currentState.dataInicio,
+                            dataFim: currentState.dataFim,
                             periodo: currentState.periodo,
                           });
                         }, 0);
@@ -393,7 +403,8 @@ export const FiltrosPsicologo: React.FC<FiltrosPsicologoProps> = ({ autoTrigger 
                           sexo: currentState.sexo,
                           atendimentos: currentState.atendimentos,
                           idiomas: currentState.idiomas,
-                          data: currentState.data,
+                          dataInicio: currentState.dataInicio,
+                          dataFim: currentState.dataFim,
                           periodo: currentState.periodo,
                         });
                       }, 0);
@@ -436,7 +447,8 @@ export const FiltrosPsicologo: React.FC<FiltrosPsicologoProps> = ({ autoTrigger 
                           sexo: currentState.sexo,
                           atendimentos: currentState.atendimentos,
                           idiomas: currentState.idiomas,
-                          data: currentState.data,
+                          dataInicio: currentState.dataInicio,
+                          dataFim: currentState.dataFim,
                           periodo: currentState.periodo,
                         });
                       }, 0);
@@ -450,18 +462,25 @@ export const FiltrosPsicologo: React.FC<FiltrosPsicologoProps> = ({ autoTrigger 
           </div>
         </div>
 
-        {/* Data */}
-        <div className="w-full min-h-[88px] flex flex-col rounded-[8px] border border-[#919CA6] p-4 mb-4">
+        {/* Data Inicial e Data Final */}
+        <div className="w-full min-h-[88px] flex flex-col rounded-[8px] border border-[#919CA6] p-4 mb-4 bg-transparent">
           <span className="font-normal text-[14px] leading-[24px] text-[#212529] mb-1">Data</span>
-          <div className="flex items-center justify-between bg-white px-2 py-2">
-            <span className="text-[16px] leading-[24px] font-normal text-[#49525A]">
-              A partir de: {dataSelecionada?.toLocaleDateString("pt-BR")}
-            </span>
-            <DatePicker
-              selected={dataSelecionada}
-              onChange={(date) => {
-                if (!date) {
-                  setData(null);
+          <div className="flex flex-row gap-2 items-center justify-between px-0 py-2 bg-transparent">
+            {/* Input de data início */}
+            <div className="flex flex-col items-start w-1/2">
+              <span className="text-[14px] leading-[24px] font-normal text-[#49525A] mb-1">Início</span>
+              <DatePicker
+                locale="pt-BR"
+                selected={dataInicioSelecionada}
+                onChange={(date) => {
+                  if (!date) {
+                    setDataInicio(null);
+                  } else {
+                    const d = new Date(date);
+                    d.setHours(0,0,0,0);
+                    const iso = d.toISOString().slice(0,10);
+                    setDataInicio(iso);
+                  }
                   if (autoTrigger) {
                     setTimeout(() => {
                       const currentState = usePsicologoFilterStore.getState();
@@ -471,42 +490,80 @@ export const FiltrosPsicologo: React.FC<FiltrosPsicologoProps> = ({ autoTrigger 
                         sexo: currentState.sexo,
                         atendimentos: currentState.atendimentos,
                         idiomas: currentState.idiomas,
-                        data: currentState.data,
+                        dataInicio: currentState.dataInicio,
+                        dataFim: currentState.dataFim,
                         periodo: currentState.periodo,
                       });
                     }, 0);
                   }
-                  return;
+                }}
+                minDate={new Date()}
+                dateFormat="dd/MM/yyyy"
+                popperPlacement="bottom-start"
+                className="text-[16px] leading-[24px] font-normal text-[#49525A] w-full"
+                placeholderText="dd/mm/aaaa"
+                showMonthDropdown
+                showYearDropdown
+                dropdownMode="select"
+                customInput={
+                  <input
+                    className="w-full border border-[#8494E9] rounded-lg px-3 py-2 text-[16px] text-[#49525A] bg-[#F7F8FA] focus:outline-none focus:ring-2 focus:ring-[#8494E9] transition-all duration-150"
+                    inputMode="text"
+                  />
                 }
-                const d = new Date(date);
-                d.setHours(0,0,0,0);
-                const iso = d.toISOString().slice(0,10);
-                setData(iso);
-                if (autoTrigger) {
-                  setTimeout(() => {
-                    const currentState = usePsicologoFilterStore.getState();
-                    searchPsicologos({
-                      queixas: currentState.queixas,
-                      abordagens: currentState.abordagens,
-                      sexo: currentState.sexo,
-                      atendimentos: currentState.atendimentos,
-                      idiomas: currentState.idiomas,
-                      data: currentState.data,
-                      periodo: currentState.periodo,
-                    });
-                  }, 0);
+              />
+            </div>
+            {/* Indicador visual entre os inputs */}
+            <div className="flex items-center justify-center h-full px-1 w-[48px]">
+              <span className="text-[14px] leading-[24px] font-normal text-[#49525A] select-none">até</span>
+            </div>
+            {/* Input de data fim */}
+            <div className="flex flex-col items-start w-1/2">
+              <span className="text-[14px] leading-[24px] font-normal text-[#49525A] mb-1">Fim</span>
+              <DatePicker
+                locale="pt-BR"
+                selected={dataFimSelecionada}
+                onChange={(date) => {
+                  if (!date) {
+                    setDataFim(null);
+                  } else {
+                    const d = new Date(date);
+                    d.setHours(0,0,0,0);
+                    const iso = d.toISOString().slice(0,10);
+                    setDataFim(iso);
+                  }
+                  if (autoTrigger) {
+                    setTimeout(() => {
+                      const currentState = usePsicologoFilterStore.getState();
+                      searchPsicologos({
+                        queixas: currentState.queixas,
+                        abordagens: currentState.abordagens,
+                        sexo: currentState.sexo,
+                        atendimentos: currentState.atendimentos,
+                        idiomas: currentState.idiomas,
+                        dataInicio: currentState.dataInicio,
+                        dataFim: currentState.dataFim,
+                        periodo: currentState.periodo,
+                      });
+                    }, 0);
+                  }
+                }}
+                minDate={dataInicioSelecionada || new Date()}
+                dateFormat="dd/MM/yyyy"
+                popperPlacement="bottom-start"
+                className="text-[16px] leading-[24px] font-normal text-[#49525A] w-full"
+                placeholderText="dd/mm/aaaa"
+                showMonthDropdown
+                showYearDropdown
+                dropdownMode="select"
+                customInput={
+                  <input
+                    className="w-full border border-[#8494E9] rounded-lg px-3 py-2 text-[16px] text-[#49525A] bg-[#F7F8FA] focus:outline-none focus:ring-2 focus:ring-[#8494E9] transition-all duration-150"
+                    inputMode="text"
+                  />
                 }
-              }}
-              minDate={new Date()} // data mínima = hoje
-              dateFormat="dd/MM/yyyy"
-              popperPlacement="bottom-start"
-              className="text-[16px] leading-[24px] font-normal text-[#49525A]"
-              customInput={
-                <button className="text-[#8494E9]">
-                  <Image src="/icons/calendar.svg" className="w-4 h-4" alt="calendário" width={16} height={16} />
-                </button>
-              }
-            />
+              />
+            </div>
           </div>
         </div>
 

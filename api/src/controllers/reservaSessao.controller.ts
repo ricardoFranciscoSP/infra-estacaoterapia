@@ -219,51 +219,130 @@ export class ReservaSessaoController {
             const patientJoined = result.data?.PatientJoinedAt !== null;
             const psychologistJoined = result.data?.PsychologistJoinedAt !== null;
 
-            // Se apenas um entrou, agenda verificação e fechamento da sala
+            // Se apenas um entrou, agenda verificação e fechamento da sala após 10 minutos do ScheduledAt
             if (!ambosEntraram && (patientJoined || psychologistJoined)) {
-                // Agenda verificação após 5 minutos - se ainda não tiverem entrado os 2, fecha a sala
-                setTimeout(async () => {
-                    try {
-                        const { ReservaSessaoService } = await import('../services/reservaSessao.service');
-                        const service = new ReservaSessaoService();
-                        const checkResult = await service.getReservaSessao(consultationId);
+                // Busca o ScheduledAt para calcular o tempo correto
+                const { ReservaSessaoService } = await import('../services/reservaSessao.service');
+                const service = new ReservaSessaoService();
+                const reservaData = await service.getReservaSessao(consultationId);
+                
+                if (reservaData.success && reservaData.data?.ScheduledAt) {
+                    const scheduledAt = new Date(reservaData.data.ScheduledAt);
+                    const now = new Date();
+                    const deadline = new Date(scheduledAt.getTime() + 10 * 60 * 1000); // 10 minutos após ScheduledAt
+                    const delayMs = deadline.getTime() - now.getTime();
+                    
+                    // Se já passou dos 10 minutos, processa imediatamente
+                    if (delayMs <= 0) {
+                        const rs = reservaData.data as any;
+                        const stillOnlyOne = (rs.PatientJoinedAt && !rs.PsychologistJoinedAt) || 
+                                            (!rs.PatientJoinedAt && rs.PsychologistJoinedAt);
                         
-                        if (checkResult.success && checkResult.data) {
-                            const rs = checkResult.data as any;
-                            const stillOnlyOne = (rs.PatientJoinedAt && !rs.PsychologistJoinedAt) || 
-                                                (!rs.PatientJoinedAt && rs.PsychologistJoinedAt);
+                        if (stillOnlyOne) {
+                            const missingRole: 'Patient' | 'Psychologist' = rs.PatientJoinedAt && !rs.PsychologistJoinedAt
+                                ? 'Psychologist'
+                                : 'Patient';
                             
-                            if (stillOnlyOne) {
-                                // Determina qual participante não entrou
-                                const missingRole: 'Patient' | 'Psychologist' = rs.PatientJoinedAt && !rs.PsychologistJoinedAt
-                                    ? 'Psychologist'
-                                    : 'Patient';
+                            const { ConsultaStatusService } = await import('../services/consultaStatus.service');
+                            const statusService = new ConsultaStatusService();
+                            await statusService.processarInatividade(consultationId, missingRole);
+                            
+                            const { getSocketIO } = await import('../socket/socket');
+                            const io = getSocketIO();
+                            if (io) {
+                                const roomName = `consulta_${consultationId}`;
+                                io.to(roomName).emit('room:close', {
+                                    reason: 'Apenas um participante entrou na sala',
+                                    message: 'A sala foi fechada porque apenas um participante entrou após 10 minutos. Por favor, entre em contato com o suporte.'
+                                });
+                            }
+                            
+                            console.log(`⚠️ [joinReservaSessao] Sala ${consultationId} fechada imediatamente - apenas ${missingRole === 'Patient' ? 'psicólogo' : 'paciente'} entrou e já passaram 10 minutos`);
+                        }
+                    } else {
+                        // Agenda verificação após 10 minutos do ScheduledAt
+                        setTimeout(async () => {
+                            try {
+                                const checkResult = await service.getReservaSessao(consultationId);
                                 
-                                // Fecha a sala via socket
-                                const { getSocketIO } = await import('../socket/socket');
-                                const io = getSocketIO();
-                                
-                                if (io) {
-                                    const roomName = `consulta_${consultationId}`;
-                                    io.to(roomName).emit('room:close', {
-                                        reason: 'Apenas um participante entrou na sala',
-                                        message: 'A sala foi fechada porque apenas um participante entrou. Por favor, entre em contato com o suporte.'
-                                    });
+                                if (checkResult.success && checkResult.data) {
+                                    const rs = checkResult.data as any;
+                                    const stillOnlyOne = (rs.PatientJoinedAt && !rs.PsychologistJoinedAt) || 
+                                                        (!rs.PatientJoinedAt && rs.PsychologistJoinedAt);
                                     
-                                    // Usa processarInatividade para atualizar todos os status corretamente
-                                    // Isso atualiza: Consulta, ReservaSessao (via trigger), Agenda (via trigger)
+                                    if (stillOnlyOne) {
+                                        // Determina qual participante não entrou
+                                        const missingRole: 'Patient' | 'Psychologist' = rs.PatientJoinedAt && !rs.PsychologistJoinedAt
+                                            ? 'Psychologist'
+                                            : 'Patient';
+                                        
+                                        // Usa processarInatividade para atualizar todos os status corretamente
+                                        // Isso atualiza: Consulta, ReservaSessao (via trigger), Agenda (via trigger)
+                                        const { ConsultaStatusService } = await import('../services/consultaStatus.service');
+                                        const statusService = new ConsultaStatusService();
+                                        await statusService.processarInatividade(consultationId, missingRole);
+                                        
+                                        // Fecha a sala via socket
+                                        const { getSocketIO } = await import('../socket/socket');
+                                        const io = getSocketIO();
+                                        
+                                        if (io) {
+                                            const roomName = `consulta_${consultationId}`;
+                                            io.to(roomName).emit('room:close', {
+                                                reason: 'Apenas um participante entrou na sala',
+                                                message: 'A sala foi fechada porque apenas um participante entrou após 10 minutos. Por favor, entre em contato com o suporte.'
+                                            });
+                                        }
+                                        
+                                        console.log(`⚠️ [joinReservaSessao] Sala ${consultationId} fechada após 10 minutos - apenas ${missingRole === 'Patient' ? 'psicólogo' : 'paciente'} entrou`);
+                                    }
+                                }
+                            } catch (error) {
+                                console.error(`❌ [joinReservaSessao] Erro ao verificar e fechar sala:`, error);
+                            }
+                        }, delayMs); // Delay calculado baseado no ScheduledAt + 10 minutos
+                        
+                        console.log(`⏰ [joinReservaSessao] Verificação de inatividade agendada para ${consultationId} em ${Math.round(delayMs / 1000)}s (10 minutos após ScheduledAt)`);
+                    }
+                } else {
+                    // Fallback: se não conseguir buscar ScheduledAt, usa 10 minutos a partir de agora
+                    console.warn(`⚠️ [joinReservaSessao] Não foi possível buscar ScheduledAt para ${consultationId}, usando fallback de 10 minutos`);
+                    setTimeout(async () => {
+                        try {
+                            const { ReservaSessaoService } = await import('../services/reservaSessao.service');
+                            const service = new ReservaSessaoService();
+                            const checkResult = await service.getReservaSessao(consultationId);
+                            
+                            if (checkResult.success && checkResult.data) {
+                                const rs = checkResult.data as any;
+                                const stillOnlyOne = (rs.PatientJoinedAt && !rs.PsychologistJoinedAt) || 
+                                                    (!rs.PatientJoinedAt && rs.PsychologistJoinedAt);
+                                
+                                if (stillOnlyOne) {
+                                    const missingRole: 'Patient' | 'Psychologist' = rs.PatientJoinedAt && !rs.PsychologistJoinedAt
+                                        ? 'Psychologist'
+                                        : 'Patient';
+                                    
                                     const { ConsultaStatusService } = await import('../services/consultaStatus.service');
                                     const statusService = new ConsultaStatusService();
                                     await statusService.processarInatividade(consultationId, missingRole);
                                     
-                                    console.log(`⚠️ [joinReservaSessao] Sala ${consultationId} fechada - apenas ${missingRole === 'Patient' ? 'psicólogo' : 'paciente'} entrou`);
+                                    const { getSocketIO } = await import('../socket/socket');
+                                    const io = getSocketIO();
+                                    if (io) {
+                                        const roomName = `consulta_${consultationId}`;
+                                        io.to(roomName).emit('room:close', {
+                                            reason: 'Apenas um participante entrou na sala',
+                                            message: 'A sala foi fechada porque apenas um participante entrou após 10 minutos. Por favor, entre em contato com o suporte.'
+                                        });
+                                    }
                                 }
                             }
+                        } catch (error) {
+                            console.error(`❌ [joinReservaSessao] Erro ao verificar e fechar sala (fallback):`, error);
                         }
-                    } catch (error) {
-                        console.error(`❌ [joinReservaSessao] Erro ao verificar e fechar sala:`, error);
-                    }
-                }, 5 * 60 * 1000); // 5 minutos
+                    }, 10 * 60 * 1000); // 10 minutos como fallback
+                }
             }
 
             return res.status(200).json(result);

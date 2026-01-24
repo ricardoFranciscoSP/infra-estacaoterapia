@@ -83,7 +83,7 @@ export default function PainelFooter() {
                 className={`flex flex-col items-center flex-1 py-1 transition-colors group rounded-xl mx-1 ${ativo ? "bg-[#6D75C0] text-white" : "text-[#B6B9D6] hover:text-white"}`}
                 style={ativo ? { boxShadow: '0 2px 8px rgba(109,117,192,0.10)' } : {}}
               >
-                <Image
+                <img
                   src={item.icon}
                   alt={item.label}
                   width={24}
@@ -102,9 +102,9 @@ export default function PainelFooter() {
       {pathname?.startsWith("/painel-psicologo") && (
         <nav className="fixed bottom-0 left-0 right-0 z-40 bg-[#23264A] border-t border-[#23264A] flex md:hidden justify-between px-1 py-2 shadow-lg" style={{boxShadow:'0 0 8px rgba(35,38,74,0.10)', minHeight: 64}}>
           {[
-            { href: "/painel-psicologo", icon: "/assets/icons/grid.svg", label: "Painel geral", match: (p: string) => p === "/painel-psicologo" },
+            { href: "/painel-psicologo", icon: "/assets/icons/group.svg", label: "Painel geral", match: (p: string) => p === "/painel-psicologo" },
             { href: "/painel-psicologo/agenda", icon: "/assets/icons/calendar.svg", label: "Agenda", match: (p: string) => p.startsWith("/painel-psicologo/agenda") },
-            { href: "/painel-psicologo/financeiro", icon: "/assets/icons/financeiro.svg", label: "Financeiro", match: (p: string) => p.startsWith("/painel-psicologo/financeiro") },
+            { href: "/painel-psicologo/financeiro", icon: "/assets/icons/creditcard.svg", label: "Financeiro", match: (p: string) => p.startsWith("/painel-psicologo/financeiro") },
           ].map((item) => {
             const ativo = item.match(pathname || "");
             return (
@@ -114,7 +114,7 @@ export default function PainelFooter() {
                 className={`flex flex-col items-center flex-1 px-1 py-1 transition-colors group rounded-xl mx-0 ${ativo ? "bg-[#6D75C0] text-white w-[110px]" : "text-[#B6B9D6] hover:text-white"}`}
                 style={ativo ? { boxShadow: '0 2px 8px rgba(109,117,192,0.10)', minHeight: 56, maxWidth: 120 } : { minHeight: 56 }}
               >
-                <Image
+                <img
                   src={item.icon}
                   alt={item.label}
                   width={24}

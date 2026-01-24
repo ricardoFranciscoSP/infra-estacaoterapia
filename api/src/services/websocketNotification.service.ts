@@ -30,10 +30,18 @@ export class WebSocketNotificationService {
     private activeRequests: number;
 
     constructor() {
-        this.socketUrl = process.env.SOCKET_URL || "https://ws.estacaoterapia.com.br";
+        // Em produção, usa ws.prd; em pré-produção, usa ws.estacaoterapia
+        const defaultUrl = isProduction 
+            ? "https://ws.prd.estacaoterapia.com.br"
+            : "https://ws.estacaoterapia.com.br";
+        this.socketUrl = process.env.SOCKET_URL || defaultUrl;
         this.requestQueue = [];
         this.processingQueue = false;
         this.activeRequests = 0;
+        
+        if (!isProduction) {
+            console.log(`🔌 [WebSocketNotificationService] Socket URL configurada: ${this.socketUrl}`);
+        }
     }
 
     /**

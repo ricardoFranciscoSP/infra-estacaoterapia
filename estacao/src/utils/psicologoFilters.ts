@@ -64,7 +64,8 @@ type PsicologoFilterInputs = {
   queixas?: string[];
   idiomas?: string[];
   atendimentos?: string[];
-  data?: string | null;
+  dataInicio?: string | null;
+  dataFim?: string | null;
   periodo?: string;
 };
 
@@ -124,14 +125,15 @@ export const calcularCompatibilidade = (
     if (temTipoAtendimento) filtrosCorrespondentes++;
   }
 
-  if (filtros.data || filtros.periodo) {
+  if (filtros.dataInicio || filtros.dataFim || filtros.periodo) {
     totalFiltros++;
     const agendas = psicologo.PsychologistAgendas ?? [];
     const range = periodoRange(filtros.periodo);
     const ok = agendas.some((agenda) => {
       const statusAgenda = normalizarStatus(agenda?.Status);
       if (statusAgenda !== "disponivel") return false;
-      if (filtros.data && ymd(agenda.Data) < (filtros.data as string)) return false;
+      if (filtros.dataInicio && ymd(agenda.Data) < (filtros.dataInicio as string)) return false;
+      if (filtros.dataFim && ymd(agenda.Data) > (filtros.dataFim as string)) return false;
       if (range) {
         const m = toMinutes(agenda.Horario);
         if (!Number.isFinite(m)) return false;

@@ -156,8 +156,59 @@ export function ProximaConsulta({
     return contadorInicio.mostrar && contadorInicio.frase === 'Sua sessão iniciou';
   }, [contadorInicio]);
 
+  // Verifica se a consulta está cancelada
+  const isCancelada = useMemo(() => {
+    if (!proximaConsulta) return false;
+    const status = proximaConsulta.Status || proximaConsulta.ReservaSessao?.Status || '';
+    const statusLower = status.toLowerCase();
+    return statusLower.includes('cancelada') || 
+           statusLower.includes('cancelado') || 
+           statusLower.includes('pacientenaocompareceu') ||
+           statusLower.includes('psicologonaocompareceu') ||
+           statusLower === 'cancelado';
+  }, [proximaConsulta]);
+
+  // Verifica se está dentro do período da consulta (início até fim)
+  const estaNoPeriodo = useMemo(() => {
+    if (!proximaConsulta) return false;
+    try {
+      const dataConsulta = proximaConsulta.Date || proximaConsulta.Agenda?.Data;
+      const horarioConsulta = proximaConsulta.Time || proximaConsulta.Agenda?.Horario;
+      if (!dataConsulta || !horarioConsulta) return false;
+
+      const dateOnly = dataConsulta.split('T')[0].split(' ')[0];
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dateOnly)) return false;
+
+      const horarioTrimmed = horarioConsulta.trim();
+      if (!/^\d{1,2}:\d{2}$/.test(horarioTrimmed)) return false;
+
+      const [hora, minuto] = horarioTrimmed.split(':').map(Number);
+      if (hora < 0 || hora >= 24 || minuto < 0 || minuto >= 60) return false;
+
+      const horarioNormalizado = `${String(hora).padStart(2, '0')}:${String(minuto).padStart(2, '0')}`;
+      const agora = dayjs().tz('America/Sao_Paulo');
+      const dataHoraConsulta = dayjs.tz(
+        `${dateOnly} ${horarioNormalizado}`,
+        'America/Sao_Paulo'
+      );
+
+      if (!dataHoraConsulta.isValid()) return false;
+
+      // Fim do período: início + 50 minutos (duração padrão)
+      const fimPeriodoConsulta = dataHoraConsulta.add(50, 'minute');
+      
+      // Está no período se agora >= início E agora <= fim
+      return agora.isSameOrAfter(dataHoraConsulta) && agora.isSameOrBefore(fimPeriodoConsulta);
+    } catch {
+      return false;
+    }
+  }, [proximaConsulta]);
+
   // O botão está desabilitado se NÃO pode entrar E a sessão ainda não começou
   const botaoDesabilitado = !podeEntrar && !sessaoJaComecou;
+
+  // Mostra botão de suporte se estiver cancelada E dentro do período
+  const mostrarBotaoSuporte = isCancelada && estaNoPeriodo;
 
   // Badge removido - mantém apenas o status da consulta
   const badge = undefined;
@@ -175,6 +226,12 @@ export function ProximaConsulta({
         }
       }
     }
+  };
+
+  // Handler para suporte (WhatsApp)
+  const handleSuporte = () => {
+    const mensagem = encodeURIComponent("Olá, preciso de suporte técnico na Estação Terapia. Tenho dúvidas ou estou com problemas na plataforma.");
+    window.open(`https://wa.me/5511960892131?text=${mensagem}`, '_blank');
   };
 
   // Se não houver consulta, exibe estado vazio
@@ -196,6 +253,7 @@ export function ProximaConsulta({
     onVerPerfil: () => void;
     onVerDetalhes?: () => void;
     onReagendar?: () => void;
+    onSuporte?: () => void;
   } = {
     onEntrar: handleEntrarConsulta,
     onVerPerfil: () => {
@@ -215,6 +273,11 @@ export function ProximaConsulta({
     actions.onReagendar = () => onReagendar(proximaConsulta);
   }
 
+  // Adiciona handler de suporte se necessário
+  if (mostrarBotaoSuporte) {
+    actions.onSuporte = handleSuporte;
+  }
+
   // Determina qual contador usar (contador de início ou nenhum)
   const contador = contadorInicio.mostrar
     ? {
@@ -224,15 +287,20 @@ export function ProximaConsulta({
       }
     : undefined;
 
+  // Determina se deve mostrar apenas suporte (quando cancelada no período)
+  const supportOnly = mostrarBotaoSuporte;
+
   // Exibe o card da próxima consulta (mesmo tamanho do card de consultas concluídas)
   return (
     <ConsultaCard
       consulta={proximaConsulta}
       badge={badge}
-      showEntrarButton={true}
+      showEntrarButton={!supportOnly}
       actions={actions}
-      contador={contador}
+      contador={supportOnly ? undefined : contador}
       botaoEntrarDesabilitado={botaoDesabilitado}
+      mostrarBotaoSuporte={mostrarBotaoSuporte}
+      supportOnly={supportOnly}
       isPacientePanel={false} // false para ter o mesmo tamanho (588px) do card de consultas concluídas
     />
   );

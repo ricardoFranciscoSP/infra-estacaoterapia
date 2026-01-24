@@ -644,15 +644,12 @@ export default function ProximaConsultaPsicologo({ consultas = null, role = "pac
                 const fimConsulta = inicioConsulta + (60 * 60 * 1000); // 60 minutos
                 
                 if (agoraTimestamp >= inicioConsulta && agoraTimestamp <= fimConsulta) {
-                  // 🎯 Mostra tag "Ao vivo" quando consulta está em andamento
-                  // Mantém status "Agendada" conforme solicitado
+                  // 🎯 Mostra status "Em Andamento" quando consulta está em andamento
+                  const tagInfo = getStatusTagInfo('EmAndamento');
                   return (
-                    <div className="absolute top-3 right-3 flex gap-2 z-10">
-                      <span className="px-3 py-1 rounded-full text-xs font-semibold bg-[#E6E9FF] text-[#6D75C0] shadow">
-                        Agendada
-                      </span>
-                      <span className="px-3 py-1 rounded-full text-xs font-semibold bg-[#E6F4EA] text-[#2E7D32] shadow">
-                        Ao vivo
+                    <div className="absolute top-3 right-3 z-10">
+                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${tagInfo.bg} ${tagInfo.text} shadow`}>
+                        {tagInfo.texto}
                       </span>
                     </div>
                   );

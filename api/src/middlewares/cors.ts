@@ -20,6 +20,7 @@ const CORS_ORIGINS = {
     development: [
         "http://localhost:3000",
         "http://localhost:3333",
+        "http://192.168.15.109:3000", // Acesso da rede local
         "https://estacao-chi.vercel.app", // Preview do Vercel (também em dev para testes)
     ],
 };
@@ -34,6 +35,22 @@ console.log(`[CORS] 🔧 Ambiente detectado: ${NODE_ENV}`);
  */
 const normalize = (url?: string) =>
     url ? url.replace(/\/$/, "") : undefined;
+
+/**
+ * Em desenvolvimento: origens com acesso total sem restrições.
+ * - 192.168.15.109 (e qualquer 192.168.x.x) — rede local
+ * - 10.x.x.x — rede local
+ * - localhost, 127.0.0.1 — máquina local
+ */
+const isUnrestrictedLocalOrigin = (origin: string): boolean => {
+    const o = origin.replace(/\/$/, "").toLowerCase();
+    if (/^https?:\/\/192\.168\.\d{1,3}\.\d{1,3}(:\d+)?$/i.test(o)) return true;
+    if (/^https?:\/\/10\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$/i.test(o)) return true;
+    if (/^https?:\/\/127\.0\.0\.1(:\d+)?$/i.test(o)) return true;
+    if (/^https?:\/\/localhost(:\d+)?$/i.test(o)) return true;
+    if (/^https?:\/\/\[::1\](:\d+)?$/i.test(o)) return true;
+    return false;
+};
 
 /**
  * Resolve origins permitidas conforme ambiente
@@ -102,10 +119,15 @@ export const corsMiddleware = (
         return;
     }
 
-    if (origin && allowedOrigins.includes(origin)) {
+    const allowedByList = origin && allowedOrigins.includes(origin);
+    const unrestrictedLocal = origin && NODE_ENV === "development" && isUnrestrictedLocalOrigin(origin);
+
+    if (origin && (allowedByList || unrestrictedLocal)) {
         res.setHeader("Access-Control-Allow-Origin", origin);
         res.setHeader("Access-Control-Allow-Credentials", "true");
-
+        if (unrestrictedLocal) {
+            console.log(`[CORS] ✅ Acesso total permitido (local): ${origin}`);
+        }
         // Log para debug
         if (NODE_ENV === "pre" || NODE_ENV === "staging" || origin?.includes("pre.estacaoterapia.com.br")) {
             console.log(`[CORS] ✅ Origin permitida: ${origin}`);

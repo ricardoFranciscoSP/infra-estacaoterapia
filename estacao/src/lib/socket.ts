@@ -503,6 +503,16 @@ const setupSocketListeners = (s: Socket) => {
     s.on("reconnect_failed", () => {
         logError("❌ [Socket] Falha ao reconectar após todas as tentativas");
         clearDisconnectionTimer();
+        // Em produção, tenta reconectar manualmente após um delay
+        if (!isDev) {
+            setTimeout(() => {
+                if (!s.connected) {
+                    logDebug("🔄 [Socket] Tentando reconexão manual após falha...");
+                    applySocketAuth(s);
+                    s.connect();
+                }
+            }, 10000); // 10 segundos
+        }
     });
 
     s.on("notification", (data) => {

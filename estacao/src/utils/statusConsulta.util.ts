@@ -95,8 +95,7 @@ export const MAPEAMENTO_STATUS_EXIBICAO: Record<string, string> = {
     "Ausente": StatusConsulta.PacienteNaoCompareceu,
     // Novos status sistêmicos de inatividade
     "CANCELAMENTO_SISTEMICO_PSICOLOGO": "Cancelada pelo sistema (psicólogo ausente)",
-    "CANCELAMENTO_SISTEMICO_PACIENTE": "Cancelada pelo sistema (paciente ausente)",
-    "ForaDaPlataforma": "Fora da plataforma"
+    "CANCELAMENTO_SISTEMICO_PACIENTE": "Cancelada pelo sistema (paciente ausente)"
 };
 
 /**

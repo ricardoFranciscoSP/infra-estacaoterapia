@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import SidebarPsicologo from "./SidebarPsicologo";
 import Image from "next/image";
@@ -11,12 +11,9 @@ import ModalCompletarPerfil from "@/components/ModalCompletarPerfil";
 import AlertCompletarPerfil from "@/components/AlertCompletarPerfil";
 import { useUserPsicologo } from '@/hooks/user/userPsicologoHook';
 import ProximaConsultaPsicologo from "@/components/ProximasConsultasPsicologo";
-import { ConsultaEmAndamento } from "@/components/ConsultaEmAndamento";
-import ConsultaAtualPsicologo from "@/components/ConsultaAtualPsicologo";
 import ConsultaModal from "@/components/ConsultaModal";
 import ModalCancelarSessaoDesk from "@/components/ModalCancelarSessaoDesk";
 import ModalCancelarSessaoMobile from "@/components/ModalCancelarSessaoMobile";
-import { useConsultaEmAndamento } from "@/hooks/useConsultaEmAndamento";
 import type { ProximasConsultas as ProximasConsultaType } from "@/types/psicologoTypes";
 import { normalizeConsulta, type GenericObject } from "@/utils/normalizarConsulta";
 import { getContextualAvatar } from "@/utils/avatarUtils";
@@ -25,6 +22,7 @@ import { toast } from '@/components/CustomToastProvider';
 import { useProfilePercent } from '@/hooks/user/useProfilePercent';
 import { queryClient } from '@/lib/queryClient';
 import { useCancelamentoConsulta } from '@/hooks/useCancelamentoConsulta';
+import useConsultaEmAndamento from '@/hooks/useConsultaEmAndamento';
 import dayjs from 'dayjs';
 import timezone from 'dayjs/plugin/timezone';
 import utc from 'dayjs/plugin/utc';
@@ -34,74 +32,68 @@ dayjs.extend(utc);
 dayjs.extend(timezone);
 dayjs.extend(isSameOrAfter);
 
+
 // Função para garantir que apenas o nome completo do paciente seja exibido
 // Remove qualquer dado sensível que possa vir acidentalmente da API
 function getNomePacienteSeguro(paciente: string | undefined | null): string {
   if (!paciente) return "Não informado";
-  
   // Remove possíveis dados sensíveis que possam estar concatenados
   // Remove emails, CPFs, telefones, etc.
   let nome = paciente.trim();
-  
   // Remove padrões de email
   nome = nome.replace(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g, '');
-  
   // Remove padrões de CPF (XXX.XXX.XXX-XX ou XXXXXXXXXXX)
-  nome = nome.replace(/\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b/g, '');
-  
+  nome = nome.replace(/\b\d{3}\.\?\d{3}\.\?\d{3}-?\d{2}\b/g, '');
   // Remove padrões de telefone ((XX) XXXXX-XXXX ou (XX) XXXX-XXXX)
   nome = nome.replace(/\b\(?\d{2}\)?\s?\d{4,5}-?\d{4}\b/g, '');
-  
   // Remove múltiplos espaços
   nome = nome.replace(/\s+/g, ' ').trim();
-  
-  // Se após a limpeza não sobrar nada, retorna "Não informado"
   if (!nome) return "Não informado";
-  
   return nome;
 }
 
-function getReviewRating(review: { Rating?: unknown }) {
-  const ratingValue = Number(review?.Rating);
-  return Number.isFinite(ratingValue) ? ratingValue : null;
-}
+  function getReviewRating(review: { Rating?: unknown }) {
+    const ratingValue = Number(review?.Rating);
+    return Number.isFinite(ratingValue) ? ratingValue : null;
+  }
 
-export default function PainelPsicologoPage() {
-  const [loading, setLoading] = useState(true);
-  const [currentDateTime, setCurrentDateTime] = useState("");
-  const [todayLabel, setTodayLabel] = useState("");
-  const [mesSelecionado, setMesSelecionado] = useState<number>(new Date().getMonth());
-  const [anoSelecionado, setAnoSelecionado] = useState<number>(new Date().getFullYear());
-  const [menuFiltroOpen, setMenuFiltroOpen] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
-  const { calculoPagamento, isLoading: loadingPagamentos} = useObterPagamentos();
-  const { isLoading: loadingConsultas } = useObterConsultasRealizadas();
-  const { taxaOcupacao, isLoading: loadingOcupacao } = useObterTaxaOcupacao();
-  const { consultasPendentes } = useObterConsultasPendentes();
-  const { proximasConsultas, refetch: refetchProximasConsultas } = useObterProximasConsultas();
-  const { proximaConsulta: proximaConsultaNextReservation, consultaAtual: consultaAtualFromHook, refetch: refetchProximaConsulta } = useObterProximaConsultaPsicologo();
-  const { totalConsultasNoMes } = useObterConsultasNoMes(mesSelecionado + 1, anoSelecionado);
-  const userBasic = useUserBasic();
-  const userPsicologo = useUserPsicologo();
-  const profilePercent = useProfilePercent();
-  const firstName = userBasic.user?.Nome?.split(" ")[0] || "";
+  export default function PainelPsicologoPage() {
+    const { fetchConsulta } = useConsultaEmAndamento('psicologo');
+    const [loading, setLoading] = useState(true);
+    const [currentDateTime, setCurrentDateTime] = useState("");
+    const [todayLabel, setTodayLabel] = useState("");
+    const [mesSelecionado, setMesSelecionado] = useState<number>(new Date().getMonth());
+    const [anoSelecionado, setAnoSelecionado] = useState<number>(new Date().getFullYear());
+    const [menuFiltroOpen, setMenuFiltroOpen] = useState(false);
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 10;
+    const { calculoPagamento, isLoading: loadingPagamentos} = useObterPagamentos();
+    const { isLoading: loadingConsultas } = useObterConsultasRealizadas();
+    const { taxaOcupacao, isLoading: loadingOcupacao } = useObterTaxaOcupacao();
+    const { consultasPendentes } = useObterConsultasPendentes();
+    const { proximasConsultas, refetch: refetchProximasConsultas } = useObterProximasConsultas();
+    const { proximaConsulta: proximaConsultaNextReservation, refetch: refetchProximaConsulta } = useObterProximaConsultaPsicologo();
+    const { totalConsultasNoMes } = useObterConsultasNoMes(mesSelecionado + 1, anoSelecionado);
+    const userBasic = useUserBasic();
+    const userPsicologo = useUserPsicologo();
+    const profilePercent = useProfilePercent();
+    const firstName = userBasic.user?.Nome?.split(" ")[0] || "";
 
-  const ratingSummary = useMemo(() => {
-    const reviewsReceived: Array<{ Rating?: unknown }> = Array.isArray(
-      userPsicologo?.psicologo?.user?.[0]?.ReviewsReceived
-    )
-      ? userPsicologo?.psicologo?.user?.[0]?.ReviewsReceived
-      : [];
-    const avaliadas = reviewsReceived
-      .map(getReviewRating)
-      .filter((rating): rating is number => typeof rating === "number");
+    const ratingSummary = useMemo(() => {
+      const reviewsReceived: Array<{ Rating?: unknown }> = Array.isArray(
+        userPsicologo?.psicologo?.user?.[0]?.ReviewsReceived
+      )
+        ? userPsicologo?.psicologo?.user?.[0]?.ReviewsReceived
+        : [];
+      const avaliadas = reviewsReceived
+        .map(getReviewRating)
+        .filter((rating): rating is number => typeof rating === "number");
 
-    const count = avaliadas.length;
-    const average = count > 0 ? avaliadas.reduce((acc, rating) => acc + rating, 0) / count : 0;
+      const count = avaliadas.length;
+      const average = count > 0 ? avaliadas.reduce((acc, rating) => acc + rating, 0) / count : 0;
 
-    return { average, count };
-  }, [userPsicologo]);
+      return { average, count };
+    }, [userPsicologo]);
 
   // Verifica status do perfil profissional
   const professionalStatus = useMemo(() => {
@@ -226,8 +218,6 @@ export default function PainelPsicologoPage() {
   }, [consultasFiltradasEOrdenadas.length]);
 
   // Consulta em andamento via backend - atualiza mais frequentemente para mostrar sempre
-  const { consulta: consultaEmAndamento, fetchConsulta } = useConsultaEmAndamento('psicologo');
-
   useEffect(() => {
     fetchConsulta();
     // Atualiza a cada 5 segundos para garantir que consulta em andamento seja mostrada imediatamente
@@ -270,8 +260,8 @@ export default function PainelPsicologoPage() {
       // Quando recebe atualização via socket, força refetch para garantir dados atualizados
       refetchProximasConsultas();
       refetchProximaConsulta();
-      fetchConsulta(); // Atualiza consulta em andamento
-      
+      fetchConsulta();
+
       // Invalida queries relacionadas para atualizar em tempo real
       queryClient.invalidateQueries({ queryKey: ['proximaConsultaPsicologo'] });
       queryClient.invalidateQueries({ queryKey: ['consultas-psicologo'] });
@@ -300,13 +290,7 @@ export default function PainelPsicologoPage() {
     // Escuta mudanças de status para todas as consultas relevantes
     const consultaIds = new Set<string>();
     
-    // Adiciona IDs das consultas atuais e próximas
-    if (consultaAtualFromHook?.Id) {
-      consultaIds.add(consultaAtualFromHook.Id);
-    }
-    if (consultaEmAndamento?.Id) {
-      consultaIds.add(consultaEmAndamento.Id);
-    }
+    // Adiciona IDs das consultas próximas
     if (proximaConsultaLive?.Id) {
       consultaIds.add(proximaConsultaLive.Id);
     }
@@ -325,7 +309,6 @@ export default function PainelPsicologoPage() {
           // Força refetch de todas as queries relacionadas
           refetchProximasConsultas();
           refetchProximaConsulta();
-          fetchConsulta();
           
           // Invalida queries para atualizar em tempo real
           queryClient.invalidateQueries({ queryKey: ['proximaConsultaPsicologo'] });
@@ -342,31 +325,20 @@ export default function PainelPsicologoPage() {
     return () => {
       cleanupFunctions.forEach(cleanup => cleanup());
     };
-  }, [consultaAtualFromHook?.Id, consultaEmAndamento?.Id, proximaConsultaLive?.Id, proximaConsultaPsico?.Id, refetchProximasConsultas, refetchProximaConsulta, fetchConsulta]);
+  }, [proximaConsultaLive?.Id, proximaConsultaPsico?.Id, refetchProximasConsultas, refetchProximaConsulta]);
 
   // Monitora mudanças na consulta e atualiza automaticamente
   useEffect(() => {
-    if (!consultaAtualFromHook && !consultaEmAndamento) return;
-
     // Verifica periodicamente se há atualizações na consulta
     const interval = setInterval(() => {
       // Log removido para reduzir poluição - refetch silencioso
       refetchProximasConsultas();
       refetchProximaConsulta();
-      fetchConsulta();
       queryClient.invalidateQueries({ queryKey: ['proximaConsultaPsicologo'] });
     }, 30000); // Verifica a cada 30 segundos
 
     return () => clearInterval(interval);
-  }, [consultaAtualFromHook, consultaEmAndamento, refetchProximasConsultas, refetchProximaConsulta, fetchConsulta]);
-
-  // Verifica se deve mostrar consulta atual ou próxima consulta
-  // A lógica de verificação dentro do período de 60 minutos é feita no componente ConsultaAtualPsicologo
-  // que já usa o estado do Redis via socket. Aqui apenas verificamos se há consulta disponível.
-  const deveMostrarConsultaAtual = useMemo(() => {
-    if (!consultaAtualFromHook && !consultaEmAndamento) return false;
-    return true;
-  }, [consultaAtualFromHook, consultaEmAndamento]);
+  }, [refetchProximasConsultas, refetchProximaConsulta]);
 
   // Removido: lógica de índice e timer de próxima consulta; agora usamos o componente reutilizado
 
@@ -400,7 +372,7 @@ export default function PainelPsicologoPage() {
   };
 
   // Função para abrir modal de cancelamento
-  const handleAbrirModalCancelar = (consultaId?: string | number) => {
+  const handleAbrirModalCancelar = useCallback((consultaId?: string | number) => {
     console.log('[PainelPsicologo] Abrindo modal de cancelamento para:', consultaId);
     
     // Se vier consultaId, busca a consulta correspondente
@@ -418,7 +390,7 @@ export default function PainelPsicologoPage() {
     
     setShowModalCancelar(true);
     setShowModalDetalhes(false); // Fecha o modal de detalhes
-  };
+  }, [proximasConsultas, consultaSelecionada]);
 
   // Handler para cancelamento
   const handleCancelarConsulta = async (motivo: string, documento?: File | null) => {
@@ -500,6 +472,45 @@ export default function PainelPsicologoPage() {
     }
   }, [loading, loadingPagamentos, loadingConsultas, loadingOcupacao, isPerfilIncompleto]);
 
+  const modalDetalhesContent = useMemo(() => {
+    if (!consultaSelecionada || !showModalDetalhes) return null;
+    const normalized = normalizeConsulta(consultaSelecionada as unknown as GenericObject);
+    const avatarPaciente = getContextualAvatar(true, normalized?.psicologo, normalized?.paciente);
+    const dataConsulta = consultaSelecionada.Date || consultaSelecionada.Agenda?.Data || "";
+    const horaConsulta = consultaSelecionada.Time || consultaSelecionada.Agenda?.Horario || "";
+    return (
+      <ConsultaModal
+        open={showModalDetalhes}
+        onClose={() => {
+          setShowModalDetalhes(false);
+          setConsultaSelecionada(null);
+        }}
+        consulta={{
+          data: dataConsulta,
+          horario: horaConsulta,
+          paciente: normalized?.paciente
+            ? {
+                nome: normalized.paciente.nome || consultaSelecionada.Paciente?.Nome || "Paciente",
+                avatarUrl: normalized.paciente.imageUrl || avatarPaciente,
+              }
+            : undefined,
+          psicologo: normalized?.psicologo
+            ? {
+                nome: normalized.psicologo.nome || "Psicólogo",
+                avatarUrl: normalized.psicologo.imageUrl || avatarPaciente,
+              }
+            : {
+                nome: "Psicólogo",
+                avatarUrl: avatarPaciente,
+              },
+        }}
+        botaoEntrarDesabilitado={true}
+        consultaId={consultaSelecionada.Id}
+        onAbrirCancelar={handleAbrirModalCancelar}
+      />
+    );
+  }, [consultaSelecionada, showModalDetalhes, handleAbrirModalCancelar]);
+
   if (loading || loadingPagamentos || loadingConsultas || loadingOcupacao) {
     return (
       <motion.div
@@ -561,27 +572,7 @@ export default function PainelPsicologoPage() {
               <div className="flex flex-col lg:flex-row gap-6 items-stretch">
                 {/* Card de Consulta - Alinhado à esquerda, abaixo do Bem-vindo */}
                 <div className="w-full lg:max-w-[540px] lg:flex-shrink-0">
-                  {/* PRIORIDADE 1: Consulta atual (em andamento) - só mostra se estiver dentro dos 60 minutos */}
-                  {deveMostrarConsultaAtual && (consultaAtualFromHook || consultaEmAndamento) ? (
-                    <>
-                      {consultaAtualFromHook && (
-                        <ConsultaAtualPsicologo consulta={consultaAtualFromHook} hidePerfil />
-                      )}
-                      {!consultaAtualFromHook && consultaEmAndamento && (
-                        <ConsultaEmAndamento
-                          consulta={{
-                            ...consultaEmAndamento,
-                            Date: isNaN(new Date(consultaEmAndamento.Date).getTime()) ? '' : consultaEmAndamento.Date || '',
-                            Time: consultaEmAndamento.Time && /^\d{2}:\d{2}$/.test(consultaEmAndamento.Time) ? consultaEmAndamento.Time : '',
-                          }}
-                          role="psicologo"
-                          onEntrar={() => window.open(`/consulta/${consultaEmAndamento.Id}`, '_blank')}
-                        />
-                      )}
-                    </>
-                  ) : null}
-
-                  {/* PRIORIDADE 2: Próxima consulta - mostra se não houver consulta atual dentro do período OU se ConsultaAtualPsicologo retornou null */}
+                  {/* Próxima consulta - única seção exibida */}
                   {proximaConsultaLive && proximaConsultaLive.Date && !isNaN(new Date(proximaConsultaLive.Date).getTime()) ? (
                     <>
                       <h3 className="fira-sans font-semibold text-xl sm:text-2xl leading-tight tracking-normal text-[#49525A] mb-4">
@@ -902,40 +893,7 @@ export default function PainelPsicologoPage() {
           </AnimatePresence>
           
           {/* Modal de detalhes da consulta */}
-          {consultaSelecionada && showModalDetalhes && (() => {
-            const normalized = normalizeConsulta(consultaSelecionada as unknown as GenericObject);
-            const avatarPaciente = getContextualAvatar(true, normalized?.psicologo, normalized?.paciente);
-            const dataConsulta = consultaSelecionada.Date || consultaSelecionada.Agenda?.Data || "";
-            const horaConsulta = consultaSelecionada.Time || consultaSelecionada.Agenda?.Horario || "";
-            
-            return (
-              <ConsultaModal
-                open={showModalDetalhes}
-                onClose={() => {
-                  setShowModalDetalhes(false);
-                  setConsultaSelecionada(null);
-                }}
-                consulta={{
-                  data: dataConsulta,
-                  horario: horaConsulta,
-                  paciente: normalized?.paciente ? {
-                    nome: normalized.paciente.nome || consultaSelecionada.Paciente?.Nome || "Paciente",
-                    avatarUrl: normalized.paciente.imageUrl || avatarPaciente,
-                  } : undefined,
-                  psicologo: normalized?.psicologo ? {
-                    nome: normalized.psicologo.nome || "Psicólogo",
-                    avatarUrl: normalized.psicologo.imageUrl || avatarPaciente,
-                  } : {
-                    nome: "Psicólogo",
-                    avatarUrl: avatarPaciente,
-                  },
-                }}
-                botaoEntrarDesabilitado={true}
-                consultaId={consultaSelecionada.Id}
-                onAbrirCancelar={handleAbrirModalCancelar}
-              />
-            );
-          })()}
+          {modalDetalhesContent}
           
           {/* Modal de cancelamento - Desktop */}
           {consultaParaCancelar && isDesktop === true && (

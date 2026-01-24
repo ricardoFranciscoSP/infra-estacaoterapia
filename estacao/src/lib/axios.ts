@@ -147,18 +147,28 @@ api.interceptors.response.use(
             }
             // Continua o processamento normal, mas sem logar como erro crítico
         } else {
-            // Para outros erros, loga normalmente
+            // Para outros erros, loga normalmente — usa valores explícitos para evitar {} no console
             const responseData = error.response?.data;
             const responsePreview = typeof responseData === 'string'
                 ? responseData.substring(0, 500)
                 : responseData;
-            console.error(`❌ [Axios] Erro na requisição ${method} ${fullUrl}:`, {
-                message: error.message,
-                code: error.code,
-                status: statusCode,
-                statusText: error.response?.statusText,
+            const errDetails = {
+                message: String(error?.message ?? 'sem mensagem'),
+                code: String(error?.code ?? ''),
+                status: statusCode ?? 'sem status',
+                statusText: String(error?.response?.statusText ?? ''),
                 response: responsePreview ?? null,
-            });
+            };
+            console.error(`❌ [Axios] Erro na requisição ${method} ${fullUrl}:`, errDetails);
+            // Dica para /users/user-basic: geralmente 401 = token ausente/inválido ou API indisponível
+            if (fullUrl.includes('/users/user-basic')) {
+                const hint = statusCode === 401
+                    ? ' Verifique se está logado e se o cookie "token" está sendo enviado (withCredentials).'
+                    : !error.response
+                        ? ' API pode estar offline ou CORS bloqueando. Confira se a API em localhost:3333 está rodando.'
+                        : '';
+                if (hint) console.warn(`💡 [Axios] user-basic${hint}`);
+            }
         }
 
         // Verifica se é erro de conexão (network error) - mas não se for timeout (já foi tratado acima)

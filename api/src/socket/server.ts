@@ -287,9 +287,13 @@ async function startServer() {
         }
         server.listen(PORT, "0.0.0.0", () => {
             console.log(`🚀 Socket Server rodando na porta ${PORT}`);
-            console.log(`📡 WebSocket disponível em: wss://ws.estacaoterapia.com.br/socket.io/`);
-            console.log(`🏥 Health check: https://ws.estacaoterapia.com.br/health`);
+            const socketUrl = isProduction 
+                ? "https://ws.prd.estacaoterapia.com.br"
+                : "https://ws.estacaoterapia.com.br";
+            console.log(`📡 WebSocket disponível em: ${socketUrl}/socket.io/`);
+            console.log(`🏥 Health check: ${socketUrl}/health`);
             console.log(`✅ Servidor pronto para receber conexões`);
+            console.log(`🌐 Ambiente: ${isProduction ? 'PRODUÇÃO' : 'DESENVOLVIMENTO/PRÉ-PRODUÇÃO'}`);
         });
     } catch (err) {
         console.error("❌ Erro ao iniciar Socket Server:", err);

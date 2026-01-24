@@ -64,7 +64,8 @@ function PsicologosPage() {
     sexo,
     atendimentos,
     idiomas,
-    data,
+    dataInicio,
+    dataFim,
     periodo,
   } = usePsicologoFilterStore();
 
@@ -85,7 +86,8 @@ function PsicologosPage() {
       sexo,
       atendimentos,
       idiomas,
-      data,
+      dataInicio,
+      dataFim,
       periodo,
     };
     searchPsicologos(filtrosBusca);
@@ -143,7 +145,8 @@ function PsicologosPage() {
     !!sexo ||
     (atendimentos && atendimentos.length > 0) ||
     (idiomas && idiomas.length > 0) ||
-    !!data ||
+    !!dataInicio ||
+    !!dataFim ||
     !!periodo;
 
   const psicologosBase = React.useMemo(() => {
@@ -179,15 +182,18 @@ function PsicologosPage() {
       if (!hasRelatedMatch(queixas, queixasArr)) return false;
       if (!hasAllSelected(atendimentos, atendArr)) return false;
 
-      if (data || periodo) {
+      // NOVA LÓGICA: filtrar por dataInicio/dataFim (intervalo)
+      if (dataInicio || dataFim || periodo) {
         const agendas = p.PsychologistAgendas ?? [];
         const range = periodoRange(periodo);
         const ok = agendas.some((agenda) => {
           const statusAgenda = normalizarStatus(agenda?.Status);
           if (statusAgenda !== "disponivel") return false;
-          if (data && ymd(agenda.Data) < (data as string)) return false;
+          if (dataInicio && ymd(agenda.Data) < dataInicio) return false;
+          if (dataFim && ymd(agenda.Data) > dataFim) return false;
           if (range) {
             const m = toMinutes(agenda.Horario);
+            if (!Number.isFinite(m)) return false;
             return m >= range[0] && m <= range[1];
           }
           return true;
@@ -204,7 +210,8 @@ function PsicologosPage() {
     abordagens,
     queixas,
     atendimentos,
-    data,
+    dataInicio,
+    dataFim,
     periodo,
   ]);
 
@@ -214,12 +221,12 @@ function PsicologosPage() {
       return [];
     }
     return sortPsicologos(psicologosFiltrados, {
-      filtros: { abordagens, queixas, idiomas, atendimentos, data, periodo },
+      filtros: { abordagens, queixas, idiomas, atendimentos, dataInicio, dataFim, periodo },
       hasFiltroSelecionado,
       experienciaClinicaParaAnos,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [psicologosFiltrados, queixas, abordagens, sexo, atendimentos, idiomas, data, periodo]);
+  }, [psicologosFiltrados, queixas, abordagens, sexo, atendimentos, idiomas, dataInicio, dataFim, periodo]);
 
   return (
     <div className="flex flex-col items-center min-h-screen bg-[#FCFBF6]">

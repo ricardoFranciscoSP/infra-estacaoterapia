@@ -8,7 +8,8 @@ export interface PsicologoFilterState {
     sexo: 'feminino' | 'masculino' | 'outros' | null;
     atendimentos: string[]; // ex: adultos, idosos, adolescentes
     idiomas: string[]; // ex: portugues, ingles, espanhol, libras
-    data: string | null; // formato YYYY-MM-DD
+    dataInicio: string | null; // formato YYYY-MM-DD
+    dataFim: string | null; // formato YYYY-MM-DD
     periodo: Periodo;
 }
 
@@ -18,7 +19,8 @@ export interface PsicologoFilterActions {
     setSexo: (val: 'feminino' | 'masculino' | 'outros' | null) => void;
     setAtendimentos: (vals: string[]) => void;
     setIdiomas: (vals: string[]) => void;
-    setData: (val: string | null) => void;
+    setDataInicio: (val: string | null) => void;
+    setDataFim: (val: string | null) => void;
     setPeriodo: (val: Periodo) => void;
     reset: () => void;
 }
@@ -29,7 +31,8 @@ const initialState: PsicologoFilterState = {
     sexo: null,
     atendimentos: [],
     idiomas: [],
-    data: null,
+    dataInicio: null,
+    dataFim: null,
     periodo: '',
 };
 
@@ -40,7 +43,8 @@ export const usePsicologoFilterStore = create<PsicologoFilterState & PsicologoFi
     setSexo: (val) => set({ sexo: val }),
     setAtendimentos: (vals) => set({ atendimentos: vals }),
     setIdiomas: (vals) => set({ idiomas: vals }),
-    setData: (val) => set({ data: val }),
+    setDataInicio: (val) => set({ dataInicio: val }),
+    setDataFim: (val) => set({ dataFim: val }),
     setPeriodo: (val) => set({ periodo: val }),
     reset: () => set({ ...initialState }),
 }));

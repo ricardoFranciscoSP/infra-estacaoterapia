@@ -1,12 +1,32 @@
+"use client";
+
 import { useCallback } from 'react';
 import { consultaEmAndamentoService } from '@/services/consultaEmAndamentoService';
 import { useConsultaEmAndamentoStore } from '@/store/consultaEmAndamentoStore';
+import type { ConsultaApi } from '@/types/consultasTypes';
 
-export function useConsultaEmAndamento(role: 'psicologo' | 'paciente') {
-  // Sempre retorna null se não houver consulta válida
+export type UseConsultaEmAndamentoRole = 'psicologo' | 'paciente';
+
+export interface UseConsultaEmAndamentoReturn {
+  consulta: ConsultaApi | null;
+  fetchConsulta: () => Promise<void>;
+}
+
+function isConsultaValida(c: unknown): c is ConsultaApi {
+  if (!c || typeof c !== 'object') return false;
+  const o = c as Record<string, unknown>;
+  return (
+    typeof o.Id === 'string' &&
+    typeof o.Status === 'string' &&
+    typeof o.Date === 'string' &&
+    typeof o.Time === 'string'
+  );
+}
+
+function useConsultaEmAndamento(role: UseConsultaEmAndamentoRole): UseConsultaEmAndamentoReturn {
   const consulta = useConsultaEmAndamentoStore((s) => {
     const c = s.consulta;
-    if (!c || !c.Id || !c.Status || !c.Date || !c.Time) return null;
+    if (!isConsultaValida(c)) return null;
     return c;
   });
   const setConsulta = useConsultaEmAndamentoStore((s) => s.setConsulta);
@@ -18,8 +38,7 @@ export function useConsultaEmAndamento(role: 'psicologo' | 'paciente') {
           ? await consultaEmAndamentoService.getPsicologo()
           : await consultaEmAndamentoService.getPaciente();
       const c = response.data?.consulta;
-      // Só seta se for um objeto válido
-      if (c && c.Id && c.Status && c.Date && c.Time) {
+      if (isConsultaValida(c)) {
         setConsulta(c);
       } else {
         setConsulta(null);
@@ -31,3 +50,6 @@ export function useConsultaEmAndamento(role: 'psicologo' | 'paciente') {
 
   return { consulta, fetchConsulta };
 }
+
+export { useConsultaEmAndamento };
+export default useConsultaEmAndamento;

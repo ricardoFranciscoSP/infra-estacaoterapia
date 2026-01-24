@@ -87,16 +87,13 @@ export function selecionarProximaConsulta(
     const hoje = agora.startOf('day');
     const amanha = hoje.add(1, 'day');
 
-    // Filtra apenas consultas futuras e com status válido
+    // Duração padrão da consulta em minutos (50 minutos)
+    const DURACAO_CONSULTA_MINUTOS = 50;
+
+    // Filtra consultas válidas (agendadas/reservadas OU canceladas no período)
     const consultasValidas = consultas.filter((consulta) => {
         try {
             const status = consulta.Status || consulta.ReservaSessao?.Status;
-
-            // Considera apenas consultas agendadas/reservadas
-            const statusValidos = ['Agendada', 'Reservado', 'Reservada', 'Confirmada', 'Andamento'];
-            if (!status || !statusValidos.includes(status)) {
-                return false;
-            }
 
             // Valida e normaliza data e horário
             const dataConsulta = consulta.Date || consulta.Agenda?.Data;
@@ -124,7 +121,32 @@ export function selecionarProximaConsulta(
                 return false;
             }
 
-            // Permite consultas de hoje e futuras
+            // Calcula o fim do período da consulta (início + duração)
+            const fimPeriodoConsulta = dataHoraConsulta.add(DURACAO_CONSULTA_MINUTOS, 'minute');
+
+            // Verifica se está dentro do período da consulta (início até fim)
+            const estaNoPeriodo = agora.isSameOrAfter(dataHoraConsulta) && agora.isSameOrBefore(fimPeriodoConsulta);
+
+            // Status de cancelamento (verifica vários formatos)
+            const statusLower = (status || '').toLowerCase();
+            const isCancelada = statusLower.includes('cancelada') || 
+                               statusLower.includes('cancelado') || 
+                               statusLower.includes('pacientenaocompareceu') ||
+                               statusLower.includes('psicologonaocompareceu') ||
+                               statusLower === 'cancelado';
+
+            // Se está no período E é cancelada, inclui
+            if (estaNoPeriodo && isCancelada) {
+                return true;
+            }
+
+            // Para consultas não canceladas, considera agendadas/reservadas E em andamento
+            const statusValidos = ['Agendada', 'Reservado', 'Reservada', 'Confirmada', 'Andamento', 'EmAndamento', 'Em Andamento'];
+            if (!status || !statusValidos.includes(status)) {
+                return false;
+            }
+
+            // Permite consultas de hoje e futuras (não canceladas)
             return dataHoraConsulta.isSameOrAfter(agora);
         } catch (error) {
             console.error('Erro ao processar consulta:', error, consulta);
@@ -166,7 +188,7 @@ export function selecionarProximaConsulta(
     });
 
     // Verifica se há consulta dentro da janela
-    // Janela: 15 minutos antes até 60 minutos depois do horário
+    // Janela: 15 minutos antes até fim do período da consulta (início + 50 minutos)
     // SEM buffer - atualização instantânea quando sair da janela
     const consultaNaJanela = consultasOrdenadas.find((consulta) => {
         try {
@@ -187,14 +209,14 @@ export function selecionarProximaConsulta(
 
             if (!dataHoraConsulta.isValid()) return false;
 
-            // Janela: 15 minutos antes até 60 minutos depois do horário
+            // Janela: 15 minutos antes até fim do período da consulta (início + 50 minutos)
             const inicioJanela = dataHoraConsulta.subtract(15, 'minute');
-            const fimJanela = dataHoraConsulta.add(60, 'minute');
+            const fimPeriodoConsulta = dataHoraConsulta.add(DURACAO_CONSULTA_MINUTOS, 'minute');
 
-            if (!inicioJanela.isValid() || !fimJanela.isValid()) return false;
+            if (!inicioJanela.isValid() || !fimPeriodoConsulta.isValid()) return false;
 
             // Retorna true se estiver dentro da janela exata (sem buffer)
-            return agora.isSameOrAfter(inicioJanela) && agora.isSameOrBefore(fimJanela);
+            return agora.isSameOrAfter(inicioJanela) && agora.isSameOrBefore(fimPeriodoConsulta);
         } catch {
             return false;
         }

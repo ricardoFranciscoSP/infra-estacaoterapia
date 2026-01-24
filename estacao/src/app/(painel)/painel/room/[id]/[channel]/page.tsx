@@ -182,14 +182,14 @@ export default function Room() {
         clearTimeout(tokenFetchTimeoutRef.current);
       }
       
-      // Timeout de segurança: se a requisição demorar mais de 10s, cancela
+      // Timeout de segurança: se a requisição demorar mais de 10s, cancela silenciosamente
       tokenFetchTimeoutRef.current = setTimeout(() => {
-        console.warn("⏱️ Timeout ao buscar token pelo channel (10s)");
+        console.warn("⏱️ [Patient Room] Timeout ao buscar token pelo channel (10s)");
         setIsLoadingToken(false);
         if (tokenFetchAttempts >= MAX_TOKEN_FETCH_ATTEMPTS - 1) {
-          toastShownRef.current = true;
-          setError('Timeout ao buscar token. Verifique sua conexão e tente novamente.');
-          toast.error('Timeout ao buscar token. Verifique sua conexão e tente novamente.');
+          // Não mostra mensagem de erro, apenas redireciona
+          console.log("🔄 [Patient Room] Não foi possível obter token após múltiplas tentativas. Redirecionando...");
+          router.replace("/painel");
         }
       }, TOKEN_FETCH_TIMEOUT);
       
@@ -261,23 +261,22 @@ export default function Room() {
           // Marca que o toast foi mostrado ANTES de mostrar (apenas para outros erros)
           toastShownRef.current = true;
           
-          // Erros de consulta finalizada (410)
+          // Erros de consulta finalizada (410) - redireciona imediatamente sem mostrar mensagem
           if (status === 410 || errorCode === 'CONSULTA_CONCLUIDA' || errorCode === 'TOKENS_EXPIRADOS' || errorCode === 'CONSULTA_CANCELADA') {
-            const message = errorMessage || 'Esta consulta já foi finalizada. Os tokens de acesso foram removidos por segurança.';
-            setError(message);
-            toast.error(message);
-            
-            // Redireciona após 3 segundos
-            setTimeout(() => {
-              router.push("/painel");
-            }, 3000);
+            console.log("🔄 [Patient Room] Consulta finalizada ou token expirado. Redirecionando...");
+            router.replace("/painel");
             return; // Impede que continue o fluxo
           }
           
-          // Outros erros
-          const message = errorMessage || 'Erro ao acessar a sala de vídeo. Por favor, tente novamente.';
-          setError(message);
-          toast.error(message);
+          // Se esgotou todas as tentativas, redireciona sem mostrar erro
+          if (tokenFetchAttempts >= MAX_TOKEN_FETCH_ATTEMPTS) {
+            console.log("🔄 [Patient Room] Não foi possível obter token. Redirecionando...");
+            router.replace("/painel");
+            return;
+          }
+          
+          // Outros erros - apenas loga, não mostra toast
+          console.warn("⚠️ [Patient Room] Erro ao buscar token (tentativa " + tokenFetchAttempts + "/" + MAX_TOKEN_FETCH_ATTEMPTS + "):", errorMessage || 'Erro desconhecido');
         });
     }
   }, [
@@ -412,6 +411,17 @@ export default function Room() {
   const hasValidAppId = typeof appId === "string" && appId.trim().length > 0;
   const hasValidUid = (typeof uidPatient === "number" && uidPatient > 0) || uidFromChannel > 0;
   
+  // Verifica se não conseguiu obter token após todas as tentativas
+  const noTokenAfterAttempts = tokenFetchAttempts >= 3 && !tokenForPatient;
+  
+  // Se não conseguiu token após todas as tentativas, redireciona
+  useEffect(() => {
+    if (noTokenAfterAttempts && !isLoadingToken && !isLoadingReserva) {
+      console.log("🔄 [Patient Room] Não foi possível obter token após todas as tentativas. Redirecionando...");
+      router.replace("/painel");
+    }
+  }, [noTokenAfterAttempts, isLoadingToken, isLoadingReserva, router]);
+
   // ✅ NOVA LÓGICA: Permite entrar na sala se tiver token (de qualquer fonte) E channel e appId
   // Não aguarda todos os dados da reserva se conseguir o token por outro caminho
   const isReady =
@@ -420,6 +430,7 @@ export default function Room() {
     hasValidToken && // Token é obrigatório (de qualquer fonte: AgoraTokenPatient ou tokenFromChannel)
     hasValidChannel && // Channel é obrigatório
     hasValidUid && // UID é obrigatório
+    !noTokenAfterAttempts && // Não está pronto se não conseguiu token
     (
       // Condições de carregamento: permite se dados NOT estão carregando OU se conseguiu dados por algum caminho
       (!isLoadingReserva && !isLoadingToken && !isLoadingFromChannel) || // Nenhum está carregando
@@ -452,6 +463,26 @@ export default function Room() {
       }
     };
   }, [isReady, hasValidToken, hasValidChannel, hasValidAppId]);
+
+  // Registra entrada do paciente ao entrar na room (deve vir antes de qualquer return)
+  useEffect(() => {
+    const markPatientJoined = async () => {
+      if (!consultationId || !id) return;
+      try {
+        const { useAuthStore } = await import('@/store/authStore');
+        const userId = useAuthStore.getState().user?.Id;
+        if (!userId) return;
+        const rs = finalReservaSessao as ReservaSessao & { PatientJoinedAt?: unknown };
+        if (rs?.PatientJoinedAt) return;
+        const { api } = await import('@/lib/axios');
+        await api.post(`/reserva-sessao/${consultationId || id}/join`, { userId, role: 'Patient' });
+        console.log('✅ [Room Patient] Entrada registrada na sala');
+      } catch (e) {
+        console.warn('⚠️ [Room Patient] Erro ao registrar entrada:', e);
+      }
+    };
+    markPatientJoined();
+  }, [consultationId, id, finalReservaSessao]);
 
   // Mostra erro se houver problema - especialmente erros de permissão
   // ✅ NOVA LÓGICA: Só mostra erro se realmente não conseguiu nenhum token após todas as tentativas
@@ -572,38 +603,6 @@ export default function Room() {
       </div>
     );
   }
-
-  // Registra entrada do paciente ao entrar na room
-  useEffect(() => {
-    const markPatientJoined = async () => {
-      if (!consultationId || !id) return;
-      
-      try {
-        const { useAuthStore } = await import('@/store/authStore');
-        const userId = useAuthStore.getState().user?.Id;
-        if (!userId) return;
-
-        // Verifica se já entrou
-        const rs = finalReservaSessao as any;
-        if (rs?.PatientJoinedAt) {
-          return; // Já entrou
-        }
-
-        // Chama a API para registrar entrada
-        const { api } = await import('@/lib/axios');
-        await api.post(`/reserva-sessao/${consultationId || id}/join`, {
-          userId,
-          role: 'Patient',
-        });
-        
-        console.log('✅ [Room Patient] Entrada registrada na sala');
-      } catch (error) {
-        console.warn('⚠️ [Room Patient] Erro ao registrar entrada:', error);
-      }
-    };
-
-    markPatientJoined();
-  }, [consultationId, id, finalReservaSessao]);
 
   return (
     <SalaVideo
