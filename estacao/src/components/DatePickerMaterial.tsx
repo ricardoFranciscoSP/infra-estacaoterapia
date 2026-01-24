@@ -127,8 +127,8 @@ function DatePickerInput<T extends FieldValues>({
   };
 
   return (
-    <div className="flex flex-col w-full">
-      {label && <label className="mb-1 text-sm text-[#26220D] font-medium">{label}</label>}
+    <div className="flex flex-col w-full gap-1.5 sm:gap-1 min-h-[56px] sm:min-h-[50px] mb-3 sm:mb-4">
+      {label && <label className="mb-0.5 sm:mb-1 text-sm text-[#49525A] font-medium">{label}</label>}
       <div className="relative">
         <input
           type="text"

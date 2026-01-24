@@ -91,7 +91,7 @@ export default function PainelCardPromocionalAvulsa() {
       
       <button
         type="button"
-        className="px-4 py-2 bg-[#444D9D] text-white font-semibold text-sm md:text-base rounded-lg hover:bg-[#6D75C0] transition-colors duration-200 cursor-pointer whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+        className="px-4 py-2 bg-[#444D9D] text-white font-semibold text-sm md:text-base rounded-lg hover:bg-[#6D75C0] transition-colors duration-200 cursor-pointer whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0 w-full sm:w-auto ml-auto sm:ml-0"
         onClick={handleComprar}
         disabled={isLoading && !planoUnicoId}
       >

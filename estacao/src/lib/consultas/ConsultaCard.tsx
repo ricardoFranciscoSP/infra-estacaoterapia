@@ -152,9 +152,9 @@ export function ConsultaCard({
           "relative w-full max-w-full rounded-2xl shadow-md border-0",
           "transition-all duration-300 hover:shadow-lg mb-6",
           isPacientePanel 
-            ? "bg-[#F8F6FC] overflow-visible sm:max-w-[650px] sm:w-full md:w-[650px]" 
-            : "bg-[#F4F6FD] overflow-visible sm:max-w-[588px] sm:w-[588px]",
-          "sm:h-[180px] min-h-[180px]",
+            ? "bg-[#F8F6FC] overflow-visible sm:max-w-full sm:w-full md:max-w-[650px] md:w-[650px]" 
+            : "bg-[#F4F6FD] overflow-visible sm:max-w-full sm:w-full md:max-w-[588px] md:w-[588px]",
+          "sm:h-[180px] min-h-[200px] sm:min-h-[180px]",
         )}>
           <CardContent className="p-4 sm:p-4 md:p-5 sm:h-full sm:flex sm:flex-col sm:justify-between overflow-visible min-w-0 max-w-full">
             {/* Mobile: Tag de status ou Badge (Hoje/Amanhã) - apenas uma tag por vez */}
@@ -164,7 +164,7 @@ export function ConsultaCard({
                 animate={{ scale: 1, opacity: 1 }}
                 transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
                 className={cn(
-                  "absolute top-4 right-4 sm:hidden z-10",
+                  "absolute top-3 right-3 sm:hidden z-10",
                   BADGE_VARIANTS[badge.variant]
                 )}
               >
@@ -175,7 +175,7 @@ export function ConsultaCard({
                 initial={{ scale: 0, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
-                className="absolute top-4 right-2 sm:hidden z-10"
+                className="absolute top-3 right-3 sm:hidden z-10"
               >
                 <ConsultaStatusBadge
                   consulta={consulta}
@@ -188,10 +188,10 @@ export function ConsultaCard({
             )}
 
             {/* Mobile Layout */}
-            <div className="flex flex-col sm:hidden gap-4 h-full overflow-visible">
+            <div className="flex flex-col sm:hidden gap-3 h-full overflow-visible pt-8">
               {/* Contador no mobile (se houver) - estilo consultas restantes com ícone de relógio */}
               {contador?.mostrar && !supportOnly && (
-                <div className="flex items-center gap-2 rounded-lg px-3 py-1.5 bg-[#E6E9FF] w-fit mt-2">
+                <div className="flex items-center gap-2 rounded-lg px-3 py-1.5 bg-[#E6E9FF] w-fit">
                   <ClockIcon className="w-4 h-4 text-[#8494E9] shrink-0" />
                   {contador.frase && (
                     <span className="text-[#232A5C] text-xs font-medium">
@@ -207,7 +207,7 @@ export function ConsultaCard({
               )}
 
               {/* Conteúdo do meio - Avatar e informações */}
-              <div className="flex gap-4 items-start flex-1">
+              <div className="flex gap-3 sm:gap-4 items-start flex-1">
                 {/* Avatar do psicólogo */}
                 <div className="relative shrink-0 flex flex-col items-center gap-2">
                   <Image
@@ -227,10 +227,10 @@ export function ConsultaCard({
                 </div>
 
                 {/* Informações */}
-                <div className="flex-1 flex flex-col gap-1">
+                <div className="flex-1 flex flex-col gap-1.5 min-w-0 pr-12">
                   <div className="flex items-center gap-2">
                     <UserIcon className="w-4 h-4 text-[#6D75C0] shrink-0" />
-                    <span className="text-[#232A5C] font-bold text-sm leading-tight">
+                    <span className="text-[#232A5C] font-bold text-sm leading-tight break-words">
                       {nomePsicologo}
                     </span>
                   </div>
@@ -256,7 +256,7 @@ export function ConsultaCard({
               </div>
 
               {/* Botões de ação no mobile: Ver detalhes à esquerda, Entrar à direita (lado a lado) */}
-              <div className="flex flex-col gap-2 w-full overflow-visible">
+              <div className="flex flex-col gap-2 w-full overflow-visible mt-auto pb-0">
                 {showPrimaryActions && actions?.onEntrar ? (
                   <div className="flex gap-2 w-full flex-wrap">
                     {/* Ver detalhes à esquerda (estilo ghost quando isPacientePanel) */}

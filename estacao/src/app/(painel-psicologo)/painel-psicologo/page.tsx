@@ -1,5 +1,14 @@
 "use client";
 import React, { useEffect, useMemo, useState, useCallback } from "react";
+// Status normatizados possíveis para consultas
+const STATUS_CONSULTA = [
+  { value: 'todos', label: 'Todos' },
+  { value: 'concluida', label: 'Concluída' },
+  { value: 'cancelada', label: 'Cancelada' },
+  { value: 'reagendada', label: 'Reagendada' },
+  { value: 'agendada', label: 'Agendada' },
+  // Adicione outros status normatizados conforme necessário
+];
 import { motion, AnimatePresence } from "framer-motion";
 import SidebarPsicologo from "./SidebarPsicologo";
 import Image from "next/image";
@@ -66,6 +75,8 @@ function getNomePacienteSeguro(paciente: string | undefined | null): string {
     const [anoSelecionado, setAnoSelecionado] = useState<number>(new Date().getFullYear());
     const [menuFiltroOpen, setMenuFiltroOpen] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
+    // Filtro de status
+    const [statusFiltro, setStatusFiltro] = useState<string>('todos');
     const itemsPerPage = 10;
     const { calculoPagamento, isLoading: loadingPagamentos} = useObterPagamentos();
     const { isLoading: loadingConsultas } = useObterConsultasRealizadas();
@@ -171,6 +182,17 @@ function getNomePacienteSeguro(paciente: string | undefined | null): string {
   };
 
   // Lógica para identificar consulta em andamento e próximas consultas
+  // Função para normalizar status da consulta
+  function normalizarStatusConsulta(status: string | undefined | null): string {
+    if (!status) return '';
+    const s = status.trim().toLowerCase();
+    if (s.includes('conclu')) return 'concluida';
+    if (s.includes('cancel')) return 'cancelada';
+    if (s.includes('reagen')) return 'reagendada';
+    if (s.includes('agend')) return 'agendada';
+    return s;
+  }
+
   const consultasFiltradasEOrdenadas = useMemo(() => {
     const construirDataHoraCompleta = (c: typeof proximasConsultas[0]): Date | null => {
       try {
@@ -204,8 +226,12 @@ function getNomePacienteSeguro(paciente: string | undefined | null): string {
       })
       .filter((item): item is { consulta: typeof proximasConsultas[0]; dataHora: Date } => item !== null);
     consultasComDataHora.sort((a, b) => a.dataHora.getTime() - b.dataHora.getTime());
-    return consultasComDataHora.map(item => item.consulta);
-  }, [proximasConsultas]);
+    let lista = consultasComDataHora.map(item => item.consulta);
+    if (statusFiltro !== 'todos') {
+      lista = lista.filter(c => normalizarStatusConsulta(c.Status) === statusFiltro);
+    }
+    return lista;
+  }, [proximasConsultas, statusFiltro]);
 
   // Calcula total de páginas
   const totalPages = useMemo(() => {
@@ -781,16 +807,28 @@ function getNomePacienteSeguro(paciente: string | undefined | null): string {
               transition={{ duration: 0.3, delay: 0.2 }}
               className="bg-[#FCFBF6] shadow rounded-lg p-4 sm:p-6 mb-24 sm:mb-8"
             >
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-2">
                 <div>
                   <h2 className="text-sm sm:text-base font-semibold">Próximas consultas</h2>
                   <span className="text-xs text-gray-600 block mt-1">
                     Hoje: {todayLabel || "--/--/----"}
                   </span>
                 </div>
-                <button className="flex items-center text-[#6D75C0]">
-                  <Image src="/icons/filter.svg" alt="Filtrar" width={20} height={20} />
-                </button>
+                {/* Filtros de status - responsivo */}
+                <div className="w-full sm:w-auto overflow-x-auto">
+                  <div className="flex gap-2 sm:gap-3 whitespace-nowrap">
+                    {STATUS_CONSULTA.map((status) => (
+                      <button
+                        key={status.value}
+                        className={`px-3 py-1 rounded-full border text-xs font-semibold transition-colors duration-150 ${statusFiltro === status.value ? 'bg-[#6D75C0] text-white border-[#6D75C0]' : 'bg-white text-[#6D75C0] border-[#6D75C0] hover:bg-[#F0F2FF]'}`}
+                        onClick={() => setStatusFiltro(status.value)}
+                        type="button"
+                      >
+                        {status.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
               
               {/* Se não houver consultas */}

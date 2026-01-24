@@ -56,6 +56,9 @@ export default function PainelFooter() {
         && !pathname?.startsWith("/painel/comprar-consulta")
         && !pathname?.startsWith("/painel/checkout-planos")
         && !pathname?.startsWith("/painel/minha-conta/meus-planos")
+        && !pathname?.startsWith("/painel/minha-conta/dados-pessoais")
+        && !pathname?.startsWith("/painel/minha-conta/minhas-solicitacoes")
+        && !pathname?.startsWith("/painel/minha-conta/trocar-cartao")
         && pathname !== "/painel/planos"
         && pathname !== "/painel/success"
         && pathname !== "/painel/error"

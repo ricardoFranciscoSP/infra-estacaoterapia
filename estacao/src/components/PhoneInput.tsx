@@ -77,9 +77,9 @@ function PhoneInput<T extends FieldValues = FieldValues>({
       name={name}
       control={usedControl}
       render={({ field, fieldState }) => (
-        <div ref={countryBoxRef} className={className || "w-full"}>
+        <div ref={countryBoxRef} className={`${className || "w-full"} flex flex-col gap-1.5 sm:gap-1 min-h-[56px] sm:min-h-[50px] mb-3 sm:mb-4`}>
           {label && (
-            <label className="mb-1 text-sm text-[#26220D] font-medium block">{label}</label>
+            <label className="mb-0.5 sm:mb-1 text-sm text-[#49525A] font-medium block">{label}</label>
           )}
           <div
             className={`flex items-center w-full h-[40px] rounded-[6px] border border-[#d1d5db] bg-white px-4 py-2 text-sm font-fira-sans focus-within:outline-none focus-within:ring-2 focus-within:ring-[#8494E9] md:bg-[#e6eefe] ${fieldState.invalid ? "border-red-500" : ""}`}

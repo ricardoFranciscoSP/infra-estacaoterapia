@@ -79,18 +79,18 @@ export default function PainelCardConsultaAvulsa() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, ease: "easeOut" }}
     >
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="font-semibold text-[#232A5C]">Consultas</span>
-          <span className="text-[#A3A8F7] font-medium" style={{ textTransform: "none" }}>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="font-semibold text-[#232A5C] text-sm sm:text-base">Consultas</span>
+          <span className="text-[#A3A8F7] font-medium text-sm sm:text-base" style={{ textTransform: "none" }}>
             Avulsas
           </span>
         </div>
-        <div className="flex items-center justify-center gap-2 w-[180px] h-8 rounded px-3 py-1 bg-[#CFD6F7]">
-          <span className="font-medium text-[#444D9D] text-[14px] leading-6 align-middle">
+        <div className="flex items-center justify-center gap-2 min-w-fit sm:w-[180px] h-8 rounded px-3 py-1 bg-[#CFD6F7] flex-shrink-0">
+          <span className="font-medium text-[#444D9D] text-xs sm:text-[14px] leading-6 align-middle">
             {quantidadeTotal}
           </span>
-          <span className="text-[#444D9D] text-[12px] leading-6 font-normal align-middle whitespace-nowrap">
+          <span className="text-[#444D9D] text-[10px] sm:text-[12px] leading-6 font-normal align-middle whitespace-nowrap">
             Consultas restantes
           </span>
         </div>

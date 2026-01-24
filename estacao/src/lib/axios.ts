@@ -19,16 +19,16 @@ const getBaseURL = (): string => {
     const apiUrl = getApiUrl();
     const environment = getCurrentEnvironment();
 
-    console.log('🔍 [Axios] Ambiente detectado:', environment);
-    console.log('🔍 [Axios] URL da API:', apiUrl);
+    // console.log('🔍 [Axios] Ambiente detectado:', environment);
+    // console.log('🔍 [Axios] URL da API:', apiUrl);
 
     // Valida se a URL está correta para o ambiente
     const expectedUrl = ENVIRONMENT_URLS[environment];
-    if (apiUrl !== expectedUrl) {
-        console.warn(
-            `⚠️ [Axios] URL da API (${apiUrl}) não corresponde ao ambiente esperado (${environment}: ${expectedUrl})`
-        );
-    }
+    // if (apiUrl !== expectedUrl) {
+    //     console.warn(
+    //         `⚠️ [Axios] URL da API (${apiUrl}) não corresponde ao ambiente esperado (${environment}: ${expectedUrl})`
+    //     );
+    // }
 
     return apiUrl;
 };
@@ -36,22 +36,22 @@ const getBaseURL = (): string => {
 const baseURL = getBaseURL();
 
 // Log detalhado para debug
-if (typeof window !== 'undefined') {
-    console.log('🔌 [Axios] Configuração:', {
-        baseURL,
-        hostname: window.location.hostname,
-        env: process.env.NODE_ENV,
-        hasEnvVar: !!process.env.NEXT_PUBLIC_API_URL,
-        envVarValue: process.env.NEXT_PUBLIC_API_URL || 'não definida'
-    });
-} else {
-    console.log('🔌 [Axios] Configuração (SSR):', {
-        baseURL,
-        env: process.env.NODE_ENV,
-        hasEnvVar: !!process.env.NEXT_PUBLIC_API_URL,
-        envVarValue: process.env.NEXT_PUBLIC_API_URL || 'não definida'
-    });
-}
+// if (typeof window !== 'undefined') {
+//     console.log('🔌 [Axios] Configuração:', {
+//         baseURL,
+//         hostname: window.location.hostname,
+//         env: process.env.NODE_ENV,
+//         hasEnvVar: !!process.env.NEXT_PUBLIC_API_URL,
+//         envVarValue: process.env.NEXT_PUBLIC_API_URL || 'não definida'
+//     });
+// } else {
+//     console.log('🔌 [Axios] Configuração (SSR):', {
+//         baseURL,
+//         env: process.env.NODE_ENV,
+//         hasEnvVar: !!process.env.NEXT_PUBLIC_API_URL,
+//         envVarValue: process.env.NEXT_PUBLIC_API_URL || 'não definida'
+//     });
+// }
 
 // Cria instância do axios
 export const api = axios.create({
@@ -65,7 +65,7 @@ api.interceptors.request.use(
     (config: InternalAxiosRequestConfig): InternalAxiosRequestConfig => {
         // Log da requisição para debug
         const fullUrl = config.baseURL ? `${config.baseURL}${config.url}` : config.url;
-        console.log(`📤 [Axios] ${config.method?.toUpperCase()} ${fullUrl}`);
+        // console.log(`📤 [Axios] ${config.method?.toUpperCase()} ${fullUrl}`);
 
         // Ajusta Content-Type dinamicamente
         const hasFormData = typeof window !== 'undefined' && config.data instanceof FormData;
@@ -111,7 +111,7 @@ api.interceptors.request.use(
 api.interceptors.response.use(
     (response: AxiosResponse): AxiosResponse => {
         // Log de sucesso para debug
-        console.log(`✅ [Axios] ${response.config.method?.toUpperCase()} ${response.config.url} - ${response.status}`);
+        // console.log(`✅ [Axios] ${response.config.method?.toUpperCase()} ${response.config.url} - ${response.status}`);
         return response;
     },
     (error: AxiosError<unknown>) => {
@@ -143,7 +143,7 @@ api.interceptors.response.use(
             if (process.env.NODE_ENV === 'development') {
                 const statusLabel = statusCode ? `Status ${statusCode}` : (error.code || 'sem status');
                 const reasonLabel = isTimeout ? 'Timeout (endpoint pode estar lento ou indisponível)' : 'Endpoint configurado como silencioso';
-                console.info(`ℹ️ [Axios] ${method} ${fullUrl} - ${reasonLabel} (${statusLabel})`);
+                // console.info(`ℹ️ [Axios] ${method} ${fullUrl} - ${reasonLabel} (${statusLabel})`);
             }
             // Continua o processamento normal, mas sem logar como erro crítico
         } else {
@@ -161,14 +161,14 @@ api.interceptors.response.use(
             };
             console.error(`❌ [Axios] Erro na requisição ${method} ${fullUrl}:`, errDetails);
             // Dica para /users/user-basic: geralmente 401 = token ausente/inválido ou API indisponível
-            if (fullUrl.includes('/users/user-basic')) {
-                const hint = statusCode === 401
-                    ? ' Verifique se está logado e se o cookie "token" está sendo enviado (withCredentials).'
-                    : !error.response
-                        ? ' API pode estar offline ou CORS bloqueando. Confira se a API em localhost:3333 está rodando.'
-                        : '';
-                if (hint) console.warn(`💡 [Axios] user-basic${hint}`);
-            }
+            // if (fullUrl.includes('/users/user-basic')) {
+            //     const hint = statusCode === 401
+            //         ? ' Verifique se está logado e se o cookie "token" está sendo enviado (withCredentials).'
+            //         : !error.response
+            //             ? ' API pode estar offline ou CORS bloqueando. Confira se a API em localhost:3333 está rodando.'
+            //             : '';
+            //     if (hint) console.warn(`💡 [Axios] user-basic${hint}`);
+            // }
         }
 
         // Verifica se é erro de conexão (network error) - mas não se for timeout (já foi tratado acima)
@@ -179,24 +179,23 @@ api.interceptors.response.use(
                 error.message.includes('net::ERR_NAME_NOT_RESOLVED');
 
             if (isNameNotResolved) {
-                console.error('❌ [Axios] Erro de DNS - hostname não encontrado:', {
-                    baseURL: error.config?.baseURL,
-                    url: error.config?.url,
-                    message: 'O domínio da API não está resolvendo. Verifique se a URL está correta.',
-                });
+                // console.error('❌ [Axios] Erro de DNS - hostname não encontrado:', {
+                //     baseURL: error.config?.baseURL,
+                //     url: error.config?.url,
+                //     message: 'O domínio da API não está resolvendo. Verifique se a URL está correta.',
+                // });
 
-                // Sugere usar a API de produção se estiver tentando api-pre
-                if (error.config?.baseURL?.includes('api-pre')) {
-                    console.warn('⚠️ [Axios] Tentando usar api-pre que não existe. Use api-prd.estacaoterapia.com.br');
-                }
+                // if (error.config?.baseURL?.includes('api-pre')) {
+                //     console.warn('⚠️ [Axios] Tentando usar api-pre que não existe. Use api-prd.estacaoterapia.com.br');
+                // }
             } else if (!isTimeout) {
                 // Só loga erro de conexão se não for timeout
-                console.error('❌ [Axios] Erro de conexão - API não está acessível:', {
-                    baseURL: error.config?.baseURL,
-                    url: error.config?.url,
-                    message: error.message,
-                    code: error.code,
-                });
+                // console.error('❌ [Axios] Erro de conexão - API não está acessível:', {
+                //     baseURL: error.config?.baseURL,
+                //     url: error.config?.url,
+                //     message: error.message,
+                //     code: error.code,
+                // });
             }
 
             // Cria erro mais descritivo para erros de conexão
@@ -220,13 +219,13 @@ api.interceptors.response.use(
 
             if (isHtml && typeof error.response.data === 'string') {
                 // Se a resposta for HTML, cria um erro mais descritivo
-                console.error('API retornou HTML em vez de JSON:', {
-                    status: error.response.status,
-                    statusText: error.response.statusText,
-                    url: error.config?.url,
-                    method: error.config?.method,
-                    responsePreview: (error.response.data as string).substring(0, 200),
-                });
+                // console.error('API retornou HTML em vez de JSON:', {
+                //     status: error.response.status,
+                //     statusText: error.response.statusText,
+                //     url: error.config?.url,
+                //     method: error.config?.method,
+                //     responsePreview: (error.response.data as string).substring(0, 200),
+                // });
 
                 // Tenta extrair uma mensagem de erro mais útil
                 let errorMessage = 'Erro ao processar resposta do servidor.';

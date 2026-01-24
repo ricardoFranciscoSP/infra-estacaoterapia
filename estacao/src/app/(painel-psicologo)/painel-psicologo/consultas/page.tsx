@@ -4,13 +4,23 @@ import { motion } from "framer-motion";
 import SidebarPsicologo from "../SidebarPsicologo";
 import { montarConsultasParaCard } from "@/utils/consultasUtils";
 import { useObterProximasConsultas, useObterHistoricoConsultas, useObterProximaConsultaPsicologo } from "@/hooks/psicologos/consultas.hook";
-import { FiFilter, FiCheckCircle, FiXCircle, FiSearch } from "react-icons/fi";
+import { FiSearch } from "react-icons/fi";
 import ConsultaModal from "@/components/ConsultaModal";
 import ModalCancelarSessao from "@/components/ModalCancelarSessao";
 import ModalCancelarSessaoDentroPrazo from "@/components/ModalCancelarSessaoDentroPrazo";
 import { useConsultaById } from "@/hooks/consulta";
 import { obterPrimeiroUltimoNome } from "@/utils/nomeUtils";
 import { normalizarStatusExibicao, getStatusTagInfo } from "@/utils/statusConsulta.util";
+
+// Status possíveis para filtro (adicione aqui se houver novos)
+const STATUS_TAGS = [
+  { key: "todos", label: "Todos" },
+  { key: "efetuada", label: "Efetuada" },
+  { key: "cancelada", label: "Cancelada" },
+  { key: "reagendada", label: "Reagendada" },
+  { key: "concluida", label: "Concluída" },
+  // Adicione outros status normalizados se necessário
+];
 import { isCancelamentoDentroPrazo } from "@/utils/cancelamentoUtils";
 import { isConsultaDentro60MinutosComScheduledAt } from "@/utils/consultaTempoUtils";
 import ConsultaAtualPsicologo from "@/components/ConsultaAtualPsicologo";
@@ -127,7 +137,7 @@ function getNomePacienteSeguro(paciente: string | undefined | null): string {
 export default function ConsultasPage() {
   const [page, setPage] = useState(1);
   const [busca, setBusca] = useState("");
-  const [filtro, setFiltro] = useState<"todos" | "efetuada" | "cancelada">("todos");
+  const [filtro, setFiltro] = useState<string>("todos");
   const [dataInicial, setDataInicial] = useState("");
   const [dataFinal, setDataFinal] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
@@ -394,14 +404,14 @@ export default function ConsultasPage() {
 
   return (
     <div className="min-h-screen font-fira-sans bg-[#F6F7FB]">
-      <div className="max-w-[1200px] mx-auto w-full flex">
+      <div className="w-full max-w-full lg:max-w-[1600px] mx-auto flex">
         {/* Sidebar - coluna esquerda */}
         <div className="hidden md:flex">
           <SidebarPsicologo />
         </div>
         {/* Conteúdo principal - coluna direita */}
-        <main className="flex-1 py-4 sm:py-8 px-4 sm:px-6 font-fira-sans w-full">
-          <div className="max-w-[1000px] mx-auto">
+        <main className="flex-1 py-4 sm:py-8 px-4 sm:px-6 lg:px-8 font-fira-sans w-full">
+          <div className="w-full max-w-full lg:max-w-[1400px] mx-auto">
             {/* Consulta atual - aparece acima de "Consultas programadas" durante os 60 minutos */}
             {consultaAtualFromHook && isConsultaDentro60MinutosComScheduledAt(
               'ScheduledAt' in consultaAtualFromHook ? (consultaAtualFromHook as { ScheduledAt?: string }).ScheduledAt : undefined,
@@ -409,97 +419,92 @@ export default function ConsultasPage() {
               consultaAtualFromHook.Time
             ) && (
               <section className="mb-6 sm:mb-8">
-                <h2 className="text-lg font-semibold mb-4 font-fira-sans">Consulta atual</h2>
+                <h2 className="text-base sm:text-lg font-semibold mb-4 font-fira-sans">Consulta atual</h2>
                 <ConsultaAtualPsicologo consulta={consultaAtualFromHook} hidePerfil />
               </section>
             )}
             
             {/* Lista de hoje */}
             <section className="mb-6 sm:mb-8">
-              <h2 className="text-lg font-semibold mb-4 font-fira-sans">Consultas programadas</h2>
+              <h2 className="text-base sm:text-lg font-semibold mb-4 font-fira-sans">Consultas programadas</h2>
               {proximaConsulta ? (
                 <motion.div
-                  className="bg-white shadow rounded-xl p-4 flex flex-col font-fira-sans"
+                  className="bg-white shadow-md rounded-xl p-4 sm:p-5 flex flex-col font-fira-sans hover:shadow-lg transition-shadow"
                   whileHover={{ scale: 1.01 }}
                 >
-                  <div className="flex items-center gap-3 mb-4">
-                    <div>
-                      <p className="font-medium text-gray-900 font-fira-sans">
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-3">
+                    <div className="flex-1">
+                      <p className="font-medium text-gray-900 font-fira-sans text-base mb-1">
                         {obterPrimeiroUltimoNome(getNomePacienteSeguro(proximaConsulta.Paciente?.Nome)) || 'Paciente'}
                       </p>
-                      <p className="text-sm text-gray-500 font-fira-sans">
+                      <p className="text-sm text-gray-500 font-fira-sans mb-1">
                         {proximaConsulta.Date ? formatDate(proximaConsulta.Date) : ''} às {formatTime(proximaConsulta.Time || '')}
                       </p>
                       <p className="text-xs text-gray-400 font-fira-sans">Duração: 50 min</p>
                     </div>
+                    <div className="flex items-center gap-2 sm:flex-col sm:items-end">
+                      {(() => {
+                        const statusInfo = getStatusTagInfo(proximaConsulta.Status);
+                        return (
+                          <span className={`text-xs font-semibold px-3 py-1.5 rounded-full font-fira-sans ${statusInfo.bg} ${statusInfo.text}`}>
+                            {statusInfo.texto}
+                          </span>
+                        );
+                      })()}
+                    </div>
                   </div>
                   <div className="border-t border-gray-100 pt-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                    {(() => {
-                      const statusInfo = getStatusTagInfo(proximaConsulta.Status);
-                      return (
-                        <span className={`text-xs font-semibold px-2 py-1 rounded font-fira-sans ${statusInfo.bg} ${statusInfo.text}`}>
-                          {statusInfo.texto}
-                        </span>
-                      );
-                    })()}
                     <button
                       onClick={() => handleVerDetalhes(proximaConsulta.Id)}
-                      className="text-xs text-[#6D75C0] underline font-semibold font-fira-sans hover:text-[#4B51A6] transition cursor-pointer text-right sm:text-left"
+                      className="text-sm text-[#6D75C0] underline font-semibold font-fira-sans hover:text-[#4B51A6] transition cursor-pointer self-start sm:self-auto"
                     >
                       Ver detalhes
                     </button>
                   </div>
                 </motion.div>
               ) : (
-                <div className="bg-white shadow rounded-xl p-4 text-center">
+                <div className="bg-white shadow-md rounded-xl p-4 sm:p-5 text-center">
                   <p className="text-sm text-gray-500 font-fira-sans">Nenhuma consulta agendada para hoje.</p>
                 </div>
               )}
             </section>
 
             {/* Filtros e busca */}
-            <div className="w-full flex flex-col gap-3 mb-6">
-              <div className="flex gap-2 w-full flex-wrap">
-                <button
-                  className={`flex items-center gap-1 px-3 py-1.5 rounded font-fira-sans text-xs transition ${
-                    filtro === "todos"
-                      ? "bg-[#6D75C0] text-white"
-                      : "bg-white text-[#6D75C0] border border-[#6D75C0] hover:bg-[#F0F1FA]"
-                  }`}
-                  onClick={() => { setFiltro("todos"); setPage(1); }}
-                  disabled={isLoading}
-                >
-                  <FiFilter size={14} />
-                  Todos
-                </button>
-                <button
-                  className={`flex items-center gap-1 px-3 py-1.5 rounded font-fira-sans text-xs transition ${
-                    filtro === "efetuada"
-                      ? "bg-[#6D75C0] text-white"
-                      : "bg-white text-[#6D75C0] border border-[#6D75C0] hover:bg-[#F0F1FA]"
-                  }`}
-                  onClick={() => { setFiltro("efetuada"); setPage(1); }}
-                  disabled={isLoading}
-                >
-                  <FiCheckCircle size={14} />
-                  Efetuada
-                </button>
-                <button
-                  className={`flex items-center gap-1 px-3 py-1.5 rounded font-fira-sans text-xs transition ${
-                    filtro === "cancelada"
-                      ? "bg-[#6D75C0] text-white"
-                      : "bg-white text-[#6D75C0] border border-[#6D75C0] hover:bg-[#F0F1FA]"
-                  }`}
-                  onClick={() => { setFiltro("cancelada"); setPage(1); }}
-                  disabled={isLoading}
-                >
-                  <FiXCircle size={14} />
-                  Cancelada
-                </button>
+            <div className="w-full flex flex-col gap-4 mb-6">
+              {/* Título e contador */}
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-2">
+                <h2 className="text-sm sm:text-lg font-semibold font-fira-sans text-gray-900">
+                  Consultas concluídas, reagendadas e canceladas
+                </h2>
+                {!isLoading && (
+                  <span className="inline-flex items-center px-3 py-1.5 rounded-full bg-[#E6E9FF] text-[#6D75C0] text-xs sm:text-sm font-semibold font-fira-sans whitespace-nowrap">
+                    {consultasMapeadas.length} {consultasMapeadas.length === 1 ? 'consulta' : 'consultas'}
+                  </span>
+                )}
               </div>
-              <div className="flex flex-col sm:flex-row gap-2 w-full items-stretch sm:items-center">
-                <div className="relative w-full sm:w-64">
-                  <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400">
+              
+              {/* Filtros de status como tags responsivas */}
+              <div className="flex flex-wrap gap-2 w-full min-h-[44px] py-1">
+                {STATUS_TAGS && STATUS_TAGS.length > 0 && STATUS_TAGS.map((tag) => (
+                  <button
+                    key={tag.key}
+                    type="button"
+                    className={`flex-shrink-0 px-4 py-2 rounded-full font-fira-sans text-sm font-medium transition-all border-2 focus:outline-none focus:ring-2 focus:ring-[#6D75C0] focus:ring-offset-2 whitespace-nowrap ${
+                      filtro === tag.key
+                        ? "bg-[#6D75C0] text-white border-[#6D75C0] shadow-md scale-105"
+                        : "bg-white text-[#6D75C0] border-[#6D75C0] hover:bg-[#F0F1FA] hover:border-[#4B51A6]"
+                    }`}
+                    onClick={() => { setFiltro(tag.key); setPage(1); }}
+                    disabled={isLoading}
+                    aria-label={`Filtrar por ${tag.label}`}
+                  >
+                    {tag.label}
+                  </button>
+                ))}
+              </div>
+              <div className="flex flex-col lg:flex-row gap-3 w-full items-stretch lg:items-center">
+                <div className="relative w-full lg:w-64">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10">
                     <FiSearch size={18} />
                   </span>
                   <input
@@ -507,25 +512,25 @@ export default function ConsultasPage() {
                     placeholder="Buscar paciente..."
                     value={busca}
                     onChange={e => { setBusca(e.target.value); setPage(1); }}
-                    className="pl-8 border border-gray-300 rounded px-3 py-1.5 text-sm font-fira-sans w-full focus:outline-[#6D75C0] transition"
+                    className="pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg text-sm font-fira-sans w-full focus:outline-none focus:ring-2 focus:ring-[#6D75C0] focus:border-transparent transition"
                     disabled={isLoading}
                   />
                 </div>
-                <div className="flex gap-2 items-center w-full sm:w-auto">
+                <div className="flex gap-2 items-center w-full lg:w-auto">
                   <input
                     type="date"
                     value={dataInicial}
                     onChange={e => { setDataInicial(e.target.value); setPage(1); }}
-                    className="border border-gray-300 rounded px-3 py-1.5 text-sm font-fira-sans flex-1 sm:w-40 focus:outline-[#6D75C0] transition"
+                    className="border border-gray-300 rounded-lg px-3 py-2.5 text-sm font-fira-sans flex-1 min-w-0 lg:w-40 focus:outline-none focus:ring-2 focus:ring-[#6D75C0] focus:border-transparent transition"
                     placeholder="Data inicial"
                     disabled={isLoading}
                   />
-                  <span className="text-xs text-gray-500 whitespace-nowrap">até</span>
+                  <span className="text-xs text-gray-500 whitespace-nowrap font-fira-sans">até</span>
                   <input
                     type="date"
                     value={dataFinal}
                     onChange={e => { setDataFinal(e.target.value); setPage(1); }}
-                    className="border border-gray-300 rounded px-3 py-1.5 text-sm font-fira-sans flex-1 sm:w-40 focus:outline-[#6D75C0] transition"
+                    className="border border-gray-300 rounded-lg px-3 py-2.5 text-sm font-fira-sans flex-1 min-w-0 lg:w-40 focus:outline-none focus:ring-2 focus:ring-[#6D75C0] focus:border-transparent transition"
                     placeholder="Data final"
                     disabled={isLoading}
                   />
@@ -535,7 +540,6 @@ export default function ConsultasPage() {
 
             {/* Histórico */}
             <section className="mb-24 sm:mb-8">
-              <h2 className="text-base sm:text-lg font-semibold mb-4 font-fira-sans">Histórico de Consultas</h2>
               {isLoading && (
                 <div className="text-center py-8">
                   <p className="text-sm text-gray-500 font-fira-sans">Carregando consultas...</p>
@@ -548,45 +552,41 @@ export default function ConsultasPage() {
               )}
               {!isLoading && !isError && (
                 <>
-                  <ul className="space-y-3">
+                  <ul className="space-y-4 w-full">
                     {consultasMapeadas.length === 0 && (
                       <li className="text-sm text-gray-500 font-fira-sans">Nenhuma consulta encontrada.</li>
                     )}
                     {consultasMapeadas.map((c) => (
                       <motion.li
                         key={c.id}
-                        className="bg-white shadow rounded-xl p-4 flex flex-col font-fira-sans"
+                        className="bg-white shadow-md rounded-xl p-4 sm:p-5 flex flex-col font-fira-sans hover:shadow-lg transition-shadow w-full"
                         whileHover={{ scale: 1.01 }}
                       >
-                        <div className="flex items-center gap-3 mb-4">
-                          <div>
-                            <p className="font-medium text-gray-900 font-fira-sans">{c.paciente}</p>
-                            <p className="text-sm text-gray-500 font-fira-sans">
+                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-3">
+                          <div className="flex-1">
+                            <p className="font-medium text-gray-900 font-fira-sans text-base mb-1">{c.paciente}</p>
+                            <p className="text-sm text-gray-500 font-fira-sans mb-1">
                               {c.data} às {c.hora}
                             </p>
                             <p className="text-xs text-gray-400 font-fira-sans">Duração: {c.duracao}</p>
                           </div>
+                          <div className="flex items-center gap-2 sm:flex-col sm:items-end">
+                            {(() => {
+                              const statusInfo = getStatusTagInfo(c.status);
+                              return (
+                                <span
+                                  className={`text-xs font-semibold px-3 py-1.5 rounded-full font-fira-sans ${statusInfo.bg} ${statusInfo.text}`}
+                                >
+                                  {statusInfo.texto}
+                                </span>
+                              );
+                            })()}
+                          </div>
                         </div>
                         <div className="border-t border-gray-100 pt-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                          {(() => {
-                            const statusInfo = getStatusTagInfo(c.status);
-                            const isEfetuada = c.status === "Efetuada" || c.status?.toLowerCase().includes("realizada") || c.status?.toLowerCase().includes("concluida");
-                            return (
-                              <span
-                                className={`text-xs font-semibold px-2 py-1 rounded font-fira-sans ${
-                                  isEfetuada
-                                    ? "bg-green-100 text-green-600"
-                                    : "bg-red-100 text-red-600"
-                                }`}
-                              >
-                                {statusInfo.texto}
-                              </span>
-                            );
-                          })()}
-                          {/* Link ver detalhes */}
                           <button
                             onClick={() => handleVerDetalhes(c.id)}
-                            className="text-xs text-[#6D75C0] underline font-semibold font-fira-sans hover:text-[#4B51A6] transition cursor-pointer text-right sm:text-left"
+                            className="text-sm text-[#6D75C0] underline font-semibold font-fira-sans hover:text-[#4B51A6] transition cursor-pointer self-start sm:self-auto"
                           >
                             Ver detalhes
                           </button>

@@ -122,13 +122,13 @@ const ProfileAvatar: React.FC<{
 };
 
 const SubmitButton: React.FC<{ isSaving: boolean; isEdited: boolean; isMobile?: boolean }> = ({ isSaving, isEdited, isMobile }) => {
-  const mobileClasses = "w-[280px] h-12 mx-auto";
+  const mobileClasses = "w-full sm:w-[280px] h-12 mx-auto";
   const desktopClasses = "w-full h-[40px]";
   
   return (
     <button
       type="submit"
-      className={`rounded-[6px] px-3 flex items-center justify-center gap-2 font-medium transition-colors border whitespace-nowrap
+      className={`rounded-[6px] px-4 sm:px-3 flex items-center justify-center gap-2 font-medium transition-colors border whitespace-nowrap text-sm sm:text-base
         ${isMobile ? mobileClasses : desktopClasses}
         ${isSaving ? 'opacity-60 cursor-not-allowed' : ''}
         ${isEdited ? 'bg-[#6D75C0] text-white border-[#6D75C0] hover:bg-[#5a63b0] cursor-pointer' : 'bg-[#F1F2F4] text-[#23253a] border-[#E3E6E8] cursor-not-allowed'}
@@ -236,12 +236,12 @@ export default function DadosPessoaisPage() {
         transition={{ duration: 0.4, ease: "easeOut" }}
         className="flex flex-col min-h-screen bg-[#fff]-50 relative"
       >
-        <div className="flex-1 flex w-full max-w-[1440px] mx-auto px-4 md:px-8 gap-8">
+        <div className="flex-1 flex w-full max-w-[1440px] mx-auto px-4 sm:px-6 md:px-8 gap-4 sm:gap-8">
             <div className="hidden md:block w-1/4">
               <PainelSidebar active="/painel/minha-conta/dados-pessoais" />
             </div>
             
-            <div className="flex-1 bg-[#FCFBF6] p-6 min-h-[904px] gap-6 flex flex-col">
+            <div className="flex-1 bg-[#FCFBF6] p-4 sm:p-6 min-h-[904px] gap-6 flex flex-col">
               <input
                 id="avatar-upload"
                 ref={fileInputRef}
@@ -310,13 +310,13 @@ export default function DadosPessoaisPage() {
               </div>
 
                 <FormProvider {...methods}>
-                  <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
+                  <form className="space-y-6 sm:space-y-6" onSubmit={handleSubmit(onSubmit)}>
 
                   {/* CAMPOS REUTILIZÁVEIS PARA MOBILE E DESKTOP */}
-                  <div className="space-y-8">
+                  <div className="space-y-5 sm:space-y-8">
                     <div>
-                      <h2 className="font-semibold text-lg mb-2">Dados pessoais</h2>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <h2 className="font-semibold text-base sm:text-lg mb-3 sm:mb-2 text-[#49525A]">Dados pessoais</h2>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                         <FormInput name="nome" label="Nome" placeholder="Nome" className="w-full" />
                         <FormInput name="email" label="E-mail" placeholder="E-mail" type="email" className="w-full" disabled />
                         <FormInput name="cpf" label="CPF" placeholder="CPF" type="text" className="w-full" mask={maskCpf} disabled />
@@ -325,8 +325,8 @@ export default function DadosPessoaisPage() {
                       </div>
                     </div>
                     <div>
-                      <h2 className="font-semibold text-lg mb-2">Endereço</h2>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <h2 className="font-semibold text-base sm:text-lg mb-3 sm:mb-2 text-[#49525A]">Endereço</h2>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                         <FormInput name="cep" label="CEP" placeholder="CEP" mask={maskCep} onBlur={handleCepBlur} onChange={handleCepChange} className="w-full" />
                         <FormInput name="rua" label="Endereço" placeholder="Endereço" className="w-full" />
                         <FormInput name="numero" label="Número" placeholder="Número" className="w-full" />
@@ -339,11 +339,11 @@ export default function DadosPessoaisPage() {
                   </div>
 
                   {/* SUBMIT BUTTONS */}
-                  <div className="block md:hidden">
+                  <div className="block md:hidden mt-6">
                     <SubmitButton isSaving={isSaving} isEdited={isEdited} isMobile />
                     <div className="mb-12" />
                   </div>
-                  <div className="hidden md:block w-full">
+                  <div className="hidden md:block w-full mt-4">
                     <SubmitButton isSaving={isSaving} isEdited={isEdited} />
                   </div>
                   </form>

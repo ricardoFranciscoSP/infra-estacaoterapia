@@ -137,8 +137,8 @@ export function FormInput({
   const displayError = localError || fieldState.error?.message;
 
   return (
-    <div className="relative flex flex-col gap-1 w-full h-[40px] md:h-[50px] mb-2 sm:mb-4 fira-sans">
-      {label && <label className="font-medium text-sm mb-1">{label}</label>}
+    <div className="relative flex flex-col gap-1.5 sm:gap-1 w-full min-h-[56px] sm:min-h-[50px] mb-3 sm:mb-4 fira-sans">
+      {label && <label className="font-medium text-sm sm:text-sm mb-0.5 sm:mb-1 text-[#49525A]">{label}</label>}
       {as === 'select' ? (
         <select
           value={field.value ?? ''}
