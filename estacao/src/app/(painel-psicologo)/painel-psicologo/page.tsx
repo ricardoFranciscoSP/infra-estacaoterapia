@@ -67,7 +67,7 @@ function getNomePacienteSeguro(paciente: string | undefined | null): string {
   }
 
   export default function PainelPsicologoPage() {
-    const { fetchConsulta } = useConsultaEmAndamento('psicologo');
+    const { consulta: consultaEmAndamento, fetchConsulta } = useConsultaEmAndamento('psicologo');
     const [loading, setLoading] = useState(true);
     const [currentDateTime, setCurrentDateTime] = useState("");
     const [todayLabel, setTodayLabel] = useState("");
@@ -593,6 +593,29 @@ function getNomePacienteSeguro(paciente: string | undefined | null): string {
 
               {/* ALERTA DE PERFIL INCOMPLETO */}
               <AlertCompletarPerfil show={isPerfilIncompleto} />
+
+              {/* Consulta em andamento - aparece antes da próxima consulta */}
+              {consultaEmAndamento && (() => {
+                const status = consultaEmAndamento.Status || (consultaEmAndamento as any).status;
+                const isEmAndamento = status === 'EmAndamento' || status === 'Andamento' || status === 'Em Andamento';
+                
+                if (isEmAndamento) {
+                  // Normaliza a consulta para o formato esperado pelo componente
+                  const consultaNormalizada = normalizeConsulta(consultaEmAndamento as unknown as GenericObject);
+                  return (
+                    <section className="mb-6">
+                      <h3 className="fira-sans font-semibold text-xl sm:text-2xl leading-tight tracking-normal text-[#49525A] mb-4">
+                        Consulta em andamento
+                      </h3>
+                      <ConsultaAtualPsicologo 
+                        consulta={consultaEmAndamento as unknown as ProximasConsultaType} 
+                        hidePerfil 
+                      />
+                    </section>
+                  );
+                }
+                return null;
+              })()}
 
               {/* Container flex para card de consulta e avisos lado a lado */}
               <div className="flex flex-col lg:flex-row gap-6 items-stretch">

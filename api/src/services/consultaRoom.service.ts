@@ -430,36 +430,24 @@ export class ConsultaRoomService {
                     console.error(`❌ [ConsultaRoomService] Erro ao limpar tokens:`, err?.message || String(tokenError));
                     
                     // Fallback: atualiza manualmente se o serviço falhar
-                    type ConsultaStatusType = 'CanceladaForcaMaior';
-                    const novoStatus: ConsultaStatusType = 'CanceladaForcaMaior';
+                    const novoStatus = 'CanceladaForcaMaior' as const;
 
                     await prisma.consulta.update({
                         where: { Id: consultationId },
                         data: { Status: novoStatus },
                     });
-
-                        await prisma.consulta.update({
-                            where: { Id: consultationId },
-                            data: { Status: $Enums.AgendaStatus.CanceladaForcaMaior },
-                        });
                     console.log(`✅ [ConsultaRoomService] Sala ${consultationId} fechada no banco (fallback) - status: ${novoStatus}`);
                 }
                 return;
             } else {
                 // Caso cancelled ou outros
-                type ConsultaStatusType = 'CanceladaForcaMaior';
-                const novoStatus: ConsultaStatusType = 'CanceladaForcaMaior';
+                const novoStatus = 'CanceladaForcaMaior' as const;
 
                 // Atualiza apenas a Consulta (trigger sincroniza Agenda e ReservaSessao)
                 await prisma.consulta.update({
                     where: { Id: consultationId },
                     data: { Status: novoStatus },
                 });
-
-                    await prisma.consulta.update({
-                        where: { Id: consultationId },
-                        data: { Status: $Enums.AgendaStatus.CanceladaForcaMaior },
-                    });
                 console.log(`✅ [ConsultaRoomService] Sala ${consultationId} fechada no banco - status: ${novoStatus}`);
             }
         } catch (error) {

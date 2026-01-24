@@ -11,15 +11,26 @@ export class FinanceiroController {
     ) { }
 
     async calcularPagamento(req: Request, res: Response): Promise<void> {
-        console.log("🔹 Iniciando cálculo de pagamento...");
-        const psicologoId = this.authService.getLoggedUserId(req);
-        if (!psicologoId) {
-            res.status(401).json({ error: "Usuário não autenticado" });
-            return;
-        }
+        try {
+            console.log("🔹 Iniciando cálculo de pagamento...");
+            const psicologoId = this.authService.getLoggedUserId(req);
+            if (!psicologoId) {
+                res.status(401).json({ error: "Usuário não autenticado" });
+                return;
+            }
 
-        const resultado = await this.financeiroService.calcularPagamento(psicologoId);
-        res.json({ totalPagamento: resultado.totalPagamento || 0 });
+            const resultado = await this.financeiroService.calcularPagamento(psicologoId);
+            res.json({ totalPagamento: resultado.totalPagamento || 0 });
+        } catch (error: unknown) {
+            console.error('[calcularPagamento] Erro ao calcular pagamento:', error);
+            const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+            const errorStack = error instanceof Error ? error.stack : undefined;
+            console.error('[calcularPagamento] Stack trace:', errorStack);
+            res.status(500).json({ 
+                error: 'Erro ao calcular pagamento',
+                message: errorMessage
+            });
+        }
     }
 
     async gerarRelatorioFinanceiro(req: Request, res: Response): Promise<void> {
@@ -44,19 +55,51 @@ export class FinanceiroController {
     }
 
     async getHistoricoSessoes(req: Request, res: Response): Promise<void> {
-        const psicologoId = this.authService.getLoggedUserId(req);
-        if (!psicologoId) {
-            res.status(401).json({ error: "Usuário não autenticado" });
-            return;
+        try {
+            const psicologoId = this.authService.getLoggedUserId(req);
+            if (!psicologoId) {
+                res.status(401).json({ error: "Usuário não autenticado" });
+                return;
+            }
+
+            const mes = normalizeQueryInt(req.query.mes);
+            const ano = normalizeQueryInt(req.query.ano);
+            const page = normalizeQueryInt(req.query.page) ?? 1;
+            const pageSize = normalizeQueryInt(req.query.pageSize) ?? 10;
+
+            console.log('[getHistoricoSessoes] Buscando histórico:', { psicologoId, mes, ano, page, pageSize });
+
+            const historico = await (this.financeiroService as any).getHistoricoSessoes(psicologoId, { mes, ano, page, pageSize });
+            
+            console.log('[getHistoricoSessoes] Histórico encontrado:', { 
+                count: historico?.data?.length || 0, 
+                pagination: historico?.pagination 
+            });
+
+            // Garante que sempre retorna no formato esperado
+            const response = {
+                data: historico?.data || [],
+                pagination: historico?.pagination || {
+                    page,
+                    pageSize,
+                    total: 0,
+                    totalPages: 0
+                }
+            };
+
+            res.json(response);
+        } catch (error: unknown) {
+            console.error('[getHistoricoSessoes] Erro ao buscar histórico:', error);
+            const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+            const errorStack = error instanceof Error ? error.stack : undefined;
+            console.error('[getHistoricoSessoes] Stack trace:', errorStack);
+            res.status(500).json({ 
+                error: 'Erro ao buscar histórico de sessões',
+                message: errorMessage,
+                data: [],
+                pagination: null
+            });
         }
-
-        const mes = normalizeQueryInt(req.query.mes);
-        const ano = normalizeQueryInt(req.query.ano);
-        const page = normalizeQueryInt(req.query.page) ?? 1;
-        const pageSize = normalizeQueryInt(req.query.pageSize) ?? 10;
-
-        const historico = await (this.financeiroService as any).getHistoricoSessoes(psicologoId, { mes, ano, page, pageSize });
-        res.json(historico);
     }
 
     async getGanhosMensais(req: Request, res: Response): Promise<void> {

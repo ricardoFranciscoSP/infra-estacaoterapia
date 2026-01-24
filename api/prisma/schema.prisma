@@ -563,6 +563,12 @@ model Commission {
   UpdatedAt   DateTime            @updatedAt
   Consulta    Consulta?           @relation(fields: [ConsultaId], references: [Id])
   Psicologo   User                @relation("UserCommission", fields: [PsicologoId], references: [Id], onDelete: Cascade)
+
+  @@index([PsicologoId, Status])
+  @@index([ConsultaId])
+  @@index([Periodo])
+  @@index([Status])
+  @@index([PsicologoId, Periodo])
 }
 
 /// Modelo de permissões por ação, módulo e role
@@ -1591,6 +1597,9 @@ enum ConsultaStatus {
   CANCELAMENTO_SISTEMICO_PSICOLOGO
   /// Cancelamento sistêmico por inatividade do paciente
   CANCELAMENTO_SISTEMICO_PACIENTE
+  /// Ambos Não Compareceram - Paciente e psicólogo não compareceram (cancelamento por inatividade)
+  /// Origem: Sistêmico | Saldo: Não devolve | Faturada: Não
+  AmbosNaoCompareceram
   /// Fora da plataforma - Consulta realizada fora da plataforma
   /// Origem: Admin/Gestão | Saldo: Não devolve | Faturada: Sim
   ForaDaPlataforma

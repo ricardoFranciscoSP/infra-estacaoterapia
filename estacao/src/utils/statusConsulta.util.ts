@@ -86,6 +86,8 @@ export const MAPEAMENTO_STATUS_EXIBICAO: Record<string, string> = {
     "Paciente Não Compareceu": StatusConsulta.PacienteNaoCompareceu,
     "PsicologoNaoCompareceu": StatusConsulta.PsicologoNaoCompareceu,
     "Psicólogo Não Compareceu": StatusConsulta.PsicologoNaoCompareceu,
+    "AmbosNaoCompareceram": "Cancelado por inatividade",
+    "Ambos Não Compareceram": "Cancelado por inatividade",
 
     // Status do enum ConsultaStatus - Outros (com espaços e sem espaços)
     "PsicologoDescredenciado": StatusConsulta.PsicologoDescredenciado,
@@ -246,8 +248,10 @@ export function getStatusTagMap(): Record<string, { texto: string; bg: string; t
         'Paciente Não Compareceu': { texto: 'Paciente não compareceu', bg: 'bg-[#FFE5E5]', text: 'text-[#C53030]' },
         'PsicologoNaoCompareceu': { texto: 'Psicólogo não compareceu', bg: 'bg-[#FFE5E5]', text: 'text-[#C53030]' },
         'Psicólogo Não Compareceu': { texto: 'Psicólogo não compareceu', bg: 'bg-[#FFE5E5]', text: 'text-[#C53030]' },
-        'Cancelled_no_show': { texto: 'Não compareceu', bg: 'bg-[#FFE5E5]', text: 'text-[#C53030]' },
-        'cancelled_no_show': { texto: 'Não compareceu', bg: 'bg-[#FFE5E5]', text: 'text-[#C53030]' },
+        'AmbosNaoCompareceram': { texto: 'Cancelado por inatividade', bg: 'bg-[#FFE5E5]', text: 'text-[#C53030]' },
+        'Ambos Não Compareceram': { texto: 'Cancelado por inatividade', bg: 'bg-[#FFE5E5]', text: 'text-[#C53030]' },
+        'Cancelled_no_show': { texto: 'Cancelado por inatividade', bg: 'bg-[#FFE5E5]', text: 'text-[#C53030]' },
+        'cancelled_no_show': { texto: 'Cancelado por inatividade', bg: 'bg-[#FFE5E5]', text: 'text-[#C53030]' },
         'Ausente': { texto: 'Não compareceu', bg: 'bg-[#FFE5E5]', text: 'text-[#C53030]' },
 
         // Canceladas no prazo

@@ -130,6 +130,18 @@ function converterConsultaRealizadaParaApi(raw: RawConsulta | null | undefined):
   if (!time) time = raw.Time ?? raw.time ?? '';
   if (!status) status = raw.Status ?? raw.status ?? '';
 
+  // 🎯 Prioriza status de ReservaSessao se indicar conclusão ou cancelamento
+  const statusReservaSessao = raw.ReservaSessao?.Status ?? raw.reservaSessao?.Status ?? raw.reservaSessao?.status ?? '';
+  if (statusReservaSessao) {
+    const statusReservaLower = String(statusReservaSessao).toLowerCase();
+    // Se ReservaSessao indica conclusão ou cancelamento, usa esse status
+    if (statusReservaLower.includes('concluido') || statusReservaLower.includes('concluído') || 
+        statusReservaLower.includes('realizada') || statusReservaLower.includes('completed') ||
+        statusReservaLower.includes('cancelado') || statusReservaLower.includes('cancelada')) {
+      status = statusReservaSessao;
+    }
+  }
+
   const cancelamentoStatus = getCancelamentoStatus(raw);
   const cancelamentoStatusLower = cancelamentoStatus.toLowerCase();
   if (cancelamentoStatusLower.includes('deferido') || cancelamentoStatusLower.includes('cancelado')) {
@@ -242,7 +254,16 @@ function extrairConsultasNaoReservadas(payload: HistoricoConsultasPayload | Hist
 
   console.log('[extrairConsultasNaoReservadas] Total de consultas encontradas antes do filtro:', consultas.length);
 
-  const statusReservados = new Set(["reservado", "reservada", "reserved"]);
+  // Status que devem ser EXCLUÍDOS da listagem:
+  // - Reservado, Agendada, EmAndamento (status ativos)
+  // - Disponivel, Bloqueado (apenas para Agenda, não para Consulta)
+  const statusExcluidos = new Set([
+    "reservado", "reservada", "reserved",
+    "agendada", "agendado", 
+    "emandamento", "em andamento", "andamento",
+    "disponivel", "disponível",
+    "bloqueado", "indisponivel", "indisponível"
+  ]);
   
   // Para consultas concluídas, podemos ser mais permissivos com o status
   // Se não tiver status claro, ainda pode ser uma consulta concluída
@@ -270,8 +291,9 @@ function extrairConsultasNaoReservadas(payload: HistoricoConsultasPayload | Hist
     }
 
     const statusNormalizado = normalizarStatusExibicao(statusBruto).trim().toLowerCase();
-    // Exclui apenas se for status de reservado, mas aceita outros status (incluindo concluídas, canceladas, etc)
-    return !statusReservados.has(statusNormalizado);
+    // Exclui apenas status ativos (Reservado, Agendada, EmAndamento) e status de Agenda (Disponivel, Bloqueado)
+    // Aceita TODOS os outros status (incluindo concluídas, canceladas, reagendadas, não compareceu, etc)
+    return !statusExcluidos.has(statusNormalizado);
   });
 
   console.log('[extrairConsultasNaoReservadas] Total de consultas após filtro:', consultasFiltradas.length);
@@ -426,11 +448,20 @@ const ConsultasRealizadas: React.FC = () => {
           const statusCancelamento = getCancelamentoStatus(consulta);
           const statusBruto = statusReservaSessao || statusConsulta || statusAgenda || statusCancelamento;
           const statusNorm = normalizarStatusExibicao(statusBruto).toLowerCase();
+          
+          // Verifica também o status bruto (antes da normalização) para capturar casos como AmbosNaoCompareceram
+          const statusBrutoLower = String(statusBruto).toLowerCase();
 
           const ehCancelamento = Boolean(statusCancelamento?.trim());
           const ehConcluida = statusNorm.includes('concluída') || statusNorm.includes('realizada');
           const ehReagendada = statusNorm.includes('reagendada');
-          const ehCancelada = statusNorm.includes('cancelada') || statusNorm.includes('cancelado');
+          // Inclui "cancelado por inatividade" e verifica também status brutos como AmbosNaoCompareceram
+          const ehCancelada = statusNorm.includes('cancelada') || 
+                             statusNorm.includes('cancelado') || 
+                             statusNorm.includes('inatividade') ||
+                             statusBrutoLower.includes('ambosnaocompareceram') ||
+                             statusBrutoLower.includes('cancelled_no_show') ||
+                             statusBrutoLower.includes('cancelamento_sistemico');
 
           if (statusFilter === 'canceladas') {
             return ehCancelada || ehCancelamento;

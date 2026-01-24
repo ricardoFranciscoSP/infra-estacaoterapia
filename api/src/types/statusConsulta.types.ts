@@ -232,7 +232,7 @@ export const MAPEAMENTO_STATUS_ANTIGOS: Record<string, StatusConsulta> = {
     "Cancelado": StatusConsulta.CanceladaPacienteNoPrazo, // Default, será ajustado conforme contexto
     "Cancelled_by_patient": StatusConsulta.CanceladaPacienteNoPrazo, // Será ajustado conforme prazo
     "Cancelled_by_psychologist": StatusConsulta.CanceladaPsicologoNoPrazo, // Será ajustado conforme prazo
-    "Cancelled_no_show": StatusConsulta.PacienteNaoCompareceu,
+    "Cancelled_no_show": StatusConsulta.PacienteNaoCompareceu, // Será mapeado para AmbosNaoCompareceram quando ambos não comparecem
     "Reagendada": StatusConsulta.ReagendadaPacienteNoPrazo, // Será ajustado conforme contexto
     "Ausente": StatusConsulta.PacienteNaoCompareceu,
     "CANCELAMENTO_SISTEMICO_PSICOLOGO": StatusConsulta.CancelamentoSistemicoPsicologo,

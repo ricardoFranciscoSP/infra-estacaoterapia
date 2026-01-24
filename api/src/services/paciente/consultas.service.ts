@@ -137,13 +137,17 @@ export class ConsultasPacienteService {
         pacienteId: string,
         status?: string[]
     ): Promise<ConsultaRealizadaResponse[]> {
-        // Status padrão: Reagendada, Realizada e Canceladas (qualquer motivo)
-        // NÃO inclui: Reservado, EmAndamento, Agendada
+        // Lista TODOS os status exceto: Agendada, Reservado, EmAndamento (status ativos)
+        // Inclui todos os status de: Realizada, Canceladas, Reagendadas, Não Compareceu, etc.
+        // NOTA: Disponivel e Bloqueado são apenas para Agenda, não para Consulta
         const statusFiltro: string[] = status || [
+            // Realizada
+            'Realizada',
+            // Reagendadas
             'ReagendadaPacienteNoPrazo',
             'ReagendadaPsicologoNoPrazo',
             'ReagendadaPsicologoForaDoPrazo',
-            'Realizada',
+            // Canceladas
             'Cancelado',
             'CanceladaPacienteNoPrazo',
             'CanceladaPacienteForaDoPrazo',
@@ -153,9 +157,15 @@ export class ConsultasPacienteService {
             'CanceladaNaoCumprimentoContratualPaciente',
             'CanceladaNaoCumprimentoContratualPsicologo',
             'CanceladoAdministrador',
+            // Não compareceu
             'PacienteNaoCompareceu',
             'PsicologoNaoCompareceu',
-            'PsicologoDescredenciado'
+            'AmbosNaoCompareceram',
+            // Outros
+            'PsicologoDescredenciado',
+            'ForaDaPlataforma',
+            'CANCELAMENTO_SISTEMICO_PSICOLOGO',
+            'CANCELAMENTO_SISTEMICO_PACIENTE'
         ];
 
         const consultas = await prisma.consulta.findMany({

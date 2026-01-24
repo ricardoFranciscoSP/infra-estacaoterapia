@@ -285,14 +285,18 @@ export class ConsultasPacienteController {
         }
 
         try {
-            // Status fixos para consultas realizadas: Reagendada, Realizada e Canceladas (qualquer motivo)
-            // NÃO inclui: Reservado, EmAndamento, Agendada
+            // Lista TODOS os status exceto: Agendada, Reservado, EmAndamento (status ativos)
+            // Inclui todos os status de: Realizada, Canceladas, Reagendadas, Não Compareceu, etc.
+            // NOTA: Disponivel e Bloqueado são apenas para Agenda, não para Consulta
             // Usa ConsultaStatus (não AgendaStatus) pois o campo Status da Consulta é ConsultaStatus
             const statusRealizadas: string[] = [
+                // Realizada
+                'Realizada',
+                // Reagendadas
                 'ReagendadaPacienteNoPrazo',
                 'ReagendadaPsicologoNoPrazo',
                 'ReagendadaPsicologoForaDoPrazo',
-                'Realizada',
+                // Canceladas
                 'Cancelado',
                 'CanceladaPacienteNoPrazo',
                 'CanceladaPacienteForaDoPrazo',
@@ -302,9 +306,15 @@ export class ConsultasPacienteController {
                 'CanceladaNaoCumprimentoContratualPaciente',
                 'CanceladaNaoCumprimentoContratualPsicologo',
                 'CanceladoAdministrador',
+                // Não compareceu
                 'PacienteNaoCompareceu',
                 'PsicologoNaoCompareceu',
-                'PsicologoDescredenciado'
+                'AmbosNaoCompareceram',
+                // Outros
+                'PsicologoDescredenciado',
+                'ForaDaPlataforma',
+                'CANCELAMENTO_SISTEMICO_PSICOLOGO',
+                'CANCELAMENTO_SISTEMICO_PACIENTE'
             ];
 
             const consultas = await this.consultasService.listarConsultasRealizadas(

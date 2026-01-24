@@ -488,20 +488,20 @@ export default function SessaoPage() {
   /* ------------------------------------------------------------------------ */
 
   return (
-    <main className="min-h-screen bg-[#FCFBF6] px-4 py-4">
+    <main className="min-h-screen bg-[#FCFBF6] px-4 sm:px-6 md:px-8 py-4 sm:py-6 md:py-8">
       <div className="max-w-7xl mx-auto">
         <BreadcrumbsVoltar />
 
-        <h2 className="text-lg font-semibold text-gray-800 mb-4">
+        <h2 className="text-base sm:text-lg md:text-xl font-semibold text-gray-800 mb-4 sm:mb-6">
           Algumas dicas importantes para que você tenha uma boa sessão!
         </h2>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-          <div className="lg:col-span-2 order-2 lg:order-1">
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 sm:gap-6 lg:gap-8">
+          <div className="lg:col-span-3 order-2 lg:order-1">
             <Dicas />
           </div>
 
-          <div className="flex flex-col items-center order-1 lg:order-2">
+          <div className="flex flex-col items-center order-1 lg:order-2 lg:col-span-2">
             {permissionError && (
               <div className="mb-4 p-3 bg-red-50 border rounded text-sm text-red-700">
                 {permissionError}
@@ -512,7 +512,7 @@ export default function SessaoPage() {
               <button
                 onClick={handleRequestPermission}
                 disabled={requesting}
-                className="w-full max-w-sm h-11 rounded-lg bg-[#6D75C0] text-white font-semibold mb-4 hover:bg-[#5a63a8] active:bg-[#4d558f] disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-[1.02] active:scale-[0.98]"
+                className="w-full max-w-xs h-11 sm:h-12 rounded-lg bg-[#6D75C0] text-white text-sm sm:text-base font-semibold mb-4 hover:bg-[#5a63a8] active:bg-[#4d558f] disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-[1.02] active:scale-[0.98]"
               >
                 {requesting ? (
                   <span className="flex items-center justify-center gap-2">
@@ -528,7 +528,7 @@ export default function SessaoPage() {
               </button>
             )}
 
-            <div className="w-full max-w-sm aspect-video bg-gray-200 rounded-lg overflow-hidden mb-3 relative shadow-lg border-2 border-gray-300">
+            <div className="w-full max-w-xs aspect-video bg-gray-200 rounded-lg overflow-hidden mb-3 sm:mb-4 relative shadow-lg border-2 border-gray-300">
               <video
                 ref={videoRef}
                 autoPlay
@@ -557,7 +557,7 @@ export default function SessaoPage() {
               )}
             </div>
 
-            <div className="flex items-center gap-2 mb-4 w-full max-w-sm">
+            <div className="flex items-center gap-2 mb-4 w-full max-w-xs">
               <span className="text-xs font-medium text-gray-700 min-w-[100px]">Nível do microfone</span>
               <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
                 <div
@@ -573,7 +573,7 @@ export default function SessaoPage() {
             <audio ref={audioRef} autoPlay hidden />
 
             {/* Device Selectors - Responsive layout */}
-            <div className="w-full max-w-sm mb-4 space-y-3">
+            <div className="w-full max-w-xs mb-4 space-y-3">
               {/* Mobile: Stacked layout */}
               <div className="flex flex-col sm:hidden space-y-2">
                 <label className="text-xs font-medium text-gray-700">Microfone</label>
@@ -619,10 +619,10 @@ export default function SessaoPage() {
                 </select>
               </div>
 
-              {/* Desktop: Horizontal layout */}
-              <div className="hidden sm:flex gap-2">
+              {/* Desktop: Vertical layout para evitar quebra */}
+              <div className="hidden sm:flex flex-col gap-2 w-full">
                 <select
-                  className="flex-1 h-11 rounded-lg bg-[#F2F4FD] px-3 text-xs border border-gray-200 focus:border-[#6D75C0] focus:outline-none focus:ring-2 focus:ring-[#6D75C0]/20 transition-all"
+                  className="w-full h-11 rounded-lg bg-[#F2F4FD] px-3 text-sm border border-gray-200 focus:border-[#6D75C0] focus:outline-none focus:ring-2 focus:ring-[#6D75C0]/20 transition-all"
                   value={selectedMicrofone}
                   onChange={e => handleChangeMicrofone(e.target.value)}
                   title="Microfone"
@@ -630,13 +630,13 @@ export default function SessaoPage() {
                   <option value="">Microfone</option>
                   {microfones.map(m => (
                     <option key={m.deviceId} value={m.deviceId}>
-                      {m.label.length > 15 ? m.label.substring(0, 15) + '...' : m.label}
+                      {m.label}
                     </option>
                   ))}
                 </select>
 
                 <select
-                  className="flex-1 h-11 rounded-lg bg-[#F2F4FD] px-3 text-xs border border-gray-200 focus:border-[#6D75C0] focus:outline-none focus:ring-2 focus:ring-[#6D75C0]/20 transition-all"
+                  className="w-full h-11 rounded-lg bg-[#F2F4FD] px-3 text-sm border border-gray-200 focus:border-[#6D75C0] focus:outline-none focus:ring-2 focus:ring-[#6D75C0]/20 transition-all"
                   value={selectedCamera}
                   onChange={e => handleChangeCamera(e.target.value)}
                   title="Câmera"
@@ -644,13 +644,13 @@ export default function SessaoPage() {
                   <option value="">Câmera</option>
                   {cameras.map(c => (
                     <option key={c.deviceId} value={c.deviceId}>
-                      {c.label.length > 15 ? c.label.substring(0, 15) + '...' : c.label}
+                      {c.label}
                     </option>
                   ))}
                 </select>
 
                 <select
-                  className="flex-1 h-11 rounded-lg bg-[#F2F4FD] px-3 text-xs border border-gray-200 focus:border-[#6D75C0] focus:outline-none focus:ring-2 focus:ring-[#6D75C0]/20 transition-all"
+                  className="w-full h-11 rounded-lg bg-[#F2F4FD] px-3 text-sm border border-gray-200 focus:border-[#6D75C0] focus:outline-none focus:ring-2 focus:ring-[#6D75C0]/20 transition-all"
                   value={selectedAudio}
                   onChange={e => setSelectedAudio(e.target.value)}
                   title="Áudio de Saída"
@@ -658,34 +658,55 @@ export default function SessaoPage() {
                   <option value="">Áudio</option>
                   {audios.map(a => (
                     <option key={a.deviceId} value={a.deviceId}>
-                      {a.label.length > 15 ? a.label.substring(0, 15) + '...' : a.label}
+                      {a.label}
                     </option>
                   ))}
                 </select>
               </div>
             </div>
 
-            <button
-              onClick={handleEntrarSessao}
-              disabled={isValidatingAccess}
-              className={`w-full max-w-sm h-12 rounded-lg text-white text-lg font-medium transition-all duration-200 shadow-md ${
-                !isValidatingAccess
-                  ? "bg-[#8494E9] hover:bg-[#7383d8] hover:shadow-lg transform hover:scale-[1.02] active:scale-[0.98]"
-                  : "bg-gray-400 cursor-not-allowed opacity-60"
-              }`}
-            >
-              {isValidatingAccess || isCheckingTokens ? (
-                <span className="flex items-center justify-center gap-2">
-                  <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Preparando acesso...
-                </span>
-              ) : (
-                'Entrar na sessão'
-              )}
-            </button>
+            <div className="w-full max-w-xs space-y-3">
+              <button
+                onClick={handleEntrarSessao}
+                disabled={isValidatingAccess}
+                className={`w-full h-12 rounded-lg text-white text-base sm:text-lg font-medium transition-all duration-200 shadow-md ${
+                  !isValidatingAccess
+                    ? "bg-[#8494E9] hover:bg-[#7383d8] hover:shadow-lg transform hover:scale-[1.02] active:scale-[0.98]"
+                    : "bg-gray-400 cursor-not-allowed opacity-60"
+                }`}
+              >
+                {isValidatingAccess || isCheckingTokens ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Preparando acesso...
+                  </span>
+                ) : (
+                  'Entrar na sessão'
+                )}
+              </button>
+              
+              <button
+                onClick={() => {
+                  // Abre WhatsApp com suporte
+                  const whatsappNumber = "5511960892131";
+                  const message = encodeURIComponent("Olá, preciso de suporte técnico na Estação Terapia. Tenho dúvidas ou estou com problemas na minha sessão.");
+                  window.open(`https://wa.me/${whatsappNumber}?text=${message}`, "_blank");
+                }}
+                className="w-full h-11 sm:h-12 rounded-lg bg-[#25D366] hover:bg-[#128C7E] text-white text-sm sm:text-base font-medium transition-all duration-200 shadow-sm hover:shadow-md"
+              >
+                Suporte
+              </button>
+              
+              <button
+                onClick={() => router.back()}
+                className="w-full h-11 sm:h-12 rounded-lg border-2 border-[#8494E9] text-[#8494E9] bg-transparent hover:bg-[#8494E9] hover:text-white text-sm sm:text-base font-medium transition-all duration-200"
+              >
+                Cancelar
+              </button>
+            </div>
           </div>
         </div>
       </div>

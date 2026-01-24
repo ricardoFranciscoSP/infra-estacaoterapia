@@ -412,17 +412,23 @@ export default function ConsultasPage() {
         {/* Conteúdo principal - coluna direita */}
         <main className="flex-1 py-4 sm:py-8 px-4 sm:px-6 lg:px-8 font-fira-sans w-full">
           <div className="w-full max-w-full lg:max-w-[1400px] mx-auto">
-            {/* Consulta atual - aparece acima de "Consultas programadas" durante os 60 minutos */}
-            {consultaAtualFromHook && isConsultaDentro60MinutosComScheduledAt(
-              'ScheduledAt' in consultaAtualFromHook ? (consultaAtualFromHook as { ScheduledAt?: string }).ScheduledAt : undefined,
-              consultaAtualFromHook.Date,
-              consultaAtualFromHook.Time
-            ) && (
-              <section className="mb-6 sm:mb-8">
-                <h2 className="text-base sm:text-lg font-semibold mb-4 font-fira-sans">Consulta atual</h2>
-                <ConsultaAtualPsicologo consulta={consultaAtualFromHook} hidePerfil />
-              </section>
-            )}
+            {/* Consulta em andamento - aparece quando status for EmAndamento (durante os 50 minutos) */}
+            {consultaAtualFromHook && (() => {
+              const status = consultaAtualFromHook.Status || (consultaAtualFromHook as any).status;
+              const isEmAndamento = status === 'EmAndamento' || status === 'Andamento' || status === 'Em Andamento';
+              
+              // 🎯 Mostra consulta em andamento se o status for EmAndamento (independente do tempo)
+              // O backend já controla o status, então se está EmAndamento, deve aparecer
+              if (isEmAndamento) {
+                return (
+                  <section className="mb-6 sm:mb-8">
+                    <h2 className="text-base sm:text-lg font-semibold mb-4 font-fira-sans">Consulta em andamento</h2>
+                    <ConsultaAtualPsicologo consulta={consultaAtualFromHook} hidePerfil />
+                  </section>
+                );
+              }
+              return null;
+            })()}
             
             {/* Lista de hoje */}
             <section className="mb-6 sm:mb-8">
@@ -474,11 +480,11 @@ export default function ConsultasPage() {
               {/* Título e contador */}
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-2">
                 <h2 className="text-sm sm:text-lg font-semibold font-fira-sans text-gray-900">
-                  Consultas concluídas, reagendadas e canceladas
+                  Sessões concluídas, reagendadas e canceladas
                 </h2>
                 {!isLoading && (
                   <span className="inline-flex items-center px-3 py-1.5 rounded-full bg-[#E6E9FF] text-[#6D75C0] text-xs sm:text-sm font-semibold font-fira-sans whitespace-nowrap">
-                    {consultasMapeadas.length} {consultasMapeadas.length === 1 ? 'consulta' : 'consultas'}
+                    {consultasMapeadas.length} {consultasMapeadas.length === 1 ? 'sessão' : 'sessões'}
                   </span>
                 )}
               </div>
@@ -498,7 +504,7 @@ export default function ConsultasPage() {
                     disabled={isLoading}
                     aria-label={`Filtrar por ${tag.label}`}
                   >
-                    {tag.label}
+                    {tag.label.replace('Consulta', 'Sessão').replace('consulta', 'sessão')}
                   </button>
                 ))}
               </div>
@@ -509,7 +515,7 @@ export default function ConsultasPage() {
                   </span>
                   <input
                     type="text"
-                    placeholder="Buscar paciente..."
+                    placeholder="Buscar paciente ou sessão..."
                     value={busca}
                     onChange={e => { setBusca(e.target.value); setPage(1); }}
                     className="pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg text-sm font-fira-sans w-full focus:outline-none focus:ring-2 focus:ring-[#6D75C0] focus:border-transparent transition"
@@ -554,7 +560,10 @@ export default function ConsultasPage() {
                 <>
                   <ul className="space-y-4 w-full">
                     {consultasMapeadas.length === 0 && (
-                      <li className="text-sm text-gray-500 font-fira-sans">Nenhuma consulta encontrada.</li>
+                      <li className="text-sm text-gray-500 font-fira-sans flex flex-col items-center py-8">
+                        <span className="text-2xl mb-2" role="img" aria-label="Calendário">📅</span>
+                        Nenhuma sessão encontrada para este período.
+                      </li>
                     )}
                     {consultasMapeadas.map((c) => (
                       <motion.li
@@ -568,7 +577,7 @@ export default function ConsultasPage() {
                             <p className="text-sm text-gray-500 font-fira-sans mb-1">
                               {c.data} às {c.hora}
                             </p>
-                            <p className="text-xs text-gray-400 font-fira-sans">Duração: {c.duracao}</p>
+                            <p className="text-xs text-gray-400 font-fira-sans">Duração: {c.duracao || '50 min'}</p>
                           </div>
                           <div className="flex items-center gap-2 sm:flex-col sm:items-end">
                             {(() => {
@@ -588,7 +597,7 @@ export default function ConsultasPage() {
                             onClick={() => handleVerDetalhes(c.id)}
                             className="text-sm text-[#6D75C0] underline font-semibold font-fira-sans hover:text-[#4B51A6] transition cursor-pointer self-start sm:self-auto"
                           >
-                            Ver detalhes
+                            Ver detalhes da sessão
                           </button>
                         </div>
                       </motion.li>

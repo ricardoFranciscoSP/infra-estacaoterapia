@@ -5,7 +5,7 @@ import axios, {
     InternalAxiosRequestConfig,
     RawAxiosRequestHeaders,
 } from 'axios';
-import { getApiUrl, getCurrentEnvironment, ENVIRONMENT_URLS } from '@/config/env';
+import { getApiUrl } from '@/config/env';
 
 /**
  * Configuração do cliente HTTP Axios
@@ -16,21 +16,7 @@ import { getApiUrl, getCurrentEnvironment, ENVIRONMENT_URLS } from '@/config/env
  * - Desenvolvimento: http://localhost:3333
  */
 const getBaseURL = (): string => {
-    const apiUrl = getApiUrl();
-    const environment = getCurrentEnvironment();
-
-    // console.log('🔍 [Axios] Ambiente detectado:', environment);
-    // console.log('🔍 [Axios] URL da API:', apiUrl);
-
-    // Valida se a URL está correta para o ambiente
-    const expectedUrl = ENVIRONMENT_URLS[environment];
-    // if (apiUrl !== expectedUrl) {
-    //     console.warn(
-    //         `⚠️ [Axios] URL da API (${apiUrl}) não corresponde ao ambiente esperado (${environment}: ${expectedUrl})`
-    //     );
-    // }
-
-    return apiUrl;
+    return getApiUrl();
 };
 
 const baseURL = getBaseURL();
@@ -63,10 +49,6 @@ export const api = axios.create({
 // Interceptor de REQUEST - debug opcional
 api.interceptors.request.use(
     (config: InternalAxiosRequestConfig): InternalAxiosRequestConfig => {
-        // Log da requisição para debug
-        const fullUrl = config.baseURL ? `${config.baseURL}${config.url}` : config.url;
-        // console.log(`📤 [Axios] ${config.method?.toUpperCase()} ${fullUrl}`);
-
         // Ajusta Content-Type dinamicamente
         const hasFormData = typeof window !== 'undefined' && config.data instanceof FormData;
         if (hasFormData) {
@@ -140,35 +122,94 @@ api.interceptors.response.use(
         const shouldLogAsInfo = isTimeout || isEndpointSilencioso;
 
         if (shouldLogAsInfo) {
-            if (process.env.NODE_ENV === 'development') {
-                const statusLabel = statusCode ? `Status ${statusCode}` : (error.code || 'sem status');
-                const reasonLabel = isTimeout ? 'Timeout (endpoint pode estar lento ou indisponível)' : 'Endpoint configurado como silencioso';
-                // console.info(`ℹ️ [Axios] ${method} ${fullUrl} - ${reasonLabel} (${statusLabel})`);
-            }
-            // Continua o processamento normal, mas sem logar como erro crítico
+            // Log silencioso em dev (timeout ou endpoint silencioso)
         } else {
             // Para outros erros, loga normalmente — usa valores explícitos para evitar {} no console
+            const hasResponse = !!error.response;
             const responseData = error.response?.data;
             const responsePreview = typeof responseData === 'string'
                 ? responseData.substring(0, 500)
-                : responseData;
-            const errDetails = {
-                message: String(error?.message ?? 'sem mensagem'),
-                code: String(error?.code ?? ''),
-                status: statusCode ?? 'sem status',
-                statusText: String(error?.response?.statusText ?? ''),
-                response: responsePreview ?? null,
-            };
-            console.error(`❌ [Axios] Erro na requisição ${method} ${fullUrl}:`, errDetails);
-            // Dica para /users/user-basic: geralmente 401 = token ausente/inválido ou API indisponível
-            // if (fullUrl.includes('/users/user-basic')) {
-            //     const hint = statusCode === 401
-            //         ? ' Verifique se está logado e se o cookie "token" está sendo enviado (withCredentials).'
-            //         : !error.response
-            //             ? ' API pode estar offline ou CORS bloqueando. Confira se a API em localhost:3333 está rodando.'
-            //             : '';
-            //     if (hint) console.warn(`💡 [Axios] user-basic${hint}`);
-            // }
+                : (responseData && typeof responseData === 'object' ? JSON.stringify(responseData).substring(0, 500) : responseData);
+            
+            // Constrói mensagem de erro mais descritiva
+            const errorMessage = error?.message || 'Erro desconhecido';
+            const errorCode = error?.code || 'sem código';
+            const errorStatus = statusCode ? String(statusCode) : 'sem status';
+            const errorStatusText = error.response?.statusText || '';
+            const responseType = error.response?.headers?.['content-type'] || 'desconhecido';
+            
+            // Log formatado para evitar objetos vazios
+            if (fullUrl.includes('/psicologo/consultas/em-andamento') || fullUrl.includes('/consultas-paciente/em-andamento')) {
+                console.error(`❌ [Axios] Erro em consulta em andamento ${method} ${fullUrl}`, {
+                    message: errorMessage,
+                    code: errorCode,
+                    status: errorStatus,
+                    statusText: errorStatusText,
+                    hasResponse,
+                    responseType,
+                    response: responsePreview,
+                    requestUrl: fullUrl,
+                    stack: error instanceof Error ? error.stack : undefined,
+                });
+            } else {
+                // Log mais limpo e informativo - sempre mostra informações úteis
+                const logMessage = `❌ [Axios] Erro na requisição ${method} ${fullUrl}`;
+                
+                // Extrai mensagem de erro da resposta se disponível
+                let errorResponseMessage = '';
+                if (hasResponse && responseData) {
+                    if (typeof responseData === 'object') {
+                        errorResponseMessage = (responseData as { message?: string; error?: string })?.message || 
+                                             (responseData as { message?: string; error?: string })?.error || 
+                                             JSON.stringify(responseData);
+                    } else if (typeof responseData === 'string') {
+                        errorResponseMessage = responseData;
+                    }
+                }
+                
+                // Constrói objeto de log com valores sempre definidos
+                const logParts: string[] = [];
+                logParts.push(`Mensagem: ${errorMessage}`);
+                logParts.push(`Código: ${errorCode}`);
+                logParts.push(`Status: ${errorStatus}`);
+                
+                if (hasResponse) {
+                    logParts.push(`Status Text: ${errorStatusText}`);
+                    logParts.push(`Content-Type: ${responseType}`);
+                    if (errorResponseMessage) {
+                        logParts.push(`Erro da API: ${errorResponseMessage.substring(0, 200)}`);
+                    }
+                } else {
+                    logParts.push(`Tipo: Erro de conexão`);
+                    logParts.push(`Dica: API pode estar offline ou CORS bloqueando. Verifique se a API está rodando.`);
+                }
+                
+                // Log como string formatada para evitar objetos vazios
+                console.error(logMessage);
+                console.error(logParts.join(' | '));
+                
+                // Também loga como objeto estruturado para debug avançado
+                const logDetails: Record<string, string | number | boolean> = {
+                    message: errorMessage,
+                    code: errorCode,
+                    status: errorStatus,
+                    hasResponse,
+                    requestUrl: fullUrl,
+                };
+                
+                if (hasResponse) {
+                    logDetails.statusText = errorStatusText;
+                    logDetails.responseType = responseType;
+                    if (errorResponseMessage) {
+                        logDetails.apiError = errorResponseMessage.substring(0, 500);
+                    }
+                } else {
+                    logDetails.connectionError = true;
+                    logDetails.hint = 'API pode estar offline ou CORS bloqueando. Verifique se a API está rodando.';
+                }
+                
+                console.error('Detalhes do erro:', logDetails);
+            }
         }
 
         // Verifica se é erro de conexão (network error) - mas não se for timeout (já foi tratado acima)

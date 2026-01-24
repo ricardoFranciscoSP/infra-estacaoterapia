@@ -71,6 +71,14 @@ export const CONSULTA_STATUS_CONFIG = {
     faturada: false,
     descricao: "Falta do psicólogo",
   },
+  ambosNaoCompareceram: {
+    status: "AmbosNaoCompareceram",
+    origemStatus: [ConsultaOrigemStatus.Sistemico],
+    telaGatilho: ConsultaTelaGatilho.ModuloRealizacaoSessao,
+    acaoSaldo: ConsultaAcaoSaldo.NaoDevolve,
+    faturada: false, // Não fazer repasse
+    descricao: "Cancelado por inatividade - ambos não compareceram",
+  },
   canceladaPacienteNoPrazo: {
     status: "CanceladaPacienteNoPrazo",
     origemStatus: [ConsultaOrigemStatus.Paciente],

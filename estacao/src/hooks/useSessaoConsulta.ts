@@ -42,7 +42,6 @@ export function useSessaoConsulta(consulta: ConsultaSessao): UseSessaoConsulta {
     const consultaData = useMemo(() => {
         // Prioriza ScheduledAt da ReservaSessao
         const scheduledAt = consulta?.ReservaSessao?.ScheduledAt;
-        
         if (scheduledAt) {
             // ScheduledAt está no formato 'YYYY-MM-DD HH:mm:ss'
             const [datePart, timePart] = scheduledAt.split(' ');
@@ -53,7 +52,6 @@ export function useSessaoConsulta(consulta: ConsultaSessao): UseSessaoConsulta {
                 };
             }
         }
-        
         // Fallback: usa agenda/Agenda/Date/Time se ScheduledAt não estiver disponível
         const data =
             consulta?.agenda?.data ||
@@ -94,10 +92,9 @@ export function useSessaoConsulta(consulta: ConsultaSessao): UseSessaoConsulta {
             : 0;
     }, [consultaData]);
 
-    // Atualiza o estado baseado no timestamp global
+    // useEffect para atualizar o contador e estados da sessão
     useEffect(() => {
         const { data, horario } = consultaData;
-
         if (!data || !horario) {
             setMostrarSessao(false);
             setContador("");
@@ -109,8 +106,8 @@ export function useSessaoConsulta(consulta: ConsultaSessao): UseSessaoConsulta {
 
         const agoraTimestamp = timestamp;
         const diffSegundos = getDiffSeconds(agoraTimestamp);
-        
-        // Antes da sessão começar
+
+        // Antes da sessão começar (até 10 minutos antes)
         if (diffSegundos > 0 && diffSegundos <= 600) {
             setMostrarSessao(true);
             setSessaoAtiva(false);
@@ -119,8 +116,8 @@ export function useSessaoConsulta(consulta: ConsultaSessao): UseSessaoConsulta {
             const ss = String(diffSegundos % 60).padStart(2, "0");
             setContador(`${mm}:${ss}`);
             setTempoAposInicio(0);
-        } else if (diffSegundos <= 0 && Math.abs(diffSegundos) <= 600) {
-            // Sessão começou, até 10 minutos depois
+        } else if (diffSegundos <= 0 && Math.abs(diffSegundos) <= 3000) {
+            // Sessão começou, até 50 minutos depois (3000 segundos)
             setMostrarSessao(true);
             setSessaoAtiva(true);
             setSessaoEncerrada(false);
@@ -129,8 +126,8 @@ export function useSessaoConsulta(consulta: ConsultaSessao): UseSessaoConsulta {
             const mm = String(Math.floor(segundosAposInicio / 60)).padStart(2, "0");
             const ss = String(segundosAposInicio % 60).padStart(2, "0");
             setContador(`${mm}:${ss}`);
-        } else if (diffSegundos < -600) {
-            // Mais de 10 minutos após o início
+        } else if (diffSegundos < -3000) {
+            // Mais de 50 minutos após o início
             setMostrarSessao(true);
             setSessaoAtiva(false);
             setSessaoEncerrada(true);

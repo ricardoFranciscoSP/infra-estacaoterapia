@@ -86,7 +86,7 @@ export default function PainelFooter() {
                 className={`flex flex-col items-center flex-1 py-1 transition-colors group rounded-xl mx-1 ${ativo ? "bg-[#6D75C0] text-white" : "text-[#B6B9D6] hover:text-white"}`}
                 style={ativo ? { boxShadow: '0 2px 8px rgba(109,117,192,0.10)' } : {}}
               >
-                <img
+                <Image
                   src={item.icon}
                   alt={item.label}
                   width={24}
@@ -117,7 +117,7 @@ export default function PainelFooter() {
                 className={`flex flex-col items-center flex-1 px-1 py-1 transition-colors group rounded-xl mx-0 ${ativo ? "bg-[#6D75C0] text-white w-[110px]" : "text-[#B6B9D6] hover:text-white"}`}
                 style={ativo ? { boxShadow: '0 2px 8px rgba(109,117,192,0.10)', minHeight: 56, maxWidth: 120 } : { minHeight: 56 }}
               >
-                <img
+                <Image
                   src={item.icon}
                   alt={item.label}
                   width={24}

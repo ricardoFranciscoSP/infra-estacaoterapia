@@ -1,4 +1,7 @@
 import prisma from "../prisma/client";
+import dayjs from "dayjs";
+import timezone from "dayjs/plugin/timezone";
+import utc from "dayjs/plugin/utc";
 import { ConsultaStatus } from "../generated/prisma";
 import {
   ConsultaStatusHelper,
@@ -7,6 +10,9 @@ import {
   ConsultaAcaoSaldo,
 } from "../constants/consultaStatus.constants";
 import { getEventSyncService } from "../services/eventSync.service";
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 export interface AtualizarConsultaStatusDTO {
   consultaId: string;
@@ -174,12 +180,13 @@ export class ConsultaStatusService {
   async atualizarStatus(data: AtualizarConsultaStatusDTO) {
     const { consultaId, novoStatus, origem, telaGatilho, usuarioId } = data;
 
-    // Busca a consulta atual (campos mínimos necessários)
+    // Busca a consulta atual (campos mínimos necessários, incluindo Date para repasse)
     const consulta = await prisma.consulta.findUnique({
       where: { Id: consultaId },
       select: {
         Id: true,
         Status: true,
+        Date: true,
         PacienteId: true,
         PsicologoId: true,
         CicloPlanoId: true,
@@ -290,42 +297,172 @@ export class ConsultaStatusService {
         console.log(`⚠️ [atualizarStatus] Consulta ${consultaId} já teve sessão devolvida (status: ${statusAtual}) - ignorando devolução duplicada`);
       }
 
-      // Se era para ser faturada e a consulta realizada, cria/atualiza Commission
-      if (faturada && novoStatus === "Realizada" && consulta.PsicologoId) {
-        // Verifica se já existe commission
-        const commissionExistente = await tx.commission.findFirst({
-          where: { ConsultaId: consultaId },
-        });
+      // 🎯 Ajusta repasse baseado no status e regras de cancelamento
+      // Verifica se deve fazer repasse baseado no status normalizado
+      const { determinarStatusNormalizado, determinarRepasse } = await import('../utils/statusConsulta.util');
+      
+      // Busca cancelamento mais recente se houver
+      const cancelamentoMaisRecente = await tx.cancelamentoSessao.findFirst({
+        where: { SessaoId: consultaId },
+        orderBy: { Data: 'desc' }
+      });
+      const cancelamentoDeferido = cancelamentoMaisRecente?.Status === 'Deferido';
 
-        if (!commissionExistente && consulta.Valor) {
-          // Cria nova commission
-          const novaCommission = await tx.commission.create({
-            data: {
-              PsicologoId: consulta.PsicologoId,
-              PacienteId: consulta.PacienteId || "",
-              Valor: consulta.Valor,
-              ConsultaId: consultaId,
-              TipoPlano: "avulsa", // ou inferir do ciclo
-              Status: "pendente",
-              Periodo: new Date().toISOString().split("T")[0],
-            },
+      const statusNormalizado = await determinarStatusNormalizado(novoStatus, {
+        tipoAutor: cancelamentoMaisRecente?.Tipo,
+        dataConsulta: consulta.Date,
+        motivo: cancelamentoMaisRecente?.Motivo,
+        cancelamentoDeferido,
+        pacienteNaoCompareceu: novoStatus === 'PacienteNaoCompareceu',
+        psicologoNaoCompareceu: novoStatus === 'PsicologoNaoCompareceu'
+      });
+
+      const deveFazerRepasse = determinarRepasse(statusNormalizado, cancelamentoDeferido);
+
+      // Verifica se já existe commission
+      const commissionExistente = await tx.commission.findFirst({
+        where: { ConsultaId: consultaId },
+      });
+
+      if (!deveFazerRepasse) {
+        // 🎯 NÃO deve fazer repasse - remove commission se existir
+        if (commissionExistente) {
+          await tx.commission.delete({
+            where: { Id: commissionExistente.Id }
+          });
+          console.log(`✅ [atualizarStatus] Comissão removida para consulta ${consultaId} (status ${statusNormalizado} não repassável)`);
+        }
+        
+        // Marca consulta como não faturada
+        await tx.consulta.update({
+          where: { Id: consultaId },
+          data: { Faturada: false }
+        });
+      } else {
+        // 🎯 DEVE fazer repasse - cria ou atualiza commission
+        if (consulta.PsicologoId && consulta.Valor) {
+          // Busca dados do paciente para calcular valor base corretamente
+          const pacienteComPlano = await tx.user.findUnique({
+            where: { Id: consulta.PacienteId || '' },
+            include: {
+              AssinaturaPlanos: {
+                where: { Status: 'Ativo' },
+                include: {
+                  PlanoAssinatura: true
+                }
+              }
+            }
           });
 
-          // Registra criação de comissão na auditoria
-          try {
-            const { logCommissionCreate } = await import('../utils/auditLogger.util');
-            if (consulta.PsicologoId) {
-              await logCommissionCreate(
-                consulta.PsicologoId,
-                consultaId,
-                consulta.Valor,
-                "avulsa",
-                undefined // IP não disponível aqui
-              );
+          let valorBase = consulta.Valor ?? 0;
+          const { CommissionTipoPlano } = await import('../generated/prisma');
+          let tipoPlano: typeof CommissionTipoPlano[keyof typeof CommissionTipoPlano] = CommissionTipoPlano.avulsa;
+
+          const planoAssinatura = pacienteComPlano?.AssinaturaPlanos?.[0];
+          if (planoAssinatura && planoAssinatura.PlanoAssinatura) {
+            const tipo = planoAssinatura.PlanoAssinatura.Tipo?.toLowerCase();
+            if (tipo === "mensal") {
+              tipoPlano = CommissionTipoPlano.mensal;
+              valorBase = (planoAssinatura.PlanoAssinatura.Preco ?? 0) / 4;
+            } else if (tipo === "trimestral") {
+              tipoPlano = CommissionTipoPlano.trimestral;
+              valorBase = (planoAssinatura.PlanoAssinatura.Preco ?? 0) / 12;
+            } else if (tipo === "semestral") {
+              tipoPlano = CommissionTipoPlano.semestral;
+              valorBase = (planoAssinatura.PlanoAssinatura.Preco ?? 0) / 24;
+            } else {
+              tipoPlano = CommissionTipoPlano.avulsa;
+              valorBase = consulta.Valor ?? 0;
             }
-          } catch (auditError) {
-            console.error('[ConsultaStatusService] Erro ao registrar auditoria de comissão:', auditError);
-            // Não interrompe o fluxo
+          }
+
+          // Se não tem valor base, busca do PlanoAssinatura
+          if (valorBase === 0) {
+            const planoAvulsa = await tx.planoAssinatura.findFirst({
+              where: {
+                Tipo: { in: ["Avulsa", "Unica"] },
+                Status: "Ativo"
+              },
+              orderBy: { Preco: 'desc' }
+            });
+            
+            if (planoAvulsa && planoAvulsa.Preco) {
+              valorBase = planoAvulsa.Preco;
+            }
+          }
+
+          if (valorBase > 0) {
+            // Obtém o percentual de repasse
+            const { getRepassePercentForPsychologist } = await import('../utils/repasse.util');
+            const repassePercent = await getRepassePercentForPsychologist(consulta.PsicologoId);
+            const valorPsicologo = valorBase * repassePercent;
+
+            // Calcula status de repasse baseado na data de corte
+            const { calcularStatusRepassePorDataCorte } = await import('../scripts/processarRepassesConsultas');
+            const psicologo = await tx.user.findUnique({
+              where: { Id: consulta.PsicologoId },
+              select: { Status: true }
+            });
+            const psicologoStatus = psicologo?.Status || 'Inativo';
+            const statusRepasse = calcularStatusRepassePorDataCorte(consulta.Date, psicologoStatus);
+
+            // Calcula período
+            const dataConsultaBr = dayjs.tz(consulta.Date, 'America/Sao_Paulo');
+            const ano = dataConsultaBr.year();
+            const mes = String(dataConsultaBr.month() + 1).padStart(2, '0');
+            const periodo = `${ano}-${mes}`;
+
+            if (commissionExistente) {
+              // Atualiza commission existente
+              await tx.commission.update({
+                where: { Id: commissionExistente.Id },
+                data: {
+                  Valor: valorPsicologo,
+                  Status: statusRepasse,
+                  Periodo: periodo,
+                  TipoPlano: tipoPlano,
+                  Type: "repasse"
+                }
+              });
+              console.log(`✅ [atualizarStatus] Comissão atualizada para consulta ${consultaId}: R$ ${valorPsicologo.toFixed(2)} - Status: ${statusRepasse}`);
+            } else {
+              // Cria nova commission
+              await tx.commission.create({
+                data: {
+                  PsicologoId: consulta.PsicologoId,
+                  PacienteId: consulta.PacienteId || null,
+                  Valor: valorPsicologo,
+                  ConsultaId: consultaId,
+                  TipoPlano: tipoPlano,
+                  Status: statusRepasse,
+                  Periodo: periodo,
+                  Type: "repasse"
+                },
+              });
+              console.log(`✅ [atualizarStatus] Comissão criada para consulta ${consultaId}: R$ ${valorPsicologo.toFixed(2)} (${(repassePercent * 100).toFixed(0)}%) - Status: ${statusRepasse}`);
+
+              // Registra criação de comissão na auditoria
+              try {
+                const { logCommissionCreate } = await import('../utils/auditLogger.util');
+                if (consulta.PsicologoId) {
+                  await logCommissionCreate(
+                    consulta.PsicologoId,
+                    consultaId,
+                    valorPsicologo,
+                    tipoPlano,
+                    undefined
+                  );
+                }
+              } catch (auditError) {
+                console.error('[ConsultaStatusService] Erro ao registrar auditoria de comissão:', auditError);
+              }
+            }
+
+            // Marca consulta como faturada
+            await tx.consulta.update({
+              where: { Id: consultaId },
+              data: { Faturada: true }
+            });
           }
         }
       }
@@ -613,6 +750,7 @@ export class ConsultaStatusService {
     const jaProcessada =
       statusAtual === "PacienteNaoCompareceu" ||
       statusAtual === "PsicologoNaoCompareceu" ||
+      statusAtual === "AmbosNaoCompareceram" ||
       statusAtual.startsWith("Cancelada");
 
     if (jaProcessada) {
@@ -636,8 +774,8 @@ export class ConsultaStatusService {
       deveDevolverSessao = true; // ✅ Devolver 1 sessão
       deveFazerRepasse = false; // ❌ Não fazer repasse (marca Faturada=false)
     } else {
-      // Cenário 3: Inatividade de Ambos
-      novoStatus = "PacienteNaoCompareceu"; // Usa paciente como padrão (ambos não compareceram)
+      // Cenário 3: Inatividade de Ambos (Both)
+      novoStatus = "AmbosNaoCompareceram"; // Novo status para ambos não compareceram
       deveDevolverSessao = false; // ❌ Não devolver saldo
       deveFazerRepasse = false; // ❌ Não fazer repasse (marca Faturada=false)
     }
@@ -774,12 +912,13 @@ export class ConsultaStatusService {
    * Valida se a transição é permitida
    */
   private validarTransicao(statusAtual: ConsultaStatus, novoStatus: ConsultaStatus) {
+    // 🎯 Permite transição de EmAndamento para Realizada (consulta finalizada)
     // Transições não permitidas
     const transicoesForbidden: Partial<Record<ConsultaStatus, ConsultaStatus[]>> = {
       Realizada: [
         "Agendada",
         "Reservado",
-        "EmAndamento",
+        // "EmAndamento" removido - permite transição de EmAndamento para Realizada
         "CanceladaPacienteNoPrazo",
         "CanceladaPsicologoNoPrazo",
         "PacienteNaoCompareceu",
@@ -878,7 +1017,7 @@ export class ConsultaStatusService {
       where: {
         ...where,
         Status: {
-          in: ["PacienteNaoCompareceu", "PsicologoNaoCompareceu"],
+          in: ["PacienteNaoCompareceu", "PsicologoNaoCompareceu", "AmbosNaoCompareceram"],
         },
       },
     });

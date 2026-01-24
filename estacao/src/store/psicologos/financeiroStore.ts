@@ -125,8 +125,40 @@ const useFinanceiroStore = create<financeiroState>((set) => ({
     obterHistoricoSessoes: async (mes?: number, ano?: number, page?: number, pageSize?: number) => {
         set({ isLoadingHistorico: true, error: null });
         try {
+            console.log('[obterHistoricoSessoes] Buscando histórico:', { mes, ano, page, pageSize });
             const result = await admPsicologoService().getHistoricoSessoes(mes, ano, page, pageSize);
-            const response = result.data || { data: [], pagination: null };
+            console.log('[obterHistoricoSessoes] Resposta recebida:', result);
+            
+            // A resposta pode vir em diferentes formatos:
+            // 1. { data: [...], pagination: {...} } - formato direto
+            // 2. { data: { data: [...], pagination: {...} } } - formato aninhado
+            // 3. Array direto [...]
+            let responseData: HistoricoSessao[] = [];
+            let responsePagination: PaginationInfo | null = null;
+            
+            // A API retorna { data: [...], pagination: {...} }
+            if (result.data && typeof result.data === 'object') {
+                if (Array.isArray(result.data.data)) {
+                    // Formato: { data: { data: [...], pagination: {...} } }
+                    responseData = result.data.data;
+                    responsePagination = result.data.pagination || null;
+                } else if (Array.isArray(result.data)) {
+                    // Formato: { data: [...] } (sem pagination no primeiro nível)
+                    responseData = result.data;
+                } else if ('data' in result.data && Array.isArray((result.data as { data: unknown[] }).data)) {
+                    // Formato aninhado: { data: { data: [...], pagination: {...} } }
+                    responseData = (result.data as { data: HistoricoSessao[]; pagination?: PaginationInfo }).data;
+                    responsePagination = (result.data as { data: HistoricoSessao[]; pagination?: PaginationInfo }).pagination || null;
+                }
+            } else if (Array.isArray(result.data)) {
+                // Se for array direto
+                responseData = result.data;
+            }
+            
+            console.log('[obterHistoricoSessoes] Dados extraídos:', { 
+                count: responseData.length, 
+                pagination: responsePagination 
+            });
 
             // Formata a data/hora usando o campo ScheduledAt vindo da tabela ReservaSessao
             const formatFromScheduledAt = (scheduledAt?: string, fallback?: string) => {
@@ -142,7 +174,7 @@ const useFinanceiroStore = create<financeiroState>((set) => ({
                 return `${dia}/${mesNum}/${anoNum} - ${horas}:${minutos}`;
             };
 
-            const historicoMapeado = (response.data || []).map((item: HistoricoSessao & { ScheduledAt?: string; scheduledAt?: string; dataHora?: string }) => {
+            const historicoMapeado = responseData.map((item: HistoricoSessao & { ScheduledAt?: string; scheduledAt?: string; dataHora?: string }) => {
                 const scheduled = item.ScheduledAt || item.scheduledAt;
                 return {
                     ...item,
@@ -150,15 +182,20 @@ const useFinanceiroStore = create<financeiroState>((set) => ({
                 } as HistoricoSessao;
             });
 
+            console.log('[obterHistoricoSessoes] Histórico mapeado:', historicoMapeado.length, 'itens');
+
             set({ 
                 historicoSessoes: historicoMapeado, 
-                pagination: response.pagination || null,
+                pagination: responsePagination,
                 isLoadingHistorico: false 
             });
         } catch (error: unknown) {
+            console.error('[obterHistoricoSessoes] Erro ao buscar histórico:', error);
             const apiError = error as APIError;
+            const errorMessage = apiError?.response?.data?.message || 
+                (error instanceof Error ? error.message : 'Erro ao obter histórico de sessões.');
             set({ 
-                error: apiError?.response?.data?.message || 'Erro ao obter histórico de sessões.', 
+                error: errorMessage, 
                 isLoadingHistorico: false,
                 historicoSessoes: [],
                 pagination: null

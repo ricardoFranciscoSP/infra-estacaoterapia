@@ -69,6 +69,7 @@ export async function handleInatividadeFailsafe(): Promise<number> {
               AND c."Status" NOT IN (
                 'PacienteNaoCompareceu',
                 'PsicologoNaoCompareceu',
+                'AmbosNaoCompareceram',
                 'CanceladaPacienteNoPrazo',
                 'CanceladaPsicologoNoPrazo',
                 'CanceladaPacienteForaDoPrazo',

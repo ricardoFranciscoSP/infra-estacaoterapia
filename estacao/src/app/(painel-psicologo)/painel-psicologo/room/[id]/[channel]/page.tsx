@@ -145,12 +145,15 @@ export default function Room() {
     const MAX_TOKEN_FETCH_ATTEMPTS = 3;
     const TOKEN_FETCH_TIMEOUT = 10000; // 10 segundos
 
+    // 🎯 Evita buscar token se já existe e está funcional
+    // Só busca token se realmente não tiver (evita timeout desnecessário)
     const shouldFetchToken = 
       !isLoadingToken && 
       hasChannel && 
       !hasTokenFromChannel &&
       !isLoadingReserva &&
       tokenFetchAttempts < MAX_TOKEN_FETCH_ATTEMPTS && // Limita tentativas
+      !hasToken && // 🎯 IMPORTANTE: Só busca se realmente não tiver token
       (
         // Caso 1: Reserva não encontrada mas temos channel - tenta buscar token
         !hasReserva ||

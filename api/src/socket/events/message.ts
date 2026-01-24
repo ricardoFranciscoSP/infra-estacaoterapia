@@ -283,17 +283,35 @@ export function handleMessage(io: Server, socket: Socket) {
 
             console.log(`📹 [consultation:join] Usuário ${userId} (${role}) entrando na consulta ${consultationId}`);
 
+            // 🎯 Validação: Verifica se o role corresponde ao esperado na consulta
+            const reservaSessaoAntes = await apiClient.getReservaSessao(consultationId);
+            if (reservaSessaoAntes) {
+                const expectedPatientId = reservaSessaoAntes.PatientId;
+                const expectedPsychologistId = reservaSessaoAntes.PsychologistId;
+                
+                // Valida se o userId corresponde ao role informado
+                if (role === "Patient" && expectedPatientId && expectedPatientId !== userId) {
+                    console.warn(`⚠️ [consultation:join] Role "Patient" informado, mas userId ${userId} não corresponde ao PatientId ${expectedPatientId} da consulta`);
+                    // Continua mesmo assim para não bloquear o fluxo (pode ser um caso especial)
+                } else if (role === "Psicologo" && expectedPsychologistId && expectedPsychologistId !== userId) {
+                    console.warn(`⚠️ [consultation:join] Role "Psychologist" informado, mas userId ${userId} não corresponde ao PsychologistId ${expectedPsychologistId} da consulta`);
+                    // Continua mesmo assim para não bloquear o fluxo (pode ser um caso especial)
+                }
+            }
+
             // Une o socket à sala específica (garante que está na sala)
             const roomName = `consulta_${consultationId}`;
             socket.join(roomName);
             console.log(`✅ [consultation:join] Socket ${socket.id} entrou na sala ${roomName}`);
 
-            // Atualiza timestamp correto (usa horário de Brasília)
+            // 🎯 Atualiza timestamp correto baseado no role (usa horário de Brasília)
             const field = role === "Patient" ? "PatientJoinedAt" : "PsychologistJoinedAt";
             const { nowBrasiliaDate } = await import('../../utils/timezone.util');
             const now = nowBrasiliaDate();
 
+            console.log(`🔄 [consultation:join] Atualizando ${field} para consulta ${consultationId} com timestamp ${now.toISOString()}`);
             await apiClient.updateReservaSessaoJoin(consultationId, field, now);
+            console.log(`✅ [consultation:join] ${field} atualizado com sucesso para consulta ${consultationId}`);
             
             // Busca a reserva atualizada para usar depois
             const reservaSessao = await apiClient.getReservaSessao(consultationId);

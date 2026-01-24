@@ -61,22 +61,23 @@ export async function scheduleConsultationJobs(consultationId: string, scheduled
     await consultationQueue.add("warnInactivity", { consultationId }, { delay: delay(9 * 60 * 1000 + 30 * 1000) });
     await consultationQueue.add("cancelIfNoJoin", { consultationId }, { delay: delay(10 * 60 * 1000) });
     
-    // Notificações de tempo restante (15, 10, 5, 3 minutos antes do fim - 60 minutos total)
-    // 60 - 15 = 45 minutos após o início
-    await consultationQueue.add("notifyTimeRemaining", { consultationId, minutesRemaining: 15 }, { delay: delay(45 * 60 * 1000) });
-    // 60 - 10 = 50 minutos após o início
-    await consultationQueue.add("notifyTimeRemaining", { consultationId, minutesRemaining: 10 }, { delay: delay(50 * 60 * 1000) });
-    // 60 - 5 = 55 minutos após o início
-    await consultationQueue.add("notifyTimeRemaining", { consultationId, minutesRemaining: 5 }, { delay: delay(55 * 60 * 1000) });
-    // 60 - 3 = 57 minutos após o início
-    await consultationQueue.add("notifyTimeRemaining", { consultationId, minutesRemaining: 3 }, { delay: delay(57 * 60 * 1000) });
+    // 🎯 Notificações de tempo restante (baseado em 50 minutos de duração)
+    // 50 - 15 = 35 minutos após o início
+    await consultationQueue.add("notifyTimeRemaining", { consultationId, minutesRemaining: 15 }, { delay: delay(35 * 60 * 1000) });
+    // 50 - 10 = 40 minutos após o início
+    await consultationQueue.add("notifyTimeRemaining", { consultationId, minutesRemaining: 10 }, { delay: delay(40 * 60 * 1000) });
+    // 50 - 5 = 45 minutos após o início
+    await consultationQueue.add("notifyTimeRemaining", { consultationId, minutesRemaining: 5 }, { delay: delay(45 * 60 * 1000) });
+    // 50 - 3 = 47 minutos após o início
+    await consultationQueue.add("notifyTimeRemaining", { consultationId, minutesRemaining: 3 }, { delay: delay(47 * 60 * 1000) });
     
-    // Job para finalizar sessão após 60 minutos (controla estado da sessão no Redis)
-    await consultationQueue.add("finish-session", { consultationId }, { delay: delay(60 * 60 * 1000) });
+    // 🎯 Job para finalizar sessão após 50 minutos (controla estado da sessão no Redis)
+    await consultationQueue.add("finish-session", { consultationId }, { delay: delay(50 * 60 * 1000) });
     
-    // Finaliza consulta automaticamente quando faltar 5 minutos (55 minutos após o início) se ambos estiverem na sala
-    await consultationQueue.add("finalizeConsultation", { consultationId }, { delay: delay(55 * 60 * 1000) });
-    await consultationQueue.add("endConsultation", { consultationId }, { delay: delay(60 * 60 * 1000) });
+    // 🎯 Finaliza consulta automaticamente após 50 minutos se ambos estiverem na sala
+    await consultationQueue.add("finalizeConsultation", { consultationId }, { delay: delay(50 * 60 * 1000) });
+    // Job de segurança para garantir finalização (após 50 minutos + 1 minuto de margem)
+    await consultationQueue.add("endConsultation", { consultationId }, { delay: delay(51 * 60 * 1000) });
 }
 
 /**
@@ -176,6 +177,23 @@ export async function processRepasse(
             }
         }
 
+        // 🎯 Se não tem valor base (consulta avulsa/promocional sem valor), busca do PlanoAssinatura
+        if (valorBase === 0) {
+            // Busca plano avulsa ou única para obter o valor (189.99 avulsa, 59.99 promocional)
+            const planoAvulsa = await prisma.planoAssinatura.findFirst({
+                where: {
+                    Tipo: { in: ["Avulsa", "Unica"] },
+                    Status: "Ativo"
+                },
+                orderBy: { Preco: 'desc' } // Pega o mais caro primeiro (189.99)
+            });
+            
+            if (planoAvulsa && planoAvulsa.Preco) {
+                valorBase = planoAvulsa.Preco;
+                console.log(`[ConsultationWorker] Consulta ${consultationId}: Usando valor do plano avulsa: R$ ${valorBase.toFixed(2)}`);
+            }
+        }
+
         // Obtém o percentual de repasse (40% para PJ, 32% para autônomo)
         const repassePercent = await getRepassePercentForPsychologist(consulta.PsicologoId);
         const valorPsicologo = valorBase * repassePercent;
@@ -193,7 +211,17 @@ export async function processRepasse(
         const psicologo = await prisma.user.findUnique({
             where: { Id: psicologoId }
         });
-        const statusRepasse = psicologo?.Status === "Ativo" ? "disponivel" : "retido";
+        
+        // 🎯 Calcula status baseado na data de corte (dia 20)
+        // A partir do dia 21, saldo não solicitado fica retido para o próximo mês
+        let statusRepasse: "disponivel" | "retido";
+        if (psicologo?.Status !== "Ativo") {
+            statusRepasse = "retido";
+        } else {
+            const { calcularStatusRepassePorDataCorte } = await import('../scripts/processarRepassesConsultas');
+            const statusCalculado = calcularStatusRepassePorDataCorte(consulta.Date, psicologo.Status);
+            statusRepasse = statusCalculado === "disponivel" ? "disponivel" : "retido";
+        }
 
         if (comissaoExistente) {
             // Atualiza a comissão existente
@@ -585,7 +613,7 @@ export async function startConsultationWorker() {
                     case "finalizeConsultation":
                         {
                             const { consultationId } = job.data;
-                            console.log(`⏰ [ConsultationWorker] Finalizando consulta ${consultationId} (45 minutos após início - faltam 5 minutos)`);
+                            console.log(`⏰ [ConsultationWorker] Finalizando consulta ${consultationId} (50 minutos após início)`);
 
                             // Busca a reserva de sessão para verificar se ambos estiveram na sala
                             const reservaSessao = await prisma.reservaSessao.findUnique({
@@ -733,7 +761,12 @@ export async function startConsultationWorker() {
                                 where: { ConsultaId: consultationId },
                                 include: {
                                     Consulta: {
-                                        select: { PacienteId: true, PsicologoId: true, AgendaId: true }
+                                        select: { 
+                                            Status: true,
+                                            PacienteId: true, 
+                                            PsicologoId: true, 
+                                            AgendaId: true 
+                                        }
                                     }
                                 }
                             });
@@ -743,20 +776,104 @@ export async function startConsultationWorker() {
                                 break;
                             }
 
-                            // Fecha a sala usando ConsultaRoomService (invalida tokens e atualiza status)
-                            const roomService = new ConsultaRoomService();
-                            await roomService.closeRoom(consultationId, 'completed');
+                            // 🎯 Verifica se já está finalizada (idempotência)
+                            const jaFinalizada = reservaSessao.Consulta?.Status === "Realizada";
+                            if (jaFinalizada) {
+                                console.log(`ℹ️ [ConsultationWorker] Consulta ${consultationId} já está finalizada (Status: Realizada) - ignorando endConsultation`);
+                                break;
+                            }
 
-                            console.log(`✅ [ConsultationWorker] Consulta ${consultationId} concluída - sala fechada e tokens invalidados`);
+                            // 🎯 Verifica se ambos estiveram na sala antes de finalizar
+                            const ambosEstiveramNaSala =
+                                reservaSessao.PatientJoinedAt !== null &&
+                                reservaSessao.PatientJoinedAt !== undefined &&
+                                reservaSessao.PsychologistJoinedAt !== null &&
+                                reservaSessao.PsychologistJoinedAt !== undefined;
 
-                            await wsNotify.emitConsultation(`consultation:${consultationId}`, { status: "Concluido" });
+                            if (!ambosEstiveramNaSala) {
+                                console.log(`⚠️ [ConsultationWorker] Consulta ${consultationId} não será finalizada: ambos não estiveram na sala`);
+                                // Ainda assim fecha a sala e limpa tokens
+                                const roomService = new ConsultaRoomService();
+                                await roomService.closeRoom(consultationId, 'timeout');
+                                break;
+                            }
 
-                            // Publica via Event Sync para Socket.io
-                            await eventSync.publishEvent('consultation:status-changed', {
-                                consultationId,
-                                status: 'Concluido',
-                                reason: 'end-time-reached'
+                            console.log(`✅ [ConsultationWorker] Ambos estiveram na sala para consulta ${consultationId} - finalizando após 50 minutos`);
+
+                            // 🎯 Finaliza a consulta usando ConsultaStatusService (garante atualização de status para "Realizada")
+                            try {
+                                const statusService = new ConsultaStatusService();
+                                const consultaFinalizada = await statusService.finalizarConsulta(consultationId, false); // false = não força, verifica ambos na sala
+                                
+                                // Verifica se o status foi atualizado corretamente
+                                const statusAtualizado = consultaFinalizada?.Status === "Realizada";
+                                if (statusAtualizado) {
+                                    console.log(`✅ [ConsultationWorker] Consulta ${consultationId} finalizada com sucesso (Status: Realizada)`);
+                                    
+                                    // Notifica atualização da próxima consulta
+                                    if (reservaSessao.Consulta) {
+                                        try {
+                                            const { ProximaConsultaService } = await import('../services/proximaConsulta.service');
+                                            const proximaConsultaService = new ProximaConsultaService();
+                                            await proximaConsultaService.notificarAmbosUsuarios(
+                                                reservaSessao.Consulta.PsicologoId || '',
+                                                reservaSessao.Consulta.PacienteId,
+                                                'atualizacao'
+                                            );
+                                        } catch (err) {
+                                            console.error('[ConsultationWorker] Erro ao notificar atualização:', err);
+                                        }
+                                    }
+                                } else {
+                                    console.error(`❌ [ConsultationWorker] Consulta ${consultationId} não teve status atualizado corretamente. Status atual: ${consultaFinalizada?.Status}`);
+                                    // Tenta atualizar manualmente se falhou
+                                    try {
+                                        await prisma.consulta.update({
+                                            where: { Id: consultationId },
+                                            data: { Status: "Realizada" }
+                                        });
+                                        console.log(`✅ [ConsultationWorker] Status atualizado manualmente para Realizada`);
+                                    } catch (updateError) {
+                                        console.error(`❌ [ConsultationWorker] Erro ao atualizar status manualmente:`, updateError);
+                                    }
+                                }
+                            } catch (error) {
+                                console.error(`❌ [ConsultationWorker] Erro ao finalizar consulta ${consultationId}:`, error);
+                                // Tenta atualizar status diretamente se finalizarConsulta falhar
+                                try {
+                                    await prisma.consulta.update({
+                                        where: { Id: consultationId },
+                                        data: { Status: "Realizada" }
+                                    });
+                                    console.log(`✅ [ConsultationWorker] Status atualizado diretamente para Realizada após erro`);
+                                } catch (updateError) {
+                                    console.error(`❌ [ConsultationWorker] Erro ao atualizar status diretamente:`, updateError);
+                                }
+                            }
+
+                            // 🎯 Verifica novamente o status antes de notificar (evita notificar status incorreto)
+                            const reservaVerificacaoFinal = await prisma.reservaSessao.findUnique({
+                                where: { ConsultaId: consultationId },
+                                include: {
+                                    Consulta: {
+                                        select: { Status: true }
+                                    }
+                                }
                             });
+
+                            // Só notifica se o status foi atualizado para Realizada
+                            if (reservaVerificacaoFinal?.Consulta?.Status === "Realizada") {
+                                await wsNotify.emitConsultation(`consultation:${consultationId}`, { status: "Concluido" });
+
+                                // Publica via Event Sync para Socket.io
+                                await eventSync.publishEvent('consultation:status-changed', {
+                                    consultationId,
+                                    status: 'Concluido',
+                                    reason: 'end-time-reached'
+                                });
+                            } else {
+                                console.warn(`⚠️ [ConsultationWorker] Consulta ${consultationId} não foi finalizada corretamente. Status atual: ${reservaVerificacaoFinal?.Consulta?.Status}`);
+                            }
 
                             // Processa repasse para consulta realizada (se ainda não foi processado)
                             try {
@@ -889,6 +1006,7 @@ export async function startConsultationWorker() {
 
                                 const jaProcessada = consultaAtual?.Status === "PacienteNaoCompareceu" ||
                                     consultaAtual?.Status === "PsicologoNaoCompareceu" ||
+                                    consultaAtual?.Status === "AmbosNaoCompareceram" ||
                                     consultaAtual?.Status?.toString().startsWith("Cancelada");
 
                                 if (jaProcessada) {

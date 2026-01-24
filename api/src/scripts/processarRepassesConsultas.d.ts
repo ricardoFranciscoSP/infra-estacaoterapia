@@ -1,0 +1,1 @@
+export declare function calcularStatusRepassePorDataCorte(dataConsulta: Date, psicologoStatus: string): any;

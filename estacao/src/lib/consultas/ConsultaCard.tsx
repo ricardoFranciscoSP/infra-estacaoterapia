@@ -153,7 +153,9 @@ export function ConsultaCard({
           "transition-all duration-300 hover:shadow-lg mb-6",
           isPacientePanel 
             ? "bg-[#F8F6FC] overflow-visible sm:max-w-full sm:w-full md:max-w-[650px] md:w-[650px]" 
-            : "bg-[#F4F6FD] overflow-visible sm:max-w-full sm:w-full md:max-w-[588px] md:w-[588px]",
+            : isPsicologoPanel
+              ? "bg-white overflow-visible sm:max-w-full sm:w-full md:max-w-[588px] md:w-[588px]" // 🎯 Fundo branco para psicólogo
+              : "bg-[#F4F6FD] overflow-visible sm:max-w-full sm:w-full md:max-w-[588px] md:w-[588px]",
           "sm:h-[180px] min-h-[200px] sm:min-h-[180px]",
         )}>
           <CardContent className="p-4 sm:p-4 md:p-5 sm:h-full sm:flex sm:flex-col sm:justify-between overflow-visible min-w-0 max-w-full">
@@ -179,9 +181,9 @@ export function ConsultaCard({
               >
                 <ConsultaStatusBadge
                   consulta={consulta}
-                  showTimer={!supportOnly}
+                  showTimer={!supportOnly && !isPsicologoPanel} // 🎯 Remove timer/tag de contagem para psicólogo
                   forceStatus={statusOverride}
-                  showLiveIndicator={!supportOnly}
+                  showLiveIndicator={!supportOnly && !isPsicologoPanel} // 🎯 Remove indicador ao vivo para psicólogo
                   useConsultasRestantesStyle={isPacientePanel}
                 />
               </motion.div>

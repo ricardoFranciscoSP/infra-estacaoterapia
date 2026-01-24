@@ -1,4 +1,4 @@
-import { PrismaClient } from "../generated/prisma";
+import { PrismaClient, ConsultaStatus } from "../generated/prisma";
 import { IControleConsultasService } from "../interfaces/controleConsultas.interface";
 import { ControleConsultaParams, ControleConsultaResult } from "../types/controleConsultas.types";
 
@@ -44,7 +44,7 @@ export class ControleConsultasService implements IControleConsultasService {
                 await this.prisma.$transaction([
                     this.prisma.consulta.update({
                         where: { Id: reservationId },
-                        data: { Status: $Enums.AgendaStatus.Realizada },
+                        data: { Status: ConsultaStatus.Realizada },
                     }),
                     this.prisma.controleConsultaMensal.update({
                         where: { Id: controleConsulta.Id },

@@ -1,4 +1,5 @@
 import prisma from "../../prisma/client";
+import { ConsultaStatus } from "../../generated/prisma";
 import { Module, ActionType } from "../../types/permissions.types";
 import { User } from "../../types/user.types";
 import { ConsultasMensaisResult, ConsultasRealizadasResult } from "../../types/consultas.types";
@@ -251,7 +252,7 @@ export class ConsultasService {
         const limit = Math.min(100, Math.max(1, Number(params?.limit) || 20));
         const skip = (page - 1) * limit;
 
-        const where = params?.status ? { Status: params.status } : undefined;
+        const where = params?.status ? { Status: params.status as ConsultaStatus } : undefined;
 
         const [total, data] = await Promise.all([
             prisma.consulta.count({ where }),

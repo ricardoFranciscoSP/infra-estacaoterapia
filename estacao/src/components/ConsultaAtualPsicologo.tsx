@@ -814,13 +814,7 @@ export default function ConsultaAtualPsicologo({ consulta: consultaProp = null, 
               }
             : undefined
         }
-        onAbrirCancelar={
-          supportOnly
-            ? undefined
-            : () => {
-                setShowModalCancelar(true);
-              }
-        }
+        onAbrirCancelar={undefined} // 🎯 Remove botão Cancelar do card de consulta em andamento
         actions={{
           onEntrar: supportOnly ? undefined : handleEntrarNaConsulta,
           onVerDetalhes: supportOnly ? undefined : handleVerDetalhes,

@@ -55,15 +55,11 @@ export async function handleNotificarTempoRestante(): Promise<number> {
         // Busca duração padrão da consulta (50 minutos padrão) ANTES de fazer a query
         let duracaoMinutos = 50;
         try {
-            const config = await prisma.configuracao.findUnique({
-                where: { Chave: 'duracaoConsultaMin' },
-                select: { Valor: true }
+            const config = await prisma.configuracao.findFirst({
+                select: { duracaoConsultaMin: true }
             });
-            if (config?.Valor) {
-                const parsed = parseInt(config.Valor);
-                if (!isNaN(parsed) && parsed > 0) {
-                    duracaoMinutos = parsed;
-                }
+            if (config?.duracaoConsultaMin != null && config.duracaoConsultaMin > 0) {
+                duracaoMinutos = config.duracaoConsultaMin;
             }
         } catch (err) {
             console.warn("⚠️ [handleNotificarTempoRestante] Erro ao buscar duração padrão, usando 50 minutos");

@@ -43,7 +43,21 @@ function useConsultaEmAndamento(role: UseConsultaEmAndamentoRole): UseConsultaEm
       } else {
         setConsulta(null);
       }
-    } catch {
+    } catch (error) {
+      // Log apenas em desenvolvimento para não poluir o console em produção
+      if (process.env.NODE_ENV === 'development') {
+        const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+        type ErrorWithResponse = { response?: { status?: number } };
+        const statusCode = (error as ErrorWithResponse)?.response?.status;
+        // Não loga 404 ou quando não há consulta em andamento (é esperado)
+        if (statusCode !== 404 && statusCode !== 200) {
+          console.warn(`[useConsultaEmAndamento] Erro ao buscar consulta em andamento (${role}):`, {
+            message: errorMessage,
+            status: statusCode,
+            url: role === 'psicologo' ? '/psicologo/consultas/em-andamento' : '/consultas-paciente/em-andamento'
+          });
+        }
+      }
       setConsulta(null);
     }
   }, [role, setConsulta]);

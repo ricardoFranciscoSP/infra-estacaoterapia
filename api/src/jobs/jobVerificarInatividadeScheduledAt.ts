@@ -78,6 +78,7 @@ export async function handleVerificarInatividadeScheduledAt(): Promise<number> {
                         notIn: [
                             'PacienteNaoCompareceu',
                             'PsicologoNaoCompareceu',
+                            'AmbosNaoCompareceram',
                             'CanceladaPacienteNoPrazo',
                             'CanceladaPsicologoNoPrazo',
                             'CanceladaPacienteForaDoPrazo',

@@ -241,6 +241,7 @@ async function handleCancelConsultationNoShow(
     const jaProcessada =
         consultaAtual?.Status === "PacienteNaoCompareceu" ||
         consultaAtual?.Status === "PsicologoNaoCompareceu" ||
+        consultaAtual?.Status === "AmbosNaoCompareceram" ||
         consultaAtual?.Status?.toString().startsWith("Cancelada");
 
     if (jaProcessada) {

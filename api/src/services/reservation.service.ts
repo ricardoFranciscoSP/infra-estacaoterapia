@@ -1,5 +1,5 @@
 import prisma from '../prisma/client';
-import { AgendaStatus, ConsultaAvulsaStatus, ConsultaStatus, Prisma } from '../generated/prisma';
+import { AgendaStatus, CommissionTipoPlano, ConsultaAvulsaStatus, ConsultaStatus, Prisma } from '../generated/prisma';
 import { IReservationService } from '../interfaces/reservation.interface';
 import { STATUS } from '../constants/status.constants';
 import { IEmailService } from '../interfaces/email.interface';
@@ -445,6 +445,7 @@ export class ReservationService implements IReservationService {
         }
         const result = await prisma.$transaction(async (tx: PrismaTransaction) => {
             // 🎯 GARANTE que PacienteId seja preenchido e Status mude para Reservado na tabela Agenda
+            // Usa updateMany para garantir que o PacienteId seja sempre atualizado, mesmo se houver trigger
             const updatedAgenda = await tx.agenda.update({
                 where: { Id: scheduleId },
                 data: {
@@ -457,6 +458,10 @@ export class ReservationService implements IReservationService {
             if (!updatedAgenda || !updatedAgenda.PacienteId || updatedAgenda.Status !== AgendaStatus.Reservado) {
                 throw new Error('Falha ao atualizar Agenda: PacienteId ou Status não foram atualizados corretamente');
             }
+            
+            // 🎯 GARANTE que o PacienteId seja mantido mesmo após trigger executar
+            // Força update novamente após criar a Consulta para garantir que o trigger não limpe o PacienteId
+            // Isso será feito após criar a Consulta
 
             // Se manterSaldo = true e há reservaAntigaId, busca o CicloPlanoId da reserva antiga para transferir
             let cicloPlanoIdParaTransferir: string | null = null;
@@ -535,6 +540,19 @@ export class ReservationService implements IReservationService {
             // OTIMIZAÇÃO: Preenche o valor da consulta após criar (pode ser feito em background se necessário)
             // Mantém na transação para garantir consistência, mas pode ser otimizado futuramente
             await this.atribuirValorConsulta(realUserId, reservation.Id, tx);
+
+            // 🎯 Calcula e cria repasse na reserva (acumula valores)
+            await this.calcularECriarRepasseNaReserva(reservation.Id, updatedAgenda.PsicologoId, realUserId, reservation.Date, tx);
+            
+            // 🎯 GARANTE que o PacienteId seja mantido na Agenda mesmo após trigger executar
+            // O trigger pode limpar o PacienteId quando atualiza o status, então forçamos novamente
+            // Fazemos isso DEPOIS de criar a Consulta para garantir que o trigger já executou
+            await tx.agenda.update({
+                where: { Id: updatedAgenda.Id },
+                data: {
+                    PacienteId: realUserId, // Força novamente para garantir que não seja limpo pelo trigger
+                },
+            });
 
             // Fluxo de saldo: PRIORIZA CreditoAvulso/ConsultaAvulsa primeiro, depois CicloPlano
             if (!manterSaldo) {
@@ -827,189 +845,195 @@ export class ReservationService implements IReservationService {
             // Não falha a criação da reserva se o email falhar
         }
 
-        if (fullReservation.PacienteId) {
-            // Emite evento WebSocket para atualização em tempo real
-            await this.websocketNotificationService.emitToUser(
-                fullReservation.PacienteId,
-                'consulta_reservada',
-                `Sua consulta foi reservada para ${dataFormatada} às ${horaFormatada}.`
-            );
+        // ✅ OTIMIZAÇÃO: Processa notificações em background (não bloqueia resposta)
+        setImmediate(async () => {
+            try {
+                if (fullReservation.PacienteId) {
+                    // Emite evento WebSocket para atualização em tempo real
+                    this.websocketNotificationService.emitToUser(
+                        fullReservation.PacienteId,
+                        'consulta_reservada',
+                        `Sua consulta foi reservada para ${dataFormatada} às ${horaFormatada}.`
+                    ).catch((err) => console.error('[ReservationService] Erro ao emitir WebSocket para paciente:', err));
 
-            // Cria notificação persistente no banco de dados
-            const notificationPaciente = await prisma.notification.create({
-                data: {
-                    Title: 'Consulta Reservada',
-                    Message: `Sua consulta foi reservada para ${dataFormatada} às ${horaFormatada}.`,
-                    Type: 'consulta_reservada',
-                    IsForAllUsers: false,
-                },
-            });
+                    // Cria notificação persistente no banco de dados
+                    const notificationPaciente = await prisma.notification.create({
+                        data: {
+                            Title: 'Consulta Reservada',
+                            Message: `Sua consulta foi reservada para ${dataFormatada} às ${horaFormatada}.`,
+                            Type: 'consulta_reservada',
+                            IsForAllUsers: false,
+                        },
+                    });
 
-            const statusPaciente = await prisma.notificationStatus.create({
-                data: {
-                    UserId: fullReservation.PacienteId,
-                    NotificationId: notificationPaciente.Id,
-                    Status: 'NaoLida',
-                },
-            });
+                    const statusPaciente = await prisma.notificationStatus.create({
+                        data: {
+                            UserId: fullReservation.PacienteId,
+                            NotificationId: notificationPaciente.Id,
+                            Status: 'NaoLida',
+                        },
+                    });
 
-            // Emite notificação no formato esperado pelo frontend
-            await this.websocketNotificationService.emitToUser(
-                fullReservation.PacienteId,
-                'notification',
-                {
-                    Id: notificationPaciente.Id,
-                    Title: notificationPaciente.Title,
-                    Message: notificationPaciente.Message,
-                    CreatedAt: statusPaciente.CreatedAt,
-                    IsForAllUsers: false,
+                    // Emite notificação no formato esperado pelo frontend
+                    this.websocketNotificationService.emitToUser(
+                        fullReservation.PacienteId,
+                        'notification',
+                        {
+                            Id: notificationPaciente.Id,
+                            Title: notificationPaciente.Title,
+                            Message: notificationPaciente.Message,
+                            CreatedAt: statusPaciente.CreatedAt,
+                            IsForAllUsers: false,
+                        }
+                    ).catch((err) => console.error('[ReservationService] Erro ao emitir notificação para paciente:', err));
+
+                    // Emite eventos de atualização
+                    this.websocketNotificationService.emitToUser(
+                        fullReservation.PacienteId,
+                        'plano:atualizado',
+                        { motivo: 'consulta_debitada', consultaId: fullReservation.Id }
+                    ).catch(() => {});
+                    
+                    this.websocketNotificationService.emitToUser(
+                        fullReservation.PacienteId,
+                        'ciclo:atualizado',
+                        { motivo: 'consulta_debitada', consultaId: fullReservation.Id }
+                    ).catch(() => {});
+                    
+                    this.websocketNotificationService.emitToUser(
+                        fullReservation.PacienteId,
+                        'consulta:atualizada',
+                        { consultaId: fullReservation.Id, action: 'reservada' }
+                    ).catch(() => {});
                 }
-            );
 
-            // Emite evento específico para atualização de plano quando consulta é debitada
-            await this.websocketNotificationService.emitToUser(
-                fullReservation.PacienteId,
-                'plano:atualizado',
-                { motivo: 'consulta_debitada', consultaId: fullReservation.Id }
-            );
+                if (fullReservation.PsicologoId) {
+                    // Emite evento WebSocket para atualização em tempo real
+                    this.websocketNotificationService.emitToUser(
+                        fullReservation.PsicologoId,
+                        'consulta_reservada',
+                        `Uma nova consulta foi reservada para ${dataFormatada} às ${horaFormatada}.`
+                    ).catch((err) => console.error('[ReservationService] Erro ao emitir WebSocket para psicólogo:', err));
 
-            // Emite evento de ciclo atualizado para atualizar consultas restantes em tempo real
-            await this.websocketNotificationService.emitToUser(
-                fullReservation.PacienteId,
-                'ciclo:atualizado',
-                { motivo: 'consulta_debitada', consultaId: fullReservation.Id }
-            );
+                    // Busca nome do paciente para a notificação do psicólogo
+                    const nomePaciente = fullReservation.Paciente?.Nome || 'um paciente';
 
-            // Emite evento de consulta atualizada para atualizar cards
-            await this.websocketNotificationService.emitToUser(
-                fullReservation.PacienteId,
-                'consulta:atualizada',
-                { consultaId: fullReservation.Id, action: 'reservada' }
-            );
-        }
+                    // Cria notificação persistente no banco de dados
+                    const notificationPsicologo = await prisma.notification.create({
+                        data: {
+                            Title: 'Nova Consulta Reservada',
+                            Message: `${nomePaciente} reservou uma consulta para ${dataFormatada} às ${horaFormatada}.`,
+                            Type: 'consulta_reservada',
+                            IsForAllUsers: false,
+                        },
+                    });
 
-        if (fullReservation.PsicologoId) {
-            // Emite evento WebSocket para atualização em tempo real
-            await this.websocketNotificationService.emitToUser(
-                fullReservation.PsicologoId,
-                'consulta_reservada',
-                `Uma nova consulta foi reservada para ${dataFormatada} às ${horaFormatada}.`
-            );
+                    const statusPsicologo = await prisma.notificationStatus.create({
+                        data: {
+                            UserId: fullReservation.PsicologoId,
+                            NotificationId: notificationPsicologo.Id,
+                            Status: 'NaoLida',
+                        },
+                    });
 
-            // Busca nome do paciente para a notificação do psicólogo
-            const nomePaciente = fullReservation.Paciente?.Nome || 'um paciente';
-
-            // Cria notificação persistente no banco de dados
-            const notificationPsicologo = await prisma.notification.create({
-                data: {
-                    Title: 'Nova Consulta Reservada',
-                    Message: `${nomePaciente} reservou uma consulta para ${dataFormatada} às ${horaFormatada}.`,
-                    Type: 'consulta_reservada',
-                    IsForAllUsers: false,
-                },
-            });
-
-            const statusPsicologo = await prisma.notificationStatus.create({
-                data: {
-                    UserId: fullReservation.PsicologoId,
-                    NotificationId: notificationPsicologo.Id,
-                    Status: 'NaoLida',
-                },
-            });
-
-            // Emite notificação no formato esperado pelo frontend
-            await this.websocketNotificationService.emitToUser(
-                fullReservation.PsicologoId,
-                'notification',
-                {
-                    Id: notificationPsicologo.Id,
-                    Title: notificationPsicologo.Title,
-                    Message: notificationPsicologo.Message,
-                    CreatedAt: statusPsicologo.CreatedAt,
-                    IsForAllUsers: false,
+                    // Emite notificação no formato esperado pelo frontend
+                    this.websocketNotificationService.emitToUser(
+                        fullReservation.PsicologoId,
+                        'notification',
+                        {
+                            Id: notificationPsicologo.Id,
+                            Title: notificationPsicologo.Title,
+                            Message: notificationPsicologo.Message,
+                            CreatedAt: statusPsicologo.CreatedAt,
+                            IsForAllUsers: false,
+                        }
+                    ).catch((err) => console.error('[ReservationService] Erro ao emitir notificação para psicólogo:', err));
                 }
-            );
-        }
-
-        // Agendar notificação para o paciente 1 hora antes da consulta
-        // Monta o Date absoluto no fuso de Brasília para agendar jobs com precisão
-        const dateStr = dayjs(fullReservation.Date).format('YYYY-MM-DD');
-        const consultaDateTimeBr = dayjs.tz(`${dateStr} ${fullReservation.Time}:00`, 'YYYY-MM-DD HH:mm:ss', 'America/Sao_Paulo');
-        const notificationTime = consultaDateTimeBr.subtract(1, 'hour').toDate();
-
-        if (fullReservation.PacienteId) {
-            await this.notificationService.scheduleNotification({
-                userId: fullReservation.PacienteId,
-                title: 'Lembrete de consulta',
-                message: `Sua consulta está agendada para ${dayjs(fullReservation.Date).format('DD/MM/YYYY')} às ${fullReservation.Time}.`,
-                scheduledAt: notificationTime,
-                type: 'consulta_lembrete',
-                referenceId: fullReservation.Id
-            });
-        }
-
-        // ✅ Agenda jobs de delayed jobs (cancelamento e finalização) quando consulta é criada
-        // 🎯 REGRA: Usa ScheduledAt da ReservaSessao quando disponível (formato: 2026-01-05 15:00:00)
-        // Fallback para Date + Time da Consulta apenas se ScheduledAt não existir
-        const { scheduleConsultationJobs } = await import('../utils/scheduleDelayedJobs');
-        const reservaSessaoForJobs = fullReservation.ReservaSessao;
-        let scheduledAtForJobs: Date | string;
-        
-        if (reservaSessaoForJobs?.ScheduledAt) {
-            // ScheduledAt é string no formato 'YYYY-MM-DD HH:mm:ss'
-            scheduledAtForJobs = reservaSessaoForJobs.ScheduledAt;
-            console.log(`✅ [ReservationService] Usando ScheduledAt da ReservaSessao para agendar delayed jobs: ${reservaSessaoForJobs.ScheduledAt}`);
-        } else {
-            scheduledAtForJobs = consultaDateTimeBr.toDate();
-            console.log(`ℹ️ [ReservationService] ScheduledAt não encontrado, usando Date + Time da Consulta para agendar delayed jobs`);
-        }
-        
-        await scheduleConsultationJobs(fullReservation.Id, scheduledAtForJobs);
-        
-        // ✅ Mantém agendamento de jobs de consulta existente (tokens, notificações, etc)
-        // Isso é necessário para manter compatibilidade com o sistema atual
-        const { scheduleConsultationJobs: scheduleOldConsultationJobs } = require('../jobs/consultationJobs');
-        const scheduledAtForOldJobs = typeof scheduledAtForJobs === 'string'
-            ? dayjs.tz(scheduledAtForJobs, 'YYYY-MM-DD HH:mm:ss', 'America/Sao_Paulo').toDate()
-            : scheduledAtForJobs;
-        await scheduleOldConsultationJobs(fullReservation.Id, scheduledAtForOldJobs);
-
-        // Agenda geração de tokens Agora no horário exato do ScheduledAt
-        const reservaSessao = fullReservation.ReservaSessao;
-        if (reservaSessao?.ScheduledAt) {
-            const { scheduleAgoraTokenGeneration } = await import('../utils/scheduleAgoraToken');
-            await scheduleAgoraTokenGeneration(fullReservation.Id, reservaSessao.ScheduledAt);
-        }
-
-        // Envia emails de confirmação para paciente e psicólogo
-        try {
-            const dataFormatada = dayjs(fullReservation.Date).format('DD/MM/YYYY');
-            const horarioFormatado = String(fullReservation.Time).padStart(5, '0');
-
-            if (fullReservation.Paciente?.Email && fullReservation.Paciente?.Nome) {
-                await this.emailService.sendAppointmentConfirmationEmailPaciente(
-                    fullReservation.Paciente.Email,
-                    fullReservation.Paciente.Nome,
-                    fullReservation.Psicologo?.Nome || 'Psicólogo',
-                    dataFormatada,
-                    horarioFormatado
-                );
+            } catch (notificationError) {
+                console.error('[ReservationService] Erro ao processar notificações em background:', notificationError);
             }
+        });
 
-            if (fullReservation.Psicologo?.Email && fullReservation.Psicologo?.Nome) {
-                await this.emailService.sendAppointmentConfirmationEmailPsicologo(
-                    fullReservation.Psicologo.Email,
-                    fullReservation.Psicologo.Nome,
-                    fullReservation.Paciente?.Nome || 'Paciente',
-                    fullReservation.Paciente?.Email || '',
-                    dataFormatada,
-                    horarioFormatado
+        // ✅ OTIMIZAÇÃO: Agenda jobs e notificações em background (não bloqueia resposta)
+        setImmediate(async () => {
+            try {
+                // Agendar notificação para o paciente 1 hora antes da consulta
+                const dateStr = dayjs(fullReservation.Date).format('YYYY-MM-DD');
+                const consultaDateTimeBr = dayjs.tz(`${dateStr} ${fullReservation.Time}:00`, 'YYYY-MM-DD HH:mm:ss', 'America/Sao_Paulo');
+                const notificationTime = consultaDateTimeBr.subtract(1, 'hour').toDate();
+
+                if (fullReservation.PacienteId) {
+                    this.notificationService.scheduleNotification({
+                        userId: fullReservation.PacienteId,
+                        title: 'Lembrete de consulta',
+                        message: `Sua consulta está agendada para ${dayjs(fullReservation.Date).format('DD/MM/YYYY')} às ${fullReservation.Time}.`,
+                        scheduledAt: notificationTime,
+                        type: 'consulta_lembrete',
+                        referenceId: fullReservation.Id
+                    }).catch((err) => console.error('[ReservationService] Erro ao agendar notificação:', err));
+                }
+
+                // ✅ Agenda jobs de delayed jobs (cancelamento e finalização) quando consulta é criada
+                const { scheduleConsultationJobs } = await import('../utils/scheduleDelayedJobs');
+                const reservaSessaoForJobs = fullReservation.ReservaSessao;
+                let scheduledAtForJobs: Date | string;
+                
+                if (reservaSessaoForJobs?.ScheduledAt) {
+                    scheduledAtForJobs = reservaSessaoForJobs.ScheduledAt;
+                    console.log(`✅ [ReservationService] Usando ScheduledAt da ReservaSessao para agendar delayed jobs: ${reservaSessaoForJobs.ScheduledAt}`);
+                } else {
+                    scheduledAtForJobs = consultaDateTimeBr.toDate();
+                    console.log(`ℹ️ [ReservationService] ScheduledAt não encontrado, usando Date + Time da Consulta para agendar delayed jobs`);
+                }
+                
+                scheduleConsultationJobs(fullReservation.Id, scheduledAtForJobs).catch((err) => 
+                    console.error('[ReservationService] Erro ao agendar delayed jobs:', err)
                 );
+                
+                // ✅ Mantém agendamento de jobs de consulta existente (tokens, notificações, etc)
+                const { scheduleConsultationJobs: scheduleOldConsultationJobs } = require('../jobs/consultationJobs');
+                const scheduledAtForOldJobs = typeof scheduledAtForJobs === 'string'
+                    ? dayjs.tz(scheduledAtForJobs, 'YYYY-MM-DD HH:mm:ss', 'America/Sao_Paulo').toDate()
+                    : scheduledAtForJobs;
+                scheduleOldConsultationJobs(fullReservation.Id, scheduledAtForOldJobs).catch((err) =>
+                    console.error('[ReservationService] Erro ao agendar old consultation jobs:', err)
+                );
+
+                // Agenda geração de tokens Agora no horário exato do ScheduledAt
+                const reservaSessao = fullReservation.ReservaSessao;
+                if (reservaSessao?.ScheduledAt) {
+                    const { scheduleAgoraTokenGeneration } = await import('../utils/scheduleAgoraToken');
+                    scheduleAgoraTokenGeneration(fullReservation.Id, reservaSessao.ScheduledAt).catch((err) =>
+                        console.error('[ReservationService] Erro ao agendar tokens Agora:', err)
+                    );
+                }
+
+                // Envia emails de confirmação adicionais (já enviados acima, mas mantém para compatibilidade)
+                const horarioFormatado = String(fullReservation.Time).padStart(5, '0');
+                if (fullReservation.Paciente?.Email && fullReservation.Paciente?.Nome) {
+                    this.emailService.sendAppointmentConfirmationEmailPaciente(
+                        fullReservation.Paciente.Email,
+                        fullReservation.Paciente.Nome,
+                        fullReservation.Psicologo?.Nome || 'Psicólogo',
+                        dataFormatada,
+                        horarioFormatado
+                    ).catch(() => {}); // Já enviado acima, ignora erro
+                }
+
+                if (fullReservation.Psicologo?.Email && fullReservation.Psicologo?.Nome) {
+                    this.emailService.sendAppointmentConfirmationEmailPsicologo(
+                        fullReservation.Psicologo.Email,
+                        fullReservation.Psicologo.Nome,
+                        fullReservation.Paciente?.Nome || 'Paciente',
+                        fullReservation.Paciente?.Email || '',
+                        dataFormatada,
+                        horarioFormatado
+                    ).catch(() => {}); // Já enviado acima, ignora erro
+                }
+            } catch (jobError) {
+                console.error('[ReservationService] Erro ao processar jobs em background:', jobError);
             }
-        } catch (emailError) {
-            console.error('[ReservationService] Erro ao enviar emails de confirmação:', emailError);
-            // Não interrompe o fluxo se o email falhar
-        }
+        });
 
         return { reservation: fullReservation, updatedAgenda: result.updatedAgenda };
     }
@@ -1696,6 +1720,197 @@ export class ReservationService implements IReservationService {
             where: { Id: consultaId },
             data: { Valor: Number(valorConsulta.toFixed(2)) }
         });
+    }
+
+    /**
+     * Calcula e cria repasse na reserva (acumula valores)
+     */
+    async calcularECriarRepasseNaReserva(
+        consultaId: string,
+        psicologoId: string | null,
+        pacienteId: string,
+        dataConsulta: Date,
+        tx: PrismaTransaction
+    ): Promise<void> {
+        try {
+            if (!psicologoId) {
+                console.log(`[ReservationService] PsicologoId não encontrado para consulta ${consultaId}, pulando repasse`);
+                return;
+            }
+
+            // Busca a consulta com valor e plano do paciente
+            const consulta = await tx.consulta.findUnique({
+                where: { Id: consultaId },
+                include: {
+                    Paciente: {
+                        include: {
+                            AssinaturaPlanos: {
+                                where: { Status: 'Ativo' },
+                                include: {
+                                    PlanoAssinatura: true
+                                }
+                            }
+                        }
+                    },
+                    Psicologo: {
+                        select: {
+                            Status: true
+                        }
+                    }
+                }
+            });
+
+            if (!consulta) {
+                console.warn(`[ReservationService] Consulta não encontrada para repasse: ${consultaId}`);
+                return;
+            }
+
+            // Calcula valor base
+            let valorBase = consulta.Valor ?? 0;
+            let tipoPlano: typeof CommissionTipoPlano[keyof typeof CommissionTipoPlano] = CommissionTipoPlano.avulsa;
+
+            const planoAssinatura = consulta.Paciente?.AssinaturaPlanos?.[0];
+            if (planoAssinatura && planoAssinatura.PlanoAssinatura) {
+                const tipo = planoAssinatura.PlanoAssinatura.Tipo?.toLowerCase();
+                if (tipo === "mensal") {
+                    tipoPlano = CommissionTipoPlano.mensal;
+                    valorBase = (planoAssinatura.PlanoAssinatura.Preco ?? 0) / 4;
+                } else if (tipo === "trimestral") {
+                    tipoPlano = CommissionTipoPlano.trimestral;
+                    valorBase = (planoAssinatura.PlanoAssinatura.Preco ?? 0) / 12;
+                } else if (tipo === "semestral") {
+                    tipoPlano = CommissionTipoPlano.semestral;
+                    valorBase = (planoAssinatura.PlanoAssinatura.Preco ?? 0) / 24;
+                } else {
+                    tipoPlano = CommissionTipoPlano.avulsa;
+                    valorBase = consulta.Valor ?? 0;
+                }
+            }
+
+            // Se não tem valor base, busca do PlanoAssinatura (consulta avulsa/promocional)
+            if (valorBase === 0) {
+                const planoAvulsa = await tx.planoAssinatura.findFirst({
+                    where: {
+                        Tipo: { in: ["Avulsa", "Unica"] },
+                        Status: "Ativo"
+                    },
+                    orderBy: { Preco: 'desc' } // Pega o mais caro primeiro (189.99)
+                });
+                
+                if (planoAvulsa && planoAvulsa.Preco) {
+                    valorBase = planoAvulsa.Preco;
+                }
+            }
+
+            if (valorBase === 0) {
+                console.warn(`[ReservationService] Valor base é 0 para consulta ${consultaId}, pulando repasse`);
+                return;
+            }
+
+            // 🎯 Verifica se deve fazer repasse baseado no status atual da consulta
+            const { determinarStatusNormalizado, determinarRepasse } = await import('../utils/statusConsulta.util');
+            const statusNormalizado = await determinarStatusNormalizado(consulta.Status, {
+                tipoAutor: undefined,
+                dataConsulta: consulta.Date,
+                motivo: undefined,
+                cancelamentoDeferido: undefined,
+                pacienteNaoCompareceu: false,
+                psicologoNaoCompareceu: false
+            });
+
+            // Busca cancelamento mais recente se houver
+            const cancelamentoMaisRecente = await tx.cancelamentoSessao.findFirst({
+                where: { SessaoId: consultaId },
+                orderBy: { Data: 'desc' }
+            });
+            const cancelamentoDeferido = cancelamentoMaisRecente?.Status === 'Deferido';
+
+            const deveFazerRepasse = determinarRepasse(statusNormalizado, cancelamentoDeferido);
+
+            if (!deveFazerRepasse) {
+                console.log(`[ReservationService] Repasse não aplicável para consulta ${consultaId} com status ${statusNormalizado}`);
+                
+                // Remove comissão existente se houver (caso o status mude para não repassável)
+                const comissaoExistente = await tx.commission.findFirst({
+                    where: { ConsultaId: consultaId }
+                });
+
+                if (comissaoExistente) {
+                    await tx.commission.delete({
+                        where: { Id: comissaoExistente.Id }
+                    });
+                    console.log(`[ReservationService] Comissão removida para consulta ${consultaId} (status não repassável)`);
+                }
+
+                // Marca consulta como não faturada
+                await tx.consulta.update({
+                    where: { Id: consultaId },
+                    data: { Faturada: false }
+                });
+
+                return;
+            }
+
+            // Obtém o percentual de repasse (40% para PJ, 32% para autônomo)
+            const { getRepassePercentForPsychologist } = await import('../utils/repasse.util');
+            const repassePercent = await getRepassePercentForPsychologist(psicologoId);
+            const valorPsicologo = valorBase * repassePercent;
+
+            // Calcula status de repasse baseado na data de corte
+            const { calcularStatusRepassePorDataCorte } = await import('../scripts/processarRepassesConsultas');
+            const psicologoStatus = consulta.Psicologo?.Status || 'Inativo';
+            const statusRepasse = calcularStatusRepassePorDataCorte(dataConsulta, psicologoStatus);
+
+            // Calcula período (YYYY-MM)
+            const dataConsultaBr = dayjs.tz(dataConsulta, 'America/Sao_Paulo');
+            const ano = dataConsultaBr.year();
+            const mes = String(dataConsultaBr.month() + 1).padStart(2, '0');
+            const periodo = `${ano}-${mes}`;
+
+            // Verifica se já existe comissão para esta consulta
+            const comissaoExistente = await tx.commission.findFirst({
+                where: { ConsultaId: consultaId }
+            });
+
+            if (comissaoExistente) {
+                // Atualiza comissão existente
+                await tx.commission.update({
+                    where: { Id: comissaoExistente.Id },
+                    data: {
+                        Valor: valorPsicologo,
+                        Status: statusRepasse,
+                        Periodo: periodo,
+                        TipoPlano: tipoPlano,
+                        Type: "repasse"
+                    }
+                });
+                console.log(`✅ [ReservationService] Comissão atualizada na reserva para consulta ${consultaId}: R$ ${valorPsicologo.toFixed(2)} - Status: ${statusRepasse}`);
+            } else {
+                // Cria nova comissão
+                await tx.commission.create({
+                    data: {
+                        ConsultaId: consultaId,
+                        PsicologoId: psicologoId,
+                        PacienteId: pacienteId,
+                        Valor: valorPsicologo,
+                        Status: statusRepasse,
+                        Periodo: periodo,
+                        TipoPlano: tipoPlano,
+                        Type: "repasse"
+                    }
+                });
+                console.log(`✅ [ReservationService] Comissão criada na reserva para consulta ${consultaId}: R$ ${valorPsicologo.toFixed(2)} (${(repassePercent * 100).toFixed(0)}%) - Status: ${statusRepasse}`);
+            }
+
+            // Marca consulta como faturada
+            await tx.consulta.update({
+                where: { Id: consultaId },
+                data: { Faturada: true }
+            });
+        } catch (error) {
+            console.error(`❌ [ReservationService] Erro ao calcular/criar repasse na reserva para consulta ${consultaId}:`, error);
+            // Não falha a reserva se o repasse falhar - pode ser processado depois
+        }
     }
 
     /**

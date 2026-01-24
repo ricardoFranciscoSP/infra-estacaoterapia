@@ -80,6 +80,7 @@ router.get('/consultas/mes-atual-lista', authorize('Admin', 'Management'), async
 router.get('/consultas/por-data', authorize('Admin', 'Management'), asyncHandler(consultasController.getConsultasPorData.bind(consultasController)));
 router.get('/consultas/lista', authorize('Admin', 'Management'), asyncHandler(consultasController.getConsultasLista.bind(consultasController)));
 router.patch('/consultas/:id/status', authorize('Admin', 'Management'), asyncHandler(consultasController.updateConsultaStatus.bind(consultasController)));
+router.post('/consultas/processar-repasses', authorize('Admin', 'Management'), asyncHandler(consultasController.processarRepassesConsultas.bind(consultasController)));
 
 // Rotas para gerenciamento de avaliações
 router.get('/reviews', asyncHandler(reviewsController.list.bind(reviewsController)));

@@ -275,9 +275,21 @@ export default function FinanceiroPage() {
     );
   }
 
-  // Calcular valor recebido do mês atual (sessões com statusPagamento = "Pago")
-  const repassesRecebidosMesAtual = historicoSessoesMesAtual.filter(s => s.statusPagamento === "Pago");
-  const valorRecebidoMesAtual = repassesRecebidosMesAtual.reduce((acc, s) => acc + s.valor, 0);
+
+  // Calcular valor recebido do mês ANTERIOR (repasses do mês anterior)
+  function getMesAnoAnterior(date: Date) {
+    const mesAnterior = date.getMonth() === 0 ? 11 : date.getMonth() - 1;
+    const anoAnterior = date.getMonth() === 0 ? date.getFullYear() - 1 : date.getFullYear();
+    return { mes: mesAnterior, ano: anoAnterior };
+  }
+
+  const { mes: mesAnterior, ano: anoAnterior } = getMesAnoAnterior(hoje);
+  const { historicoSessoes: historicoSessoesMesAnterior } = useHistoricoSessoes(mesAnterior, anoAnterior, 1, 1000);
+  // Considera sessões com statusPagamento = "Pago" no mês anterior
+  const repassesRecebidosMesAnterior = historicoSessoesMesAnterior.filter(s => s.statusPagamento === "Pago");
+  const valorRecebidoMesAnterior = repassesRecebidosMesAnterior.reduce((acc, s) => acc + s.valor, 0);
+
+  // Para exibir no card principal, use valorRecebidoMesAnterior
   
   // Resetar página quando mudar filtro
   useEffect(() => {
@@ -579,10 +591,10 @@ export default function FinanceiroPage() {
         </span>
       );
     }
-    if (status === "Realizada") {
+    if (status === "Concluído" || status === "Realizada") {
       return (
         <span className="px-3 py-1 rounded-[6px] bg-[#E7F6E7] text-[#3A7A3A] font-semibold flex items-center text-[13px]">
-          Realizada
+          Concluído
         </span>
       );
     }
@@ -618,7 +630,7 @@ export default function FinanceiroPage() {
 
   // Função para renderizar status do pagamento
   function StatusPagamento({ status }: { status: string }) {
-    if (status === "-") {
+    if (status === "-" || !status) {
       return <span className="text-[#6B7280] text-[13px]">-</span>;
     }
     if (status === "Não pago") {
@@ -642,7 +654,17 @@ export default function FinanceiroPage() {
         </span>
       );
     }
-    return null;
+    if (status === "Sem repasse") {
+      return (
+        <span className="flex items-center gap-1 text-[#6B7280] text-[13px] font-semibold">
+          <span className="text-[16px]">-</span> Sem repasse
+        </span>
+      );
+    }
+    // Fallback para qualquer outro status
+    return (
+      <span className="text-[#6B7280] text-[13px] font-semibold">{status}</span>
+    );
   }
 
   if (mostrarFormulario) {
@@ -1078,11 +1100,11 @@ export default function FinanceiroPage() {
                 <div className="flex flex-col items-start w-full">
                   <span className="fira-sans font-medium text-[16px] leading-[24px] text-[#26220D] mb-1">Valor total recebido</span>
                   <span className="fira-sans font-normal text-[14px] leading-[24px] text-[#49525A] mb-2">
-                    {`${currentMonthLabel}/${currentYearLabel}`}
+                    {`${mesesNomes[mesAnterior]}/${anoAnterior}`}
                   </span>
                   <div className="flex w-full h-full items-center justify-center">
                     <span className="fira-sans font-semibold text-[40px] leading-[64px] text-[#444D9D] mb-2 text-center">
-                      R$ {valorRecebidoMesAtual.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      R$ {valorRecebidoMesAnterior.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </span>
                   </div>
                 </div>
@@ -1340,16 +1362,32 @@ export default function FinanceiroPage() {
                         </td>
                       </tr>
                     ) : (
-                      historicoSessoes.map((s) => (
-                        <tr key={s.sessaoId} className="border-b border-[#F3F4F6]">
-                          <td className="py-2 pr-3 sm:pr-4 text-[#111827]">{s.id}</td>
-                          <td className="py-2 pr-3 sm:pr-4 text-[#111827]">{getNomePacienteSeguro(s.paciente)}</td>
-                          <td className="py-2 pr-3 sm:pr-4 text-[#111827] whitespace-nowrap">{s.dataHora}</td>
-                          <td className="py-2 pr-3 sm:pr-4 text-[#111827] whitespace-nowrap">R$ {s.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</td>
-                          <td className="py-2 pr-3 sm:pr-4">{<StatusSessao status={s.statusSessao} />}</td>
-                          <td className="py-2 pr-3 sm:pr-4">{<StatusPagamento status={s.statusPagamento} />}</td>
-                        </tr>
-                      ))
+                      historicoSessoes
+                        .filter((s) => s.statusSessao === "Concluído" || s.statusSessao === "Realizada" || s.statusSessao === "Cancelada")
+                        .map((s) => {
+                          // Mostra valor se:
+                          // 1. Status de pagamento é "Pago" OU
+                          // 2. Status de pagamento é "Bloqueado" (tem valor mas ainda não foi pago) OU
+                          // 3. Status da sessão é "Cancelada" e tem repasse (statusPagamento não é "Sem repasse")
+                          const temValor = s.valor > 0 && (
+                            s.statusPagamento === "Pago" || 
+                            s.statusPagamento === "Bloqueado" ||
+                            (s.statusSessao === "Cancelada" && s.statusPagamento !== "Sem repasse" && s.statusPagamento !== "-")
+                          );
+                          const valorExibir = temValor 
+                            ? `R$ ${s.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` 
+                            : "--";
+                          return (
+                            <tr key={s.sessaoId} className="border-b border-[#F3F4F6] hover:bg-gray-50">
+                              <td className="py-2 pr-3 sm:pr-4 text-[#111827]">{s.id}</td>
+                              <td className="py-2 pr-3 sm:pr-4 text-[#111827]">{getNomePacienteSeguro(s.paciente)}</td>
+                              <td className="py-2 pr-3 sm:pr-4 text-[#111827] whitespace-nowrap">{s.dataHora}</td>
+                              <td className="py-2 pr-3 sm:pr-4 text-[#111827] whitespace-nowrap font-medium">{valorExibir}</td>
+                              <td className="py-2 pr-3 sm:pr-4">{<StatusSessao status={s.statusSessao} />}</td>
+                              <td className="py-2 pr-3 sm:pr-4">{<StatusPagamento status={s.statusPagamento} />}</td>
+                            </tr>
+                          );
+                        })
                     )}
                   </tbody>
                 </table>

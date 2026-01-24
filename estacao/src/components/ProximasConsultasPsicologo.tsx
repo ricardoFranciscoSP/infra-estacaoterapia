@@ -18,11 +18,12 @@ import { normalizeConsulta, type GenericObject } from "@/utils/normalizarConsult
 import { obterPrimeiroUltimoNome } from "@/utils/nomeUtils";
 import { getStatusTagInfo } from "@/utils/statusConsulta.util";
 import { extractScheduledAtFromNormalized, scheduledAtToTimestamp } from "@/utils/reservaSessaoUtils";
-import { shouldEnableEntrarConsulta } from "@/utils/consultaTempoUtils";
+import { shouldEnableEntrarConsulta, calcularTempoDecorrido50Minutos, isConsultaDentro50MinutosComScheduledAt, isConsultaIniciada } from "@/utils/consultaTempoUtils";
 import { useReservaSessaoData } from "@/hooks/useReservaSessaoData";
 import dayjs from 'dayjs';
 import timezone from 'dayjs/plugin/timezone';
 import utc from 'dayjs/plugin/utc';
+import { useContadorGlobal } from "@/hooks/useContadorGlobal";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -96,6 +97,9 @@ export default function ProximaConsultaPsicologo({ consultas = null, role = "pac
     consultationId: normalized?.id ? String(normalized.id) : undefined
   });
 
+  // Hook para contador global (atualiza a cada segundo) — deve vir antes dos useMemo que usam timestamp
+  const { timestamp } = useContadorGlobal();
+
   // Prepara os dados para useSessaoConsulta no formato esperado
   // IMPORTANTE: Inclui ReservaSessao com ScheduledAt como fonte da verdade
   const consultaSessaoData: ConsultaSessao = useMemo(() => {
@@ -129,8 +133,9 @@ export default function ProximaConsultaPsicologo({ consultas = null, role = "pac
   const sessaoConsulta = useSessaoConsulta(consultaSessaoData);
 
   // Valida se a consulta é futura ou está em andamento usando timezone de Brasília
-  // Inclui consultas em andamento que estão dentro da janela de 1 hora
-  const isConsultaFutura = useMemo(() => {
+  // 🎯 REGRA: Card deve ficar visível durante os 50 minutos da consulta
+  // Atualiza em tempo real usando timestamp
+  const isConsultaFuturaOuEmAndamento = useMemo(() => {
     if (!next || !normalized?.date || !normalized?.time) return false;
     
     try {
@@ -138,46 +143,40 @@ export default function ProximaConsultaPsicologo({ consultas = null, role = "pac
       const dateOnly = normalized.date.split('T')[0].split(' ')[0];
       if (!/^\d{4}-\d{2}-\d{2}$/.test(dateOnly)) return false;
       
-      // Usa timezone de Brasília para comparação
-      const agoraBr = dayjs().tz('America/Sao_Paulo');
+      // Usa timezone de Brasília para comparação (atualiza em tempo real com timestamp)
+      const agoraBr = dayjs(timestamp).tz('America/Sao_Paulo');
       const dataAtualStr = agoraBr.format('YYYY-MM-DD');
       const horaAtualBr = agoraBr.format('HH:mm');
       const agoraTimestamp = agoraBr.valueOf();
       
-      // 🎯 REGRA: Verifica se a consulta está em andamento usando ScheduledAt (60 minutos)
-      const statusConsulta = normalized.raw?.Status || normalized.status;
-      if (statusConsulta === 'Andamento' || statusConsulta === 'andamento' || statusConsulta === 'EmAndamento' || statusConsulta === 'Em Andamento') {
-        let inicioConsulta: number | null = null;
+      // 🎯 REGRA: Verifica se a consulta está em andamento usando ScheduledAt (50 minutos)
+      let inicioConsulta: number | null = null;
+      
+      // Prioriza ScheduledAt da ReservaSessao
+      const scheduledAt = extractScheduledAtFromNormalized(normalized);
+      if (scheduledAt) {
+        inicioConsulta = scheduledAtToTimestamp(scheduledAt);
+      }
+      
+      // Fallback: usa date/time se ScheduledAt não estiver disponível
+      if (!inicioConsulta && normalized.time) {
+        const [hh, mm] = normalized.time.split(':').map(Number);
+        inicioConsulta = dayjs.tz(`${dateOnly} ${hh}:${mm}:00`, 'America/Sao_Paulo').valueOf();
+      }
+      
+      if (inicioConsulta) {
+        const fimConsulta = inicioConsulta + (50 * 60 * 1000); // 50 minutos
         
-        // Prioriza ScheduledAt da ReservaSessao usando função helper type-safe
-        const scheduledAt = extractScheduledAtFromNormalized(normalized);
-        if (scheduledAt) {
-          inicioConsulta = scheduledAtToTimestamp(scheduledAt);
-        }
-        
-        // Fallback: usa date/time se ScheduledAt não estiver disponível
-        if (!inicioConsulta && normalized.time) {
-          const [hh, mm] = normalized.time.split(':').map(Number);
-          inicioConsulta = dayjs.tz(`${dateOnly} ${hh}:${mm}:00`, 'America/Sao_Paulo').valueOf();
-        }
-        
-        if (inicioConsulta) {
-          const fimConsulta = inicioConsulta + (60 * 60 * 1000); // 60 minutos
-          
-          // Mostra se estiver dentro da janela de 60 minutos
-          if (agoraTimestamp >= inicioConsulta && agoraTimestamp <= fimConsulta) {
-            return true;
-          } else {
-            // Passou de 60 minutos, não mostra
-            return false;
-          }
+        // 🎯 Mostra se estiver dentro da janela de 50 minutos
+        if (agoraTimestamp >= inicioConsulta && agoraTimestamp <= fimConsulta) {
+          return true;
         }
       }
       
       // Para consultas não em andamento, aplica a lógica original
       // Compara primeiro a data
       if (dateOnly < dataAtualStr) {
-        // Data passada, não é válida
+        // Data passada, não é válida (a menos que esteja dentro dos 50 minutos)
         return false;
       } else if (dateOnly > dataAtualStr) {
         // Data futura, é válida
@@ -191,11 +190,10 @@ export default function ProximaConsultaPsicologo({ consultas = null, role = "pac
       // Em caso de erro, confia no backend (se next existe, é válida)
       return true;
     }
-  }, [next, normalized]);
+  }, [next, normalized, timestamp]);
 
-  // Mostra o card se houver próxima consulta e ela for futura OU se não houver consulta atual ativa
-  // Isso garante que sempre mostre a próxima consulta quando não houver consulta ativa
-  const mostrarCard = next && (isConsultaFutura || true); // Sempre mostra se houver next, deixando a validação de tempo para o componente ConsultaAtualPsicologo
+  // 🎯 Mostra o card se houver próxima consulta e ela for futura OU se estiver dentro dos 50 minutos
+  const mostrarCard = next && isConsultaFuturaOuEmAndamento;
 
   // Hooks e estados
   const {
@@ -220,6 +218,128 @@ export default function ProximaConsultaPsicologo({ consultas = null, role = "pac
   // Obtém o ID do usuário logado para registrar presença
   const loggedUser = useAuthStore((state) => state.user);
   const loggedUserId = loggedUser?.Id || "";
+
+  // Calcula contador de 50 minutos durante a consulta
+  const contador50Minutos = useMemo(() => {
+    void timestamp;
+    return calcularTempoDecorrido50Minutos(
+      scheduledAtFromReserva ?? null,
+      normalized?.date ?? null,
+      normalized?.time ?? null
+    );
+  }, [scheduledAtFromReserva, normalized?.date, normalized?.time, timestamp]);
+
+  // Calcula contador regressivo antes da consulta começar (10 minutos antes e 10 minutos depois)
+  const contadorInicio = useMemo(() => {
+    void timestamp;
+    if (!normalized?.date || !normalized?.time) {
+      return { mostrar: false, frase: '', tempo: '' };
+    }
+
+    try {
+      // Prioriza ScheduledAt se disponível
+      let dataHoraConsulta: dayjs.Dayjs | null = null;
+      
+      if (scheduledAtFromReserva) {
+        try {
+          const [datePart, timePart] = scheduledAtFromReserva.split(' ');
+          if (datePart && timePart) {
+            const [year, month, day] = datePart.split('-').map(Number);
+            const [hour, minute, second = 0] = timePart.split(':').map(Number);
+            dataHoraConsulta = dayjs.tz(
+              `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')} ${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:${String(second).padStart(2, '0')}`,
+              'America/Sao_Paulo'
+            );
+          }
+        } catch (error) {
+          console.error('Erro ao parsear ScheduledAt:', error);
+        }
+      }
+      
+      // Fallback: usa date/time se ScheduledAt não estiver disponível
+      if (!dataHoraConsulta || !dataHoraConsulta.isValid()) {
+        const dateOnly = normalized.date.split('T')[0].split(' ')[0];
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(dateOnly)) {
+          return { mostrar: false, frase: '', tempo: '' };
+        }
+
+        const horarioTrimmed = normalized.time.trim();
+        if (!/^\d{1,2}:\d{2}$/.test(horarioTrimmed)) {
+          return { mostrar: false, frase: '', tempo: '' };
+        }
+
+        const [hora, minuto] = horarioTrimmed.split(':').map(Number);
+        if (hora < 0 || hora >= 24 || minuto < 0 || minuto >= 60) {
+          return { mostrar: false, frase: '', tempo: '' };
+        }
+
+        const horarioNormalizado = `${String(hora).padStart(2, '0')}:${String(minuto).padStart(2, '0')}`;
+        dataHoraConsulta = dayjs.tz(
+          `${dateOnly} ${horarioNormalizado}`,
+          'America/Sao_Paulo'
+        );
+      }
+
+      if (!dataHoraConsulta || !dataHoraConsulta.isValid()) {
+        return { mostrar: false, frase: '', tempo: '' };
+      }
+
+      const agora = dayjs().tz('America/Sao_Paulo');
+      // Calcula diferença em segundos (positivo = falta tempo, negativo = já começou)
+      const diffSegundos = dataHoraConsulta.diff(agora, 'second');
+
+      // 🎯 Contagem regressiva até o início (mostra apenas 10 minutos antes = 600 segundos)
+      if (diffSegundos > 0 && diffSegundos <= 600) {
+        const minutos = Math.floor(diffSegundos / 60);
+        const segundos = diffSegundos % 60;
+        const tempoFormatado = `${String(minutos).padStart(2, '0')}:${String(segundos).padStart(2, '0')}`;
+        
+        return {
+          mostrar: true,
+          frase: 'Sua sessão inicia em',
+          tempo: tempoFormatado,
+        };
+      }
+
+      // 🎯 Janela logo após iniciar (até 10 minutos depois = -600 segundos) para exibir "Sua sessão iniciou"
+      if (diffSegundos <= 0 && diffSegundos >= -600) {
+        const segundosPassados = Math.abs(diffSegundos);
+        const minutos = Math.floor(segundosPassados / 60);
+        const segundosRestantes = segundosPassados % 60;
+        const tempoFormatado = `${String(minutos).padStart(2, '0')}:${String(segundosRestantes).padStart(2, '0')}`;
+        return {
+          mostrar: true,
+          frase: 'Sua sessão iniciou',
+          tempo: tempoFormatado,
+        };
+      }
+
+      return { mostrar: false, frase: '', tempo: '' };
+    } catch (error) {
+      console.error('Erro ao calcular contador de início:', error);
+      return { mostrar: false, frase: '', tempo: '' };
+    }
+  }, [normalized?.date, normalized?.time, scheduledAtFromReserva, timestamp]);
+
+  // Verifica se a consulta está em andamento (dentro dos 50 minutos)
+  const consultaEmAndamento = useMemo(() => {
+    void timestamp;
+    return isConsultaDentro50MinutosComScheduledAt(
+      scheduledAtFromReserva ?? null,
+      normalized?.date ?? null,
+      normalized?.time ?? null
+    );
+  }, [scheduledAtFromReserva, normalized?.date, normalized?.time, timestamp]);
+
+  // Verifica se a consulta já iniciou (na hora exata)
+  const consultaIniciada = useMemo(() => {
+    void timestamp;
+    return isConsultaIniciada(
+      scheduledAtFromReserva ?? null,
+      normalized?.date ?? null,
+      normalized?.time ?? null
+    );
+  }, [scheduledAtFromReserva, normalized?.date, normalized?.time, timestamp]);
 
   // Atualiza frases e botões conforme status do socket
   useEffect(() => {
@@ -328,77 +448,264 @@ export default function ProximaConsultaPsicologo({ consultas = null, role = "pac
     null;
 
   // 🎯 Verifica se pode entrar na sessão baseado no ScheduledAt e status
+  // Desbloqueia o botão assim que a consulta iniciar (consultaIniciada)
   const podeEntrarNaSessao = useMemo(() => {
+    // Se a consulta já iniciou (na hora exata), permite entrar
+    if (consultaIniciada) {
+      // Se está dentro dos 50 minutos, sempre permite entrar
+      if (consultaEmAndamento) {
+        return true;
+      }
+    }
+    // Se a consulta está em andamento (dentro dos 50 minutos), permite entrar
+    if (consultaEmAndamento) {
+      return true;
+    }
+    // Usa a função helper para verificar se pode entrar
     return shouldEnableEntrarConsulta({
       scheduledAt: scheduledAtFromReserva ?? null,
       date: normalized?.date ?? null,
       time: normalized?.time ?? null,
       status: statusBase,
     });
-  }, [normalized?.date, normalized?.time, scheduledAtFromReserva, statusBase]);
+  }, [normalized?.date, normalized?.time, scheduledAtFromReserva, statusBase, consultaEmAndamento, consultaIniciada]);
 
-  if (socketStatus === "startingSoon") {
-    fraseSessao = "Sua sessão inicia em";
-    mostrarContador = true;
-    botaoEntrarDesabilitado = true;
-  } else if (socketStatus === "started") {
-    fraseSessao = "Sua sessão já começou há";
-    mostrarContador = true;
-    botaoEntrarDesabilitado = false;
-  } else if (socketStatus === "endingSoon") {
-    fraseSessao = "Sua sessão está encerrando em breve.";
-    mostrarContador = false;
-    botaoEntrarDesabilitado = false;
-  } else if (socketStatus === "Concluido") {
-    fraseSessao = "Sua sessão foi encerrada.";
-    mostrarContador = false;
-    botaoEntrarDesabilitado = true;
-  } else if (socketStatus === "Cancelado") {
-    fraseSessao = "Sua sessão foi cancelada.";
-    mostrarContador = false;
-    botaoEntrarDesabilitado = true;
-  } else if (socketStatus === "cancelled_by_patient") {
-    fraseSessao = "Consulta cancelada por ausência do paciente.";
-    mostrarContador = false;
-    botaoEntrarDesabilitado = true;
-  } else if (socketStatus === "cancelled_by_psychologist") {
-    fraseSessao = "Psicólogo ausente. Consulta recreditada.";
-    mostrarContador = false;
-    botaoEntrarDesabilitado = true;
-  } else if (mostrarSessao && !sessaoAtiva && !sessaoEncerrada) {
-    fraseSessao = `Sua sessão inicia em`;
-    mostrarContador = true;
-    botaoEntrarDesabilitado = true;
-  } else if (mostrarSessao && sessaoAtiva && !sessaoEncerrada) {
-    fraseSessao = `Sua sessão já começou há`;
-    mostrarContador = true;
-    botaoEntrarDesabilitado = false;
-  } else if (mostrarSessao && sessaoEncerrada) {
-    fraseSessao = `Sua sessão foi encerrada por inatividade.`;
-    mostrarContador = false;
-    contadorSessao = "";
-    botaoEntrarDesabilitado = true;
-  } else {
-        // Fora do intervalo dos 10 minutos antes e depois
-        if (normalized?.date && normalized?.time) {
-          // Calcular diferença em ms entre agora e data/hora da consulta
-          const dataObj = new Date(normalized.date);
-          const [hora, minuto] = String(normalized.time).split(":");
-          dataObj.setHours(Number(hora), Number(minuto), 0, 0);
-          const agora = new Date();
-          const diffMs = dataObj.getTime() - agora.getTime();
-          // Remover botão reagendar quando faltar 10 minutos ou menos
-          if (diffMs > 48 * 60 * 60 * 1000) {
-            // Mais de 48h: pode reagendar
-          } else if (diffMs > 10 * 60 * 1000 && diffMs <= 24 * 60 * 60 * 1000) {
-            // Entre 24h e 10min antes da consulta
-            botaoEntrarDesabilitado = true;
-          } else if (diffMs > 0 && diffMs <= 10 * 60 * 1000) {
-            // Menos de 10 minutos para a consulta
-            botaoEntrarDesabilitado = true;
-          }
+  // 🎯 Determina o status dinâmico baseado no andamento da consulta e socket em tempo real
+  const statusDinamico = useMemo(() => {
+    // Prioriza status do socket para atualização em tempo real
+    if (socketStatus) {
+      // Mapeia status do socket para status de exibição
+      if (socketStatus === "started" || socketStatus === "startingSoon") {
+        // Se está dentro dos 50 minutos, mostra "Em Andamento"
+        if (consultaEmAndamento && contador50Minutos.estaDentroDoPeriodo) {
+          return 'EmAndamento';
+        }
+        // Se socket diz que começou, mostra "Em Andamento" mesmo que não esteja mais nos 50 minutos
+        if (socketStatus === "started") {
+          return 'EmAndamento';
         }
       }
+      // Status finais do socket
+      if (socketStatus === "Concluido" || socketStatus === "endingSoon") {
+        return 'Concluido';
+      }
+      if (socketStatus === "Cancelado" || socketStatus === "cancelled_by_patient" || socketStatus === "cancelled_by_psychologist") {
+        return socketStatus;
+      }
+    }
+    
+    // Se está dentro dos 50 minutos, mostra "Em Andamento"
+    if (consultaEmAndamento && contador50Minutos.estaDentroDoPeriodo) {
+      return 'EmAndamento';
+    }
+    
+    // Se a consulta já iniciou mas não está mais nos 50 minutos, ainda mostra "Em Andamento" se o status base indicar
+    if (consultaIniciada && (statusBase === 'Andamento' || statusBase === 'andamento' || statusBase === 'EmAndamento' || statusBase === 'Em Andamento')) {
+      return 'EmAndamento';
+    }
+    
+    // Caso contrário, usa o status base
+    return statusBase || 'Reservado';
+  }, [consultaEmAndamento, contador50Minutos.estaDentroDoPeriodo, statusBase, socketStatus, consultaIniciada]);
+
+  // 🎯 Calcula estado da sessão - contador apenas 10 min antes e 10 min depois, mas card visível 50 minutos
+  const sessionState = useMemo(() => {
+    // Prioriza contador de início (10 minutos antes e 10 minutos depois)
+    if (contadorInicio.mostrar) {
+      return {
+        fraseSessao: contadorInicio.frase,
+        mostrarContador: true,
+        contadorSessao: contadorInicio.tempo,
+        botaoEntrarDesabilitado: contadorInicio.frase === 'Sua sessão inicia em', // Desabilita antes de começar
+      };
+    }
+
+    // Se está no horário da consulta (pode entrar), mostra botão habilitado
+    // Mas só mostra contador se estiver dentro dos 10 minutos antes ou depois do início
+    // 🎯 Desbloqueia o botão assim que a consulta iniciar (consultaIniciada)
+    if (podeEntrarNaSessao || consultaIniciada) {
+      // Se está em andamento (dentro dos 50 minutos)
+      if (consultaIniciada && consultaEmAndamento) {
+        // Verifica se está dentro dos 10 minutos após início para mostrar contador
+        let inicioConsulta: number | null = null;
+        if (scheduledAtFromReserva) {
+          try {
+            const [datePart, timePart] = scheduledAtFromReserva.split(' ');
+            if (datePart && timePart) {
+              const [year, month, day] = datePart.split('-').map(Number);
+              const [hour, minute, second = 0] = timePart.split(':').map(Number);
+              const inicioConsultaDate = dayjs.tz(
+                `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')} ${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:${String(second).padStart(2, '0')}`,
+                'America/Sao_Paulo'
+              );
+              inicioConsulta = inicioConsultaDate.valueOf();
+            }
+          } catch (error) {
+            console.error('Erro ao parsear ScheduledAt:', error);
+          }
+        }
+        
+        if (!inicioConsulta && normalized?.date && normalized?.time) {
+          const dateOnly = normalized.date.split('T')[0].split(' ')[0];
+          if (/^\d{4}-\d{2}-\d{2}$/.test(dateOnly)) {
+            const [hh, mm] = normalized.time.split(':').map(Number);
+            inicioConsulta = dayjs.tz(`${dateOnly} ${hh}:${mm}:00`, 'America/Sao_Paulo').valueOf();
+          }
+        }
+        
+        if (inicioConsulta) {
+          const agoraBr = dayjs().tz('America/Sao_Paulo');
+          const agoraTimestamp = agoraBr.valueOf();
+          const tempoDecorrido = agoraTimestamp - inicioConsulta;
+          const dentro10Minutos = tempoDecorrido >= 0 && tempoDecorrido <= (10 * 60 * 1000);
+          
+          // Se está dentro dos 10 minutos após início, mostra contador
+          if (dentro10Minutos && contador50Minutos.estaDentroDoPeriodo && contador50Minutos.tempoFormatado) {
+            return {
+              fraseSessao: "Sua sessão já começou há",
+              mostrarContador: true,
+              contadorSessao: contador50Minutos.tempoFormatado,
+              botaoEntrarDesabilitado: false,
+            };
+          }
+        }
+        
+        // Se passou dos 10 minutos mas ainda está dentro dos 50 minutos, não mostra contador mas mantém botão habilitado
+        // 🎯 Card permanece visível durante os 50 minutos mesmo sem contador
+        return {
+          fraseSessao: "",
+          mostrarContador: false,
+          contadorSessao: "",
+          botaoEntrarDesabilitado: false, // Botão sempre habilitado durante os 50 minutos
+        };
+      }
+      
+      // Se a consulta iniciou mas não está mais nos 50 minutos, ainda permite entrar
+      if (consultaIniciada) {
+        return {
+          fraseSessao: "",
+          mostrarContador: false,
+          contadorSessao: "",
+          botaoEntrarDesabilitado: false, // Botão habilitado assim que iniciar
+        };
+      }
+      
+      // Caso contrário, usa contador padrão (se estiver dentro dos 10 minutos antes)
+      return {
+        fraseSessao: socketStatus === "started" ? "Sua sessão já começou há" : "Sua sessão inicia em",
+        mostrarContador: contadorInicio.mostrar, // Só mostra se estiver dentro dos 10 minutos antes
+        contadorSessao: contadorInicio.mostrar ? contadorInicio.tempo : (contador || ""),
+        botaoEntrarDesabilitado: !consultaIniciada, // Desbloqueia assim que iniciar
+      };
+    }
+
+    // Status do socket tem prioridade
+    if (socketStatus === "startingSoon") {
+      return {
+        fraseSessao: "Sua sessão inicia em",
+        mostrarContador: true,
+        contadorSessao: contadorInicio.tempo || contador,
+        botaoEntrarDesabilitado: true,
+      };
+    }
+
+    if (socketStatus === "started") {
+      // Usa contador de 50 minutos se estiver dentro do período
+      const tempoContador = (consultaEmAndamento && contador50Minutos.estaDentroDoPeriodo && contador50Minutos.tempoFormatado) 
+        ? contador50Minutos.tempoFormatado 
+        : contador;
+      return {
+        fraseSessao: "Sua sessão já começou há",
+        mostrarContador: true,
+        contadorSessao: tempoContador,
+        botaoEntrarDesabilitado: false,
+      };
+    }
+
+    if (socketStatus === "endingSoon") {
+      return {
+        fraseSessao: "Sua sessão está encerrando em breve.",
+        mostrarContador: false,
+        contadorSessao: "",
+        botaoEntrarDesabilitado: false,
+      };
+    }
+
+    if (["Concluido", "Cancelado", "cancelled_by_patient", "cancelled_by_psychologist"].includes(socketStatus || "")) {
+      const frases: Record<string, string> = {
+        "Concluido": "Sua sessão foi encerrada.",
+        "Cancelado": "Sua sessão foi cancelada.",
+        "cancelled_by_patient": "Consulta cancelada por ausência do paciente.",
+        "cancelled_by_psychologist": "Psicólogo ausente. Consulta recreditada.",
+      };
+      return {
+        fraseSessao: frases[socketStatus || ""] || "Sua sessão foi encerrada.",
+        mostrarContador: false,
+        contadorSessao: "",
+        botaoEntrarDesabilitado: true,
+      };
+    }
+
+    // Usa estado do hook useSessaoConsulta
+    if (mostrarSessao && !sessaoAtiva && !sessaoEncerrada) {
+      return {
+        fraseSessao: "Sua sessão inicia em",
+        mostrarContador: true,
+        contadorSessao: contador,
+        botaoEntrarDesabilitado: true,
+      };
+    }
+
+    if (mostrarSessao && sessaoAtiva && !sessaoEncerrada) {
+      // Usa contador de 50 minutos se estiver dentro do período
+      const tempoContador = (consultaEmAndamento && contador50Minutos.estaDentroDoPeriodo && contador50Minutos.tempoFormatado) 
+        ? contador50Minutos.tempoFormatado 
+        : contador;
+      return {
+        fraseSessao: "Sua sessão já começou há",
+        mostrarContador: true,
+        contadorSessao: tempoContador,
+        botaoEntrarDesabilitado: false,
+      };
+    }
+
+    if (mostrarSessao && sessaoEncerrada) {
+      return {
+        fraseSessao: "Sua sessão foi encerrada por inatividade.",
+        mostrarContador: false,
+        contadorSessao: "",
+        botaoEntrarDesabilitado: true,
+      };
+    }
+
+    // Estado padrão (sem sessão ativa)
+    return {
+      fraseSessao: "",
+      mostrarContador: false,
+      contadorSessao: "",
+      botaoEntrarDesabilitado: true,
+    };
+  }, [
+    contadorInicio,
+    podeEntrarNaSessao,
+    consultaIniciada,
+    consultaEmAndamento,
+    contador50Minutos,
+    socketStatus,
+    mostrarSessao,
+    sessaoAtiva,
+    sessaoEncerrada,
+    contador,
+    normalized?.date,
+    normalized?.time,
+    scheduledAtFromReserva,
+  ]);
+
+  // Aplica o estado calculado
+  fraseSessao = sessionState.fraseSessao;
+  mostrarContador = sessionState.mostrarContador;
+  contadorSessao = sessionState.contadorSessao;
+  botaoEntrarDesabilitado = sessionState.botaoEntrarDesabilitado;
 
   const botaoEntrarFinal = botaoEntrarDesabilitado || !podeEntrarNaSessao;
 
@@ -473,6 +780,12 @@ export default function ProximaConsultaPsicologo({ consultas = null, role = "pac
       setIsProcessingEntry(false);
     }
   }
+
+  // Handler para suporte (WhatsApp) - igual ao card do paciente
+  const handleSuporte = (): void => {
+    const mensagem = encodeURIComponent("Olá, preciso de suporte técnico na Estação Terapia. Tenho dúvidas ou estou com problemas na plataforma.");
+    window.open(`https://wa.me/5511960892131?text=${mensagem}`, '_blank');
+  };
 
   return (
     <motion.section
@@ -575,14 +888,18 @@ export default function ProximaConsultaPsicologo({ consultas = null, role = "pac
         >
           {/* Tag de status no canto superior direito */}
           {(() => {
-            // Obtém o status da consulta
+            // Obtém o status da consulta - usa status dinâmico se disponível
             const reservaSessaoRaw = normalized?.raw?.ReservaSessao;
             const reservaSessao = reservaSessaoRaw && typeof reservaSessaoRaw === 'object' && !Array.isArray(reservaSessaoRaw)
               ? reservaSessaoRaw as { Status?: string; status?: string }
               : null;
             const statusReservaSessao = reservaSessao?.Status || reservaSessao?.status;
             const statusRaw = statusReservaSessao || normalized?.raw?.Status || normalized?.status || 'Reservado';
-            const statusConsulta = typeof statusRaw === 'string' ? statusRaw : String(statusRaw);
+            // 🎯 Sempre usa status dinâmico para atualização em tempo real (considera socketStatus e andamento)
+            // Se statusDinamico estiver definido e for diferente do status base, usa ele; senão, usa o status base
+            const statusConsulta = statusDinamico && statusDinamico !== 'Reservado' && statusDinamico !== statusRaw
+              ? statusDinamico 
+              : (statusDinamico || (typeof statusRaw === 'string' ? statusRaw : String(statusRaw)));
             
             // Verifica se a consulta é futura (ainda não aconteceu)
             let isConsultaFutura = false;
@@ -604,9 +921,9 @@ export default function ProximaConsultaPsicologo({ consultas = null, role = "pac
               }
             }
             
-            // 🎯 REGRA: Verifica se está em andamento usando ScheduledAt da ReservaSessao (60 minutos)
-            // Se status for EmAndamento/Andamento e dentro de 60 minutos do ScheduledAt, mostra "Ao vivo"
-            if ((statusConsulta === 'Andamento' || statusConsulta === 'andamento' || statusConsulta === 'EmAndamento' || statusConsulta === 'Em Andamento')) {
+            // 🎯 REGRA: Verifica se está em andamento usando ScheduledAt da ReservaSessao (50 minutos)
+            // Se status for EmAndamento/Andamento e dentro de 50 minutos do ScheduledAt, mostra "Em Andamento"
+            if (consultaEmAndamento || (statusConsulta === 'Andamento' || statusConsulta === 'andamento' || statusConsulta === 'EmAndamento' || statusConsulta === 'Em Andamento')) {
               let inicioConsulta: number | null = null;
               
               // Prioriza ScheduledAt da ReservaSessao
@@ -641,10 +958,10 @@ export default function ProximaConsultaPsicologo({ consultas = null, role = "pac
               if (inicioConsulta) {
                 const agoraBr = dayjs().tz('America/Sao_Paulo');
                 const agoraTimestamp = agoraBr.valueOf();
-                const fimConsulta = inicioConsulta + (60 * 60 * 1000); // 60 minutos
+                const fimConsulta = inicioConsulta + (50 * 60 * 1000); // 50 minutos
                 
                 if (agoraTimestamp >= inicioConsulta && agoraTimestamp <= fimConsulta) {
-                  // 🎯 Mostra status "Em Andamento" quando consulta está em andamento
+                  // 🎯 Mostra status "Em Andamento" quando consulta está em andamento (dentro dos 50 minutos)
                   const tagInfo = getStatusTagInfo('EmAndamento');
                   return (
                     <div className="absolute top-3 right-3 z-10">
@@ -802,53 +1119,89 @@ export default function ProximaConsultaPsicologo({ consultas = null, role = "pac
               </div>
             </div>
 
-            {fraseSessao && (
-              <div className="flex items-center gap-1 text-[#6D75C0] font-medium text-xs bg-[#F3F6FB] rounded px-2 py-1 shadow-sm ml-auto mt-2">
-                <svg
-                  width="14"
-                  height="14"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="shrink-0"
-                >
-                  <circle cx="12" cy="12" r="10" />
-                  <polyline points="12 6 12 12 16 14" />
-                </svg>
-                <span className="whitespace-nowrap">
-                  {fraseSessao}
-                  {mostrarContador && (
-                    <span className="ml-1 text-[#6D75C0] font-bold">
-                      {contadorSessao}
-                    </span>
-                  )}
-                </span>
+            {/* Contador - igual ao card do paciente */}
+            {(fraseSessao || mostrarContador) && (
+              <div className="flex items-center gap-2 bg-[#E6E9FF] rounded-lg px-3 py-1.5 ml-auto mt-2">
+                {mostrarContador && (
+                  <svg 
+                    width="16" 
+                    height="16" 
+                    viewBox="0 0 24 24" 
+                    fill="none" 
+                    stroke="#8494E9" 
+                    strokeWidth="2" 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round"
+                    className="shrink-0"
+                  >
+                    <circle cx="12" cy="12" r="10" />
+                    <polyline points="12 6 12 12 16 14" />
+                  </svg>
+                )}
+                {fraseSessao && <span className="text-[#232A5C] text-sm font-medium fira-sans">{fraseSessao}</span>}
+                {mostrarContador && contadorSessao && <span className="text-[#8494E9] text-base font-bold fira-sans">{contadorSessao}</span>}
               </div>
             )}
           </div>
 
-          {/* Botões: Ver detalhes e Entrar na sessão lado a lado à direita - igual ao card do paciente */}
-          <div className="flex flex-row gap-3 w-full mt-4 sm:mt-auto pt-2 justify-end">
+          {/* Botões: Ver detalhes e Entrar na sessão lado a lado - sempre visíveis */}
+          <div className="flex flex-row gap-3 w-full mt-4 sm:mt-auto pt-2 justify-end flex-wrap">
+            {/* Botão Ver detalhes - sempre visível */}
             <button
               onClick={() => setShowModal(true)}
               className="min-h-[44px] h-11 bg-[#8494E9] text-white font-medium text-sm rounded-[6px] px-4 transition hover:bg-[#6D75C0] hover:text-white whitespace-nowrap cursor-pointer"
             >
               Ver detalhes
             </button>
+            
+            {/* Botão Entrar na sessão - sempre visível, habilitado quando pode entrar */}
             <button
-              disabled={!podeEntrarNaSessao || isProcessingEntry || isCheckingTokens}
+              disabled={botaoEntrarDesabilitado || isProcessingEntry || isCheckingTokens}
               onClick={handleEntrarNaSessao}
               className={`min-h-[44px] h-11 rounded-[6px] px-4 text-sm font-medium transition whitespace-nowrap ${
-                podeEntrarNaSessao && !isProcessingEntry && !isCheckingTokens
+                !botaoEntrarDesabilitado && !isProcessingEntry && !isCheckingTokens
                   ? 'bg-[#232A5C] hover:bg-[#232A5C]/90 text-white cursor-pointer'
-                  : 'bg-[#D0D0D0] text-[#808080] cursor-not-allowed'
+                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
               }`}
             >
               {isProcessingEntry || isCheckingTokens ? 'Aguarde...' : 'Entrar na sessão'}
             </button>
+            
+            {/* Botão de suporte do WhatsApp para status especiais após o horário ou sessão encerrada por inatividade */}
+            {(() => {
+              const status6h = ["cancelled_by_patient", "cancelled_by_psychologist", "cancelled_no_show"];
+              let dataObj: Date | null = null;
+              const dataStr = String(normalized?.date || '');
+              const horarioStr = String(normalized?.time || '');
+              if (dataStr && horarioStr) {
+                if (dataStr.includes("T") || dataStr.length > 10) {
+                  dataObj = new Date(dataStr);
+                  const [hora, minuto] = horarioStr.split(":");
+                  if (hora && minuto) dataObj.setHours(Number(hora), Number(minuto), 0, 0);
+                } else {
+                  const [ano, mes, dia] = dataStr.split("-");
+                  const [hora, minuto] = horarioStr.split(":");
+                  if (ano && mes && dia && hora && minuto) {
+                    dataObj = new Date(Number(ano), Number(mes) - 1, Number(dia), Number(hora), Number(minuto));
+                  }
+                }
+              }
+              const agora = new Date();
+              if (
+                (dataObj && agora.getTime() > dataObj.getTime() && status6h.includes(socketStatus || "")) ||
+                fraseSessao === "Sua sessão foi encerrada por inatividade."
+              ) {
+                return (
+                  <button 
+                    onClick={handleSuporte} 
+                    className="min-h-[44px] h-11 bg-[#25D366] hover:bg-[#128C7E] text-white font-semibold fira-sans text-sm rounded-[6px] px-4 transition cursor-pointer whitespace-nowrap"
+                  >
+                    Fale com o Suporte
+                  </button>
+                );
+              }
+              return null;
+            })()}
           </div>
         </motion.div>
       )}

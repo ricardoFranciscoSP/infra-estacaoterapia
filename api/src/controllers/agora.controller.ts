@@ -745,6 +745,23 @@ export async function processRepasseAsync(
             }
         }
 
+        // 🎯 Se não tem valor base (consulta avulsa/promocional sem valor), busca do PlanoAssinatura
+        if (valorBase === 0) {
+            // Busca plano avulsa ou única para obter o valor (189.99 avulsa, 59.99 promocional)
+            const planoAvulsa = await prisma.planoAssinatura.findFirst({
+                where: {
+                    Tipo: { in: ["Avulsa", "Unica"] },
+                    Status: "Ativo"
+                },
+                orderBy: { Preco: 'desc' } // Pega o mais caro primeiro (189.99)
+            });
+            
+            if (planoAvulsa && planoAvulsa.Preco) {
+                valorBase = planoAvulsa.Preco;
+                console.log(`[AgoraController] Consulta ${consultationId}: Usando valor do plano avulsa: R$ ${valorBase.toFixed(2)}`);
+            }
+        }
+
         // Obtém o percentual de repasse (40% para PJ, 32% para autônomo)
         const repassePercent = await getRepassePercentForPsychologist(consulta.PsicologoId);
         const valorPsicologo = valorBase * repassePercent;
@@ -766,7 +783,16 @@ export async function processRepasseAsync(
         const psicologo = await prisma.user.findUnique({
             where: { Id: psicologoId }
         });
-        const statusRepasse: CommissionStatus = psicologo?.Status === "Ativo" ? CommissionStatus.disponivel : CommissionStatus.retido;
+        
+        // 🎯 Calcula status baseado na data de corte (dia 20)
+        // A partir do dia 21, saldo não solicitado fica retido para o próximo mês
+        let statusRepasse: CommissionStatus;
+        if (psicologo?.Status !== "Ativo") {
+            statusRepasse = CommissionStatus.retido;
+        } else {
+            const { calcularStatusRepassePorDataCorte } = await import('../scripts/processarRepassesConsultas');
+            statusRepasse = calcularStatusRepassePorDataCorte(consulta.Date, psicologo.Status);
+        }
 
         // Define o tipo do repasse baseado no status normalizado
         let typeRepasse = "repasse";

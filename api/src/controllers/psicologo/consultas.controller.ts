@@ -28,17 +28,28 @@ export class ConsultasPsicologoController {
      * GET /api/psicologo/consultas/em-andamento
      */
     async consultaEmAndamento(req: Request, res: Response): Promise<void> {
-        const psicologoId = this.authService.getLoggedUserId(req);
-        if (!psicologoId) {
-            res.status(401).json({ error: "Usuário não autenticado" });
-            return;
-        }
         try {
+            const psicologoId = this.authService.getLoggedUserId(req);
+            if (!psicologoId) {
+                res.status(401).json({ error: "Usuário não autenticado" });
+                return;
+            }
+            
             const consulta = await this.consultasService.consultaEmAndamento(psicologoId);
             console.log('[consultaEmAndamento][psicologo] userId:', psicologoId, 'consulta:', consulta?.Id, 'status:', consulta?.Status, 'date:', consulta?.Date, 'time:', consulta?.Time);
-            res.status(200).json({ success: true, consulta });
+            
+            res.status(200).json({ 
+                success: true, 
+                consulta: consulta || null,
+                message: consulta ? 'Consulta em andamento encontrada' : 'Nenhuma consulta em andamento no momento'
+            });
         } catch (error) {
-            res.status(500).json({ success: false, error: error instanceof Error ? error.message : 'Erro interno' });
+            console.error('[consultaEmAndamento][psicologo] Erro:', error);
+            res.status(500).json({ 
+                success: false, 
+                error: error instanceof Error ? error.message : 'Erro interno',
+                message: 'Erro ao buscar consulta em andamento'
+            });
         }
     }
 

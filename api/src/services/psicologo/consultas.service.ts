@@ -631,19 +631,35 @@ export class ConsultasService implements IConsultasService {
         psicologoId: string,
         status?: string[]
     ): Promise<ConsultaRealizadaPsicologoResponse[]> {
-        // Status padrão: Reagendada, Concluido e Canceladas (qualquer motivo)
-        // NÃO inclui: Reservado, Andamento
+        // Lista TODOS os status exceto: Agendada, Reservado, EmAndamento (status ativos)
+        // Inclui todos os status de: Realizada, Canceladas, Reagendadas, Não Compareceu, etc.
+        // NOTA: Disponivel e Bloqueado são apenas para Agenda, não para Consulta
         const statusFiltro: string[] = status || [
+            // Realizada
+            'Realizada',
+            // Reagendadas
             'ReagendadaPacienteNoPrazo',
             'ReagendadaPsicologoNoPrazo',
-            'Realizada',
+            'ReagendadaPsicologoForaDoPrazo',
+            // Canceladas
             'Cancelado',
             'CanceladaPacienteNoPrazo',
             'CanceladaPacienteForaDoPrazo',
             'CanceladaPsicologoNoPrazo',
             'CanceladaPsicologoForaDoPrazo',
+            'CanceladaForcaMaior',
+            'CanceladaNaoCumprimentoContratualPaciente',
+            'CanceladaNaoCumprimentoContratualPsicologo',
+            'CanceladoAdministrador',
+            // Não compareceu
             'PacienteNaoCompareceu',
-            'PsicologoNaoCompareceu'
+            'PsicologoNaoCompareceu',
+            'AmbosNaoCompareceram',
+            // Outros
+            'PsicologoDescredenciado',
+            'ForaDaPlataforma',
+            'CANCELAMENTO_SISTEMICO_PSICOLOGO',
+            'CANCELAMENTO_SISTEMICO_PACIENTE'
         ];
 
         const consultas = await prisma.consulta.findMany({
@@ -878,6 +894,7 @@ export class ConsultasService implements IConsultasService {
                 $Enums.ConsultaStatus.ReagendadaPsicologoForaDoPrazo
             ];
         } else if (filtros.status === 'cancelada') {
+            // Filtro para canceladas: inclui TODOS os status de cancelamento
             statusFiltro = [
                 $Enums.ConsultaStatus.Cancelado,
                 $Enums.ConsultaStatus.CanceladaPacienteNoPrazo,
@@ -889,15 +906,24 @@ export class ConsultasService implements IConsultasService {
                 $Enums.ConsultaStatus.CanceladaNaoCumprimentoContratualPsicologo,
                 $Enums.ConsultaStatus.CanceladoAdministrador,
                 $Enums.ConsultaStatus.PacienteNaoCompareceu,
-                $Enums.ConsultaStatus.PsicologoNaoCompareceu
+                $Enums.ConsultaStatus.PsicologoNaoCompareceu,
+                $Enums.ConsultaStatus.AmbosNaoCompareceram,
+                $Enums.ConsultaStatus.PsicologoDescredenciado,
+                $Enums.ConsultaStatus.CANCELAMENTO_SISTEMICO_PSICOLOGO,
+                $Enums.ConsultaStatus.CANCELAMENTO_SISTEMICO_PACIENTE
             ];
         } else {
-            // 'todos' ou não especificado - inclui todos os status finalizados
+            // 'todos' ou não especificado - inclui TODOS os status finalizados
+            // Exclui apenas: Agendada, Reservado, EmAndamento (status ativos)
+            // NOTA: Disponivel e Bloqueado são apenas para Agenda, não para Consulta
             statusFiltro = [
+                // Realizada
                 $Enums.ConsultaStatus.Realizada,
+                // Reagendadas
                 $Enums.ConsultaStatus.ReagendadaPacienteNoPrazo,
                 $Enums.ConsultaStatus.ReagendadaPsicologoNoPrazo,
                 $Enums.ConsultaStatus.ReagendadaPsicologoForaDoPrazo,
+                // Canceladas
                 $Enums.ConsultaStatus.Cancelado,
                 $Enums.ConsultaStatus.CanceladaPacienteNoPrazo,
                 $Enums.ConsultaStatus.CanceladaPsicologoNoPrazo,
@@ -907,8 +933,15 @@ export class ConsultasService implements IConsultasService {
                 $Enums.ConsultaStatus.CanceladaNaoCumprimentoContratualPaciente,
                 $Enums.ConsultaStatus.CanceladaNaoCumprimentoContratualPsicologo,
                 $Enums.ConsultaStatus.CanceladoAdministrador,
+                // Não compareceu
                 $Enums.ConsultaStatus.PacienteNaoCompareceu,
-                $Enums.ConsultaStatus.PsicologoNaoCompareceu
+                $Enums.ConsultaStatus.PsicologoNaoCompareceu,
+                $Enums.ConsultaStatus.AmbosNaoCompareceram,
+                // Outros
+                $Enums.ConsultaStatus.PsicologoDescredenciado,
+                $Enums.ConsultaStatus.ForaDaPlataforma,
+                $Enums.ConsultaStatus.CANCELAMENTO_SISTEMICO_PSICOLOGO,
+                $Enums.ConsultaStatus.CANCELAMENTO_SISTEMICO_PACIENTE
             ];
         }
 

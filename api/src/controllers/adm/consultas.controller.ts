@@ -10,6 +10,7 @@ import { ConsultaStatusService } from "../../services/consultaStatus.service";
 import { ConsultaOrigemStatus } from "../../constants/consultaStatus.constants";
 import { CancelamentoService } from "../../services/cancelamento.service";
 import { processRepasseAsync } from "../agora.controller";
+import { processarTodasConsultas } from "../../scripts/processarRepassesConsultas";
 
 export class ConsultasController implements IConsultas {
     private service: ConsultasService;
@@ -330,7 +331,8 @@ export class ConsultasController implements IConsultas {
             return res.status(403).json({ success: false, message: "Acesso negado" });
         }
 
-        const consultaId = req.params.id;
+        const rawId = req.params.id;
+        const consultaId = (Array.isArray(rawId) ? rawId[0] : rawId) as string;
         const { status, repasse, devolverSessao } = req.body as {
             status?: string;
             repasse?: boolean;
@@ -425,6 +427,31 @@ export class ConsultasController implements IConsultas {
             const message = error instanceof Error ? error.message : "Erro ao atualizar consulta";
             console.error(`[updateConsultaStatus] Erro ao atualizar status da consulta ${consultaId}:`, error);
             return res.status(500).json({ success: false, error: message });
+        }
+    }
+
+    /**
+     * Processa repasses para todas as consultas realizadas
+     * Endpoint administrativo para executar o script de processamento
+     */
+    async processarRepassesConsultas(req: Request, res: Response): Promise<Response> {
+        try {
+            console.log('🚀 [Admin] Iniciando processamento de repasses para todas as consultas...');
+            
+            // Executa o script de processamento
+            await processarTodasConsultas();
+            
+            return res.json({ 
+                success: true, 
+                message: 'Repasses processados com sucesso para todas as consultas realizadas' 
+            });
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : 'Erro ao processar repasses';
+            console.error('[processarRepassesConsultas] Erro:', error);
+            return res.status(500).json({ 
+                success: false, 
+                error: message 
+            });
         }
     }
 }

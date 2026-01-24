@@ -13,7 +13,7 @@ export const admPsicologoService = () => {
                 'Content-Type': 'application/json',
             }
         }),
-        calcularPagamento: () => api.get(`/adm-psicologos/financeiro/calcular-pagamento`),
+        calcularPagamento: () => api.get(`/psicologo/financeiro/calcular-pagamento`),
         getHistoricoSessoes: (mes?: number, ano?: number, page?: number, pageSize?: number) => {
             const params = new URLSearchParams();
             if (mes !== undefined) params.append('mes', mes.toString());
@@ -21,25 +21,25 @@ export const admPsicologoService = () => {
             if (page !== undefined) params.append('page', page.toString());
             if (pageSize !== undefined) params.append('pageSize', pageSize.toString());
             const queryString = params.toString();
-            return api.get(`/adm-psicologos/financeiro/historico-sessoes${queryString ? `?${queryString}` : ''}`);
+            return api.get(`/psicologo/financeiro/historico-sessoes${queryString ? `?${queryString}` : ''}`);
         },
         getGanhosMensais: (ano?: number, mes?: number) => {
             const params = new URLSearchParams();
             if (ano !== undefined) params.append('ano', ano.toString());
             if (mes !== undefined) params.append('mes', mes.toString());
             const queryString = params.toString();
-            return api.get(`/adm-psicologos/financeiro/ganhos-mensais${queryString ? `?${queryString}` : ''}`);
+            return api.get(`/psicologo/financeiro/ganhos-mensais${queryString ? `?${queryString}` : ''}`);
         },
         getAtendimentosMensais: (ano?: number, mes?: number) => {
             const params = new URLSearchParams();
             if (ano !== undefined) params.append('ano', ano.toString());
             if (mes !== undefined) params.append('mes', mes.toString());
             const queryString = params.toString();
-            return api.get(`/adm-psicologos/financeiro/atendimentos-mensais${queryString ? `?${queryString}` : ''}`);
+            return api.get(`/psicologo/financeiro/atendimentos-mensais${queryString ? `?${queryString}` : ''}`);
         },
-        getSaldoDisponivelResgate: () => api.get(`/adm-psicologos/financeiro/saldo-disponivel-resgate`),
-        getSaldoRetido: () => api.get(`/adm-psicologos/financeiro/saldo-retido`),
-        getFaturaPeriodo: () => api.get(`/adm-psicologos/financeiro/fatura-periodo`),
+        getSaldoDisponivelResgate: () => api.get(`/psicologo/financeiro/saldo-disponivel-resgate`),
+        getSaldoRetido: () => api.get(`/psicologo/financeiro/saldo-retido`),
+        getFaturaPeriodo: () => api.get(`/psicologo/financeiro/fatura-periodo`),
         consultasRealizadas: () => api.get(`/adm-psicologos/consultas/consultas-realizadas`),
         /**
          * Busca a taxa de ocupação da agenda do psicólogo para um intervalo de datas (ex: mês atual)

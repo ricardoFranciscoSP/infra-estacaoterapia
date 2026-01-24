@@ -247,8 +247,8 @@ export class ReservaSessaoController {
                             const statusService = new ConsultaStatusService();
                             await statusService.processarInatividade(consultationId, missingRole);
                             
-                            const { getSocketIO } = await import('../socket/socket');
-                            const io = getSocketIO();
+                            const { getSocketServer } = await import('../socket/serverInstance');
+                            const io = getSocketServer();
                             if (io) {
                                 const roomName = `consulta_${consultationId}`;
                                 io.to(roomName).emit('room:close', {
@@ -283,9 +283,9 @@ export class ReservaSessaoController {
                                         await statusService.processarInatividade(consultationId, missingRole);
                                         
                                         // Fecha a sala via socket
-                                        const { getSocketIO } = await import('../socket/socket');
-                                        const io = getSocketIO();
-                                        
+                                        const { getSocketServer } = await import('../socket/serverInstance');
+                                        const io = getSocketServer();
+
                                         if (io) {
                                             const roomName = `consulta_${consultationId}`;
                                             io.to(roomName).emit('room:close', {
@@ -327,8 +327,8 @@ export class ReservaSessaoController {
                                     const statusService = new ConsultaStatusService();
                                     await statusService.processarInatividade(consultationId, missingRole);
                                     
-                                    const { getSocketIO } = await import('../socket/socket');
-                                    const io = getSocketIO();
+                                    const { getSocketServer } = await import('../socket/serverInstance');
+                                    const io = getSocketServer();
                                     if (io) {
                                         const roomName = `consulta_${consultationId}`;
                                         io.to(roomName).emit('room:close', {
