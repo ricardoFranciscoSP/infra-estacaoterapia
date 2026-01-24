@@ -45,6 +45,8 @@ export interface GenerateManualTokensResponse {
   patientUid: number;
   psychologistUid: number;
   tokensGenerated: boolean;
+  error?: string;
+  message?: string;
 }
 
 export const tokenManualService = () => {
@@ -128,11 +130,11 @@ export const tokenManualService = () => {
     /**
      * Gera tokens manualmente (rota nova e fallback)
      */
-    generateManualTokens: async (payload: { patientId: string; psychologistId: string }) => {
+    generateManualTokens: async (payload: { patientId: string; psychologistId: string; consultaId?: string }) => {
       // Tenta rota nova
       try {
         return await api.post<GenerateManualTokensResponse>("/api/admin/token-system/generate-manual", payload);
-      } catch (err) {
+      } catch {
         // Fallback para rota antiga, se necessário (exemplo)
         return await api.post<GenerateManualTokensResponse>("/admin/token-system/generate-manual", payload);
       }

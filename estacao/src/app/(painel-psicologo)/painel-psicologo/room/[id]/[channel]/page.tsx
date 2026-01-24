@@ -7,7 +7,8 @@ import type { ReservaSessao } from '@/types/reservaSessaoTypes';
 import { consultaService } from '@/services/consultaService';
 import { reservaSessaoService } from '@/services/reservaSessaoService';
 import { useAuthStore } from '@/store/authStore';
-import toast from 'react-hot-toast'; 
+import toast from 'react-hot-toast';
+import { onConsultationEvent, onRoomClosed, offRoomClosed, getSocket, ConsultationEventData } from '@/lib/socket'; 
 
 export default function Room() {
   // No Next.js, variáveis NEXT_PUBLIC_* são expostas automaticamente no cliente
@@ -467,6 +468,82 @@ export default function Room() {
   } else {
     console.log("✅ [Room Psychologist] PsychologistId disponível:", finalPsychologistId);
   }
+
+  // Registra entrada do psicólogo ao entrar na room
+  useEffect(() => {
+    const markPsychologistJoined = async () => {
+      const consultationId = finalReservaSessao?.ConsultaId || id;
+      if (!consultationId) return;
+      
+      try {
+        const userId = loggedUserId;
+        if (!userId) return;
+
+        // Verifica se já entrou
+        const rs = finalReservaSessao as any;
+        if (rs?.PsychologistJoinedAt) {
+          return; // Já entrou
+        }
+
+        // Chama a API para registrar entrada
+        const { api } = await import('@/lib/axios');
+        await api.post(`/reserva-sessao/${consultationId}/join`, {
+          userId,
+          role: 'Psychologist',
+        });
+        
+        console.log('✅ [Room Psychologist] Entrada registrada na sala');
+      } catch (error) {
+        console.warn('⚠️ [Room Psychologist] Erro ao registrar entrada:', error);
+      }
+    };
+
+    markPsychologistJoined();
+  }, [finalReservaSessao?.ConsultaId, id, loggedUserId, finalReservaSessao]);
+
+  // ✅ Notificações em tempo real na room
+  useEffect(() => {
+    const consultationId = finalReservaSessao?.ConsultaId || id;
+    if (!consultationId) return;
+
+    const socket = getSocket();
+    if (!socket) return;
+
+    // Garante que está na sala da consulta para receber eventos
+    const roomName = `consulta_${consultationId}`;
+    socket.emit("join-room", roomName);
+
+    const handleConsultationEvent = (data: ConsultationEventData) => {
+      const status = data.status;
+      if (status === "Cancelado" || status === "cancelled_by_patient" || status === "cancelled_by_psychologist") {
+        toast.dismiss();
+        toast.error("Sessão cancelada. Voltando para o painel.");
+        router.replace("/painel-psicologo");
+      }
+    };
+
+    const handleRoomClosed = (data: { event?: string; consultationId?: string; reason?: string; message?: string }) => {
+      if (data.consultationId === consultationId || !data.consultationId) {
+        toast.dismiss();
+        toast.error(data.message || "Sessão encerrada.");
+        router.replace("/painel-psicologo");
+      }
+    };
+
+    // Escuta eventos da sala da consulta
+    socket.on(`consultation:${consultationId}`, handleConsultationEvent);
+    socket.on("room:close", handleRoomClosed);
+    
+    // Também escuta eventos diretos
+    onConsultationEvent(handleConsultationEvent, consultationId);
+    onRoomClosed(handleRoomClosed, consultationId);
+
+    return () => {
+      socket.off(`consultation:${consultationId}`, handleConsultationEvent);
+      socket.off("room:close", handleRoomClosed);
+      offRoomClosed(consultationId);
+    };
+  }, [finalReservaSessao?.ConsultaId, id, router]);
 
   return (
     <SalaVideo

@@ -327,6 +327,13 @@ export default function Room() {
   useEffect(() => {
     if (!consultationId) return;
 
+    const socket = getSocket();
+    if (!socket) return;
+
+    // Garante que está na sala da consulta para receber eventos
+    const roomName = `consulta_${consultationId}`;
+    socket.emit("join-room", roomName);
+
     const handleConsultationEvent = (data: ConsultationEventData) => {
       const status = data.status;
       if (status === "Cancelado" || status === "cancelled_by_patient" || status === "cancelled_by_psychologist") {
@@ -336,18 +343,25 @@ export default function Room() {
       }
     };
 
-    const handleRoomClosed = () => {
-      toast.dismiss();
-      toast.error("Sessão encerrada.");
-      router.replace("/painel");
+    const handleRoomClosed = (data: { event?: string; consultationId?: string; reason?: string; message?: string }) => {
+      if (data.consultationId === consultationId || !data.consultationId) {
+        toast.dismiss();
+        toast.error(data.message || "Sessão encerrada.");
+        router.replace("/painel");
+      }
     };
 
+    // Escuta eventos da sala da consulta
+    socket.on(`consultation:${consultationId}`, handleConsultationEvent);
+    socket.on("room:close", handleRoomClosed);
+    
+    // Também escuta eventos diretos
     onConsultationEvent(handleConsultationEvent, consultationId);
     onRoomClosed(handleRoomClosed, consultationId);
 
     return () => {
-      const socket = getSocket();
-      socket?.off(`consultation:${consultationId}`, handleConsultationEvent);
+      socket.off(`consultation:${consultationId}`, handleConsultationEvent);
+      socket.off("room:close", handleRoomClosed);
       offRoomClosed(consultationId);
     };
   }, [consultationId, router]);
@@ -558,6 +572,38 @@ export default function Room() {
       </div>
     );
   }
+
+  // Registra entrada do paciente ao entrar na room
+  useEffect(() => {
+    const markPatientJoined = async () => {
+      if (!consultationId || !id) return;
+      
+      try {
+        const { useAuthStore } = await import('@/store/authStore');
+        const userId = useAuthStore.getState().user?.Id;
+        if (!userId) return;
+
+        // Verifica se já entrou
+        const rs = finalReservaSessao as any;
+        if (rs?.PatientJoinedAt) {
+          return; // Já entrou
+        }
+
+        // Chama a API para registrar entrada
+        const { api } = await import('@/lib/axios');
+        await api.post(`/reserva-sessao/${consultationId || id}/join`, {
+          userId,
+          role: 'Patient',
+        });
+        
+        console.log('✅ [Room Patient] Entrada registrada na sala');
+      } catch (error) {
+        console.warn('⚠️ [Room Patient] Erro ao registrar entrada:', error);
+      }
+    };
+
+    markPatientJoined();
+  }, [consultationId, id, finalReservaSessao]);
 
   return (
     <SalaVideo

@@ -1435,18 +1435,36 @@ export class AuthService implements IAuthService {
 
         let userId: string | null = null;
         try {
-            const decoded: unknown = await verifyToken(token);
-            // Se verifyToken retorna o payload inteiro, pegue apenas o userId
-            userId = typeof decoded === 'string' ? decoded : (typeof decoded === 'object' && decoded !== null && 'userId' in decoded ? String((decoded as { userId: unknown }).userId) : null);
+            const decoded: unknown = verifyToken(token);
+            if (decoded === null || typeof decoded !== 'object') {
+                return { success: false, message: 'Token inválido' };
+            }
+            const payload = decoded as { userId?: unknown };
+            if (typeof payload.userId !== 'string' || !payload.userId.trim()) {
+                return { success: false, message: 'Token inválido' };
+            }
+            userId = payload.userId.trim();
         } catch (err) {
             return { success: false, message: 'Token inválido' };
         }
 
-        if (!userId) {
+        const invalidIds = ['undefined', 'null', ''];
+        if (!userId || invalidIds.includes(userId)) {
             return { success: false, message: 'Token inválido' };
         }
 
-        const user = await prisma.user.findFirst({ where: { Id: userId } });
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (!uuidRegex.test(userId)) {
+            return { success: false, message: 'Token inválido' };
+        }
+
+        let user;
+        try {
+            user = await prisma.user.findUnique({ where: { Id: userId } });
+        } catch (err) {
+            console.error('[getAuthenticatedUser] Erro ao buscar usuário:', err);
+            return { success: false, message: 'Erro ao validar autenticação' };
+        }
         if (!user) {
             return { success: false, message: 'Usuário não encontrado' };
         }

@@ -224,7 +224,7 @@ export function ProximaConsulta({
       }
     : undefined;
 
-  // Exibe o card da próxima consulta
+  // Exibe o card da próxima consulta (mesmo tamanho do card de consultas concluídas)
   return (
     <ConsultaCard
       consulta={proximaConsulta}
@@ -233,6 +233,7 @@ export function ProximaConsulta({
       actions={actions}
       contador={contador}
       botaoEntrarDesabilitado={botaoDesabilitado}
+      isPacientePanel={false} // false para ter o mesmo tamanho (588px) do card de consultas concluídas
     />
   );
 }

@@ -208,6 +208,49 @@ export function useAdmConsultasMesAtualLista() {
     };
 }
 
+// Hook para listar consultas (paginação simples)
+export function useAdmConsultasLista(params?: { page?: number; limit?: number; status?: string }) {
+    const query = useQuery<{ data: ConsultasRealizadas[]; total: number; page: number; limit: number }>({
+        queryKey: ['consultasLista', params?.page, params?.limit, params?.status],
+        queryFn: async () => {
+            const response = await admConsultasService().getConsultasLista(params);
+            const payload = response.data as { data?: ConsultasRealizadas[]; total?: number; page?: number; limit?: number };
+            return {
+                data: Array.isArray(payload?.data) ? payload.data : [],
+                total: Number(payload?.total) || 0,
+                page: Number(payload?.page) || (params?.page ?? 1),
+                limit: Number(payload?.limit) || (params?.limit ?? 20),
+            };
+        },
+        retry: 1,
+        staleTime: 30 * 1000,
+        enabled: true,
+    });
+
+    return {
+        consultas: query.data?.data || [],
+        total: query.data?.total || 0,
+        page: query.data?.page || params?.page || 1,
+        limit: query.data?.limit || params?.limit || 20,
+        isLoading: query.isLoading,
+        isError: query.isError,
+        refetch: query.refetch,
+    };
+}
+
+// Hook para atualizar status de consulta (Admin)
+export function useUpdateAdmConsultaStatus() {
+    return useMutation({
+        mutationFn: async (data: { id: string; status: string; repasse?: boolean; devolverSessao?: boolean }) => {
+            return await admConsultasService().updateConsultaStatus(data.id, {
+                status: data.status,
+                repasse: data.repasse,
+                devolverSessao: data.devolverSessao,
+            });
+        },
+    });
+}
+
 // Hook para buscar consultas mensais (TODAS, não apenas realizadas)
 export function useAdmConsultasPorMesTodas() {
     const query = useQuery<{ success: boolean; year: number; counts: number[]; total: number }>({

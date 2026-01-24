@@ -247,6 +247,15 @@ async function startWorkersAfterReady(): Promise<void> {
         startDatabaseJobsWorker();
         console.log("✅ Worker de jobs do banco de dados inicializado (BullMQ - zero polling)");
 
+        // ✅ Inicializa agendadores de jobs periódicos (schedulers)
+        try {
+            const { setupSchedulers } = await import("./config/setupSchedulers");
+            await setupSchedulers();
+            console.log("✅ Agendadores de jobs periódicos inicializados");
+        } catch (schedulerError) {
+            console.error("❌ Erro ao inicializar agendadores:", schedulerError);
+        }
+
         console.log("✅ Todos os Workers BullMQ inicializados!");
 
         try {

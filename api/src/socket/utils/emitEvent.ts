@@ -144,17 +144,30 @@ export function emitEvent(io: Server, event: string, { toUserId, data, broadcast
             return;
         }
 
-        const socketId = users.get(toUserId);
-
-        if (socketId) {
-            io.to(socketId).emit(event, data);
+        // ✅ MELHORIA: Envia para a sala do usuário (user:${userId}) em vez de apenas socketId
+        // Isso garante que todos os sockets do usuário recebam a notificação
+        const userRoom = `user:${toUserId}`;
+        const roomSize = io.sockets.adapter.rooms.get(userRoom)?.size || 0;
+        
+        if (roomSize > 0) {
+            // Emite para todos os sockets na sala do usuário
+            io.to(userRoom).emit(event, data);
             
             if (!isProduction || isPre) {
-                console.log(`✅ [Privado] ${event} → ${toUserId} (${socketId})`);
+                console.log(`✅ [Privado] ${event} → ${toUserId} (sala: ${userRoom}, ${roomSize} socket(s))`);
             }
         } else {
-            if (!isProduction) {
-                console.warn(`❌ [emitEvent] Usuário ${toUserId} NÃO está conectado`);
+            // Fallback: tenta enviar via socketId direto (compatibilidade)
+            const socketId = users.get(toUserId);
+            if (socketId) {
+                io.to(socketId).emit(event, data);
+                if (!isProduction || isPre) {
+                    console.log(`✅ [Privado] ${event} → ${toUserId} (socketId: ${socketId}, fallback)`);
+                }
+            } else {
+                if (!isProduction) {
+                    console.warn(`❌ [emitEvent] Usuário ${toUserId} NÃO está conectado (sala vazia e sem socketId)`);
+                }
             }
         }
     } else {

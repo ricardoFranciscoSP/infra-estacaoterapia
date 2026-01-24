@@ -72,6 +72,18 @@ export async function determinarStatusNormalizado(
         return StatusConsulta.Realizada;
     }
 
+    if (statusLower.includes("fora da plataforma") || statusLower.includes("foradaplataforma")) {
+        return StatusConsulta.ForaDaPlataforma;
+    }
+
+    if (statusLower.includes("cancelamento_sistemico_psicologo")) {
+        return StatusConsulta.CancelamentoSistemicoPsicologo;
+    }
+
+    if (statusLower.includes("cancelamento_sistemico_paciente")) {
+        return StatusConsulta.CancelamentoSistemicoPaciente;
+    }
+
     // Verifica não comparecimento
     if (contexto.pacienteNaoCompareceu) {
         return StatusConsulta.PacienteNaoCompareceu;

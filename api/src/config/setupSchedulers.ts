@@ -9,6 +9,11 @@
 
 import { scheduleAutomaticAgendaGeneration } from '../jobs/jobGerarAgendaAutomatica';
 import { scheduleAutomaticBackupGeneration } from '../jobs/jobGerarBackupAutomatica';
+import { scheduleReservedStatusRefresh } from '../jobs/jobAtualizarStatusReservado';
+import { scheduleInatividadeFailsafe } from '../jobs/jobInatividadeConsulta';
+import { scheduleVerificarInatividadeScheduledAt } from '../jobs/jobVerificarInatividadeScheduledAt';
+import { scheduleNotificarTempoRestante } from '../jobs/jobNotificarTempoRestante';
+import { ensureStatusIndexes } from '../jobs/jobEnsureStatusIndexes';
 
 let schedulersInitialized = false;
 
@@ -59,6 +64,74 @@ export async function setupSchedulers(): Promise<void> {
         // ✅ REMOVIDO: Cron de verificação de tokens (setInterval)
         // Agora os tokens são agendados quando ReservaSessao é criada (delayed jobs)
         console.log('✅ [setupSchedulers] Sistema de tokens agora usa delayed jobs (zero polling)');
+
+        // 3. Job recorrente para atualizar status de Reservado
+        try {
+            console.log('[setupSchedulers] Agendando job de atualização de status Reservado...');
+            await scheduleReservedStatusRefresh();
+            console.log(
+                '✅ [setupSchedulers] Job de atualização de status Reservado agendado com sucesso'
+            );
+        } catch (error) {
+            console.error(
+                '❌ [setupSchedulers] Erro ao agendar job de status Reservado:',
+                error
+            );
+        }
+
+        // 4. Job recorrente de fail-safe de inatividade
+        try {
+            console.log('[setupSchedulers] Agendando job de fail-safe de inatividade...');
+            await scheduleInatividadeFailsafe();
+            console.log(
+                '✅ [setupSchedulers] Job de fail-safe de inatividade agendado com sucesso'
+            );
+        } catch (error) {
+            console.error(
+                '❌ [setupSchedulers] Erro ao agendar job de inatividade:',
+                error
+            );
+        }
+
+        // 5. Job recorrente para verificar inatividade baseado em ScheduledAt e JoinedAt
+        try {
+            console.log('[setupSchedulers] Agendando job de verificação de inatividade (ScheduledAt)...');
+            await scheduleVerificarInatividadeScheduledAt();
+            console.log(
+                '✅ [setupSchedulers] Job de verificação de inatividade (ScheduledAt) agendado com sucesso'
+            );
+        } catch (error) {
+            console.error(
+                '❌ [setupSchedulers] Erro ao agendar job de verificação de inatividade (ScheduledAt):',
+                error
+            );
+        }
+
+        // 6. Job recorrente para notificar tempo restante (15, 10, 5 minutos antes do fim)
+        try {
+            console.log('[setupSchedulers] Agendando job de notificação de tempo restante...');
+            await scheduleNotificarTempoRestante();
+            console.log(
+                '✅ [setupSchedulers] Job de notificação de tempo restante agendado com sucesso'
+            );
+        } catch (error) {
+            console.error(
+                '❌ [setupSchedulers] Erro ao agendar job de notificação de tempo restante:',
+                error
+            );
+        }
+
+        // 7. Índices obrigatórios (criação concorrente, sem bloqueio)
+        try {
+            console.log('[setupSchedulers] Garantindo índices de status...');
+            await ensureStatusIndexes();
+            console.log('✅ [setupSchedulers] Índices de status garantidos');
+        } catch (error) {
+            console.error(
+                '❌ [setupSchedulers] Erro ao garantir índices de status:',
+                error
+            );
+        }
 
         schedulersInitialized = true;
         console.log(

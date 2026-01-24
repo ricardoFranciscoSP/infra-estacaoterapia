@@ -2,7 +2,6 @@ import { getIORedisClient } from "../config/redis.config";
 import prisma from "../prisma/client";
 import { WebSocketNotificationService } from "./websocketNotification.service";
 import { ConsultaStatusService } from "./consultaStatus.service";
-import { AgendaStatus } from "../types/permissions.types";
 
 /**
  * Tipo para os dados da sala armazenados no Redis
@@ -240,7 +239,10 @@ export class ConsultaRoomService {
             await this.clearSessionDuration(consultationId);
 
             // Atualiza no banco de dados
-            await this.closeRoomInDatabase(consultationId, reason, missingRole);
+            // ⚠️ NOTA: Se reason for 'inactivity', processarInatividade já foi chamado ANTES de closeRoom
+            // Então closeRoomInDatabase não deve chamar processarInatividade novamente
+            const skipProcessar = reason === 'inactivity';
+            await this.closeRoomInDatabase(consultationId, reason, missingRole, skipProcessar);
 
             // Busca dados da consulta para notificar usuários específicos
             const reservaSessao = await prisma.reservaSessao.findUnique({
@@ -338,7 +340,9 @@ export class ConsultaRoomService {
         } catch (error) {
             console.error(`❌ [ConsultaRoomService] Erro ao fechar sala:`, error);
             // Tenta fechar no banco mesmo se Redis falhar
-            await this.closeRoomInDatabase(consultationId, reason, missingRole);
+            // Se reason for 'inactivity', processarInatividade já foi chamado, então skip
+            const skipProcessar = reason === 'inactivity';
+            await this.closeRoomInDatabase(consultationId, reason, missingRole, skipProcessar);
         }
     }
 
@@ -348,7 +352,8 @@ export class ConsultaRoomService {
     private async closeRoomInDatabase(
         consultationId: string,
         reason: 'completed' | 'cancelled' | 'inactivity' | 'timeout',
-        missingRole?: 'patient' | 'psychologist' | 'both'
+        missingRole?: 'patient' | 'psychologist' | 'both',
+        skipProcessarInatividade: boolean = false // Flag para evitar duplicação
     ): Promise<void> {
         try {
             const reservaSessao = await prisma.reservaSessao.findUnique({
@@ -404,63 +409,39 @@ export class ConsultaRoomService {
 
                 return; // ConsultaStatusService já atualizou tudo incluindo tokens
             } else if (reason === 'inactivity' || reason === 'timeout') {
-                // ✅ Usa ConsultaStatusService.processarInatividade para garantir atualização completa de todas as tabelas
-                // Isso atualiza: Consulta, ReservaSessao, Agenda, CicloPlano (se aplicável), e limpa tokens
-                let missingRoleForInatividade: 'Patient' | 'Psychologist' | 'Both';
+                // ⚠️ NOTA: processarInatividade já foi chamado ANTES de closeRoom ser chamado
+                // Isso evita duplicação de processamento. Aqui apenas limpamos tokens se necessário
+                // O processarInatividade já atualizou: Consulta, ReservaSessao, Agenda, CicloPlano
                 
-                if (missingRole === 'psychologist') {
-                    missingRoleForInatividade = 'Psychologist';
-                } else if (missingRole === 'patient') {
-                    missingRoleForInatividade = 'Patient';
-                } else {
-                    missingRoleForInatividade = 'Both';
-                }
-
+                // Limpa tokens do Agora no banco (backup caso processarInatividade não tenha feito)
                 try {
-                    // ConsultaStatusService.processarInatividade já:
-                    // - Atualiza Consulta.Status (PacienteNaoCompareceu, PsicologoNaoCompareceu, etc)
-                    // - Atualiza ReservaSessao.Status → Cancelado
-                    // - Atualiza Agenda.Status → Disponivel (libera para novo agendamento)
-                    // - Limpa tokens do Agora
-                    // - Devolve sessão ao CicloPlano se necessário
-                    await this.statusService.processarInatividade(consultationId, missingRoleForInatividade);
-                    console.log(`✅ [ConsultaRoomService] Inatividade processada usando ConsultaStatusService para ${consultationId}`);
-                } catch (statusError: unknown) {
-                    const err = statusError as { message?: string };
-                    console.error(`❌ [ConsultaRoomService] Erro ao processar inatividade:`, err?.message || String(statusError));
+                    await prisma.reservaSessao.update({
+                        where: { ConsultaId: consultationId },
+                        data: {
+                            AgoraTokenPatient: null,
+                            AgoraTokenPsychologist: null,
+                            Uid: null,
+                            UidPsychologist: null
+                        }
+                    });
+                    console.log(`✅ [ConsultaRoomService] Tokens limpos para consulta ${consultationId}`);
+                } catch (tokenError: unknown) {
+                    const err = tokenError as { message?: string };
+                    console.error(`❌ [ConsultaRoomService] Erro ao limpar tokens:`, err?.message || String(tokenError));
                     
                     // Fallback: atualiza manualmente se o serviço falhar
                     type ConsultaStatusType = 'CanceladaForcaMaior';
                     const novoStatus: ConsultaStatusType = 'CanceladaForcaMaior';
 
-                    await prisma.$transaction(async (tx) => {
-                        await tx.consulta.update({
-                            where: { Id: consultationId },
-                            data: { Status: novoStatus }
-                        });
-
-                        await tx.reservaSessao.update({
-                            where: { ConsultaId: consultationId },
-                            data: {
-                                AgoraTokenPatient: null,
-                                AgoraTokenPsychologist: null,
-                                Uid: null,
-                                UidPsychologist: null,
-                                Status: AgendaStatus.Cancelado
-                            }
-                        });
-
-                        if (consulta.AgendaId) {
-                            await tx.agenda.update({
-                                where: { Id: consulta.AgendaId },
-                                data: { 
-                                    Status: AgendaStatus.Cancelado,
-                                    PacienteId: null // Libera agenda
-                                }
-                            });
-                        }
+                    await prisma.consulta.update({
+                        where: { Id: consultationId },
+                        data: { Status: novoStatus },
                     });
 
+                        await prisma.consulta.update({
+                            where: { Id: consultationId },
+                            data: { Status: $Enums.AgendaStatus.CanceladaForcaMaior },
+                        });
                     console.log(`✅ [ConsultaRoomService] Sala ${consultationId} fechada no banco (fallback) - status: ${novoStatus}`);
                 }
                 return;
@@ -469,38 +450,16 @@ export class ConsultaRoomService {
                 type ConsultaStatusType = 'CanceladaForcaMaior';
                 const novoStatus: ConsultaStatusType = 'CanceladaForcaMaior';
 
-                // ✅ Atualiza todas as tabelas relacionadas em uma transação
-                await prisma.$transaction(async (tx) => {
-                    // 1. Atualiza Consulta
-                    await tx.consulta.update({
-                        where: { Id: consultationId },
-                        data: { Status: novoStatus }
-                    });
-
-                    // 2. Atualiza ReservaSessao (limpa tokens e atualiza status)
-                    await tx.reservaSessao.update({
-                        where: { ConsultaId: consultationId },
-                        data: {
-                            AgoraTokenPatient: null,
-                            AgoraTokenPsychologist: null,
-                            Uid: null,
-                            UidPsychologist: null,
-                            Status: AgendaStatus.Cancelado
-                        }
-                    });
-
-                    // 3. Atualiza Agenda (libera para novo agendamento)
-                    if (consulta.AgendaId) {
-                        await tx.agenda.update({
-                            where: { Id: consulta.AgendaId },
-                            data: { 
-                                Status: AgendaStatus.Cancelado,
-                                PacienteId: null // Libera agenda
-                            }
-                        });
-                    }
+                // Atualiza apenas a Consulta (trigger sincroniza Agenda e ReservaSessao)
+                await prisma.consulta.update({
+                    where: { Id: consultationId },
+                    data: { Status: novoStatus },
                 });
 
+                    await prisma.consulta.update({
+                        where: { Id: consultationId },
+                        data: { Status: $Enums.AgendaStatus.CanceladaForcaMaior },
+                    });
                 console.log(`✅ [ConsultaRoomService] Sala ${consultationId} fechada no banco - status: ${novoStatus}`);
             }
         } catch (error) {

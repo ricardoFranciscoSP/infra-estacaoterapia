@@ -8,23 +8,29 @@ export class ReservaSessaoService implements IReservaSessaoService {
      * Busca reservas do dia atual para um par psicólogo/paciente
      */
     async getReservasDiaAtualByPsicologoPaciente(psicologoId: string, pacienteId: string) {
-        // Considera o timezone do servidor (ajuste se necessário)
-        const hoje = new Date();
-        hoje.setHours(0, 0, 0, 0);
-        const amanha = new Date(hoje);
-        amanha.setDate(hoje.getDate() + 1);
+        const agora = new Date();
+        const pad = (value: number) => String(value).padStart(2, '0');
+        const ano = agora.getFullYear();
+        const mes = pad(agora.getMonth() + 1);
+        const dia = pad(agora.getDate());
+        const amanha = new Date(agora);
+        amanha.setDate(agora.getDate() + 1);
+        const amanhaAno = amanha.getFullYear();
+        const amanhaMes = pad(amanha.getMonth() + 1);
+        const amanhaDia = pad(amanha.getDate());
+        const inicioDia = `${ano}-${mes}-${dia} 00:00:00`;
+        const inicioAmanha = `${amanhaAno}-${amanhaMes}-${amanhaDia} 00:00:00`;
         const reservas = await prisma.reservaSessao.findMany({
             where: {
                 PsychologistId: psicologoId,
                 PatientId: pacienteId,
                 ScheduledAt: {
-                    gte: hoje,
-                    lt: amanha,
+                    gte: inicioDia,
+                    lt: inicioAmanha,
                 },
             },
             include: {
                 Consulta: { select: { Id: true, Date: true, Time: true, Status: true } },
-                Agenda: { select: { Id: true, Data: true, Horario: true } },
             },
             orderBy: { ScheduledAt: 'asc' },
         });
@@ -504,6 +510,71 @@ export class ReservaSessaoService implements IReservaSessaoService {
             return {
                 success: false,
                 message: 'Erro ao buscar ReservaSessao'
+            };
+        }
+    }
+
+    /**
+     * Registra entrada de paciente ou psicólogo na sala
+     * Atualiza PatientJoinedAt ou PsychologistJoinedAt
+     */
+    async joinReservaSessao(consultationId: string, userId: string, role: 'Patient' | 'Psychologist'): Promise<{ success: boolean; message?: string; data?: any }> {
+        try {
+            const reservaSessao = await prisma.reservaSessao.findUnique({
+                where: { ConsultaId: consultationId },
+                include: { Consulta: true }
+            });
+
+            if (!reservaSessao) {
+                return {
+                    success: false,
+                    message: 'Reserva de sessão não encontrada'
+                };
+            }
+
+            // Verifica se já entrou
+            const field = role === 'Patient' ? 'PatientJoinedAt' : 'PsychologistJoinedAt';
+            const existingValue = reservaSessao[field];
+
+            if (existingValue) {
+                // Já entrou, retorna sucesso sem atualizar
+                return {
+                    success: true,
+                    message: 'Usuário já havia entrado na sala',
+                    data: reservaSessao
+                };
+            }
+
+            // Atualiza timestamp (usa horário de Brasília)
+            const { nowBrasiliaDate } = await import('../utils/timezone.util');
+            const now = nowBrasiliaDate();
+
+            const updated = await prisma.reservaSessao.update({
+                where: { ConsultaId: consultationId },
+                data: {
+                    [field]: now
+                },
+                include: { Consulta: true }
+            });
+
+            // Verifica se ambos entraram
+            const patientJoined = updated.PatientJoinedAt !== null;
+            const psychologistJoined = updated.PsychologistJoinedAt !== null;
+            const ambosEntraram = patientJoined && psychologistJoined;
+
+            return {
+                success: true,
+                message: ambosEntraram ? 'Ambos os participantes entraram na sala' : `${role} entrou na sala`,
+                data: {
+                    ...updated,
+                    ambosEntraram
+                }
+            };
+        } catch (error) {
+            console.error('[ReservaSessaoService] Erro ao registrar entrada:', error);
+            return {
+                success: false,
+                message: 'Erro ao registrar entrada na sala'
             };
         }
     }

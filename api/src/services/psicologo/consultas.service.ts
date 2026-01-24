@@ -56,13 +56,7 @@ export class ConsultasService implements IConsultasService {
         const statusService = new ConsultaStatusService();
         await statusService.iniciarConsulta(consultaId);
 
-        // Atualiza ReservaSessao se existir
-        if (consulta.ReservaSessao) {
-            await prisma.reservaSessao.update({
-                where: { Id: consulta.ReservaSessao.Id },
-                data: { Status: AgendaStatus.Andamento }
-            });
-        }
+        // ReservaSessao e Agenda são sincronizadas via trigger no banco
 
         // Notifica atualização via WebSocket
         try {

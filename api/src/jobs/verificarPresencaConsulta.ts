@@ -16,7 +16,6 @@ import utc from 'dayjs/plugin/utc';
 import { ConsultaRoomService } from '../services/consultaRoom.service';
 import { ConsultaStatusService } from '../services/consultaStatus.service';
 import { WebSocketNotificationService } from '../services/websocketNotification.service';
-import { AgendaStatus } from '../types/permissions.types';
 import { BRASILIA_TIMEZONE, nowBrasiliaTimestamp, nowBrasiliaDate, nowBrasilia, toBrasiliaISO } from '../utils/timezone.util';
 
 dayjs.extend(utc);
@@ -191,34 +190,17 @@ export async function verificarPresencaConsulta(payload: VerificacaoPresencaPayl
             await statusService.processarInatividade(consultaId, 'Both');
         } catch (statusError) {
             console.error(`❌ [verificarPresencaConsulta] Erro ao processar inatividade:`, statusError);
-            // Fallback: atualiza manualmente
-            await prisma.$transaction(async (tx) => {
-                await tx.consulta.update({
-                    where: { Id: consultaId },
-                    data: { Status: 'CanceladaForcaMaior' as never }
-                });
-
-                await tx.reservaSessao.update({
-                    where: { ConsultaId: consultaId },
-                    data: {
-                        Status: AgendaStatus.Cancelado,
-                        AgoraTokenPatient: null,
-                        AgoraTokenPsychologist: null,
-                        Uid: null,
-                        UidPsychologist: null
-                    }
-                });
-
-                if (consulta.AgendaId) {
-                    await tx.agenda.update({
-                        where: { Id: consulta.AgendaId },
-                        data: {
-                            Status: AgendaStatus.Cancelado,
-                            PacienteId: null
-                        }
-                    });
-                }
+            // Fallback: atualiza apenas Consulta (triggers sincronizam ReservaSessao e Agenda)
+            await prisma.consulta.update({
+                where: { Id: consultaId },
+                data: { Status: 'CanceladaForcaMaior' as never }
             });
+
+                // Correção: usar enum do Prisma
+                // await prisma.consulta.update({
+                //     where: { Id: consultaId },
+                //     data: { Status: $Enums.AgendaStatus.CanceladaForcaMaior },
+                // });
         }
 
         // Cria registro de cancelamento

@@ -74,7 +74,7 @@ export default function PainelFooter() {
             { href: "/painel/consultas", icon: "/assets/icons/consultas.svg", label: "Consultas", match: (p: string) => p.startsWith("/painel/consultas") },
             { href: "/painel/minha-conta/meus-planos", icon: "/assets/icons/planos.svg", label: "Planos", match: (p: string) => p.startsWith("/painel/minha-conta/meus-planos") || p === "/painel/planos" },
             { href: "/painel/psicologos", icon: "/assets/icons/psicologos.svg", label: "Psicólogos", match: (p: string) => p.startsWith("/painel/psicologos") },
-          ].map((item, idx) => {
+          ].map((item) => {
             const ativo = item.match(pathname || "");
             return (
               <Link
@@ -105,7 +105,7 @@ export default function PainelFooter() {
             { href: "/painel-psicologo", icon: "/assets/icons/grid.svg", label: "Painel geral", match: (p: string) => p === "/painel-psicologo" },
             { href: "/painel-psicologo/agenda", icon: "/assets/icons/calendar.svg", label: "Agenda", match: (p: string) => p.startsWith("/painel-psicologo/agenda") },
             { href: "/painel-psicologo/financeiro", icon: "/assets/icons/financeiro.svg", label: "Financeiro", match: (p: string) => p.startsWith("/painel-psicologo/financeiro") },
-          ].map((item, idx) => {
+          ].map((item) => {
             const ativo = item.match(pathname || "");
             return (
               <Link

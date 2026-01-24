@@ -8,7 +8,7 @@ import { WebSocketNotificationService } from "../services/websocketNotification.
 import { ConsultaCancelamentoService } from "../services/consultaCancelamento.service";
 import { MulterRequest } from "../types/multerRequest";
 import prisma from "../prisma/client";
-import { CancelamentoSessaoStatus, AgendaStatus } from "../generated/prisma";
+import { CancelamentoSessaoStatus } from "../generated/prisma";
 import { supabase, STORAGE_BUCKET } from "../services/storage.services";
 import { v4 as uuidv4 } from "uuid";
 import { CancelamentoResponse } from "../types/cancelamento.types";
@@ -821,24 +821,8 @@ export class CancelamentoController {
                 // Continua o processo mesmo se falhar a atualização da solicitação
             }
 
-            // Se o cancelamento foi deferido, atualizar Agenda para Disponivel e creditar consulta no saldo (se for paciente)
+            // Se o cancelamento foi deferido, a Agenda já é sincronizada via trigger
             if (status === "Deferido") {
-                // Atualizar Agenda para Disponivel quando cancelamento for deferido
-                if (consulta.Agenda) {
-                    try {
-                        await prisma.agenda.update({
-                            where: { Id: consulta.Agenda.Id },
-                            data: {
-                                Status: AgendaStatus.Disponivel,
-                                PacienteId: null
-                            }
-                        });
-                        console.log(`[CancelamentoController] Agenda ${consulta.Agenda.Id} atualizada para Disponivel após cancelamento deferido`);
-                    } catch (agendaError) {
-                        console.error("[CancelamentoController] Erro ao atualizar agenda:", agendaError);
-                        // Continua o processo mesmo se falhar a atualização da agenda
-                    }
-                }
 
                 // Processa repasse e devolução de saldo baseado no status normalizado após atualização
                 try {
@@ -1154,22 +1138,7 @@ export class CancelamentoController {
             const isCancelamentoPacienteForaPrazo = consulta.Status === "CanceladaPacienteForaDoPrazo";
             const isCancelamentoPaciente = cancelamento.Tipo === "Paciente";
 
-            // Atualizar Agenda para Disponivel e PacienteId = null quando cancelamento for aprovado
-            if (consulta.Agenda) {
-                try {
-                    await prisma.agenda.update({
-                        where: { Id: consulta.Agenda.Id },
-                        data: {
-                            Status: AgendaStatus.Disponivel,
-                            PacienteId: null
-                        }
-                    });
-                    console.log(`[CancelamentoController] Agenda ${consulta.Agenda.Id} atualizada para Disponivel após aprovação de cancelamento`);
-                } catch (agendaError) {
-                    console.error("[CancelamentoController] Erro ao atualizar agenda na aprovação:", agendaError);
-                    // Continua o processo mesmo se falhar a atualização da agenda
-                }
-            }
+            // Agenda já é sincronizada via trigger após atualização do status da Consulta
 
             // Se é cancelamento do paciente dentro de 24h, devolve a consulta após aprovação
             if (isCancelamentoPaciente && isCancelamentoPacienteForaPrazo && consulta.Paciente?.Id) {

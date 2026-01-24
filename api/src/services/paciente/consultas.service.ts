@@ -1,5 +1,4 @@
 import prisma from "../../prisma/client";
-import { AgendaStatus } from "../../generated/prisma";
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
@@ -61,13 +60,7 @@ export class ConsultasPacienteService {
         const statusService = new ConsultaStatusService();
         await statusService.iniciarConsulta(consultaId);
 
-        // Atualiza ReservaSessao se existir
-        if (consulta.ReservaSessao) {
-            await prisma.reservaSessao.update({
-                where: { Id: consulta.ReservaSessao.Id },
-                data: { Status: 'Andamento' }
-            });
-        }
+        // ReservaSessao e Agenda são sincronizadas via trigger no banco
 
         // Notifica atualização via WebSocket
         try {
@@ -208,7 +201,7 @@ export class ConsultasPacienteService {
      */
     async listarConsultasPorStatus(
         pacienteId: string,
-        status: AgendaStatus
+        status: string
     ): Promise<ConsultaRealizadaResponse[]> {
         return this.listarConsultasRealizadas(pacienteId, [status]);
     }
@@ -327,17 +320,21 @@ export class ConsultasPacienteService {
         pacienteId: string,
         mes: number,
         ano: number,
-        status?: AgendaStatus[]
+        status?: string[]
     ): Promise<number> {
         // Status padrão: Reagendada, Concluido e Canceladas (qualquer motivo)
         // NÃO inclui: Reservado, Andamento
         const statusFiltro = status || [
-            AgendaStatus.Reagendada,
-            AgendaStatus.Concluido,
-            AgendaStatus.Cancelado,
-            AgendaStatus.Cancelled_by_patient,
-            AgendaStatus.Cancelled_by_psychologist,
-            AgendaStatus.Cancelled_no_show
+            'ReagendadaPacienteNoPrazo',
+            'ReagendadaPsicologoNoPrazo',
+            'Realizada',
+            'Cancelado',
+            'CanceladaPacienteNoPrazo',
+            'CanceladaPacienteForaDoPrazo',
+            'CanceladaPsicologoNoPrazo',
+            'CanceladaPsicologoForaDoPrazo',
+            'PacienteNaoCompareceu',
+            'PsicologoNaoCompareceu'
         ];
 
         const firstDay = new Date(ano, mes - 1, 1, 0, 0, 0, 0);

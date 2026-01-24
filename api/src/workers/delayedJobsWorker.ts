@@ -7,7 +7,7 @@ import { Worker } from "bullmq";
 import { getDelayedJobsQueue } from "../queues/delayedJobsQueue";
 import { waitForIORedisReady } from "../config/redis.config";
 import prisma from "../prisma/client";
-import { AgendaStatus } from "../types/permissions.types";
+import { $Enums } from "../generated/prisma";
 import { WebSocketNotificationService } from "../services/websocketNotification.service";
 import { ConsultaStatusService } from "../services/consultaStatus.service";
 import { ConsultaRoomService } from "../services/consultaRoom.service";
@@ -16,6 +16,10 @@ import dayjs from "dayjs";
 import timezone from "dayjs/plugin/timezone";
 import utc from "dayjs/plugin/utc";
 import { BRASILIA_TIMEZONE } from "../utils/timezone.util";
+import { handleReservedStatusRefresh } from "../jobs/jobAtualizarStatusReservado";
+import { handleInatividadeFailsafe } from "../jobs/jobInatividadeConsulta";
+import { handleVerificarInatividadeScheduledAt } from "../jobs/jobVerificarInatividadeScheduledAt";
+import { handleNotificarTempoRestante } from "../jobs/jobNotificarTempoRestante";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -96,6 +100,20 @@ export async function startDelayedJobsWorker(): Promise<void> {
                         await handleExpirePlanSubscription(
                             job.data.assinaturaPlanoId
                         );
+                        break;
+                    case "refresh-reservado-status":
+                        await handleReservedStatusRefresh();
+                        break;
+                    case "consulta-inatividade-failsafe":
+                        await handleInatividadeFailsafe();
+                        break;
+
+                    case "verificar-inatividade-scheduled-at":
+                        await handleVerificarInatividadeScheduledAt();
+                        break;
+
+                    case "notificar-tempo-restante":
+                        await handleNotificarTempoRestante();
                         break;
 
                     default:
@@ -375,32 +393,11 @@ async function handleFinalizeConsultation(
         return;
     }
 
-    // Atualiza status em todas as tabelas
-    await prisma.$transaction(async (tx) => {
-        await tx.consulta.update({
-            where: { Id: consultationId },
-            data: { Status: "Realizada" },
-        });
-
-        await tx.reservaSessao.update({
-            where: { ConsultaId: consultationId },
-            data: {
-                Status: AgendaStatus.Concluido,
-                AgoraTokenPatient: null,
-                AgoraTokenPsychologist: null,
-                Uid: null,
-                UidPsychologist: null,
-            },
-        });
-
-        if (reservaSessao.Consulta.AgendaId) {
-            await tx.agenda.update({
-                where: { Id: reservaSessao.Consulta.AgendaId },
-                data: { Status: AgendaStatus.Concluido },
-            });
-        }
+    // Atualiza apenas Consulta (trigger sincroniza ReservaSessao e Agenda)
+    await prisma.consulta.update({
+        where: { Id: consultationId },
+        data: { Status: $Enums.ConsultaStatus.Realizada },
     });
-
     // Notifica encerramento
     await wsNotify.emitConsultation(`consultation:${consultationId}`, {
         status: "Concluido",
@@ -506,37 +503,17 @@ async function handleExpireConsultationAfterPlanCancellation(
         return;
     }
 
-    // Expira a consulta
-    await prisma.$transaction(async (tx) => {
-        await tx.consulta.update({
-            where: { Id: consultationId },
-            data: {
-                Status: "CanceladaForcaMaior",
-                TelaGatilho: null,
-                OrigemStatus: "Sistema - Sessão Expirada (Plano Cancelado)",
-                Faturada: false,
-                AcaoSaldo: "Devolve sessão",
-            },
-        });
-
-        if (consulta.ReservaSessao) {
-            await tx.reservaSessao.update({
-                where: { ConsultaId: consultationId },
-                data: { Status: AgendaStatus.Cancelado },
-            });
-        }
-
-        if (consulta.Agenda) {
-            await tx.agenda.update({
-                where: { Id: consulta.Agenda.Id },
-                data: {
-                    Status: AgendaStatus.Disponivel,
-                    PacienteId: null,
-                },
-            });
-        }
+    // Expira a consulta (trigger sincroniza ReservaSessao e Agenda)
+    await prisma.consulta.update({
+        where: { Id: consultationId },
+        data: {
+            Status: $Enums.ConsultaStatus.CanceladaForcaMaior,
+            TelaGatilho: null,
+            OrigemStatus: "Sistema - Sessão Expirada (Plano Cancelado)",
+            Faturada: false,
+            AcaoSaldo: "Devolve sessão",
+        },
     });
-
     // Envia notificações
     if (consulta.Paciente) {
         await wsNotify.emitToUser(consulta.Paciente.Id, "consultation-expired", {

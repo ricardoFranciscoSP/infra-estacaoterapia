@@ -655,7 +655,9 @@ export const joinUserRoom = (userId: string) => {
 
     const doJoin = () => {
         console.log("👤 [Socket] Entrando na sala do usuário:", userId);
+        // Emite ambos os eventos para garantir compatibilidade
         s.emit("join-user", userId);
+        s.emit("subscribe_notifications", { userId });
     };
 
     if (!s.connected) {
@@ -900,13 +902,25 @@ export const onRoomClosed = (
     const doSetup = () => {
         s.emit("join-room", `consulta_${consultationId}`);
         const eventName = `consultation:${consultationId}`;
-        const handler = (data: { event?: string; consultationId?: string; reason?: string; message?: string }) => {
+        
+        // Handler para evento via consultation:${id}
+        const consultationHandler = (data: { event?: string; consultationId?: string; reason?: string; message?: string }) => {
             if (data.event === "room-closed" && data.consultationId === consultationId) {
                 callback(data as RoomClosedData);
                 resetDisconnectionTimer();
             }
         };
-        s.on(eventName, handler);
+        s.on(eventName, consultationHandler);
+        
+        // Handler para evento direto room-closed (enviado para o usuário específico)
+        const directHandler = (data: { event?: string; consultationId?: string; reason?: string; message?: string }) => {
+            if (data.consultationId === consultationId || (data.event === "room-closed" && (!data.consultationId || data.consultationId === consultationId))) {
+                callback(data as RoomClosedData);
+                resetDisconnectionTimer();
+            }
+        };
+        s.on("room-closed", directHandler);
+        
         resetDisconnectionTimer();
     };
 
@@ -923,6 +937,7 @@ export const offRoomClosed = (consultationId?: string) => {
 
     if (consultationId) {
         s.off(`consultation:${consultationId}`);
+        s.off("room-closed"); // Remove listener direto também
         const listenerKey = `room-closed-${consultationId}`;
         activeListeners.delete(listenerKey);
         resetDisconnectionTimer();

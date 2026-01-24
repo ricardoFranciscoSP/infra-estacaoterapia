@@ -13,8 +13,8 @@
  */
 
 import prisma from '../prisma/client';
+import { AgendaStatus } from '../generated/prisma';
 import { WebSocketNotificationService } from '../services/websocketNotification.service';
-import { AgendaStatus } from '../types/permissions.types';
 
 const wsNotify = new WebSocketNotificationService();
 
@@ -91,34 +91,17 @@ export const encerrarSalasExpiradas = async () => {
             try {
                 const consultationId = reserva.ConsultaId;
                 
-                // Atualiza status em todas as tabelas e limpa os tokens
-                await prisma.$transaction(async (tx) => {
-                    // Atualiza status da consulta
-                    await tx.consulta.update({
-                        where: { Id: consultationId },
-                        data: { Status: "Realizada" },
-                    });
-                    
-                    // Atualiza status da reserva de sessão e limpa os tokens
-                    await tx.reservaSessao.update({
-                        where: { ConsultaId: consultationId },
-                        data: { 
-                            Status: AgendaStatus.Concluido,
-                            AgoraTokenPatient: null,
-                            AgoraTokenPsychologist: null,
-                            Uid: null,
-                            UidPsychologist: null
-                        },
-                    });
-                    
-                    // Atualiza status da agenda se existir
-                    if (reserva.Consulta.AgendaId) {
-                        await tx.agenda.update({
-                            where: { Id: reserva.Consulta.AgendaId },
-                            data: { Status: AgendaStatus.Concluido }
-                        });
-                    }
+                // Atualiza apenas Consulta (trigger sincroniza ReservaSessao e Agenda)
+                await prisma.consulta.update({
+                    where: { Id: consultationId },
+                    data: { Status: "Realizada" },
                 });
+
+                    // Correção: usar enum do Prisma
+                    // await prisma.consulta.update({
+                    //     where: { Id: consultationId },
+                    //     data: { Status: $Enums.AgendaStatus.Realizada },
+                    // });
                 
                 // Notifica ambos os participantes sobre o encerramento
                 await wsNotify.emitConsultation(`consultation:${consultationId}`, { 

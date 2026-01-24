@@ -1,8 +1,7 @@
 generator client {
-  provider        = "prisma-client-js"
-  output          = "../src/generated/prisma"
-  previewFeatures = ["driverAdapters"]
-  engineType      = "library"
+  provider   = "prisma-client-js"
+  output     = "../src/generated/prisma"
+  engineType = "library"
 }
 
 datasource db {
@@ -50,8 +49,6 @@ model User {
   TermsAccepted               Boolean                   @default(false)
   PrivacyAccepted             Boolean                   @default(false)
   Status                      UserStatus                @default(Ativo)
-  RatingAverage               Float                     @default(0)
-  RatingCount                 Int                       @default(0)
   Password                    String
   Role                        Role
   IsOnboard                   Boolean                   @default(false)
@@ -75,6 +72,8 @@ model User {
   MustChangePassword          Boolean                   @default(false)
   RacaCor                     RacaCor?
   WhatsApp                    String?
+  RatingAverage               Float                     @default(0)
+  RatingCount                 Int                       @default(0)
   Address                     Address[]                 @relation("UserAddress")
   AdminActionLogs             AdminActionLog[]          @relation("UserAdminActionLog")
   PatientAgendas              Agenda[]                  @relation("PacienteAgenda")
@@ -82,8 +81,6 @@ model User {
   AssinaturaPlanos            AssinaturaPlano[]         @relation("UserAssinaturaPlano")
   BannersCreated              Banner[]                  @relation("BannerCreator")
   BannersUpdated              Banner[]                  @relation("BannerUpdater")
-  PolicyDocumentsCreated      PolicyDocument[]          @relation("PolicyDocumentsCreated")
-  PolicyDocumentsUpdated      PolicyDocument[]          @relation("PolicyDocumentsUpdated")
   BillingAddress              BillingAddress[]          @relation("UserBillingAddress")
   CancelamentosPac            CancelamentoSessao[]      @relation("CancelamentoPaciente")
   CiclosPlano                 CicloPlano[]              @relation("UserCicloPlano")
@@ -95,9 +92,9 @@ model User {
   ConsultaParticipacao        ConsultaParticipacao[]    @relation("UserConsultaParticipacao")
   ControleConsultaMensal      ControleConsultaMensal[]
   CreditosAvulsos             CreditoAvulso[]           @relation("UserCreditoAvulso")
+  DatabaseBackupsCreated      DatabaseBackup[]          @relation("UserDatabaseBackupsCreated")
   Document                    Document[]                @relation("UserDocuments")
   Document_fiscal             Document_fiscal[]         @relation("UserDocument_fiscal")
-  DatabaseBackupsCreated      DatabaseBackup[]          @relation("UserDatabaseBackupsCreated")
   FavoritesGiven              Favorite[]                @relation("PatientFavorites")
   FavoritesReceived           Favorite[]                @relation("PsychologistFavoritedBy")
   FinanceiroEntries           Financeiro[]              @relation("UserFinanceiro")
@@ -111,15 +108,17 @@ model User {
   PasswordResets              PasswordReset[]           @relation("UserPasswordReset")
   PessoalJuridica             PessoalJuridica?
   PlanoAssinaturasAdmin       PlanoAssinatura[]         @relation("PlanoAdmin")
+  PolicyDocumentsCreated      PolicyDocument[]          @relation("PolicyDocumentsCreated")
+  PolicyDocumentsUpdated      PolicyDocument[]          @relation("PolicyDocumentsUpdated")
   ProfessionalProfiles        ProfessionalProfile[]     @relation("UserProfessionalProfile")
   RefreshTokens               RefreshToken[]            @relation("UserRefreshToken")
   ReviewsReceived             Review[]                  @relation("PsychologistReviews")
   ReviewsMade                 Review[]                  @relation("UserReviews")
+  solicitacaoDestinatarios    SolicitacaoDestinatario[]
   Solicitacoes                Solicitacoes[]
   UserPermissions             UserPermission[]          @relation("UserPermissions")
   WorkSchedules               WorkSchedule[]            @relation("UserWorkSchedule")
   PlanoAssinaturas            PlanoAssinatura[]         @relation("UserPlanoAssinatura")
-  solicitacaoDestinatarios    SolicitacaoDestinatario[]
 
   @@map("User")
 }
@@ -205,13 +204,13 @@ model Review {
   UserId             String?
   PsicologoId        String
   Rating             Int
-  Titulo             String?
   Comentario         String?
   Status             String   @default("Pendente")
   MostrarNaHome      Boolean? @default(false)
   MostrarNaPsicologo Boolean? @default(false)
   CreatedAt          DateTime @default(now())
   UpdatedAt          DateTime @updatedAt
+  Titulo             String?
   Psicologo          User     @relation("PsychologistReviews", fields: [PsicologoId], references: [Id], onDelete: Cascade)
   User               User?    @relation("UserReviews", fields: [UserId], references: [Id], onDelete: Cascade)
 }
@@ -357,6 +356,8 @@ model Consulta {
   TelaGatilho          String?
   /// Ação de saldo: Não altera, Devolve sessão
   AcaoSaldo            String                 @default("Nao altera")
+  InicioEm             DateTime?
+  FimEm                DateTime?
   Cancelamentos        CancelamentoSessao[]   @relation("ConsultaCancelamento")
   Commission           Commission[]
   Agenda               Agenda?                @relation("AgendaConsulta", fields: [AgendaId], references: [Id])
@@ -435,30 +436,6 @@ model AdminActionLog {
   User        User       @relation("UserAdminActionLog", fields: [UserId], references: [Id], onDelete: Cascade)
 }
 
-/// Tokens Agora gerados manualmente via admin
-model ManualAgoraToken {
-  Id                String   @id @default(uuid())
-  ConsultaId        String
-  PatientId         String
-  PsychologistId    String
-  ChannelName       String
-  PatientToken      String
-  PsychologistToken String
-  PatientUid        Int
-  PsychologistUid   Int
-  CreatedAt         DateTime @default(now())
-  CreatedById       String
-  IpAddress         String?
-  Source            String   @default("manual")
-  Consulta          Consulta @relation(fields: [ConsultaId], references: [Id], onDelete: Cascade)
-  CreatedBy         User     @relation(fields: [CreatedById], references: [Id], onDelete: Cascade)
-
-  @@index([CreatedAt])
-  @@index([ConsultaId])
-  @@index([PatientId])
-  @@index([PsychologistId])
-}
-
 /// Backups do banco de dados (metadados, sem conteúdo do arquivo)
 model DatabaseBackup {
   Id                String          @id @default(uuid())
@@ -471,7 +448,7 @@ model DatabaseBackup {
   Status            BackupStatus    @default(AVAILABLE)
   StorageProvider   StorageProvider @default(supabase)
   DownloadExpiresAt DateTime?
-  CreatedBy         User?           @relation("UserDatabaseBackupsCreated", fields: [CreatedById], references: [Id], onDelete: SetNull)
+  CreatedBy         User?           @relation("UserDatabaseBackupsCreated", fields: [CreatedById], references: [Id])
 
   @@index([CreatedAt])
   @@index([Status])
@@ -880,11 +857,11 @@ model PolicyDocument {
   UpdatedAt   DateTime @updatedAt
   CreatedById String?
   UpdatedById String?
-  CreatedBy   User?    @relation("PolicyDocumentsCreated", fields: [CreatedById], references: [Id], onDelete: SetNull)
-  UpdatedBy   User?    @relation("PolicyDocumentsUpdated", fields: [UpdatedById], references: [Id], onDelete: SetNull)
+  CreatedBy   User?    @relation("PolicyDocumentsCreated", fields: [CreatedById], references: [Id])
+  UpdatedBy   User?    @relation("PolicyDocumentsUpdated", fields: [UpdatedById], references: [Id])
 
-  @@index([PublicoPara], name: "PolicyDocument_PublicoPara_idx")
-  @@index([Ativo], name: "PolicyDocument_Ativo_idx")
+  @@index([PublicoPara])
+  @@index([Ativo])
 }
 
 model Solicitacoes {
@@ -898,12 +875,12 @@ model Solicitacoes {
   Documentos        String?
   Log               String?
   SLA               Int?
-  PublicoTodos      Boolean                   @default(false)
-  PublicoPacientes  Boolean                   @default(false)
-  PublicoPsicologos Boolean                   @default(false)
-  PublicoFinanceiro Boolean                   @default(false)
   CreatedAt         DateTime                  @default(now())
   UpdatedAt         DateTime                  @updatedAt
+  PublicoFinanceiro Boolean                   @default(false)
+  PublicoPacientes  Boolean                   @default(false)
+  PublicoPsicologos Boolean                   @default(false)
+  PublicoTodos      Boolean                   @default(false)
   Documents         Document[]
   Documents_fiscal  Document_fiscal[]         @relation("SolicitacaoDocument_fiscal")
   Destinatarios     SolicitacaoDestinatario[]
@@ -1103,16 +1080,16 @@ enum RacaCor {
 enum UserStatus {
   Ativo
   Inativo
+  Bloqueado
+  Pendente
+  Deletado
   EmAnalise
+  EmAnaliseContrato
   PendenteDocumentacao
   AnaliseContrato
   Reprovado
   DescredenciadoVoluntario
   DescredenciadoInvoluntario
-  Bloqueado
-  Pendente
-  Deletado
-  EmAnaliseContrato
 }
 
 enum Role {
@@ -1235,6 +1212,7 @@ enum AgendaStatus {
   Cancelled_by_psychologist
   Cancelled_no_show
   Reagendada
+  Fora_plataforma
 }
 
 enum ExperienciaClinica {
@@ -1609,6 +1587,13 @@ enum ConsultaStatus {
   Reservado
   /// Cancelado - Status genérico (legado, usar estados específicos)
   Cancelado
+  /// Cancelamento sistêmico por inatividade do psicólogo
+  CANCELAMENTO_SISTEMICO_PSICOLOGO
+  /// Cancelamento sistêmico por inatividade do paciente
+  CANCELAMENTO_SISTEMICO_PACIENTE
+  /// Fora da plataforma - Consulta realizada fora da plataforma
+  /// Origem: Admin/Gestão | Saldo: Não devolve | Faturada: Sim
+  ForaDaPlataforma
 }
 
 enum ControleConsultaMensalStatus {

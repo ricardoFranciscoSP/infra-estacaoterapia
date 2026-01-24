@@ -295,18 +295,21 @@ function EmptyState() {
   );
 }
 
+type StatusFilter = 'todas' | 'canceladas' | 'concluidas' | 'reagendadas';
+
 const ConsultasRealizadas: React.FC = () => {
-  const ITEMS_PER_PAGE = 5;
+  const ITEMS_PER_PAGE = 10; // Aumentado de 5 para 10
   const [currentPage, setCurrentPage] = useState(1);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('todas');
   const { consultasConcluidas, isError } = useConsultasConcluidas();
 
   // Remove refetch automático - o hook já busca automaticamente e não precisa de refetch manual
   // Isso evita loops e múltiplas chamadas desnecessárias
   
-  // Resetar página quando os dados mudarem
+  // Resetar página quando os dados mudarem ou filtro mudar
   useEffect(() => {
     setCurrentPage(1);
-  }, [consultasConcluidas]);
+  }, [consultasConcluidas, statusFilter]);
 
   // Log para debug
   React.useEffect(() => {
@@ -385,42 +388,90 @@ const ConsultasRealizadas: React.FC = () => {
       return ehConcluida || ehReagendada || ehCancelada;
     });
 
+    // Aplica filtro por status se selecionado
+    const consultasFiltradasPorStatus = statusFilter === 'todas' 
+      ? apenasCategoriasDesejadas 
+      : apenasCategoriasDesejadas.filter((c) => {
+          const consulta = c as RawConsulta;
+          const statusReservaSessao = consulta?.ReservaSessao?.Status
+            ?? consulta?.reservaSessao?.Status
+            ?? consulta?.reservaSessao?.status
+            ?? '';
+          const statusConsulta = consulta?.Status ?? consulta?.status ?? '';
+          const statusAgenda = consulta?.Agenda?.Status ?? consulta?.agenda?.status ?? '';
+          const statusCancelamento = getCancelamentoStatus(consulta);
+          const statusBruto = statusReservaSessao || statusConsulta || statusAgenda || statusCancelamento;
+          const statusNorm = normalizarStatusExibicao(statusBruto).toLowerCase();
+
+          const ehCancelamento = Boolean(statusCancelamento?.trim());
+          const ehConcluida = statusNorm.includes('concluída') || statusNorm.includes('realizada');
+          const ehReagendada = statusNorm.includes('reagendada');
+          const ehCancelada = statusNorm.includes('cancelada') || statusNorm.includes('cancelado');
+
+          if (statusFilter === 'canceladas') {
+            return ehCancelada || ehCancelamento;
+          }
+          if (statusFilter === 'concluidas') {
+            return ehConcluida;
+          }
+          if (statusFilter === 'reagendadas') {
+            return ehReagendada;
+          }
+          return true;
+        });
+
     // Ordena por data/hora desc (mais recentes primeiro)
-    return apenasCategoriasDesejadas.sort((a, b) => parseDataHora(b) - parseDataHora(a));
-  }, [consultasConcluidas]);
+    return consultasFiltradasPorStatus.sort((a, b) => parseDataHora(b) - parseDataHora(a));
+  }, [consultasConcluidas, statusFilter]);
+
+  // Remove duplicados por Id antes de paginar
+  const consultasUnicas = React.useMemo(() => {
+    const seen = new Set<string | number>();
+    return consultasElegiveis.filter((c) => {
+      const id = c.Id || c.id;
+      if (!id) return true; // Mantém consultas sem ID (raras, mas possíveis)
+      const idStr = String(id);
+      if (seen.has(idStr)) {
+        console.log(`[ConsultasRealizadas] Duplicata removida: ${idStr}`);
+        return false;
+      }
+      seen.add(idStr);
+      return true;
+    });
+  }, [consultasElegiveis]);
 
   // Log das consultas elegíveis
   React.useEffect(() => {
     console.log('[ConsultasRealizadas] Consultas elegíveis:', {
       total: consultasElegiveis.length,
-      consultas: consultasElegiveis.map(c => ({
+      unicas: consultasUnicas.length,
+      consultas: consultasUnicas.map(c => ({
         id: c.Id || c.id,
         date: c.Date || c.date || c.Agenda?.Data,
         status: c.Status || c.status
       }))
     });
-  }, [consultasElegiveis]);
+  }, [consultasElegiveis, consultasUnicas]);
 
-  const hasConsultas = consultasElegiveis.length > 0;
+  const hasConsultas = consultasUnicas.length > 0;
 
-  // Paginação: mostra 5 itens por página, só ativa se tiver mais de 5 consultas
-  const totalPages = Math.ceil(consultasElegiveis.length / ITEMS_PER_PAGE);
-  const shouldPaginate = consultasElegiveis.length > ITEMS_PER_PAGE;
+  // Paginação: mostra 10 itens por página, só ativa se tiver mais de 10 consultas
+  const totalPages = Math.ceil(consultasUnicas.length / ITEMS_PER_PAGE);
+  const shouldPaginate = consultasUnicas.length > ITEMS_PER_PAGE;
   const startIndex = shouldPaginate ? (currentPage - 1) * ITEMS_PER_PAGE : 0;
-  const endIndex = shouldPaginate ? startIndex + ITEMS_PER_PAGE : consultasElegiveis.length;
-  // Remove duplicados por Id antes de paginar
-  const consultasUnicas = React.useMemo(() => {
-    const seen = new Set();
-    return consultasElegiveis.filter((c) => {
-      const id = c.Id || c.id;
-      if (!id) return true;
-      if (seen.has(id)) return false;
-      seen.add(id);
-      return true;
-    });
-  }, [consultasElegiveis]);
-
+  const endIndex = shouldPaginate ? startIndex + ITEMS_PER_PAGE : consultasUnicas.length;
   const consultasVisiveis = consultasUnicas.slice(startIndex, endIndex);
+
+  // Log para debug
+  React.useEffect(() => {
+    console.log('[ConsultasRealizadas] Paginação:', {
+      total: consultasUnicas.length,
+      paginaAtual: currentPage,
+      totalPaginas: totalPages,
+      mostrando: consultasVisiveis.length,
+      range: `${startIndex + 1}-${endIndex}`,
+    });
+  }, [consultasUnicas.length, currentPage, totalPages, consultasVisiveis.length, startIndex, endIndex]);
 
   const handleNextPage = () => {
     if (currentPage < totalPages) {
@@ -442,11 +493,11 @@ const ConsultasRealizadas: React.FC = () => {
             Consultas concluídas, reagendadas e canceladas
           </h3>
         </div>
-        {hasConsultas && (
-          <span className="px-3 py-1 bg-[#E6E9FF] text-[#6D75C0] text-sm font-semibold rounded-full">
-            {consultasElegiveis.length} {consultasElegiveis.length === 1 ? 'consulta' : 'consultas'}
-          </span>
-        )}
+          {hasConsultas && (
+            <span className="px-3 py-1 bg-[#E6E9FF] text-[#6D75C0] text-sm font-semibold rounded-full">
+              {consultasUnicas.length} {consultasUnicas.length === 1 ? 'consulta' : 'consultas'}
+            </span>
+          )}
       </div>
       {!hasConsultas ? (
         <EmptyState />
@@ -485,7 +536,7 @@ const ConsultasRealizadas: React.FC = () => {
             }).filter(Boolean)}
             </AnimatePresence>
           </div>
-          {/* Paginação - só aparece se tiver mais de 5 consultas */}
+          {/* Paginação - só aparece se tiver mais de 10 consultas */}
           {shouldPaginate && (
             <motion.div 
               className="mt-6 flex flex-col items-center gap-4"
@@ -544,7 +595,7 @@ const ConsultasRealizadas: React.FC = () => {
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.2 }}
               >
-                Mostrando {startIndex + 1}-{Math.min(endIndex, consultasElegiveis.length)} de {consultasElegiveis.length} consultas
+                Mostrando {startIndex + 1}-{Math.min(endIndex, consultasUnicas.length)} de {consultasUnicas.length} consultas
               </motion.p>
             </motion.div>
           )}

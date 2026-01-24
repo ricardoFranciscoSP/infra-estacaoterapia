@@ -1,4 +1,5 @@
 import prisma from "../../prisma/client";
+import { $Enums } from "../../generated/prisma";
 import { IConfigAgendaService } from "../../interfaces/psicoologo/configAgenda.interface";
 import { Agenda, ConfigAgendaInput } from "../../types/configAgenda.types";
 
@@ -180,15 +181,15 @@ export class ConfigAgendaService implements IConfigAgendaService {
                 const updateResults = await Promise.all(
                     idsParaAtualizar.map(async id => {
                         const agendaAtual = await prisma.agenda.findUnique({ where: { Id: id } });
-                        let novoStatus: any = "Disponivel";
-                        if (agendaAtual?.Status === "Disponivel") {
-                            novoStatus = "Bloqueado";
-                        } else if (agendaAtual?.Status === "Bloqueado") {
-                            novoStatus = "Disponivel";
+                        let novoStatus: $Enums.AgendaStatus = $Enums.AgendaStatus.Disponivel;
+                        if (agendaAtual?.Status === $Enums.AgendaStatus.Disponivel) {
+                            novoStatus = $Enums.AgendaStatus.Bloqueado;
+                        } else if (agendaAtual?.Status === $Enums.AgendaStatus.Bloqueado) {
+                            novoStatus = $Enums.AgendaStatus.Disponivel;
                         }
                         const result = await prisma.agenda.update({
                             where: { Id: id },
-                            data: { Status: { set: novoStatus } }
+                            data: { Status: novoStatus }
                         });
                         console.log(`Atualizado recorrente Id: ${id} - Status: ${result.Status}`);
                         return result;
@@ -200,15 +201,15 @@ export class ConfigAgendaService implements IConfigAgendaService {
                 const updateResults = await Promise.all(
                     horarios.map(async item => {
                         const agendaAtual = await prisma.agenda.findUnique({ where: { Id: item.HorarioId } });
-                        let novoStatus: any = "Disponivel";
-                        if (agendaAtual?.Status === "Disponivel") {
-                            novoStatus = "Bloqueado";
-                        } else if (agendaAtual?.Status === "Bloqueado") {
-                            novoStatus = "Disponivel";
+                        let novoStatus: $Enums.AgendaStatus = $Enums.AgendaStatus.Disponivel;
+                        if (agendaAtual?.Status === $Enums.AgendaStatus.Disponivel) {
+                            novoStatus = $Enums.AgendaStatus.Bloqueado;
+                        } else if (agendaAtual?.Status === $Enums.AgendaStatus.Bloqueado) {
+                            novoStatus = $Enums.AgendaStatus.Disponivel;
                         }
                         const result = await prisma.agenda.update({
                             where: { Id: item.HorarioId },
-                            data: { Status: { set: novoStatus } }
+                            data: { Status: novoStatus }
                         });
                         console.log(`Atualizado não recorrente Id: ${item.HorarioId} - Status: ${result.Status}`);
                         return result;

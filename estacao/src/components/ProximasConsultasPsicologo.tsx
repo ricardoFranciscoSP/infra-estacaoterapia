@@ -400,7 +400,7 @@ export default function ProximaConsultaPsicologo({ consultas = null, role = "pac
         }
       }
 
-  const botaoEntrarFinal = !podeEntrarNaSessao;
+  const botaoEntrarFinal = botaoEntrarDesabilitado || !podeEntrarNaSessao;
 
   // Novo: verifica se não há consulta futura
   if (!next) {

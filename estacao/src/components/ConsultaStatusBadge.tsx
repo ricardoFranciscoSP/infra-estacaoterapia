@@ -11,6 +11,8 @@ interface ConsultaStatusBadgeProps {
   showTimer?: boolean;
   forceStatus?: string;
   showLiveIndicator?: boolean;
+  /** Usa o mesmo estilo da tag "Consultas restantes" (bg #CFD6F7, text #444D9D) */
+  useConsultasRestantesStyle?: boolean;
 }
 
 /**
@@ -24,16 +26,18 @@ export function ConsultaStatusBadge({
   showTimer = false,
   forceStatus,
   showLiveIndicator = true,
+  useConsultasRestantesStyle = false,
 }: ConsultaStatusBadgeProps) {
   const { statusTagInfo, tempoRestante, emAndamento } = useConsultaStatusRealTime(consulta);
   const isForced = Boolean(forceStatus);
   const finalStatusTag = isForced ? getStatusTagInfo(forceStatus as string) : statusTagInfo;
+  const tagClasses = useConsultasRestantesStyle
+    ? 'px-3 py-1 rounded-full text-xs font-semibold bg-[#CFD6F7] text-[#444D9D] shadow'
+    : `px-3 py-1 rounded-full text-xs font-semibold ${finalStatusTag.bg} ${finalStatusTag.text} shadow`;
 
   return (
     <div className={`flex items-center gap-2 ${className}`}>
-      <span 
-        className={`px-3 py-1 rounded-full text-xs font-semibold ${finalStatusTag.bg} ${finalStatusTag.text} shadow`}
-      >
+      <span className={tagClasses}>
         {finalStatusTag.texto}
       </span>
       

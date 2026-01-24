@@ -169,39 +169,21 @@ export class ConsultaStatusService {
   }
 
   /**
-   * Limpa tokens do Agora na ReservaSessao
-   * Usa o tipo do Prisma Client para transações
-   */
-  private async limparTokensAgora(
-    tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0],
-    reservaSessaoId: string
-  ): Promise<void> {
-    await tx.reservaSessao.update({
-      where: { Id: reservaSessaoId },
-      data: {
-        AgoraTokenPatient: null,
-        AgoraTokenPsychologist: null,
-        Uid: null,
-        UidPsychologist: null,
-      },
-    });
-  }
-
-  /**
    * Atualiza o status de uma consulta aplicando todas as regras de negócio
    */
   async atualizarStatus(data: AtualizarConsultaStatusDTO) {
     const { consultaId, novoStatus, origem, telaGatilho, usuarioId } = data;
 
-    // Busca a consulta atual
+    // Busca a consulta atual (campos mínimos necessários)
     const consulta = await prisma.consulta.findUnique({
       where: { Id: consultaId },
-      include: {
-        Paciente: true,
-        Psicologo: true,
-        CicloPlano: true,
-        ReservaSessao: true,
-        Agenda: true,
+      select: {
+        Id: true,
+        Status: true,
+        PacienteId: true,
+        PsicologoId: true,
+        CicloPlanoId: true,
+        Valor: true,
       },
     });
 
@@ -209,8 +191,12 @@ export class ConsultaStatusService {
       throw new Error(`Consulta ${consultaId} não encontrada`);
     }
 
+    if (consulta.Status === novoStatus) {
+      return consulta;
+    }
+
     // Define a origem do status
-    const origemFinal = origem || this.inferirOrigem(usuarioId, consulta);
+    const origemFinal = origem || this.inferirOrigem(usuarioId);
 
     // Valida a transição de status
     this.validarTransicao(consulta.Status as ConsultaStatus, novoStatus);
@@ -230,7 +216,37 @@ export class ConsultaStatusService {
     const devolveSessiono = ConsultaStatusHelper.devolveSessiono(novoStatus);
 
     // Inicia transação
-    return await prisma.$transaction(async (tx) => {
+    const consultaAtualizada = await prisma.$transaction(async (tx) => {
+      // VALIDAÇÃO: Garante que apenas 1 consulta esteja "EmAndamento" por vez
+      if (novoStatus === "EmAndamento") {
+        const outrasConsultasEmAndamento = await tx.consulta.findMany({
+          where: {
+            Status: "EmAndamento",
+            Id: { not: consultaId },
+            OR: [
+              { PacienteId: consulta.PacienteId },
+              { PsicologoId: consulta.PsicologoId },
+            ],
+          },
+          select: {
+            Id: true,
+            PacienteId: true,
+            PsicologoId: true,
+            Date: true,
+            Time: true,
+          },
+        });
+
+        if (outrasConsultasEmAndamento.length > 0) {
+          const outraConsulta = outrasConsultasEmAndamento[0];
+          throw new Error(
+            `Já existe uma consulta em andamento. ` +
+              `Somente uma consulta pode estar "Em Andamento" por vez. ` +
+              `Consulta existente: ${outraConsulta.Id} - ${outraConsulta.Date} ${outraConsulta.Time}`
+          );
+        }
+      }
+
       // Atualiza a consulta
       const consultaAtualizada = await tx.consulta.update({
         where: { Id: consultaId },
@@ -252,7 +268,7 @@ export class ConsultaStatusService {
         statusAtual === "CanceladaPsicologoNoPrazo" ||
         statusAtual === "CanceladaPsicologoForaDoPrazo" ||
         statusAtual === "ReagendadaPsicologoNoPrazo" ||
-        statusAtual === "ReagendadaPsicologoForaPrazo" ||
+        statusAtual === "ReagendadaPsicologoForaDoPrazo" ||
         statusAtual === "PsicologoDescredenciado" ||
         statusAtual === "CanceladoAdministrador";
 
@@ -314,96 +330,8 @@ export class ConsultaStatusService {
         }
       }
 
-      // Se cancelada ou não compareceu, atualiza ReservaSessao e Agenda se existirem
-      const isCanceladoOuNaoCompareceu =
-        novoStatus.startsWith("Cancelada") ||
-        novoStatus === "PacienteNaoCompareceu" ||
-        novoStatus === "PsicologoNaoCompareceu";
-
-      if (isCanceladoOuNaoCompareceu) {
-        if (consulta.ReservaSessao) {
-          await tx.reservaSessao.update({
-            where: { Id: consulta.ReservaSessao.Id },
-            data: { Status: "Cancelado" },
-          });
-          // Limpa tokens do Agora ao cancelar
-          await this.limparTokensAgora(tx, consulta.ReservaSessao.Id);
-        }
-
-        // Libera a agenda para novo agendamento
-        if (consulta.Agenda) {
-          await tx.agenda.update({
-            where: { Id: consulta.Agenda.Id },
-            data: {
-              Status: "Disponivel",
-              PacienteId: null,
-            },
-          });
-        }
-      }
-
-      // Se em andamento, atualiza Agenda e ReservaSessao para Andamento
-      if (novoStatus === "EmAndamento") {
-        // VALIDAÇÃO: Garante que apenas 1 consulta esteja "EmAndamento" por vez
-        // Busca outras consultas em andamento que não sejam a atual
-        const outrasConsultasEmAndamento = await tx.consulta.findMany({
-          where: {
-            Status: "EmAndamento",
-            Id: { not: consultaId }, // Exclui a consulta atual
-            OR: [
-              { PacienteId: consulta.PacienteId },
-              { PsicologoId: consulta.PsicologoId }
-            ]
-          },
-          select: {
-            Id: true,
-            PacienteId: true,
-            PsicologoId: true,
-            Date: true,
-            Time: true
-          }
-        });
-
-        if (outrasConsultasEmAndamento.length > 0) {
-          const outraConsulta = outrasConsultasEmAndamento[0];
-          throw new Error(
-            `Já existe uma consulta em andamento. ` +
-            `Somente uma consulta pode estar "Em Andamento" por vez. ` +
-            `Consulta existente: ${outraConsulta.Id} - ${outraConsulta.Date} ${outraConsulta.Time}`
-          );
-        }
-
-        if (consulta.Agenda) {
-          await tx.agenda.update({
-            where: { Id: consulta.Agenda.Id },
-            data: { Status: "Andamento" },
-          });
-        }
-        if (consulta.ReservaSessao) {
-          await tx.reservaSessao.update({
-            where: { Id: consulta.ReservaSessao.Id },
-            data: { Status: "Andamento" },
-          });
-        }
-      }
-
-      // Se realizada, atualiza Agenda e ReservaSessao para Concluido e limpa tokens
-      if (novoStatus === "Realizada") {
-        if (consulta.Agenda) {
-          await tx.agenda.update({
-            where: { Id: consulta.Agenda.Id },
-            data: { Status: "Concluido" },
-          });
-        }
-        if (consulta.ReservaSessao) {
-          await tx.reservaSessao.update({
-            where: { Id: consulta.ReservaSessao.Id },
-            data: { Status: "Concluido" },
-          });
-          // Limpa tokens do Agora ao finalizar
-          await this.limparTokensAgora(tx, consulta.ReservaSessao.Id);
-        }
-      }
+      // Sincronização de ReservaSessao e Agenda é feita via trigger no banco (Consulta é a fonte de verdade)
+      // Isso evita alterações diretas fora do fluxo de status da Consulta.
 
       // Registra auditoria de atualização de status
       try {
@@ -425,6 +353,23 @@ export class ConsultaStatusService {
 
       return consultaAtualizada;
     });
+
+    // Notifica alteração de status para atualizar cards em tempo real
+    try {
+      const eventSync = getEventSyncService();
+      await eventSync.notifyConsultationStatusChange(consultaId, novoStatus, {
+        status: novoStatus as string,
+        origem: origemFinal as string,
+        telaGatilho: telaGatilho || ConsultaStatusHelper.getTelaGatilho(novoStatus),
+      });
+    } catch (notifyError) {
+      console.error(
+        "❌ [ConsultaStatusService] Falha ao notificar mudança de status:",
+        notifyError
+      );
+    }
+
+    return consultaAtualizada;
   }
 
   /**
@@ -735,34 +680,34 @@ export class ConsultaStatusService {
         }
       }
 
-      // ✅ Atualiza ReservaSessao e Agenda + limpa tokens
-      // Garante que todas as tabelas relacionadas sejam atualizadas
-      if (consulta.ReservaSessao) {
-        await tx.reservaSessao.update({
-          where: { Id: consulta.ReservaSessao.Id },
-          data: {
-            Status: "Cancelado",
-            // Limpa tokens do Agora ao processar inatividade
-            AgoraTokenPatient: null,
-            AgoraTokenPsychologist: null,
-            Uid: null,
-            UidPsychologist: null
-          },
-        });
-      }
-
-      if (consulta.Agenda) {
-        await tx.agenda.update({
-          where: { Id: consulta.Agenda.Id },
-          data: {
-            Status: "Disponivel",
-            PacienteId: null, // Libera agenda para novo agendamento
-          },
-        });
-      }
+      // ReservaSessao e Agenda são sincronizadas via trigger após o update da Consulta
 
       return consultaAtualizada;
     });
+
+    // Fecha a sala e invalida tokens ANTES de notificar
+    // Isso garante que os tokens sejam invalidados e os eventos sejam emitidos
+    try {
+      const { ConsultaRoomService } = await import('./consultaRoom.service');
+      const roomService = new ConsultaRoomService();
+      const missingRoleForRoom: 'patient' | 'psychologist' | 'both' = 
+        missingRole === 'Patient' ? 'patient' :
+        missingRole === 'Psychologist' ? 'psychologist' : 'both';
+      
+      // closeRoom já:
+      // 1. Invalida tokens no Redis
+      // 2. Atualiza status no banco (via closeRoomInDatabase)
+      // 3. Emite eventos room-closed e consultation:status-changed via Socket.IO
+      // 4. Notifica ambos os usuários (paciente e psicólogo)
+      await roomService.closeRoom(consultaId, 'inactivity', missingRoleForRoom);
+      console.log(`✅ [processarInatividade] Sala ${consultaId} fechada por inatividade (${missingRole})`);
+    } catch (closeError) {
+      console.error(
+        "❌ [processarInatividade] Erro ao fechar sala:",
+        closeError
+      );
+      // Continua mesmo se fechar sala falhar - as notificações ainda serão enviadas
+    }
 
     // Notifica via Redis (Event Sync) para atualização imediata no frontend
     try {
@@ -777,6 +722,7 @@ export class ConsultaStatusService {
         reason: "inactivity",
         missingRole,
         status: "Cancelado",
+        autoCancelled: true,
       });
     } catch (notifyError) {
       console.error(
@@ -807,8 +753,7 @@ export class ConsultaStatusService {
    * Infere a origem baseado no usuário (role)
    */
   private async inferirOrigem(
-    usuarioId: string | undefined,
-    consulta: ConsultaCompleta
+    usuarioId: string | undefined
   ): Promise<ConsultaOrigemStatus> {
     if (!usuarioId) return ConsultaOrigemStatus.Sistemico;
 

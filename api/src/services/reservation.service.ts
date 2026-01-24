@@ -198,26 +198,6 @@ export class ReservationService implements IReservationService {
                 data: { Status: 'ReagendadaPacienteNoPrazo' }
             });
 
-            // Atualiza status da ReservaSessao
-            await tx.reservaSessao.update({
-                where: { Id: reservaSessao.Id },
-                data: { Status: AgendaStatus.Reagendada }
-            });
-
-            // Atualiza status da Agenda se existir
-            if (consulta.Agenda) {
-                await tx.agenda.update({
-                    where: { Id: consulta.Agenda.Id },
-                    data: { Status: AgendaStatus.Reagendada }
-                });
-            } else if (reservaSessao.AgendaId) {
-                // Se não tem Agenda no relacionamento, tenta atualizar pelo AgendaId da ReservaSessao
-                await tx.agenda.update({
-                    where: { Id: reservaSessao.AgendaId },
-                    data: { Status: AgendaStatus.Reagendada }
-                });
-            }
-
             // Reagendamento: NÃO devolve saldo, apenas marca como reagendada
             // O saldo já debitado será reutilizado na nova reserva (manterSaldo = true)
         });
@@ -1183,28 +1163,7 @@ export class ReservationService implements IReservationService {
                 data: { Status: 'CanceladaPacienteNoPrazo' }
             });
 
-            if (reservation.ReservaSessao) {
-                // Determina o status baseado no userRole
-                let statusReservaSessao: AgendaStatus = AgendaStatus.Cancelado;
-                if (userRole === 'Paciente') {
-                    statusReservaSessao = AgendaStatus.Cancelled_by_patient;
-                } else if (userRole === 'Psychologist' || userRole === 'Psicologo') {
-                    statusReservaSessao = AgendaStatus.Cancelled_by_psychologist;
-                }
-
-                await tx.reservaSessao.update({
-                    where: { Id: reservation.ReservaSessao.Id },
-                    data: { Status: statusReservaSessao }
-                });
-            }
-
-            if (reservation.Agenda) {
-                // Quando paciente cancela, libera a agenda para novo agendamento
-                await tx.agenda.update({
-                    where: { Id: reservation.Agenda.Id },
-                    data: { Status: AgendaStatus.Disponivel, PacienteId: null }
-                });
-            }
+            // ReservaSessao e Agenda são sincronizadas via trigger no banco
 
             await tx.cancelamentoSessao.create({
                 data: {
@@ -1410,34 +1369,7 @@ export class ReservationService implements IReservationService {
             origem: ConsultaOrigemStatus.Sistemico,
         });
 
-        // Atualiza ReservaSessao e Agenda se necessário
-        if (reservation.ReservaSessao || reservation.Agenda) {
-            await prisma.$transaction(async (tx: PrismaTransaction) => {
-                if (reservation.ReservaSessao) {
-                    // ReservaSessao.Status é AgendaStatus, então mapeia ConsultaStatus para AgendaStatus
-                    const statusReserva = statusNormalizado.toString().includes('Cancelada') || statusNormalizado.toString().includes('Cancelado')
-                        ? AgendaStatus.Cancelado
-                        : AgendaStatus.Reservado;
-                    await tx.reservaSessao.update({
-                        where: { Id: reservation.ReservaSessao.Id },
-                        data: { Status: statusReserva },
-                    });
-                }
-
-                if (reservation.Agenda) {
-                    const agendaStatus = statusNormalizado.toString().includes('Cancelada') || statusNormalizado.toString().includes('Cancelado')
-                        ? AgendaStatus.Cancelado
-                        : AgendaStatus.Reservado;
-                    await tx.agenda.update({
-                        where: { Id: reservation.Agenda.Id },
-                        data: {
-                            Status: agendaStatus,
-                            PacienteId: statusNormalizado.toString().includes('Cancelada') || statusNormalizado.toString().includes('Cancelado') ? null : reservation.PacienteId,
-                        },
-                    });
-                }
-            });
-        }
+        // ReservaSessao e Agenda são sincronizadas via trigger no banco
     }
 
     async listReservations(userId: string): Promise<ConsultaListWithRelations[]> {
@@ -1670,25 +1602,7 @@ export class ReservationService implements IReservationService {
         // Por padrão, marca como não comparecimento do paciente
         await statusService.marcarNaoComparecimento(reservationId, 'paciente');
 
-        // Atualiza ReservaSessao e Agenda
-        await prisma.$transaction(async (tx: PrismaTransaction) => {
-            if (reservation.ReservaSessao) {
-                await tx.reservaSessao.update({
-                    where: { Id: reservation.ReservaSessao.Id },
-                    data: { Status: "Cancelado" }
-                });
-            }
-
-            if (reservation.Agenda) {
-                await tx.agenda.update({
-                    where: { Id: reservation.Agenda.Id },
-                    data: {
-                        Status: AgendaStatus.Cancelado,
-                        PacienteId: null
-                    }
-                });
-            }
-        });
+        // ReservaSessao e Agenda são sincronizadas via trigger no banco
 
         // Envia e-mails automáticos para paciente e psicólogo
         await this.emailService.sendAutoCancellationEmail(reservation);

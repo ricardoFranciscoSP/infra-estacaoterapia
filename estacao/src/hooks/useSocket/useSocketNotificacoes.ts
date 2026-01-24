@@ -94,9 +94,20 @@ export function useSocketNotifications<
             connectSocket();
         }
 
-        // ✅ Emite evento para o servidor saber que o cliente está pronto
-        socket.emit("subscribe_notifications", { userId });
-        console.log('✅ [useSocketNotifications] Listeners registrados e subscribe enviado');
+        // ✅ Garante que está na sala do usuário para receber notificações
+        const doSubscribe = () => {
+            // Entra na sala do usuário
+            socket.emit("join-user", userId);
+            // Inscreve para notificações
+            socket.emit("subscribe_notifications", { userId });
+            console.log('✅ [useSocketNotifications] Inscrito para notificações do usuário:', userId);
+        };
+
+        if (!socket.connected) {
+            socket.once("connect", doSubscribe);
+        } else {
+            doSubscribe();
+        }
 
         return () => {
             console.log('🔌 [useSocketNotifications] Removendo listeners');

@@ -7,6 +7,7 @@ import { useAdmPsicologo } from "@/hooks/admin/useAdmPsicologo";
 import type { Paciente } from "@/types/pacienteTypes";
 import type { Psicologo } from "@/types/psicologoTypes";
 import { tokenManualService, TokenAuditItem } from "@/services/tokenManualService";
+import { reservaSessaoService } from "@/services/reservaSessaoService";
 
 export default function GerarTokenManualPage() {
   const { pacientes, isLoading: isLoadingPacientes } = useAdmPaciente();
@@ -16,6 +17,10 @@ export default function GerarTokenManualPage() {
   const [selectedPatientId, setSelectedPatientId] = useState<string>("");
   const [selectedPsychologistId, setSelectedPsychologistId] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoadingReservas, setIsLoadingReservas] = useState(false);
+  const [reservasHoje, setReservasHoje] = useState<ReservaSessaoHoje[]>([]);
+  const [reservaError, setReservaError] = useState<string | null>(null);
+  const [selectedReservaId, setSelectedReservaId] = useState<string>("");
   const [tokenLogs, setTokenLogs] = useState<TokenAuditItem[]>([]);
   const [isLoadingLogs, setIsLoadingLogs] = useState(true);
   const [consultaFilter, setConsultaFilter] = useState<string>("");
@@ -28,6 +33,24 @@ export default function GerarTokenManualPage() {
   const [debouncedConsultaId, setDebouncedConsultaId] = useState<string>("");
   const [debouncedNameFilter, setDebouncedNameFilter] = useState<string>("");
   const [selectedLog, setSelectedLog] = useState<TokenAuditItem | null>(null);
+
+  type ReservaSessaoHoje = {
+    Id: string;
+    ConsultaId?: string | null;
+    ScheduledAt?: string | null;
+    Status?: string | null;
+    Consulta?: {
+      Id?: string;
+      Date?: string | Date | null;
+      Time?: string | null;
+      Status?: string | null;
+    } | null;
+    Agenda?: {
+      Id?: string;
+      Data?: string | Date | null;
+      Horario?: string | null;
+    } | null;
+  };
 
   const patientOptions = useMemo(() => {
     return (pacientes ?? []).map((p: Paciente) => ({
@@ -112,6 +135,9 @@ export default function GerarTokenManualPage() {
     setIsModalOpen(false);
     setSelectedPatientId("");
     setSelectedPsychologistId("");
+    setSelectedReservaId("");
+    setReservasHoje([]);
+    setReservaError(null);
   };
 
   const handleGenerateTokens = async () => {
@@ -120,34 +146,61 @@ export default function GerarTokenManualPage() {
       return;
     }
 
+    if (!selectedReservaId) {
+      toast.error("Selecione o horário da reserva.");
+      return;
+    }
+
+    const selectedReserva = reservasHoje.find((reserva) => reserva.Id === selectedReservaId);
+    if (!selectedReserva) {
+      toast.error("Reserva selecionada não encontrada.");
+      return;
+    }
+
+    const consultaId = selectedReserva.Consulta?.Id ?? selectedReserva.ConsultaId ?? undefined;
+
     try {
       setIsSubmitting(true);
       const response = await tokenManualService().generateManualTokens({
         patientId: selectedPatientId,
         psychologistId: selectedPsychologistId,
+        consultaId,
       });
 
       if (response.data?.success) {
-        toast.success("Tokens gerados com sucesso!");
-        handleCloseModal();
-        setPage(1);
-        await fetchLogs(consultaFilter.trim() || undefined, 1, sourceFilter);
+        try {
+          await reservaSessaoService().updateTokensReservaSessao(selectedReservaId, {
+            patientToken: response.data.patientToken,
+            psychologistToken: response.data.psychologistToken,
+            patientUid: response.data.patientUid,
+            psychologistUid: response.data.psychologistUid,
+          });
+
+          toast.success("Tokens gerados e reserva atualizada!");
+          handleCloseModal();
+          setPage(1);
+          await fetchLogs(consultaFilter.trim() || undefined, 1, sourceFilter);
+        } catch (updateError) {
+          console.error("Erro ao atualizar tokens na reserva:", updateError);
+          toast.error("Tokens gerados, mas não foi possível atualizar a reserva.");
+        }
       } else {
         const msg = response.data?.error || response.data?.message || "Falha ao gerar tokens.";
         toast.error(msg);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       let backendMsg = "Erro ao gerar tokens manualmente.";
-      if (error?.response) {
-        if (typeof error.response.data === "string") {
-          backendMsg = error.response.data;
-        } else if (error.response.data?.message) {
-          backendMsg = error.response.data.message;
-        } else if (error.response.data?.error) {
-          backendMsg = error.response.data.error;
+      const err = error as { response?: { data?: { message?: string; error?: string } | string }; message?: string };
+      if (err?.response) {
+        if (typeof err.response.data === "string") {
+          backendMsg = err.response.data;
+        } else if (err.response.data?.message) {
+          backendMsg = err.response.data.message;
+        } else if (err.response.data?.error) {
+          backendMsg = err.response.data.error;
         }
-      } else if (error?.message) {
-        backendMsg = error.message;
+      } else if (err?.message) {
+        backendMsg = err.message;
       }
       console.error("Erro ao gerar tokens manualmente:", error);
       toast.error(backendMsg);
@@ -185,6 +238,62 @@ export default function GerarTokenManualPage() {
     }
   };
 
+  const isSameLocalDay = (date: Date, compareTo: Date) => {
+    return date.getFullYear() === compareTo.getFullYear()
+      && date.getMonth() === compareTo.getMonth()
+      && date.getDate() === compareTo.getDate();
+  };
+
+  const formatTime = (scheduledAt?: string | null, fallbackTime?: string | null) => {
+    if (scheduledAt) {
+      const date = new Date(scheduledAt);
+      if (!Number.isNaN(date.getTime())) {
+        return date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+      }
+    }
+    if (fallbackTime) {
+      return fallbackTime.slice(0, 5);
+    }
+    return "--:--";
+  };
+
+  const formatDate = (scheduledAt?: string | null, fallbackDate?: string | Date | null) => {
+    if (scheduledAt) {
+      const date = new Date(scheduledAt);
+      if (!Number.isNaN(date.getTime())) {
+        return date.toLocaleDateString("pt-BR");
+      }
+    }
+    if (fallbackDate) {
+      const date = new Date(fallbackDate);
+      if (!Number.isNaN(date.getTime())) {
+        return date.toLocaleDateString("pt-BR");
+      }
+    }
+    return "-";
+  };
+
+  const fetchReservasHoje = useCallback(async (pacienteId: string, psicologoId: string) => {
+    try {
+      setIsLoadingReservas(true);
+      setReservaError(null);
+      const response = await reservaSessaoService().getReservasDiaAtualByPsicologoPaciente(
+        psicologoId,
+        pacienteId
+      );
+      const reservas = response.data?.reservas ?? [];
+      setReservasHoje(reservas);
+      setSelectedReservaId("");
+    } catch (error) {
+      console.error("Erro ao buscar reservas do dia:", error);
+      setReservasHoje([]);
+      setSelectedReservaId("");
+      setReservaError("Não foi possível carregar as reservas do dia.");
+    } finally {
+      setIsLoadingReservas(false);
+    }
+  }, []);
+
   const filteredLogs = useMemo(() => {
     if (!debouncedNameFilter) return tokenLogs;
     return tokenLogs.filter((item) => {
@@ -197,7 +306,29 @@ export default function GerarTokenManualPage() {
     });
   }, [debouncedNameFilter, patientNameById, psychologistNameById, tokenLogs]);
 
+  const reservasHojeFiltradas = useMemo(() => {
+    if (!reservasHoje.length) return [];
+    const hoje = new Date();
+    return reservasHoje.filter((reserva) => {
+      if (!reserva.ScheduledAt) return false;
+      const scheduledDate = new Date(reserva.ScheduledAt);
+      if (Number.isNaN(scheduledDate.getTime())) return false;
+      return isSameLocalDay(scheduledDate, hoje);
+    });
+  }, [reservasHoje]);
+
   const totalPages = Math.max(1, Math.ceil(totalCount / limit));
+
+  useEffect(() => {
+    if (!isModalOpen) return;
+    if (selectedPatientId && selectedPsychologistId) {
+      fetchReservasHoje(selectedPatientId, selectedPsychologistId);
+    } else {
+      setReservasHoje([]);
+      setSelectedReservaId("");
+      setReservaError(null);
+    }
+  }, [fetchReservasHoje, isModalOpen, selectedPatientId, selectedPsychologistId]);
 
   return (
     <main className="w-full p-4 sm:p-6 lg:p-8">
@@ -426,24 +557,6 @@ export default function GerarTokenManualPage() {
             <div className="grid grid-cols-1 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Paciente
-                </label>
-                <select
-                  value={selectedPatientId}
-                  onChange={(event) => setSelectedPatientId(event.target.value)}
-                  className="w-full border rounded-lg px-3 py-2 text-sm"
-                  disabled={isLoadingPacientes || isSubmitting}
-                >
-                  <option value="">Selecione o paciente</option>
-                  {patientOptions.map((option) => (
-                    <option key={option.id} value={option.id}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Psicólogo
                 </label>
                 <select
@@ -460,6 +573,70 @@ export default function GerarTokenManualPage() {
                   ))}
                 </select>
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Paciente
+                </label>
+                <select
+                  value={selectedPatientId}
+                  onChange={(event) => setSelectedPatientId(event.target.value)}
+                  className="w-full border rounded-lg px-3 py-2 text-sm"
+                  disabled={isLoadingPacientes || isSubmitting}
+                >
+                  <option value="">Selecione o paciente</option>
+                  {patientOptions.map((option) => (
+                    <option key={option.id} value={option.id}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="mt-6">
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="text-sm font-semibold text-gray-800">Horários de hoje</h4>
+                {isLoadingReservas && (
+                  <span className="text-xs text-gray-500">Carregando horários...</span>
+                )}
+              </div>
+
+              {!selectedPatientId || !selectedPsychologistId ? (
+                <p className="text-sm text-gray-500">
+                  Selecione paciente e psicólogo para buscar as reservas de hoje.
+                </p>
+              ) : reservaError ? (
+                <p className="text-sm text-red-600">{reservaError}</p>
+              ) : reservasHojeFiltradas.length === 0 && !isLoadingReservas ? (
+                <p className="text-sm text-gray-500">Nenhuma reserva para hoje encontrada.</p>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {reservasHojeFiltradas.map((reserva) => {
+                    const timeLabel = formatTime(reserva.ScheduledAt, reserva.Consulta?.Time ?? null);
+                    const dateLabel = formatDate(reserva.ScheduledAt, reserva.Consulta?.Date ?? null);
+                    const isSelected = reserva.Id === selectedReservaId;
+                    return (
+                      <button
+                        key={reserva.Id}
+                        type="button"
+                        onClick={() => setSelectedReservaId(reserva.Id)}
+                        className={`flex flex-col items-start gap-1 rounded-lg border px-3 py-2 text-left text-sm transition ${
+                          isSelected
+                            ? "border-[#6B7DE0] bg-[#EEF1FF] text-[#2D2F5C]"
+                            : "border-gray-200 hover:border-[#9AA7E9] hover:bg-[#F7F8FF]"
+                        }`}
+                        disabled={isSubmitting}
+                      >
+                        <span className="text-base font-semibold">{timeLabel}</span>
+                        <span className="text-xs text-gray-500">{dateLabel}</span>
+                        <span className="text-xs text-gray-500">
+                          {reserva.Consulta?.Status ?? reserva.Status ?? "Reservado"}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             <div className="mt-6 flex items-center justify-end gap-3">
@@ -472,9 +649,11 @@ export default function GerarTokenManualPage() {
               </button>
               <button
                 onClick={handleGenerateTokens}
-                disabled={isSubmitting}
+                disabled={isSubmitting || !selectedReservaId}
                 className={`px-4 py-2 rounded-lg text-sm font-medium text-white ${
-                  isSubmitting ? "bg-gray-400" : "bg-[#8494E9] hover:bg-[#6B7DE0]"
+                  isSubmitting || !selectedReservaId
+                    ? "bg-gray-400"
+                    : "bg-[#8494E9] hover:bg-[#6B7DE0]"
                 }`}
               >
                 {isSubmitting ? "Gerando..." : "Gerar tokens"}

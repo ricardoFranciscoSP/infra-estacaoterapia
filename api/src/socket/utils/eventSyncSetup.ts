@@ -54,12 +54,31 @@ export async function initializeEventSync(io: Server): Promise<void> {
 
         console.log(`📡 [Event Sync] Notificação criada para usuário ${userId}`);
 
-        // Emite para o usuário específico
-        io.emit('notification:new', {
-            userId,
-            ...(notificationData as Record<string, unknown>),
-            timestamp: new Date().toISOString()
-        });
+        // ✅ MELHORIA: Emite para a sala do usuário (user:${userId}) para garantir entrega
+        const userRoom = `user:${userId}`;
+        const roomSize = io.sockets.adapter.rooms.get(userRoom)?.size || 0;
+        
+        if (roomSize > 0) {
+            // Emite para todos os sockets na sala do usuário
+            io.to(userRoom).emit('notification', {
+                ...(notificationData as Record<string, unknown>),
+                timestamp: new Date().toISOString()
+            });
+            io.to(userRoom).emit('notification:new', {
+                userId,
+                ...(notificationData as Record<string, unknown>),
+                timestamp: new Date().toISOString()
+            });
+            console.log(`✅ [Event Sync] Notificação enviada para sala ${userRoom} (${roomSize} socket(s))`);
+        } else {
+            // Fallback: emite globalmente (pode não chegar se usuário não estiver na sala)
+            io.emit('notification:new', {
+                userId,
+                ...(notificationData as Record<string, unknown>),
+                timestamp: new Date().toISOString()
+            });
+            console.warn(`⚠️ [Event Sync] Usuário ${userId} não está na sala, usando broadcast como fallback`);
+        }
     });
 
     // === Eventos de Atualização de Próxima Consulta ===

@@ -2,7 +2,6 @@ import prisma from "../../prisma/client";
 import { Module, ActionType } from "../../types/permissions.types";
 import { User } from "../../types/user.types";
 import { ConsultasMensaisResult, ConsultasRealizadasResult } from "../../types/consultas.types";
-import { STATUS } from "../../constants/status.constants";
 
 import { AuthorizationService } from "../authorization.service";
 
@@ -58,7 +57,9 @@ export class ConsultasService {
 
         const targetYear = year ?? new Date().getFullYear();
 
-        // Consulta agregada por mês via SQL nativo para melhor performance
+        // Consulta agregada por mês via SQL nativo para melhor performance.
+        // Consulta.Status é ConsultaStatus (enum); "realizada" = Realizada (não use Concluido/AgendaStatus).
+        const CONSULTA_STATUS_REALIZADA = 'Realizada' as const;
         interface QueryResult {
             month: number;
             total: bigint | number;
@@ -68,7 +69,7 @@ export class ConsultasService {
                 EXTRACT(MONTH FROM "Date") AS month,
                 COUNT(*) AS total
             FROM "Consulta"
-            WHERE "Status" = ${STATUS.COMPLETED}
+            WHERE "Status" = ${CONSULTA_STATUS_REALIZADA}
               AND EXTRACT(YEAR FROM "Date") = ${targetYear}
             GROUP BY month
             ORDER BY month`;
@@ -114,6 +115,8 @@ export class ConsultasService {
                         'CanceladaNaoCumprimentoContratualPsicologo',
                         'CanceladaForcaMaior',
                         'CanceladoAdministrador',
+                        'CANCELAMENTO_SISTEMICO_PSICOLOGO',
+                        'CANCELAMENTO_SISTEMICO_PACIENTE',
                         'Cancelado', // Status legado
                     ]
                 }
@@ -223,6 +226,84 @@ export class ConsultasService {
         });
 
         return consultas;
+    }
+
+    /**
+     * Retorna lista paginada de consultas (todas, qualquer status) com detalhes.
+     * Filtro opcional por params.status (ConsultaStatus).
+     */
+    async getConsultasLista(
+        user: User,
+        params?: { page?: number; limit?: number; status?: string }
+    ) {
+        if (this.authorizationService && typeof this.authorizationService.checkPermission === "function") {
+            const hasPermission = await this.authorizationService.checkPermission(
+                user.Id,
+                Module.Sessions,
+                ActionType.Read
+            );
+            if (!hasPermission) {
+                throw new Error("Acesso negado ao módulo de consultas.");
+            }
+        }
+
+        const page = Math.max(1, Number(params?.page) || 1);
+        const limit = Math.min(100, Math.max(1, Number(params?.limit) || 20));
+        const skip = (page - 1) * limit;
+
+        const where = params?.status ? { Status: params.status } : undefined;
+
+        const [total, data] = await Promise.all([
+            prisma.consulta.count({ where }),
+            prisma.consulta.findMany({
+                where,
+                orderBy: [
+                    { Date: "desc" },
+                    { Time: "desc" }
+                ],
+                skip,
+                take: limit,
+                include: {
+                    Paciente: { select: { Id: true, Nome: true, Email: true } },
+                    Psicologo: { select: { Id: true, Nome: true, Email: true } },
+                    Agenda: { select: { Id: true, Data: true, Horario: true, Status: true } },
+                    ReservaSessao: {
+                        select: {
+                            Id: true,
+                            Status: true,
+                            ScheduledAt: true,
+                            AgoraChannel: true,
+                            PatientJoinedAt: true,
+                            PsychologistJoinedAt: true,
+                            Uid: true,
+                            UidPsychologist: true,
+                        },
+                    },
+                    CicloPlano: {
+                        select: {
+                            Id: true,
+                            CicloInicio: true,
+                            CicloFim: true,
+                            ConsultasDisponiveis: true,
+                            ConsultasUsadas: true,
+                        },
+                    },
+                }
+            })
+        ]);
+
+        return { total, data, page, limit };
+    }
+
+    async getConsultaBasica(consultaId: string) {
+        return prisma.consulta.findUnique({
+            where: { Id: consultaId },
+            select: {
+                Id: true,
+                PacienteId: true,
+                CicloPlanoId: true
+            }
+        });
     }
 
     /**

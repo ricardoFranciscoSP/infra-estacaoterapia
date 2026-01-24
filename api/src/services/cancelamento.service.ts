@@ -2,7 +2,7 @@ import prisma from "../prisma/client";
 import { ICancelamentoService } from "../interfaces/cancelamento.interface";
 import { CancelamentoData, CancelamentoStatus, CancelamentoTipo, CancelamentoResponse, CancelamentoWithUsers } from "../types/cancelamento.types";
 import { ProximaConsultaService } from "./proximaConsulta.service";
-import { AgendaStatus, User, CancelamentoSessaoStatus, AutorTipoCancelamento } from "../generated/prisma";
+import { $Enums, User, CancelamentoSessaoStatus, AutorTipoCancelamento } from "../generated/prisma";
 import { ConsultaOrigemStatus } from "../constants/consultaStatus.constants";
 import { StatusConsulta } from "../types/statusConsulta.types";
 import { determinarRepasse, determinarDevolucaoSessao } from "../utils/statusConsulta.util";
@@ -129,54 +129,10 @@ export class CancelamentoService implements ICancelamentoService {
             // Mantém o status legado temporariamente para não quebrar o fluxo
             await tx.consulta.update({
                 where: { Id: data.idconsulta },
-                data: { Status: "Cancelado" } // Status legado, será normalizado pelo ConsultaStatusService
+                data: { Status: $Enums.ConsultaStatus.Cancelado } // Será normalizado pelo ConsultaStatusService
             });
 
-            // Atualiza o status da ReservaSessao baseado no tipo de cancelamento (se existir)
-            if (consulta.ReservaSessao) {
-                // Determina o status baseado no tipo de cancelamento
-                let statusReservaSessao: AgendaStatus = AgendaStatus.Cancelado;
-                if (tipoAutor === "Paciente") {
-                    statusReservaSessao = AgendaStatus.Cancelled_by_patient;
-                } else if (tipoAutor === "Psicologo") {
-                    statusReservaSessao = AgendaStatus.Cancelled_by_psychologist;
-                } else if (tipoAutor === "Sistema") {
-                    statusReservaSessao = AgendaStatus.Cancelled_no_show;
-                }
-                
-                await tx.reservaSessao.update({
-                    where: { Id: consulta.ReservaSessao.Id },
-                    data: { Status: statusReservaSessao }
-                });
-            }
-
-            // Atualiza o status da Agenda - só libera se for deferido (dentro do prazo)
-            // Se não for deferido (fora do prazo), mantém como cancelado até ser deferido
-            if (consulta.Agenda) {
-                const isPacienteCancelamento = data.tipo === 'Paciente';
-                
-                // Só libera a agenda se for deferido (dentro do prazo)
-                if (isPacienteCancelamento && statusCancelamento === 'Deferido') {
-                    await tx.agenda.update({
-                        where: { Id: consulta.Agenda.Id },
-                        data: { 
-                            Status: AgendaStatus.Disponivel,
-                            PacienteId: null
-                        }
-                    });
-                    console.log(`[CancelamentoService] Agenda ${consulta.Agenda.Id} atualizada para Disponivel (cancelamento deferido - dentro do prazo)`);
-                } else {
-                    // Se não estiver dentro do prazo, marca como cancelado (aguardando deferimento)
-                    await tx.agenda.update({
-                        where: { Id: consulta.Agenda.Id },
-                        data: { 
-                            Status: AgendaStatus.Cancelado,
-                            PacienteId: null
-                        }
-                    });
-                    console.log(`[CancelamentoService] Agenda ${consulta.Agenda.Id} atualizada para Cancelado (aguardando deferimento)`);
-                }
-            }
+            // ReservaSessao e Agenda são sincronizadas via trigger no banco
 
             return cancelamento;
         });
@@ -268,7 +224,7 @@ export class CancelamentoService implements ICancelamentoService {
      * @param consultaId - ID da consulta cancelada
      * @param consulta - Dados da consulta
      */
-    private async devolverSessaoCliente(
+    async devolverSessaoCliente(
         consultaId: string,
         consulta: { CicloPlanoId?: string | null; PacienteId?: string | null }
     ): Promise<void> {

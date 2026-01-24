@@ -12,6 +12,9 @@ export enum StatusConsulta {
     Realizada = "Realizada",
     PacienteNaoCompareceu = "Paciente Não Compareceu",
     PsicologoNaoCompareceu = "Psicólogo Não Compareceu",
+    CancelamentoSistemicoPsicologo = "Cancelamento Sistêmico Psicólogo",
+    CancelamentoSistemicoPaciente = "Cancelamento Sistêmico Paciente",
+    ForaDaPlataforma = "Fora da plataforma",
     CanceladaPacienteNoPrazo = "Cancelada Paciente no Prazo",
     CanceladaPsicologoNoPrazo = "Cancelada Psicólogo no Prazo",
     ReagendadaPacienteNoPrazo = "Reagendada Paciente no Prazo",
@@ -106,6 +109,27 @@ export const CONFIGURACOES_STATUS: Record<StatusConsulta, ConfiguracaoStatusCons
         telaTrigger: "Módulo Realização de Sessão",
         acaoSaldoCliente: AcaoSaldoCliente.DevolveSessao,
         faturada: Faturada.Nao
+    },
+    [StatusConsulta.CancelamentoSistemicoPsicologo]: {
+        status: StatusConsulta.CancelamentoSistemicoPsicologo,
+        origemStatus: OrigemStatus.Sistemico,
+        telaTrigger: "Módulo Realização de Sessão",
+        acaoSaldoCliente: AcaoSaldoCliente.DevolveSessao,
+        faturada: Faturada.Nao
+    },
+    [StatusConsulta.CancelamentoSistemicoPaciente]: {
+        status: StatusConsulta.CancelamentoSistemicoPaciente,
+        origemStatus: OrigemStatus.Sistemico,
+        telaTrigger: "Módulo Realização de Sessão",
+        acaoSaldoCliente: AcaoSaldoCliente.NaoDevolve,
+        faturada: Faturada.Sim
+    },
+    [StatusConsulta.ForaDaPlataforma]: {
+        status: StatusConsulta.ForaDaPlataforma,
+        origemStatus: OrigemStatus.AdminGestao,
+        telaTrigger: "Sistêmico",
+        acaoSaldoCliente: AcaoSaldoCliente.NaoDevolve,
+        faturada: Faturada.Sim
     },
     [StatusConsulta.CanceladaPacienteNoPrazo]: {
         status: StatusConsulta.CanceladaPacienteNoPrazo,
@@ -210,7 +234,11 @@ export const MAPEAMENTO_STATUS_ANTIGOS: Record<string, StatusConsulta> = {
     "Cancelled_by_psychologist": StatusConsulta.CanceladaPsicologoNoPrazo, // Será ajustado conforme prazo
     "Cancelled_no_show": StatusConsulta.PacienteNaoCompareceu,
     "Reagendada": StatusConsulta.ReagendadaPacienteNoPrazo, // Será ajustado conforme contexto
-    "Ausente": StatusConsulta.PacienteNaoCompareceu
+    "Ausente": StatusConsulta.PacienteNaoCompareceu,
+    "CANCELAMENTO_SISTEMICO_PSICOLOGO": StatusConsulta.CancelamentoSistemicoPsicologo,
+    "CANCELAMENTO_SISTEMICO_PACIENTE": StatusConsulta.CancelamentoSistemicoPaciente,
+    "ForaDaPlataforma": StatusConsulta.ForaDaPlataforma,
+    "Fora da plataforma": StatusConsulta.ForaDaPlataforma
 };
 
 /**

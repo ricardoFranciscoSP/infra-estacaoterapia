@@ -660,6 +660,25 @@ export default function ProximasConsultas({ consultas: consultasProp = null, rol
     };
   }, [normalized?.id, queryClient]);
 
+  const statusBase =
+    socketStatus ||
+    (normalized?.raw as { Status?: string; status?: string; ReservaSessao?: { Status?: string; status?: string } })?.Status ||
+    (normalized?.raw as { Status?: string; status?: string; ReservaSessao?: { Status?: string; status?: string } })?.status ||
+    (normalized?.raw as { ReservaSessao?: { Status?: string; status?: string } })?.ReservaSessao?.Status ||
+    (normalized?.raw as { ReservaSessao?: { Status?: string; status?: string } })?.ReservaSessao?.status ||
+    normalized?.status ||
+    null;
+
+  // 🎯 Verifica se pode entrar na sessão baseado no ScheduledAt e status
+  const podeEntrarNaSessao = useMemo(() => {
+    return shouldEnableEntrarConsulta({
+      scheduledAt: scheduledAtFromReserva ?? null,
+      date: normalized?.date ?? null,
+      time: normalized?.time ?? null,
+      status: statusBase,
+    });
+  }, [normalized?.date, normalized?.time, scheduledAtFromReserva, statusBase]);
+
   const calculateSessionState = (): SessionState => {
     const defaultState: SessionState = {
       fraseSessao: "",
@@ -870,25 +889,6 @@ export default function ProximasConsultas({ consultas: consultasProp = null, rol
       setIsProcessingEntry(false);
     }
   }
-
-  const statusBase =
-    socketStatus ||
-    (normalized?.raw as { Status?: string; status?: string; ReservaSessao?: { Status?: string; status?: string } })?.Status ||
-    (normalized?.raw as { Status?: string; status?: string; ReservaSessao?: { Status?: string; status?: string } })?.status ||
-    (normalized?.raw as { ReservaSessao?: { Status?: string; status?: string } })?.ReservaSessao?.Status ||
-    (normalized?.raw as { ReservaSessao?: { Status?: string; status?: string } })?.ReservaSessao?.status ||
-    normalized?.status ||
-    null;
-
-  // 🎯 Verifica se pode entrar na sessão baseado no ScheduledAt e status
-  const podeEntrarNaSessao = useMemo(() => {
-    return shouldEnableEntrarConsulta({
-      scheduledAt: scheduledAtFromReserva ?? null,
-      date: normalized?.date ?? null,
-      time: normalized?.time ?? null,
-      status: statusBase,
-    });
-  }, [normalized?.date, normalized?.time, scheduledAtFromReserva, statusBase]);
 
   // Função para obter tag de status
   const obterTagStatus = (consulta: typeof normalizedList[0]) => {
@@ -1150,52 +1150,255 @@ export default function ProximasConsultas({ consultas: consultasProp = null, rol
 
         {/* Desktop Layout */}
         <div className="hidden sm:flex flex-row items-start gap-4 w-full">
-          <div className="flex flex-row items-start gap-4 flex-1">
+          <div className="hidden sm:flex flex-row items-start gap-4 w-full">
+            {/* Avatar */}
             <div className="relative shrink-0">
               <Image
-                src={getContextualAvatar(isInPsicologoPanel, consulta.psicologo, consulta.paciente) || "/assets/avatar-placeholder.svg"}
+                src={getContextualAvatar(isInPsicologoPanel, normalized.psicologo, normalized.paciente) || "/assets/avatar-placeholder.svg"}
                 alt={role === "psicologo" ? "Avatar Paciente" : "Avatar Psicólogo"}
                 width={64}
                 height={64}
                 className="w-16 h-16 rounded-full object-cover border border-[#E6E9FF]"
               />
             </div>
-            <div className="flex flex-col flex-1 gap-1">
-              <span className="text-[#232A5C] font-semibold text-base leading-5">
-                {isInPsicologoPanel ? obterPrimeiroUltimoNome(consulta.paciente?.nome) : obterPrimeiroUltimoNome(consulta.psicologo?.nome)}
+            {/* Informações: nome, data/hora, link perfil, tag, contador e botões */}
+            <div className="flex flex-col flex-1 gap-1 min-w-0">
+              <span className="text-[#232A5C] font-semibold text-base leading-5 flex items-center gap-1.5">
+                <Image src="/icons/avatar.svg" alt="Usuário" width={16} height={16} className="shrink-0" />
+                {isInPsicologoPanel ? obterPrimeiroUltimoNome(normalized.paciente?.nome) : obterPrimeiroUltimoNome(normalized.psicologo?.nome)}
               </span>
-              <span className="text-[#6B7280] text-sm fira-sans">
-                {consulta.date && consulta.time ? `${formatarDataHora(consulta.date, consulta.time)}` : ""}
+              <span className="text-[#6B7280] text-sm fira-sans flex items-center gap-1.5">
+                <Image src="/icons/calendar.svg" alt="Calendário" width={16} height={16} className="shrink-0" />
+                {normalized.date && normalized.time ? `${formatarDataHora(normalized.date, normalized.time)}` : ""}
               </span>
-              {shouldShowPerfilItem && (
+              {/* Link Ver perfil */}
+              {shouldShowPerfil && (
                 <button
-                  onClick={() => perfilHrefItem && router.push(perfilHrefItem)}
+                  onClick={handleNavigateToPerfil}
                   className="text-left text-[#6D75C0] hover:underline text-sm font-medium fira-sans cursor-pointer mt-1"
                 >
                   Ver perfil
                 </button>
               )}
-            </div>
-          </div>
-          
-          <div className="flex flex-col items-end gap-2 shrink-0">
-            {obterTagStatus(consulta)}
-            
-            <div className="flex flex-row gap-3">
-              {role === "paciente" && podeReagendarItem && (
-                <button
-                  onClick={handleReagendarConsultaItem}
-                  className="min-h-[44px] h-11 border border-[#6D75C0] text-[#6D75C0] fira-sans font-medium text-sm rounded-[6px] px-4 transition hover:bg-[#E6E9FF] hover:text-[#232A5C] whitespace-nowrap cursor-pointer"
-                >
-                  Reagendar
-                </button>
-              )}
-              <button
-                onClick={handleAbrirModalConsultaItem}
-                className="min-h-[44px] h-11 bg-[#8494E9] text-white font-medium text-sm rounded-[6px] px-4 transition hover:bg-[#6D75C0] hover:text-white whitespace-nowrap cursor-pointer"
-              >
-                Ver detalhes
-              </button>
+              {/* Tag de status, contador e botões alinhados à esquerda */}
+              <div className="flex flex-col gap-2 mt-2 w-full">
+                {/* Tag de status */}
+                {(() => {
+                  // ...código da tag de status (copiado do lado direito)...
+                  const cancelamentoSessao = normalized.raw?.CancelamentoSessao;
+                  const cancelamento = Array.isArray(cancelamentoSessao) && cancelamentoSessao.length > 0 
+                    ? cancelamentoSessao[0] 
+                    : cancelamentoSessao;
+                  const tipoCancelamentoMap: Record<string, string> = {
+                    'PACIENTE': 'Cancelada pelo paciente',
+                    'PSICOLOGO': 'Cancelada pelo psicólogo',
+                    'SISTEMA': 'Cancelada pelo sistema',
+                  };
+                  const statusCancelamentoMap: Record<string, string> = {
+                    'EmAnalise': 'Em análise',
+                    'Deferido': 'Cancelada',
+                    'Indeferido': 'Cancelamento indeferido',
+                    'Cancelado': 'Cancelada',
+                  };
+                  let dataObj: Date | null = null;
+                  const dataStr = String(normalized.date);
+                  const horarioStr = String(normalized.time);
+                  if (dataStr && horarioStr) {
+                    if (dataStr.includes("T") || dataStr.length > 10) {
+                      dataObj = new Date(dataStr);
+                      const [hora, minuto] = horarioStr.split(":");
+                      if (hora && minuto) dataObj.setHours(Number(hora), Number(minuto), 0, 0);
+                    } else {
+                      const [ano, mes, dia] = dataStr.split("-");
+                      const [hora, minuto] = horarioStr.split(":");
+                      if (ano && mes && dia && hora && minuto) {
+                        dataObj = new Date(Number(ano), Number(mes) - 1, Number(dia), Number(hora), Number(minuto));
+                      }
+                    }
+                  }
+                  const agora = new Date();
+                  const reservaSessaoRaw = normalized.raw?.ReservaSessao;
+                  const reservaSessao = reservaSessaoRaw && typeof reservaSessaoRaw === 'object' && !Array.isArray(reservaSessaoRaw) 
+                    ? reservaSessaoRaw as { Status?: string; status?: string; ScheduledAt?: string }
+                    : null;
+                  const statusReservaSessao = reservaSessao?.Status || reservaSessao?.status;
+                  const statusConsulta = statusReservaSessao || normalized.raw?.Status || normalized.raw?.status || normalized.status;
+                  if ((statusConsulta === 'Andamento' || statusConsulta === 'andamento' || statusConsulta === 'EmAndamento' || statusConsulta === 'Em Andamento')) {
+                    let inicioConsulta: number | null = null;
+                    const scheduledAt = extractScheduledAtFromNormalized(normalized);
+                    if (scheduledAt) {
+                      inicioConsulta = scheduledAtToTimestamp(scheduledAt);
+                    }
+                    if (!inicioConsulta && dataObj) {
+                      inicioConsulta = dataObj.getTime();
+                    }
+                    if (inicioConsulta) {
+                      const fimConsulta = inicioConsulta + (60 * 60 * 1000);
+                      const agoraTimestamp = agora.getTime();
+                      if (agoraTimestamp >= inicioConsulta && agoraTimestamp <= fimConsulta) {
+                        return (
+                          <div className="flex flex-col items-start gap-2">
+                            <span className="px-3 py-1 rounded-full text-xs font-semibold bg-[#E6E9FF] text-[#6D75C0] shadow">
+                              Agendada
+                            </span>
+                            <span className="px-3 py-1 rounded-full text-xs font-semibold bg-[#E6F4EA] text-[#2E7D32] shadow">
+                              Ao vivo
+                            </span>
+                          </div>
+                        );
+                      }
+                    }
+                  }
+                  const statusFinal = statusReservaSessao || statusConsulta;
+                  const statusStr = typeof statusFinal === 'string' ? statusFinal : (typeof statusFinal === 'number' || typeof statusFinal === 'boolean' ? String(statusFinal) : undefined);
+                  const tagInfo = getStatusTagInfo(statusStr);
+                  if (statusReservaSessao || statusConsulta) {
+                    return (
+                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${tagInfo.bg} ${tagInfo.text} shadow`}>
+                        {tagInfo.texto}
+                      </span>
+                    );
+                  }
+                  if (cancelamento && cancelamento.Status) {
+                    const statusCancelamento = cancelamento.Status;
+                    const tipoCancelamento = cancelamento.Tipo;
+                    if (statusCancelamento === 'Deferido' || statusCancelamento === 'Cancelado') {
+                      let textoCancelamento = 'Cancelada';
+                      if (tipoCancelamento === 'Paciente') {
+                        textoCancelamento = 'Paciente não compareceu';
+                      } else if (tipoCancelamento === 'Psicologo') {
+                        textoCancelamento = 'Psicólogo não compareceu';
+                      } else if (tipoCancelamento === 'Sistema') {
+                        textoCancelamento = 'Consulta cancelada';
+                      } else if (tipoCancelamento && tipoCancelamentoMap[tipoCancelamento]) {
+                        textoCancelamento = tipoCancelamentoMap[tipoCancelamento];
+                      } else {
+                        textoCancelamento = statusCancelamentoMap[statusCancelamento] || 'Cancelada';
+                      }
+                      return (
+                        <span className="px-3 py-1 rounded-full text-xs font-semibold bg-[#FFE5E5] text-[#C53030] shadow">
+                          {textoCancelamento}
+                        </span>
+                      );
+                    }
+                    if (statusCancelamento === 'EmAnalise') {
+                      return (
+                        <span className="px-3 py-1 rounded-full text-xs font-semibold bg-[#FFF4E6] text-[#E65100] shadow">
+                          Cancelamento em análise
+                        </span>
+                      );
+                    }
+                  }
+                  const statusMap: Record<string, string> = {
+                    cancelled_by_patient: 'Cancelada pelo paciente',
+                    cancelled_by_psychologist: 'Cancelada pelo psicólogo',
+                    cancelled_no_show: 'Não compareceu',
+                  };
+                  const status6h = ["cancelled_by_patient", "cancelled_by_psychologist", "cancelled_no_show"];
+                  if (
+                    dataObj &&
+                    agora.getTime() > dataObj.getTime() &&  
+                    status6h.includes(socketStatus || "")
+                  ) {
+                    return (
+                      <span className="px-3 py-1 rounded-full text-xs font-semibold bg-[#FFE5E5] text-[#C53030] shadow">
+                        {statusMap[socketStatus || ""]}
+                      </span>
+                    );
+                  }
+                  return (
+                    <span className="px-3 py-1 rounded-full text-xs font-semibold bg-[#E6E9FF] text-[#6D75C0] shadow">
+                      Reservado
+                    </span>
+                  );
+                })()}
+                {/* Contador inline com frase e relógio - abaixo da tag */}
+                {(fraseSessao || mostrarContador) && (
+                  <div className="flex items-center gap-2 bg-[#E6E9FF] rounded-lg px-3 py-1.5 mt-1 w-fit">
+                    {mostrarContador && (
+                      <svg 
+                        width="16" 
+                        height="16" 
+                        viewBox="0 0 24 24" 
+                        fill="none" 
+                        stroke="#8494E9" 
+                        strokeWidth="2" 
+                        strokeLinecap="round" 
+                        strokeLinejoin="round"
+                        className="shrink-0"
+                      >
+                        <circle cx="12" cy="12" r="10" />
+                        <polyline points="12 6 12 12 16 14" />
+                      </svg>
+                    )}
+                    {fraseSessao && <span className="text-[#232A5C] text-sm font-medium fira-sans">{fraseSessao}</span>}
+                    {mostrarContador && <span className="text-[#8494E9] text-base font-bold fira-sans">{contadorSessao}</span>}
+                  </div>
+                )}
+                {/* Botões */}
+                <div className="flex flex-row gap-3 mt-2 w-fit">
+                  {role === "paciente" && podeReagendar && (
+                    <button
+                      onClick={handleReagendarConsulta}
+                      className="min-h-[44px] h-11 border border-[#6D75C0] text-[#6D75C0] fira-sans font-medium text-sm rounded-[6px] px-4 transition hover:bg-[#E6E9FF] hover:text-[#232A5C] whitespace-nowrap cursor-pointer"
+                    >
+                      Reagendar
+                    </button>
+                  )}
+                  {buttons.mostrarBotaoEntrar ? (
+                    <button
+                      disabled={!podeEntrarNaSessao || isProcessingEntry || isCheckingTokens}
+                      onClick={handleEntrarNaSessao}
+                      className={`min-h-[44px] h-11 rounded-[6px] px-4 text-sm font-medium transition whitespace-nowrap ${
+                        podeEntrarNaSessao && !isProcessingEntry && !isCheckingTokens
+                          ? 'bg-[#232A5C] hover:bg-[#232A5C]/90 text-white cursor-pointer'
+                          : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      }`}
+                    >
+                      {isProcessingEntry || isCheckingTokens ? 'Aguarde...' : 'Acessar consulta'}
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleAbrirModalConsulta}
+                      className="min-h-[44px] h-11 bg-[#8494E9] text-white font-medium text-sm rounded-[6px] px-4 transition hover:bg-[#6D75C0] hover:text-white whitespace-nowrap cursor-pointer"
+                    >
+                      Ver detalhes
+                    </button>
+                  )}
+                  {/* Botão de suporte do WhatsApp para status especiais após o horário ou sessão encerrada por inatividade */}
+                  {(() => {
+                    const status6h = ["cancelled_by_patient", "cancelled_by_psychologist", "cancelled_no_show"];
+                    let dataObj: Date | null = null;
+                    const dataStr = String(normalized.date);
+                    const horarioStr = String(normalized.time);
+                    if (dataStr && horarioStr) {
+                      if (dataStr.includes("T") || dataStr.length > 10) {
+                        dataObj = new Date(dataStr);
+                        const [hora, minuto] = horarioStr.split(":");
+                        if (hora && minuto) dataObj.setHours(Number(hora), Number(minuto), 0, 0);
+                      } else {
+                        const [ano, mes, dia] = dataStr.split("-");
+                        const [hora, minuto] = horarioStr.split(":");
+                        if (ano && mes && dia && hora && minuto) {
+                          dataObj = new Date(Number(ano), Number(mes) - 1, Number(dia), Number(hora), Number(minuto));
+                        }
+                      }
+                    }
+                    const agora = new Date();
+                    if (
+                      (dataObj && agora.getTime() > dataObj.getTime() && status6h.includes(socketStatus || "")) ||
+                      fraseSessao === "Sua sessão foi encerrada por inatividade."
+                    ) {
+                      return (
+                        <button onClick={handleSuporte} className="min-h-[44px] h-11 bg-[#25D366] hover:bg-[#128C7E] text-white font-semibold fira-sans text-sm rounded-[6px] px-4 transition cursor-pointer">
+                          Fale com o Suporte
+                        </button>
+                      );
+                    }
+                    return null;
+                  })()}
+                </div>
+              </div>
             </div>
           </div>
         </div>

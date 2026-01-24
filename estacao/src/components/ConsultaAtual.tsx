@@ -786,7 +786,7 @@ export default function ConsultaAtual({ consulta: consultaProp = null, role = "p
     >
       <h3 className="fira-sans font-semibold text-2xl leading-[40px] tracking-normal align-middle text-[#49525A] mb-4">Consulta Atual</h3>
       
-      {/* Usa ConsultaCard da lib */}
+      {/* Usa ConsultaCard da lib (painel do paciente) */}
       <ConsultaCard
         consulta={consultaApi}
         showEntrarButton={finalButtons.mostrarBotaoEntrar}
@@ -795,6 +795,7 @@ export default function ConsultaAtual({ consulta: consultaProp = null, role = "p
         mostrarBotaoSuporte={finalButtons.mostrarBotaoSuporte}
         supportOnly={supportOnly}
         statusOverride={isCancelada ? "Cancelado" : undefined}
+        isPacientePanel={true}
         contador={
           !supportOnly && finalMostrarContador && contador50MinutosAtualizado.estaDentroDoPeriodo && contadorFinal
             ? {

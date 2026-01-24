@@ -55,6 +55,7 @@ import { api } from "@/lib/axios";
 import { reviewService } from "@/services/reviewService";
 import { isAxiosError } from "@/types/axiosError.types";
 import NotificationToast from "./NotificationToast";
+import TimeRemainingBanner from "./TimeRemainingBanner";
 
 type SalaProps = {
   appId: string;
@@ -1027,7 +1028,12 @@ export default function SalaVideo({ appId, channel, token, uid, role, consultati
 
     const handleTimeRemainingWarning = (data: TimeRemainingWarningData) => {
       console.log("⏰ [SalaVideo] Aviso de tempo restante recebido:", data);
-      setTimeRemainingWarning(data);
+      // Usa o timeRemaining atual do contador para sincronizar com o contador visual
+      setTimeRemainingWarning({
+        ...data,
+        // Garante que o tempo restante seja sincronizado com o contador
+        timestamp: new Date().toISOString()
+      });
     };
 
     onTimeRemainingWarning(handleTimeRemainingWarning, consultationIdString);
@@ -1064,14 +1070,18 @@ export default function SalaVideo({ appId, channel, token, uid, role, consultati
       // Limpa o aviso se ainda estiver visível
       setInactivityWarning(null);
       setCountdown(null);
+      setIsAutoCancelled(true);
       
       // Mostra mensagem de erro
-      toast.error(data.message || "A consulta foi cancelada automaticamente por inatividade.");
+      const missingName = data.missingRole === 'Patient' ? 'Paciente' : 
+                         data.missingRole === 'Psychologist' ? 'Psicólogo' : 'Ambos';
+      toast.error(data.message || `A consulta foi cancelada automaticamente por inatividade de ${missingName}.`);
       
-      // Fecha a sala após um breve delay para o usuário ver a mensagem
+      // Fecha a sala e redireciona
+      leaveRoom();
       setTimeout(() => {
         router.push(role === "PATIENT" ? "/painel" : "/painel-psicologo");
-      }, 3000);
+      }, 2000);
     };
 
     const handleStatusChanged = (data: { status: string; consultationId: string; reason?: string; autoCancelled?: boolean }) => {
@@ -1100,7 +1110,17 @@ export default function SalaVideo({ appId, channel, token, uid, role, consultati
       setInactivityWarning(null);
       setCountdown(null);
       
-      toast.error(data.message || "A sala foi fechada.");
+      // Mensagem baseada no motivo
+      let message = data.message || "A sala foi fechada.";
+      if (data.reason === 'inactivity') {
+        message = "A sala foi fechada por inatividade. A consulta foi cancelada automaticamente.";
+      } else if (data.reason === 'timeout') {
+        message = "A sala foi fechada por timeout.";
+      } else if (data.reason === 'completed') {
+        message = "A consulta foi concluída.";
+      }
+      
+      toast.error(message);
       
       // Fecha a sala e redireciona
       leaveRoom();
@@ -2819,14 +2839,13 @@ export default function SalaVideo({ appId, channel, token, uid, role, consultati
               </div>
             )}
 
-            {/* Notificação de Tempo Restante - Estilo Google Meet (canto inferior direito) */}
+            {/* Notificação de Tempo Restante - Estilo Google Meet (banner no topo, integrado ao contador) */}
             {timeRemainingWarning && (
-              <NotificationToast
-                message={timeRemainingWarning.message}
-                type="info"
-                minutesRemaining={timeRemainingWarning.minutesRemaining}
+              <TimeRemainingBanner
+                timeRemaining={Math.max(0, timeRemaining)} // Usa o tempo restante do contador em tempo real
+                minutesRemaining={timeRemainingWarning.minutesRemaining || Math.ceil(Math.max(0, timeRemaining) / 60)}
                 onClose={() => setTimeRemainingWarning(null)}
-                autoClose={8000} // 8 segundos
+                autoClose={10000} // 10 segundos
               />
             )}
 

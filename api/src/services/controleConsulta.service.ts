@@ -44,7 +44,7 @@ export class ControleConsultasService implements IControleConsultasService {
                 await this.prisma.$transaction([
                     this.prisma.consulta.update({
                         where: { Id: reservationId },
-                        data: { Status: 'Realizada' },
+                        data: { Status: $Enums.AgendaStatus.Realizada },
                     }),
                     this.prisma.controleConsultaMensal.update({
                         where: { Id: controleConsulta.Id },

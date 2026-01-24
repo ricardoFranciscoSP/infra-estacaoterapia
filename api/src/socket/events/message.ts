@@ -110,6 +110,70 @@ async function handleInactivity(
 }
 
 export function handleMessage(io: Server, socket: Socket) {
+    const userId = socket.data?.userId as string | undefined;
+
+    // === Handlers de Notificações ===
+    // Handler para subscribe_notifications - inscreve usuário para receber notificações
+    socket.on("subscribe_notifications", async (data: { userId?: string }) => {
+        try {
+            const targetUserId = data?.userId || userId;
+            if (!targetUserId) {
+                console.warn("⚠️ [subscribe_notifications] userId não fornecido", { socketId: socket.id });
+                return;
+            }
+
+            // Entra na sala do usuário para receber notificações
+            const userRoom = `user:${targetUserId}`;
+            socket.join(userRoom);
+            console.log(`✅ [subscribe_notifications] Socket ${socket.id} inscrito para notificações do usuário ${targetUserId} (sala: ${userRoom})`);
+
+            // Envia contador inicial de notificações não lidas
+            try {
+                const count = await apiClient.countUnreadNotifications(targetUserId);
+                socket.emit("notification_counter_update", { unreadCount: count });
+                socket.emit("notification:count", { count });
+                console.log(`📊 [subscribe_notifications] Contador inicial enviado: ${count} não lidas`);
+            } catch (err) {
+                console.error("❌ [subscribe_notifications] Erro ao buscar contador inicial:", err);
+            }
+        } catch (error) {
+            console.error("❌ [subscribe_notifications] Erro ao processar inscrição:", error);
+        }
+    });
+
+    // Handler para join-user - entra na sala do usuário (compatibilidade)
+    socket.on("join-user", (targetUserId: string) => {
+        try {
+            const userIdToJoin = targetUserId || userId;
+            if (!userIdToJoin) {
+                console.warn("⚠️ [join-user] userId não fornecido", { socketId: socket.id });
+                return;
+            }
+
+            const userRoom = `user:${userIdToJoin}`;
+            socket.join(userRoom);
+            console.log(`✅ [join-user] Socket ${socket.id} entrou na sala do usuário ${userIdToJoin} (sala: ${userRoom})`);
+        } catch (error) {
+            console.error("❌ [join-user] Erro ao entrar na sala do usuário:", error);
+        }
+    });
+
+    // Handler para leave-user - sai da sala do usuário
+    socket.on("leave-user", (targetUserId: string) => {
+        try {
+            const userIdToLeave = targetUserId || userId;
+            if (!userIdToLeave) {
+                console.warn("⚠️ [leave-user] userId não fornecido", { socketId: socket.id });
+                return;
+            }
+
+            const userRoom = `user:${userIdToLeave}`;
+            socket.leave(userRoom);
+            console.log(`✅ [leave-user] Socket ${socket.id} saiu da sala do usuário ${userIdToLeave} (sala: ${userRoom})`);
+        } catch (error) {
+            console.error("❌ [leave-user] Erro ao sair da sala do usuário:", error);
+        }
+    });
 
     // Handler para join-room - adiciona socket à sala especificada
     socket.on("join-room", (roomName: string) => {
@@ -158,6 +222,12 @@ export function handleMessage(io: Server, socket: Socket) {
             const count = await apiClient.countUnreadNotifications(userId);
 
             // ✅ Emite o contador atualizado em ambos os formatos para compatibilidade
+            // Envia para a sala do usuário para garantir que todos os sockets recebam
+            const userRoom = `user:${userId}`;
+            io.to(userRoom).emit("notification:count", { count });
+            io.to(userRoom).emit("notification_counter_update", { unreadCount: count });
+            
+            // Também envia diretamente para o socket (fallback)
             socket.emit("notification:count", { count });
             socket.emit("notification_counter_update", { unreadCount: count });
         } catch (err) {
@@ -187,6 +257,12 @@ export function handleMessage(io: Server, socket: Socket) {
             const count = await apiClient.countUnreadNotifications(userId);
 
             // ✅ Emite o contador atualizado em ambos os formatos para compatibilidade
+            // Envia para a sala do usuário para garantir que todos os sockets recebam
+            const userRoom = `user:${userId}`;
+            io.to(userRoom).emit("notification:count", { count });
+            io.to(userRoom).emit("notification_counter_update", { unreadCount: count });
+            
+            // Também envia diretamente para o socket (fallback)
             socket.emit("notification:count", { count });
             socket.emit("notification_counter_update", { unreadCount: count });
         } catch (err) {

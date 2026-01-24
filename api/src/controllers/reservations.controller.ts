@@ -5,7 +5,7 @@ import { IScheduleService } from '../interfaces/schedule.interface';
 import { ROLES } from '../constants/roles.constants';
 import { MulterRequest } from '../types/multerRequest';
 import prisma from '../prisma/client';
-import { AgendaStatus, $Enums, ConsultaStatus, Prisma } from '../generated/prisma';
+import { $Enums, ConsultaStatus, Prisma } from '../generated/prisma';
 import { ConsultaOrigemStatus } from '../constants/consultaStatus.constants';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
@@ -367,6 +367,8 @@ export class ReservationsController {
                             where: { Id: resultado.reservation.Id },
                             data: { GoogleEventId: event.id },
                         });
+
+                            // Se houver atualização de Status em outros pontos, garantir uso do enum $Enums.AgendaStatus
                     }
                 } catch (calendarError) {
                     console.error('Erro ao criar evento no Google Calendar durante reagendamento:', calendarError);
@@ -1389,7 +1391,7 @@ export class ReservationsController {
 
     /**
      * Reagenda uma sessão pelo psicólogo dentro da sala (problema do psicólogo)
-     * Status: "ReagendadaPsicologoForaPrazo"
+     * Status: "ReagendadaPsicologoForaDoPrazo"
      * Regras: Devolve sessão ao paciente, NÃO faz repasse financeiro
      * 
      * IMPORTANTE: Busca a partir da ReservaSessao pelo AgendaId, ReservaSessaoId ou ConsultaId
@@ -1550,34 +1552,8 @@ export class ReservationsController {
                 usuarioId: userId,
             });
 
-            // Atualiza status da ReservaSessao, Agenda e trata consultas avulsas + limpa tokens
+            // Trata consultas avulsas e registra cancelamento (status sincronizado por trigger)
             await prisma.$transaction(async (tx) => {
-                // Atualiza status da ReservaSessao e limpa tokens do Agora
-                await tx.reservaSessao.update({
-                    where: { Id: reservaSessao.Id },
-                    data: {
-                        Status: AgendaStatus.Reagendada,
-                        AgoraTokenPatient: null,
-                        AgoraTokenPsychologist: null,
-                        Uid: null,
-                        UidPsychologist: null,
-                    },
-                });
-
-                // Atualiza status da Agenda (se existir)
-                if (consulta.Agenda) {
-                    await tx.agenda.update({
-                        where: { Id: consulta.Agenda.Id },
-                        data: { Status: AgendaStatus.Reagendada, PacienteId: null },
-                    });
-                } else if (reservaSessao.AgendaId) {
-                    // Se não tem Agenda no relacionamento, tenta atualizar pelo AgendaId da ReservaSessao
-                    await tx.agenda.update({
-                        where: { Id: reservaSessao.AgendaId },
-                        data: { Status: AgendaStatus.Reagendada, PacienteId: null },
-                    });
-                }
-
                 // Se não tem CicloPlano mas tem PacienteId, trata como consulta avulsa (ControleConsultaMensal)
                 const pacienteId = consulta.PacienteId || reservaSessao.PatientId;
                 if (!consulta.CicloPlano && pacienteId) {
@@ -1631,7 +1607,7 @@ export class ReservationsController {
 
             return res.status(200).json({
                 message: 'Sessão reagendada com sucesso. A sessão foi devolvida ao saldo do paciente.',
-                status: 'ReagendadaPsicologoForaPrazo',
+                status: 'ReagendadaPsicologoForaDoPrazo',
                 reservaSessaoId: reservaSessao.Id,
                 consultaId: consultaIdToUse,
             });
@@ -1816,34 +1792,8 @@ export class ReservationsController {
                 usuarioId: userId,
             });
 
-            // Atualiza status da ReservaSessao, Agenda e cria CancelamentoSessao
+            // Cria CancelamentoSessao (status sincronizado por trigger)
             await prisma.$transaction(async (tx) => {
-                // Atualiza status da ReservaSessao e limpa tokens do Agora
-                await tx.reservaSessao.update({
-                    where: { Id: reservaSessao.Id },
-                    data: {
-                        Status: AgendaStatus.Cancelled_by_psychologist,
-                        AgoraTokenPatient: null,
-                        AgoraTokenPsychologist: null,
-                        Uid: null,
-                        UidPsychologist: null,
-                    },
-                });
-
-                // Atualiza status da Agenda (se existir)
-                if (consulta.Agenda) {
-                    await tx.agenda.update({
-                        where: { Id: consulta.Agenda.Id },
-                        data: { Status: AgendaStatus.Cancelado, PacienteId: null },
-                    });
-                } else if (reservaSessao.AgendaId) {
-                    // Se não tem Agenda no relacionamento, tenta atualizar pelo AgendaId da ReservaSessao
-                    await tx.agenda.update({
-                        where: { Id: reservaSessao.AgendaId },
-                        data: { Status: AgendaStatus.Cancelado, PacienteId: null },
-                    });
-                }
-
                 // Cria registro de auditoria/cancelamento
                 // SessaoId deve ser o ConsultaId (conforme schema do CancelamentoSessao)
                 await tx.cancelamentoSessao.create({

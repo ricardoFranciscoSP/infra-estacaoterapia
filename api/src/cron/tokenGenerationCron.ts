@@ -52,20 +52,26 @@ export async function scanAndEnqueueTokenGenerationJobs(): Promise<void> {
      * ORDER BY "ScheduledAt" ASC
      * LIMIT $2;
      */
+    // Usa OR para evitar problemas de casting do Prisma com enum IN no PostgreSQL
     const reservas = await prisma.reservaSessao.findMany({
         where: {
             ScheduledAt: {
                 not: null,
                 lte: nowStr,
             },
-            Status: {
-                in: VALID_STATUSES,
-            },
             OR: [
-                { AgoraTokenPatient: null },
-                { AgoraTokenPatient: '' },
-                { AgoraTokenPsychologist: null },
-                { AgoraTokenPsychologist: '' },
+                { Status: AgendaStatus.Reservado },
+                { Status: AgendaStatus.Andamento },
+            ],
+            AND: [
+                {
+                    OR: [
+                        { AgoraTokenPatient: null },
+                        { AgoraTokenPatient: '' },
+                        { AgoraTokenPsychologist: null },
+                        { AgoraTokenPsychologist: '' },
+                    ],
+                },
             ],
         },
         select: {

@@ -12,7 +12,7 @@ import toast from "react-hot-toast";
 import { api } from "@/lib/axios";
 import Image from "next/image";
 
-export default function GestaoConsultasPage() {
+export default function CancelamentosPage() {
   const {
     cancelamentos,
     isLoading,
@@ -296,7 +296,7 @@ export default function GestaoConsultasPage() {
         animate={{ opacity: 1, y: 0 }}
         className="mb-6 sm:mb-8"
       >
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Gestão de Consultas</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Cancelamentos</h1>
         <p className="text-sm sm:text-base text-gray-600">
           Aprove ou reprove cancelamentos e reagendamentos pendentes de análise
         </p>

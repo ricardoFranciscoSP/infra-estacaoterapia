@@ -9,5 +9,11 @@ export const admConsultasService = () => {
         getConsultasMesAtual: () => api.get('/admin/consultas/mes-atual'),
         getConsultasMesAtualLista: () => api.get('/admin/consultas/mes-atual-lista'),
         getConsultasPorData: (date: string) => api.get('/admin/consultas/por-data', { params: { date } }),
+        getConsultasLista: (params?: { page?: number; limit?: number; status?: string }) =>
+            api.get('/admin/consultas/lista', { params }),
+        updateConsultaStatus: (
+            id: string,
+            payload: { status: string; repasse?: boolean; devolverSessao?: boolean }
+        ) => api.patch(`/admin/consultas/${id}/status`, payload),
     };
 }

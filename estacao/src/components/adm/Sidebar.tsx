@@ -17,8 +17,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobile = false, onClose, modul
   const pathname = usePathname();
   const [configOpen, setConfigOpen] = useState(false);
   const [relatoriosOpen, setRelatoriosOpen] = useState(false);
+  const [gestaoConsultasOpen, setGestaoConsultasOpen] = useState(false);
   const configRef = useRef<HTMLLIElement>(null);
   const relatoriosRef = useRef<HTMLLIElement>(null);
+  const gestaoConsultasRef = useRef<HTMLLIElement>(null);
 
   // Normaliza pathname removendo barra final (exceto na raiz)
   const currentPath = (pathname?.replace(/\/+$/, "") || "/");
@@ -55,6 +57,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobile = false, onClose, modul
     }
   }, [currentPath]);
 
+  // Abre submenu de Gestão de Consultas se estiver em uma rota relacionada
+  useEffect(() => {
+    if (currentPath?.includes("/gestao-consultas")) {
+      setGestaoConsultasOpen(true);
+    }
+  }, [currentPath]);
+
   // Fecha submenu ao clicar fora
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -70,14 +79,20 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobile = false, onClose, modul
       ) {
         setRelatoriosOpen(false);
       }
+      if (
+        gestaoConsultasRef.current &&
+        !gestaoConsultasRef.current.contains(event.target as Node)
+      ) {
+        setGestaoConsultasOpen(false);
+      }
     }
-    if (configOpen || relatoriosOpen) {
+    if (configOpen || relatoriosOpen || gestaoConsultasOpen) {
       document.addEventListener("mousedown", handleClickOutside);
     }
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [configOpen, relatoriosOpen]);
+  }, [configOpen, relatoriosOpen, gestaoConsultasOpen]);
 
   const allLinks: Array<{ href: string; label: string; icon: string; config?: boolean }> = [
     { href: `${basePath}`, label: "Dashboard", icon: "dashboard" },
@@ -221,6 +236,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobile = false, onClose, modul
             const active = isActive(link.href);
             const isConfig = link.label === "Configurações";
             const isRelatorios = link.label === "Relatórios";
+            const isGestaoConsultas = link.label === "Gestão de Consultas";
             const configActive = 
               isActive(`${basePath}/configuracoes`) ||
               isActive(`${basePath}/auditoria`) ||
@@ -231,6 +247,57 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobile = false, onClose, modul
               isActive(`${basePath}/configuracoes/gerar-token-manual`);
             const relatoriosActive = 
               isActive(`${basePath}/relatorios`);
+            const gestaoConsultasActive =
+              isActive(`${basePath}/gestao-consultas`);
+            
+            // Renderiza submenu para Gestão de Consultas
+            if (isGestaoConsultas) {
+              return (
+                <li key={link.href} ref={gestaoConsultasRef}>
+                  <button
+                    type="button"
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-colors ${
+                      gestaoConsultasActive ? "bg-[#F2F4FD] text-[#2D3A8C]" : "hover:bg-[#F2F4FD] text-[#343A40]"
+                    }`}
+                    onClick={() => setGestaoConsultasOpen((prev) => !prev)}
+                  >
+                    <span className="flex items-center gap-3">
+                      <Icon name={link.icon} active={gestaoConsultasActive} />
+                      <span className="font-medium">{link.label}</span>
+                    </span>
+                    <span className={`text-xs ${gestaoConsultasOpen ? "rotate-180" : ""}`}>⌃</span>
+                  </button>
+                  {gestaoConsultasOpen && (
+                    <ul className="ml-8 mt-2 space-y-1">
+                      <li>
+                        <Link
+                          href={`${basePath}/gestao-consultas/consultas`}
+                          className={`block px-3 py-2 rounded-md text-sm ${
+                            isActive(`${basePath}/gestao-consultas/consultas`)
+                              ? "bg-[#E9ECFF] text-[#2D3A8C]"
+                              : "text-[#6C757D] hover:bg-[#F2F4FD]"
+                          }`}
+                        >
+                          Consultas
+                        </Link>
+                      </li>
+                      <li>
+                        <Link
+                          href={`${basePath}/gestao-consultas/cancelamentos`}
+                          className={`block px-3 py-2 rounded-md text-sm ${
+                            isActive(`${basePath}/gestao-consultas/cancelamentos`)
+                              ? "bg-[#E9ECFF] text-[#2D3A8C]"
+                              : "text-[#6C757D] hover:bg-[#F2F4FD]"
+                          }`}
+                        >
+                          Cancelamentos
+                        </Link>
+                      </li>
+                    </ul>
+                  )}
+                </li>
+              );
+            }
             
             // Renderiza submenu para Relatórios
             if (isRelatorios) {

@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Header } from '@/components/adm/Header';
 import { Sidebar } from '@/components/adm/Sidebar';
 import { Rodape } from '@/components/adm/Rodape';
@@ -13,16 +13,23 @@ const PainelLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => 
   useProtectedRoute("Admin"); // Apenas Admin pode acessar
 
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const { user, isLoading: userLoading } = useUserBasic();
   
+  // Garante que o componente só renderize após a hidratação
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+  
   // Verificação adicional: se for Finance, redireciona imediatamente
-  React.useEffect(() => {
-    if (user && user.Role === "Finance") {
+  useEffect(() => {
+    if (mounted && user && user.Role === "Finance") {
       window.location.href = "/no-permission";
     }
-  }, [user]);
+  }, [user, mounted]);
 
-  if (userLoading) {
+  // Durante a hidratação, renderiza o mesmo conteúdo que será renderizado após
+  if (!mounted || userLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#FCFBF6]">
         <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#8494E9]" />

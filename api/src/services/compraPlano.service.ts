@@ -1236,6 +1236,8 @@ export class CompraPlanoService implements ICompraPlanoService {
                                             OrigemStatus: "Sistema - Plano Cancelado"
                                         }
                                     });
+
+                                        // Se houver atualização de Status em outros pontos, garantir uso do enum $Enums.AgendaStatus
                                 } catch (error) {
                                     console.error(`[CancelarPlano] Erro ao agendar expiração para consulta ${consulta.Id}:`, error);
                                     // Continua processando outras consultas mesmo se uma falhar

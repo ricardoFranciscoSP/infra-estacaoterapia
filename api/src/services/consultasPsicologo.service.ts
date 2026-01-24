@@ -559,6 +559,8 @@ export class ConsultasPsicologoService {
                 where: { Id: reservation.Id },
                 data: { GoogleEventId: event.id },
             });
+
+                // Se houver atualização de Status em outros pontos, garantir uso do enum $Enums.AgendaStatus
             if (!event) {
                 return res.status(500).json({ error: 'Erro ao criar evento no Google Calendar.' });
             }

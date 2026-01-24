@@ -16,6 +16,7 @@ export interface EnsureAgoraTokensResult {
 interface ReservaSessaoUpdateData {
     AgoraTokenPatient?: string;
     AgoraTokenPsychologist?: string;
+    AgoraChannel?: string;
     Uid?: number;
     UidPsychologist?: number;
     PatientId?: string;
