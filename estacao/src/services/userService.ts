@@ -26,5 +26,7 @@ export const userService = {
         const queryString = queryParams.toString();
         return api.get(`/admin/users${queryString ? `?${queryString}` : ''}`);
     },
+    updateRole: (userId: string, role: User['Role']): Promise<AxiosResponse<{ success: boolean; message?: string }>> =>
+        api.patch(`/admin/users/${userId}/role`, { role }),
 };
 

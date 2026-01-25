@@ -6,15 +6,17 @@ import { Rodape } from '@/components/adm/Rodape';
 import { AnimatePresence, motion } from "framer-motion";
 import { useUserBasic } from '@/hooks/user/userHook';
 import { useProtectedRoute } from '@/hooks/useProtectedRoute';
+import { useAllowedSidebarLabels } from '@/hooks/useAllowedSidebarLabels';
 import LoggedErrorBoundary from '@/components/LoggedErrorBoundary';
 
 const PainelLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Validação de acesso para perfis administrativos
-  useProtectedRoute("Admin"); // Apenas Admin pode acessar
+  useProtectedRoute("Admin");
 
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const { user, isLoading: userLoading } = useUserBasic();
+  const allowedLabels = useAllowedSidebarLabels();
+  const sidebarModules = Array.isArray(allowedLabels) ? allowedLabels : undefined;
   
   // Garante que o componente só renderize após a hidratação
   useEffect(() => {
@@ -67,7 +69,7 @@ const PainelLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => 
         </AnimatePresence>
         <div className="flex-1 w-full">
           <div className="max-w-7xl mx-auto w-full px-3 sm:px-4 md:px-6 flex flex-col sm:flex-row">
-            <Sidebar />
+            <Sidebar modules={sidebarModules} />
             <main className="flex-1 py-2 sm:py-4 md:py-8 sm:pl-4 md:pl-8 flex flex-col w-full overflow-x-hidden">
               {children}
               <Rodape />

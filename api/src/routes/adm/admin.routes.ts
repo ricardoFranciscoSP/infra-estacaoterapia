@@ -117,6 +117,7 @@ router.post('/password-reset/generate-random/:userId', authorize('Admin', 'Manag
 
 // Rotas de usuários
 router.get('/users', authorize('Admin', 'Management'), asyncHandler(userController.list.bind(userController)));
+router.patch('/users/:id/role', authorize('Admin', 'Management'), asyncHandler(userController.updateRole.bind(userController)));
 
 // Rotas financeiras administrativas (Admin, Management e Finance)
 // IMPORTANTE: Rotas específicas (com :id) devem vir ANTES das rotas genéricas

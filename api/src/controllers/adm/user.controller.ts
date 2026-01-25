@@ -59,5 +59,32 @@ export class UserController {
             return res.status(500).json({ error: 'Erro ao buscar usuários.' });
         }
     }
+
+    /**
+     * Atualiza o perfil (role) de um usuário.
+     * PATCH /admin/users/:id/role
+     * Body: { role: 'Admin' | 'Finance' | 'Management' }
+     */
+    async updateRole(req: Request, res: Response): Promise<Response> {
+        try {
+            const id = req.params.id as string;
+            const { role } = req.body as { role?: string };
+            if (!id || !role) {
+                return res.status(400).json({ error: 'ID e role são obrigatórios.' });
+            }
+            const allowed: Role[] = ['Admin', 'Finance', 'Management'];
+            if (!allowed.includes(role as Role)) {
+                return res.status(400).json({ error: 'Role inválido. Use Admin, Finance ou Management.' });
+            }
+            await prisma.user.update({
+                where: { Id: id },
+                data: { Role: role as Role },
+            });
+            return res.status(200).json({ success: true, message: 'Perfil atualizado.' });
+        } catch (error) {
+            console.error('Erro ao atualizar role:', error);
+            return res.status(500).json({ error: 'Erro ao atualizar perfil do usuário.' });
+        }
+    }
 }
 

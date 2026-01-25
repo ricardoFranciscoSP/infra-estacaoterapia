@@ -1,16 +1,17 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
+import { useQueryClient } from "@tanstack/react-query";
 import { useUsers } from "@/hooks/admin/useUsers";
-import { usePermissionsByRole, useBulkCreateRolePermissions } from "@/hooks/usePermissions";
-import { useBulkCreateUserPermissions } from "@/hooks/usePermissions";
+import { usePermissionsByRole } from "@/hooks/usePermissions";
 import { 
     moduleLabels, 
     Module, 
     ActionType, 
     Role,
+    permissionsService,
 } from "@/services/permissionsService";
-import { User } from "@/services/userService";
+import { User, userService } from "@/services/userService";
 import toast from "react-hot-toast";
 
 // Ícones SVG
@@ -108,6 +109,7 @@ const getModuleLabel = (module: Module): string => {
 };
 
 export default function PerfisAcessoPage() {
+    const queryClient = useQueryClient();
     const [isSaving, setIsSaving] = useState(false);
     const [editingRole, setEditingRole] = useState<Role | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -120,10 +122,6 @@ export default function PerfisAcessoPage() {
     const { data: adminPermissions } = usePermissionsByRole("Admin");
     const { data: financePermissions } = usePermissionsByRole("Finance");
     const { data: managementPermissions } = usePermissionsByRole("Management");
-
-    // Mutations
-    const bulkCreateRolePermissions = useBulkCreateRolePermissions();
-    const bulkCreateUserPermissions = useBulkCreateUserPermissions();
 
     // Estado das permissões por role (inicializa com dados da API)
     const [rolePermissionsState, setRolePermissionsState] = useState<Record<Role, Record<Module, boolean>>>({
@@ -179,44 +177,33 @@ export default function PerfisAcessoPage() {
     }, [managementPermissions]);
 
 
-    // Carregar permissões do usuário quando abrir modal de edição
+    // Carregar permissões do usuário quando abrir modal de edição (role + user overrides)
     useEffect(() => {
         if (isUserModalOpen && editingUser) {
-            // Buscar permissões do usuário
             const fetchUserPermissions = async () => {
                 try {
-                    const response = await fetch(`/api/permissions/user/${editingUser.Id}`);
-                    if (response.ok) {
-                        const data = await response.json();
-                        const perms: Record<Module, Record<ActionType, boolean>> = {} as Record<Module, Record<ActionType, boolean>>;
-                        
-                        allModules.forEach(module => {
-                            perms[module] = {} as Record<ActionType, boolean>;
-                            ["Read", "Create", "Update", "Delete", "Manage"].forEach(action => {
-                                const userPerm = data.userPermissions?.find(
-                                    (p: { Module: Module; Action: ActionType }) => p.Module === module && p.Action === action
-                                );
-                                const rolePerm = data.rolePermissions?.find(
-                                    (p: { Module: Module; Action: ActionType }) => p.Module === module && p.Action === action
-                                );
-                                
-                                if (userPerm) {
-                                    perms[module][action as ActionType] = userPerm.Allowed;
-                                } else if (rolePerm) {
-                                    perms[module][action as ActionType] = true;
-                                } else {
-                                    perms[module][action as ActionType] = false;
-                                }
-                            });
+                    const res = await permissionsService.getPermissionsForUser(editingUser.Id);
+                    const data = (res.data as { success?: boolean; data?: { rolePermissions?: Array<{ Module: Module; Action: ActionType }>; userPermissions?: Array<{ Module: Module; Action: ActionType; Allowed: boolean }> } })?.data;
+                    const rolePermissions = data?.rolePermissions ?? [];
+                    const userPermissions = data?.userPermissions ?? [];
+                    const perms: Record<Module, Record<ActionType, boolean>> = {} as Record<Module, Record<ActionType, boolean>>;
+
+                    allModules.forEach((module) => {
+                        perms[module] = {} as Record<ActionType, boolean>;
+                        (["Read", "Create", "Update", "Delete", "Manage"] as ActionType[]).forEach((action) => {
+                            const userPerm = userPermissions.find((p) => p.Module === module && p.Action === action);
+                            const rolePerm = rolePermissions.find((p) => p.Module === module && p.Action === action);
+                            if (userPerm) perms[module][action] = userPerm.Allowed;
+                            else if (rolePerm) perms[module][action] = true;
+                            else perms[module][action] = false;
                         });
-                        
-                        setUserModulePermissions(perms);
-                    }
+                    });
+                    setUserModulePermissions(perms);
                 } catch (error) {
                     console.error("Erro ao carregar permissões:", error);
+                    toast.error("Erro ao carregar permissões do usuário.");
                 }
             };
-            
             fetchUserPermissions();
         }
     }, [isUserModalOpen, editingUser]);
@@ -241,11 +228,9 @@ export default function PerfisAcessoPage() {
                     action: "Manage" as ActionType,
                 }));
 
-            await bulkCreateRolePermissions.mutateAsync({
-                role,
-                permissions,
-            });
-
+            await permissionsService.bulkCreateRolePermissions({ role, permissions });
+            queryClient.invalidateQueries({ queryKey: ["rolePermissions"] });
+            queryClient.invalidateQueries({ queryKey: ["permissionsByRole"] });
             toast.success(`Permissões do perfil ${roleLabels[role]} atualizadas com sucesso`);
         } catch (error) {
             console.error("Erro ao salvar permissões:", error);
@@ -256,8 +241,6 @@ export default function PerfisAcessoPage() {
     };
 
     const rolesToShow: Role[] = ["Admin", "Finance", "Management"];
-
-    // Carregar todos os usuários sem filtro
     const { users: allUsers } = useUsers();
 
     // Hook para fechar modais com ESC
@@ -292,9 +275,9 @@ export default function PerfisAcessoPage() {
             >
                 <div className="flex items-center gap-3 mb-2">
                     <ShieldIcon />
-                    <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Perfis de Acesso</h1>
+                    <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Perfis de acesso por cargo e usuário</h1>
                 </div>
-                <p className="text-sm text-gray-500">Gerencie permissões de acesso por perfil de usuário</p>
+                <p className="text-sm text-gray-500">Defina o que cada cargo pode acessar e restrinja por usuário (ex.: usuário X não pode ver o módulo Y).</p>
             </motion.div>
 
             {/* Tabela de permissões */}
@@ -314,7 +297,7 @@ export default function PerfisAcessoPage() {
                         <thead className="bg-gradient-to-r from-[#8494E9]/5 to-[#8494E9]/10 border-b border-gray-200">
                             <tr>
                                 <th className="py-4 px-6 text-left text-xs font-semibold text-[#8494E9] uppercase tracking-wider">
-                                    Perfil
+                                    Cargo (perfil)
                                 </th>
                                 <th className="py-4 px-6 text-left text-xs font-semibold text-[#8494E9] uppercase tracking-wider">
                                     Módulos Permitidos
@@ -417,7 +400,7 @@ export default function PerfisAcessoPage() {
                                 <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                                     <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
                                 </svg>
-                                Selecione os módulos que este perfil pode gerenciar
+                                Selecione os módulos que este cargo pode acessar
                             </p>
                             
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -501,8 +484,8 @@ export default function PerfisAcessoPage() {
                 className="bg-white rounded-xl shadow-sm border border-[#E5E9FA] mt-6 overflow-hidden"
             >
                 <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-[#8494E9]/5 to-[#8494E9]/10">
-                    <h2 className="text-lg font-semibold text-gray-800">Usuários e Permissões</h2>
-                    <p className="text-sm text-gray-500 mt-1">Lista de administradores, financeiros e gestores com suas permissões</p>
+                    <h2 className="text-lg font-semibold text-gray-800">Permissões por usuário</h2>
+                    <p className="text-sm text-gray-500 mt-1">Restrinja ou amplie o acesso por usuário. Ex.: para o usuário X <strong>não ver</strong> o módulo Y, desmarque todas as ações desse módulo ao editar.</p>
                 </div>
                 
                 <div className="overflow-x-auto">
@@ -517,10 +500,10 @@ export default function PerfisAcessoPage() {
                                         Email
                                     </th>
                                     <th className="py-4 px-6 text-left text-xs font-semibold text-[#8494E9] uppercase tracking-wider">
-                                        Perfil
+                                        Cargo
                                     </th>
                                     <th className="py-4 px-6 text-center text-xs font-semibold text-[#8494E9] uppercase tracking-wider">
-                                        Módulos
+                                        Módulos visíveis
                                     </th>
                                     <th className="py-4 px-6 text-center text-xs font-semibold text-[#8494E9] uppercase tracking-wider">
                                         Ações
@@ -640,13 +623,13 @@ export default function PerfisAcessoPage() {
                         {/* Conteúdo do Modal */}
                         <div className="flex-1 overflow-y-auto">
                             <div className="p-6 space-y-6">
-                                {/* Seleção de Perfil */}
+                                {/* Seleção de Cargo */}
                                 <div className="bg-gradient-to-br from-[#8494E9]/5 to-[#6B7FD7]/5 rounded-xl p-5 border border-[#8494E9]/20">
                                     <label className="flex items-center gap-2 text-sm font-semibold text-gray-800 mb-3">
                                         <svg className="w-5 h-5 text-[#8494E9]" fill="currentColor" viewBox="0 0 20 20">
                                             <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-6-3a2 2 0 11-4 0 2 2 0 014 0zm-2 4a5 5 0 00-4.546 2.916A5.986 5.986 0 0010 16a5.986 5.986 0 004.546-2.084A5 5 0 0010 11z" clipRule="evenodd" />
                                         </svg>
-                                        Perfil do Usuário
+                                        Cargo do usuário
                                     </label>
                                     <select
                                         value={selectedUserRole || editingUser.Role}
@@ -657,6 +640,7 @@ export default function PerfisAcessoPage() {
                                         <option value="Finance">💰 Financeiro</option>
                                         <option value="Management">📊 Gestão</option>
                                     </select>
+                                    <p className="text-xs text-gray-500 mt-2">O cargo define o padrão de módulos. Abaixo você restringe ou amplia por usuário.</p>
                                 </div>
 
                                 {/* Permissões por Módulo */}
@@ -667,9 +651,9 @@ export default function PerfisAcessoPage() {
                                                 <svg className="w-5 h-5 text-[#8494E9]" fill="currentColor" viewBox="0 0 20 20">
                                                     <path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
                                                 </svg>
-                                                Permissões Específicas por Módulo
+                                                Permissões por módulo (este usuário)
                                             </h4>
-                                            <p className="text-xs text-gray-600 mt-1">Configure ações específicas para cada módulo do sistema</p>
+                                            <p className="text-xs text-gray-600 mt-1">Para este usuário <strong>não ver</strong> um módulo, desmarque todas as ações (Ver, Criar, Editar, etc.) desse módulo.</p>
                                         </div>
                                     </div>
                                     
@@ -756,18 +740,11 @@ export default function PerfisAcessoPage() {
                                     
                                     setIsSaving(true);
                                     try {
-                                        // 1. Atualizar o role do usuário se foi alterado
+                                        // 1. Atualizar o perfil (role) do usuário se foi alterado
                                         if (selectedUserRole && selectedUserRole !== editingUser.Role) {
-                                            const roleResponse = await fetch(`/api/users/${editingUser.Id}/role`, {
-                                                method: 'PUT',
-                                                headers: {
-                                                    'Content-Type': 'application/json',
-                                                },
-                                                body: JSON.stringify({ role: selectedUserRole }),
-                                            });
-                                            
-                                            if (!roleResponse.ok) {
-                                                throw new Error('Erro ao atualizar role do usuário');
+                                            const roleRes = await userService.updateRole(editingUser.Id, selectedUserRole as User['Role']);
+                                            if (roleRes.status !== 200 || !(roleRes.data as { success?: boolean })?.success) {
+                                                throw new Error('Erro ao atualizar perfil do usuário');
                                             }
                                         }
                                         
@@ -787,12 +764,16 @@ export default function PerfisAcessoPage() {
                                         });
                                         
                                         if (permissions.length > 0) {
-                                            await bulkCreateUserPermissions.mutateAsync({
+                                            await permissionsService.bulkCreateUserPermissions({
                                                 userId: editingUser.Id,
                                                 permissions,
                                             });
                                         }
                                         
+                                        queryClient.invalidateQueries({ queryKey: ["users"] });
+                                        queryClient.invalidateQueries({ queryKey: ["permissionsByRole"] });
+                                        queryClient.invalidateQueries({ queryKey: ["userPermissions", editingUser.Id] });
+                                        queryClient.invalidateQueries({ queryKey: ["permissionsForUser", editingUser.Id] });
                                         toast.success("Usuário e permissões atualizados com sucesso!");
                                         setIsUserModalOpen(false);
                                         setEditingUser(null);
