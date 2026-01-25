@@ -1108,15 +1108,15 @@ export default function FinanceiroPage() {
                     <div className="p-7 flex-1 overflow-y-auto">
                       <div className="mb-4">
                         <div className="text-[16px] text-gray-700 mb-2 font-semibold">
-                          {currentMonthYearLabel}
+                          {`${mesesNomes[mesAnterior]}/${anoAnterior}`}
                         </div>
                         <div className="text-[14px] text-gray-600">
-                          Total recebido: <span className="font-bold text-[#6D75C0]">R$ {valorRecebidoMesAtual.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                          Total recebido: <span className="font-bold text-[#6D75C0]">R$ {valorRecebidoMesAnterior.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         </div>
                       </div>
-                      {repassesRecebidosMesAtual.length === 0 ? (
+                      {repassesRecebidosMesAnterior.length === 0 ? (
                         <div className="text-center py-8 text-gray-500">
-                          Nenhum repasse recebido neste mês.
+                          Nenhum repasse recebido no mês anterior.
                         </div>
                       ) : (
                         <div className="overflow-x-auto">
@@ -1131,7 +1131,7 @@ export default function FinanceiroPage() {
                               </tr>
                             </thead>
                             <tbody>
-                              {repassesRecebidosMesAtual.map((s) => (
+                              {repassesRecebidosMesAnterior.map((s) => (
                                 <tr key={s.sessaoId} className="border-b border-[#F3F4F6] hover:bg-gray-50">
                                   <td className="py-3 pr-4 text-[#111827]">{s.id}</td>
                                   <td className="py-3 pr-4 text-[#111827]">{getNomePacienteSeguro(s.paciente)}</td>

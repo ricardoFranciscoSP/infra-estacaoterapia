@@ -165,14 +165,15 @@ export default function MeuPerfilPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F3F6F8] font-sans flex justify-center">
-      <div className="w-full max-w-7xl flex flex-row">
-        {/* Sidebar alinhado ao logo */}
-        <aside className="hidden md:block flex-shrink-0 pt-8 pr-6">
+    <div className="min-h-screen bg-[#F3F6F8] font-sans">
+      <div className="w-full max-w-[1200px] mx-auto flex flex-col md:flex-row">
+        {/* Sidebar alinhado ao logo (mesma largura do header) */}
+        <aside className="hidden md:flex flex-shrink-0">
           <SidebarPsicologo />
         </aside>
-        {/* Container principal (header + conteúdo) */}
-        <div className="flex flex-col flex-1 items-stretch w-full px-4 sm:px-2 md:px-8 py-4 sm:py-8 pb-32 sm:pb-8">
+        {/* Conteúdo principal - em box, alinhado ao avatar */}
+        <main className="flex-1 min-w-0 w-full py-4 sm:py-6 md:py-8 px-3 sm:px-4 md:px-6 pb-32 sm:pb-6 md:pb-8 overflow-x-hidden">
+          <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-4 sm:p-5 md:p-6 w-full">
           {/* Header interno do conteúdo principal */}
           <section className="bg-white border border-[#E3E4F3] px-4 sm:px-6 py-6 sm:py-8 w-full rounded-2xl flex flex-col md:flex-row items-center md:items-center gap-6 sm:gap-8 mb-6 sm:mb-10 shadow-md">
             {/* Avatar + editar foto */}
@@ -244,7 +245,7 @@ export default function MeuPerfilPage() {
             </div>
           </section>
           {/* Cards de informações */}
-          <main className="flex flex-col gap-4 sm:gap-6 w-full pb-8 sm:pb-0">
+          <div className="flex flex-col gap-4 sm:gap-6 w-full pb-8 sm:pb-0">
             {/* Dados pessoais - Representante legal da empresa e Dados empresa */}
             <div className="bg-white rounded-lg border border-[#E3E4F3] p-4 sm:p-6 flex flex-col gap-4 sm:gap-6 relative">
               <button
@@ -706,10 +707,11 @@ export default function MeuPerfilPage() {
                 </div>
               </div>
             </div>
-          </main>
+          </div>
+          </div>
           {/* Espaço extra no mobile para evitar corte */}
           <div className="h-24 sm:h-0"></div>
-        </div>
+        </main>
       </div>
       {/* Modais de edição */}
       <EditModal

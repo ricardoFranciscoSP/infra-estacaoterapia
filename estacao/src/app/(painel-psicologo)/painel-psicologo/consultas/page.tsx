@@ -404,14 +404,14 @@ export default function ConsultasPage() {
 
   return (
     <div className="min-h-screen font-fira-sans bg-[#F6F7FB]">
-      <div className="w-full max-w-full lg:max-w-[1600px] mx-auto flex">
-        {/* Sidebar - coluna esquerda */}
-        <div className="hidden md:flex">
+      <div className="w-full max-w-[1200px] mx-auto flex flex-col md:flex-row">
+        {/* Sidebar - alinhado ao logo (mesma largura do header) */}
+        <aside className="hidden md:flex flex-shrink-0">
           <SidebarPsicologo />
-        </div>
-        {/* Conteúdo principal - coluna direita */}
-        <main className="flex-1 py-4 sm:py-8 px-4 sm:px-6 lg:px-8 font-fira-sans w-full">
-          <div className="w-full max-w-full lg:max-w-[1400px] mx-auto">
+        </aside>
+        {/* Conteúdo principal - em box, alinhado ao avatar */}
+        <main className="flex-1 min-w-0 w-full py-4 sm:py-6 md:py-8 px-3 sm:px-4 md:px-6 overflow-x-hidden">
+          <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-4 sm:p-5 md:p-6 w-full">
             {/* Consulta em andamento - aparece quando status for EmAndamento (durante os 50 minutos) */}
             {consultaAtualFromHook && (() => {
               const status = consultaAtualFromHook.Status || (consultaAtualFromHook as any).status;
