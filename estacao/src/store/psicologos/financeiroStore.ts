@@ -77,7 +77,7 @@ interface financeiroState {
     isLoadingFaturaPeriodo: boolean;
     error: string | null;
     obterPagamentos: () => Promise<void>;
-    obterHistoricoSessoes: (mes?: number, ano?: number, page?: number, pageSize?: number) => Promise<void>;
+    obterHistoricoSessoes: (mes?: number, ano?: number, page?: number, pageSize?: number, todosStatus?: boolean) => Promise<void>;
     obterGanhosMensais: (ano?: number, mes?: number) => Promise<void>;
     obterAtendimentosMensais: (ano?: number, mes?: number) => Promise<void>;
     obterSaldoDisponivelResgate: () => Promise<void>;
@@ -122,11 +122,11 @@ const useFinanceiroStore = create<financeiroState>((set) => ({
         }
     },
 
-    obterHistoricoSessoes: async (mes?: number, ano?: number, page?: number, pageSize?: number) => {
+    obterHistoricoSessoes: async (mes?: number, ano?: number, page?: number, pageSize?: number, todosStatus?: boolean) => {
         set({ isLoadingHistorico: true, error: null });
         try {
-            console.log('[obterHistoricoSessoes] Buscando histórico:', { mes, ano, page, pageSize });
-            const result = await admPsicologoService().getHistoricoSessoes(mes, ano, page, pageSize);
+            console.log('[obterHistoricoSessoes] Buscando histórico:', { mes, ano, page, pageSize, todosStatus });
+            const result = await admPsicologoService().getHistoricoSessoes(mes, ano, page, pageSize, todosStatus);
             console.log('[obterHistoricoSessoes] Resposta recebida:', result);
             
             // A resposta pode vir em diferentes formatos:
@@ -282,20 +282,17 @@ const useFinanceiroStore = create<financeiroState>((set) => ({
                 consultas: []
             };
             
-            // Garantir que consultas seja um array
             if (!Array.isArray(fatura.consultas)) {
                 fatura.consultas = [];
             }
             
-            console.log('[obterFaturaPeriodo] Fatura processada:', fatura);
-            console.log('[obterFaturaPeriodo] Quantidade:', fatura.quantidade);
-            console.log('[obterFaturaPeriodo] Total:', fatura.total);
-            console.log('[obterFaturaPeriodo] Consultas:', fatura.consultas?.length || 0);
+            console.log('[obterFaturaPeriodo] Fatura processada:', { quantidade: fatura.quantidade, total: fatura.total, consultas: fatura.consultas?.length ?? 0 });
             set({ faturaPeriodo: fatura, isLoadingFaturaPeriodo: false });
         } catch (error: unknown) {
-            console.error('[obterFaturaPeriodo] Erro:', error);
+            console.error('[obterFaturaPeriodo] Erro ao buscar fatura:', error);
             const apiError = error as APIError;
-            const errorMessage = apiError?.response?.data?.message || 'Erro ao obter fatura do período.';
+            const errorMessage = apiError?.response?.data?.message || (error instanceof Error ? error.message : 'Erro ao obter fatura do período.');
+            console.warn('[obterFaturaPeriodo] Usando fallback (quantidade=0, total=0). Erro:', errorMessage);
             set({ 
                 error: errorMessage, 
                 isLoadingFaturaPeriodo: false,

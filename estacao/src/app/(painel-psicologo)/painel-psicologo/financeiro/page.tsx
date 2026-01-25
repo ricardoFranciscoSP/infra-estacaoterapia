@@ -158,6 +158,12 @@ export default function FinanceiroPage() {
     }
   }, [modalOpen, modalType, obterFaturaPeriodo]);
 
+  // Buscar fatura ao montar a página (exibe consultas realizadas / total mesmo antes de abrir modal)
+  useEffect(() => {
+    console.log('[FinanceiroPage] Buscando fatura do período ao carregar página');
+    obterFaturaPeriodo();
+  }, [obterFaturaPeriodo]);
+
   // Estado para última solicitação de saque (da tabela FinanceiroPsicologo)
   const [ultimaSolicitacao, setUltimaSolicitacao] = useState<{
     status: string;
@@ -294,6 +300,13 @@ export default function FinanceiroPage() {
   // Resetar página quando mudar filtro
   useEffect(() => {
     setPage(1);
+  }, [mesFiltro, anoFiltro]);
+
+  // Período recorrente do histórico: 20 do mês anterior a 20 do mês selecionado (ex.: 20/01 a 20/02)
+  const periodoHistoricoLabel = useMemo(() => {
+    const mesPrev = mesFiltro === 0 ? 11 : mesFiltro - 1;
+    const anoPrev = mesFiltro === 0 ? anoFiltro - 1 : anoFiltro;
+    return `20/${String(mesPrev + 1).padStart(2, '0')}/${anoPrev} a 20/${String(mesFiltro + 1).padStart(2, '0')}/${anoFiltro}`;
   }, [mesFiltro, anoFiltro]);
 
   // Detectar mobile
@@ -575,12 +588,33 @@ export default function FinanceiroPage() {
     setModalHistoricoOpen(false);
   }
 
-  // Função para renderizar status da sessão
+  // Função para renderizar status da sessão (inclui todos os status para debug)
   function StatusSessao({ status }: { status: string }) {
     if (status === "Agendada") {
       return (
         <span className="px-3 py-1 rounded-[6px] bg-[#FFF6D6] text-[#B89B2B] font-semibold flex items-center text-[13px]">
           Agendada
+        </span>
+      );
+    }
+    if (status === "Em andamento") {
+      return (
+        <span className="px-3 py-1 rounded-[6px] bg-[#E3F2FD] text-[#1565C0] font-semibold flex items-center text-[13px]">
+          Em andamento
+        </span>
+      );
+    }
+    if (status === "Reservada") {
+      return (
+        <span className="px-3 py-1 rounded-[6px] bg-[#F3E5F5] text-[#7B1FA2] font-semibold flex items-center text-[13px]">
+          Reservada
+        </span>
+      );
+    }
+    if (status === "Reagendada") {
+      return (
+        <span className="px-3 py-1 rounded-[6px] bg-[#FFF8E1] text-[#F9A825] font-semibold flex items-center text-[13px]">
+          Reagendada
         </span>
       );
     }
@@ -595,6 +629,13 @@ export default function FinanceiroPage() {
       return (
         <span className="px-3 py-1 rounded-[6px] bg-[#E7F6E7] text-[#3A7A3A] font-semibold flex items-center text-[13px]">
           Concluído
+        </span>
+      );
+    }
+    if (status && status !== "—") {
+      return (
+        <span className="px-3 py-1 rounded-[6px] bg-[#F5F5F5] text-[#616161] font-semibold flex items-center text-[13px]">
+          {status}
         </span>
       );
     }
@@ -1274,10 +1315,15 @@ export default function FinanceiroPage() {
                 )}
               </div>
             </div>
-            {/* Histórico das sessões */}
+            {/* Histórico das sessões — período recorrente: 20 do mês anterior a 20 do mês selecionado */}
             <div className="bg-[#FCFCF9] rounded-[14px] border border-[#E5E7EB] shadow-[0_2px_8px_rgba(109,117,192,0.08)] p-4 sm:p-6 w-full mb-4 sm:mb-8">
-              <div className="flex flex-row items-center justify-between gap-3 mb-4">
-                <h3 className="text-sm sm:text-[16px] font-semibold fira-sans text-[#23253a]">Histórico das sessões</h3>
+              <div className="flex flex-row items-center justify-between gap-3 mb-4 flex-wrap">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
+                  <h3 className="text-sm sm:text-[16px] font-semibold fira-sans text-[#23253a]">Histórico das sessões</h3>
+                  <span className="text-xs sm:text-[13px] text-[#6B7280]" title="Período de faturamento: todas as consultas do psicólogo entre 20 do mês anterior e 20 do mês atual">
+                    Período: {periodoHistoricoLabel}
+                  </span>
+                </div>
                 <div className="relative filtro-dropdown">
                   <button 
                     onClick={() => setShowFiltroHistorico(!showFiltroHistorico)}
@@ -1358,13 +1404,11 @@ export default function FinanceiroPage() {
                     ) : historicoSessoes.length === 0 ? (
                       <tr>
                         <td colSpan={6} className="py-8 text-center text-[#6B7280]">
-                          Nenhuma sessão encontrada para este período.
+                          Nenhuma sessão encontrada no período {periodoHistoricoLabel}.
                         </td>
                       </tr>
                     ) : (
-                      historicoSessoes
-                        .filter((s) => s.statusSessao === "Concluído" || s.statusSessao === "Realizada" || s.statusSessao === "Cancelada")
-                        .map((s) => {
+                      historicoSessoes.map((s) => {
                           // Mostra valor se:
                           // 1. Status de pagamento é "Pago" OU
                           // 2. Status de pagamento é "Bloqueado" (tem valor mas ainda não foi pago) OU

@@ -230,78 +230,29 @@ export class FinanceiroService implements IFinanceiroService {
     }
 
     /**
-     * Retorna o saldo disponível para resgate (comissões com status "disponivel" no período de corte)
-     * 🎯 Lógica de data de corte: A partir do dia 21, saldo não solicitado fica retido para o próximo mês
-     * Período: 20 do mês anterior até 20 do mês atual
-     * Apenas comissões com status "disponivel" são consideradas
+     * Retorna o saldo disponível para resgate (comissões com status "disponivel").
+     * Regra do dia 20: valor libera a partir do dia 21. Antes disso, disponível = 0.
+     * Lógica acumulativa: se o psicólogo não solicitou resgate, o valor acumula para a próxima janela.
+     * Soma TODAS as comissões "disponivel" (todos os períodos 20-a-20 já liberados), não só o último.
      */
     async getSaldoDisponivelResgate(psicologoId: string) {
         const now = new Date();
-        const ano = now.getFullYear();
-        const mes = now.getMonth(); // 0-indexado (0-11)
         const diaAtual = now.getDate();
 
-        // 🎯 A partir do dia 21, saldo não solicitado fica retido para o próximo mês
-        // Período disponível: 20 do mês anterior até 20 do mês atual
-        const mesAnterior = mes === 0 ? 11 : mes - 1;
-        const anoAnterior = mes === 0 ? ano - 1 : ano;
+        if (diaAtual < 21) {
+            console.log('[getSaldoDisponivelResgate] Antes do dia 21: disponível = 0 (período 20 a 20 ainda não liberou)');
+            return { saldoDisponivel: 0 };
+        }
 
-        // Data início: 20 do mês anterior (início do dia, sem hora)
-        const dataInicio = new Date(anoAnterior, mesAnterior, 20, 0, 0, 0, 0);
-        // Data fim: 20 do mês atual (fim do dia, sem hora)
-        const dataFim = new Date(ano, mes, 20, 23, 59, 59, 999);
-
-        // Busca comissões com status "disponivel"
-        // Se estamos após o dia 20 (dia 21+), apenas consultas até dia 20 do mês atual estão disponíveis
-        const comissoesDisponiveis = await prisma.commission.findMany({
+        const result = await prisma.commission.aggregate({
             where: {
                 PsicologoId: psicologoId,
                 Status: "disponivel",
-                OR: [
-                    {
-                        // Comissões com consulta associada no período de corte (até dia 20)
-                        Consulta: {
-                            Date: {
-                                gte: dataInicio,
-                                lte: dataFim,
-                            },
-                        },
-                    },
-                    {
-                        // Comissões sem consulta associada, mas criadas no período
-                        ConsultaId: null,
-                        CreatedAt: {
-                            gte: dataInicio,
-                            lte: dataFim,
-                        },
-                    },
-                ],
             },
-            include: { Consulta: { select: { Id: true, Date: true } } },
+            _sum: { Valor: true },
         });
 
-        // Se estamos após o dia 20, filtra apenas consultas até dia 20 do mês atual
-        let saldoDisponivel = 0;
-        for (const comissao of comissoesDisponiveis) {
-            if (comissao.ConsultaId && comissao.Consulta) {
-                const dataConsulta = new Date(comissao.Consulta.Date);
-                const mesConsulta = dataConsulta.getMonth() + 1;
-                const anoConsulta = dataConsulta.getFullYear();
-                const diaConsulta = dataConsulta.getDate();
-
-                // Se estamos após o dia 20, apenas consultas até dia 20 do mês atual estão disponíveis
-                if (diaAtual >= 21) {
-                    // Consultas do mês atual após dia 20 ficam retidas (não inclui)
-                    if (anoConsulta === ano && mesConsulta === mes && diaConsulta > 20) {
-                        continue; // Pula esta comissão (está retida)
-                    }
-                }
-                saldoDisponivel += comissao.Valor || 0;
-            } else {
-                // Comissão sem consulta associada - inclui se estiver no período
-                saldoDisponivel += comissao.Valor || 0;
-            }
-        }
+        const saldoDisponivel = result._sum.Valor ?? 0;
 
         return {
             saldoDisponivel: parseFloat(saldoDisponivel.toFixed(2)),
@@ -309,107 +260,62 @@ export class FinanceiroService implements IFinanceiroService {
     }
 
     /**
-     * Retorna o saldo retido (comissões com status "retido" após o período de corte)
-     * Mostra o valor das comissões geradas após o último fechamento até o próximo
+     * Retorna o saldo retido ("valor do saldo anterior ao dia 20").
+     * - Antes do dia 21: período 20/(n-1) a 20/n (o que ainda não liberou; libera após o dia 20).
+     * - A partir do dia 21: período 21/n a 20/(n+1) (próximo ciclo; libera após o próximo dia 20).
      */
     async getSaldoRetido(psicologoId: string) {
-        // Buscar a última solicitação de saque para obter a data de criação
-        const ultimaSolicitacaoSaque = await prisma.financeiroPsicologo.findFirst({
-            where: {
-                UserId: psicologoId,
-                Tipo: 'Saque'
-            },
-            orderBy: {
-                CreatedAt: 'desc'
-            }
-        });
+        const now = new Date();
+        const ano = now.getFullYear();
+        const mes = now.getMonth(); // 0-11
+        const diaAtual = now.getDate();
 
         let dataInicio: Date;
         let dataFim: Date;
+        let statusFiltro: "disponivel" | "retido";
 
-        if (ultimaSolicitacaoSaque && ultimaSolicitacaoSaque.CreatedAt) {
-            // Se há uma solicitação de saque, calcular desde a data de criação até o próximo período (dia 20 do mês seguinte)
-            const dataCriacao = new Date(ultimaSolicitacaoSaque.CreatedAt);
-            dataInicio = new Date(dataCriacao.getFullYear(), dataCriacao.getMonth(), dataCriacao.getDate(), 0, 0, 0, 0);
-
-            // Calcular o dia 20 do mês seguinte
-            const mesSeguinte = dataCriacao.getMonth() === 11 ? 0 : dataCriacao.getMonth() + 1;
-            const anoSeguinte = dataCriacao.getMonth() === 11 ? dataCriacao.getFullYear() + 1 : dataCriacao.getFullYear();
-            dataFim = new Date(anoSeguinte, mesSeguinte, 20, 23, 59, 59, 999);
-        } else {
-            // Se não há solicitação de saque, usar o período padrão (dia 20 do mês anterior até dia 20 do mês atual)
-            const now = new Date();
-            const ano = now.getFullYear();
-            const mes = now.getMonth();
-
-            // Dia 20 do mês anterior
+        if (diaAtual < 21) {
+            // Antes do dia 21: retido = período 20 a 20 (anterior ao dia 20 que vem) — ainda não liberou
             const mesAnterior = mes === 0 ? 11 : mes - 1;
             const anoAnterior = mes === 0 ? ano - 1 : ano;
             dataInicio = new Date(anoAnterior, mesAnterior, 20, 0, 0, 0, 0);
-
-            // Dia 20 do mês atual
             dataFim = new Date(ano, mes, 20, 23, 59, 59, 999);
+            statusFiltro = "disponivel";
+        } else {
+            // A partir do dia 21: retido = 21 do mês atual a 20 do próximo (próximo ciclo)
+            const mesSeguinte = mes === 11 ? 0 : mes + 1;
+            const anoSeguinte = mes === 11 ? ano + 1 : ano;
+            dataInicio = new Date(ano, mes, 21, 0, 0, 0, 0);
+            dataFim = new Date(anoSeguinte, mesSeguinte, 20, 23, 59, 59, 999);
+            statusFiltro = "retido";
         }
 
-        console.log('[getSaldoRetido] Período calculado:', {
+        console.log('[getSaldoRetido] Período:', {
             dataInicio: dataInicio.toISOString(),
             dataFim: dataFim.toISOString(),
-            temSolicitacao: !!ultimaSolicitacaoSaque
+            antesDoDia21: diaAtual < 21,
         });
 
-        // Buscar todas as consultas concluídas no período
-        const consultasNoPeriodo = await prisma.consulta.findMany({
-            where: {
-                PsicologoId: psicologoId,
-                Status: 'Realizada',
-                Date: {
-                    gte: dataInicio,
-                    lte: dataFim
-                }
-            },
-            include: {
-                Commission: {
-                    where: {
-                        PsicologoId: psicologoId
-                    }
-                }
-            }
-        });
-
-        // ✅ OTIMIZAÇÃO: Usa aggregate para somar valores diretamente no banco
         const saldoRetidoResult = await prisma.commission.aggregate({
             where: {
                 PsicologoId: psicologoId,
-                Status: "retido",
+                Status: statusFiltro,
                 OR: [
                     {
                         Consulta: {
-                            Date: {
-                                gte: dataInicio,
-                                lte: dataFim
-                            }
-                        }
+                            Date: { gte: dataInicio, lte: dataFim },
+                        },
                     },
                     {
                         ConsultaId: null,
-                        CreatedAt: {
-                            gte: dataInicio,
-                            lte: dataFim
-                        }
-                    }
-                ]
+                        CreatedAt: { gte: dataInicio, lte: dataFim },
+                    },
+                ],
             },
-            _sum: {
-                Valor: true
-            }
+            _sum: { Valor: true },
         });
 
         const saldoRetido = saldoRetidoResult._sum.Valor || 0;
-
-        console.log('[getSaldoRetido] Saldo retido calculado:', {
-            quantidadeConsultas: consultasNoPeriodo.length,
-            saldoRetido: saldoRetido
-        });
 
         return {
             saldoRetido: parseFloat(saldoRetido.toFixed(2)),
@@ -612,10 +518,12 @@ export class FinanceiroService implements IFinanceiroService {
             anoAnterior,
             mesAtual: mes + 1,
             anoAtual: ano,
-            psicologoId
+            psicologoId,
+            todosStatus: !!(filtro as any)?.todosStatus,
         });
 
-        // 🎯 Filtra apenas Realizadas e Canceladas (qualquer status de cancelamento)
+        // 🎯 DEBUG: com todosStatus=1 busca TODAS as sessões do período (todos os status)
+        const todosStatus = !!(filtro as any)?.todosStatus;
         const statusRealizada = $Enums.ConsultaStatus.Realizada;
         const statusCancelados: $Enums.ConsultaStatus[] = [
             $Enums.ConsultaStatus.Cancelado,
@@ -632,25 +540,25 @@ export class FinanceiroService implements IFinanceiroService {
             $Enums.ConsultaStatus.PsicologoDescredenciado
         ];
 
-        // Busca total de registros para paginação (apenas Realizadas e Canceladas)
+        const whereBase = {
+            PsicologoId: psicologoId,
+            Date: { gte: dataInicio, lte: dataFim },
+        };
+        const whereComStatus = todosStatus
+            ? whereBase
+            : { ...whereBase, Status: { in: [statusRealizada, ...statusCancelados] } };
+
+        if (todosStatus) {
+            console.log('[getHistoricoSessoes] DEBUG todosStatus=1: buscando TODAS as sessões do período (todos os status)');
+        }
+
+        // Busca total de registros para paginação
         const total = await prisma.consulta.count({
-            where: {
-                PsicologoId: psicologoId,
-                Date: { gte: dataInicio, lte: dataFim },
-                Status: {
-                    in: [statusRealizada, ...statusCancelados]
-                }
-            },
+            where: whereComStatus,
         });
 
         const sessoes = await prisma.consulta.findMany({
-            where: {
-                PsicologoId: psicologoId,
-                Date: { gte: dataInicio, lte: dataFim },
-                Status: {
-                    in: [statusRealizada, ...statusCancelados]
-                }
-            },
+            where: whereComStatus,
             include: {
                 Paciente: { select: { Nome: true } },
                 ReservaSessao: {
@@ -684,16 +592,22 @@ export class FinanceiroService implements IFinanceiroService {
             throw new Error('Erro ao carregar utilitários de status de consulta');
         }
 
+        // Mapeia ConsultaStatus (banco) -> label exibido no frontend (Histórico)
+        const mapStatusSessao = (s: string): string => {
+            if (s === $Enums.ConsultaStatus.Realizada) return "Concluído";
+            if (statusCancelados.includes(s as any)) return "Cancelada";
+            if (s === $Enums.ConsultaStatus.Agendada) return "Agendada";
+            if (s === $Enums.ConsultaStatus.EmAndamento) return "Em andamento";
+            if (s === $Enums.ConsultaStatus.Reservado) return "Reservada";
+            if (s?.startsWith("Reagendada")) return "Reagendada";
+            return s || "—";
+        };
+
         // 🎯 Mapeia sessões com verificação de repasse para status de pagamento
         const sessoesPromises = sessoes.map(async (sessao) => {
             try {
-                // Mapeia status da sessão para o formato do frontend
-                // Status "Realizada" no banco vira "Concluído" no frontend
-                let statusSessao = "Concluído";
                 const isCancelada = statusCancelados.includes(sessao.Status);
-                if (isCancelada) {
-                    statusSessao = "Cancelada";
-                }
+                const statusSessao = mapStatusSessao(sessao.Status);
 
                 // Busca cancelamento mais recente se houver
                 let cancelamentoMaisRecente = null;
@@ -832,6 +746,7 @@ export class FinanceiroService implements IFinanceiroService {
             totalSessoes: sessoes.length,
             totalMapeadas: sessoesMapeadas.length,
             totalRegistros: total,
+            todosStatus,
             pagination: {
                 page,
                 pageSize,
@@ -839,6 +754,9 @@ export class FinanceiroService implements IFinanceiroService {
                 totalPages: Math.ceil(total / pageSize),
             }
         });
+        if (todosStatus && sessoes.length > 0) {
+            console.log('[getHistoricoSessoes] DEBUG status das sessões:', sessoes.map((s) => ({ id: s.Id.substring(0, 8), status: s.Status })));
+        }
 
         return {
             data: sessoesMapeadas,

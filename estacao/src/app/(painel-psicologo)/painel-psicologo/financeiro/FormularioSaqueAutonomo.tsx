@@ -18,7 +18,8 @@ const CalendarIcon = ({ className }: { className?: string }) => (
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import BreadcrumbsVoltar from "@/components/BreadcrumbsVoltar";
-import { formatDateToYYYYMMDD, parseYYYYMMDDToDate } from "@/utils/date";
+import { formatDateToYYYYMMDD, parseYYYYMMDDToDate, parseDDMMYYYYToYYYYMMDD } from "@/utils/date";
+import { maskDate } from "@/utils/masks";
 
 interface FormularioSaqueAutonomoProps {
   onClose: () => void;
@@ -54,6 +55,12 @@ export const FormularioSaqueAutonomo: React.FC<FormularioSaqueAutonomoProps> = (
     const racas = ["Branca", "Preta", "Parda", "Amarela", "Indígena"];
     const regimesBens = ["Comunhão parcial de bens", "Comunhão universal de bens", "Separação total de bens", "Participação final nos aquestos", "Outro"];
   
+  const [cidadesNascimento, setCidadesNascimento] = useState<Array<{ nome: string }>>([]);
+  const [loadingCidadesNascimento, setLoadingCidadesNascimento] = useState(false);
+  const [cidadeBusca, setCidadeBusca] = useState("");
+  const [cidadeDropdownOpen, setCidadeDropdownOpen] = useState(false);
+  const [dataEmissaoInput, setDataEmissaoInput] = useState("");
+
   const [possuiDependente, setPossuiDependente] = useState<"nao" | "sim">("nao");
   const [tipoDependente, setTipoDependente] = useState("Cônjuge");
   const [nomeDependente, setNomeDependente] = useState("");
@@ -73,6 +80,9 @@ export const FormularioSaqueAutonomo: React.FC<FormularioSaqueAutonomoProps> = (
     "Rio de Janeiro", "Rio Grande do Norte", "Rio Grande do Sul", "Rondônia",
     "Roraima", "Santa Catarina", "São Paulo", "Sergipe", "Tocantins"
   ];
+  const ESTADO_TO_UF: Record<string, string> = Object.fromEntries(
+    estados.map((e, i) => [e, ufs[i]])
+  );
 
   const tiposDependente = ["Cônjuge", "Filho(a)", "Pai/Mãe", "Outro"];
 
@@ -100,11 +110,51 @@ export const FormularioSaqueAutonomo: React.FC<FormularioSaqueAutonomoProps> = (
     }
   };
 
+  const buscarCidadesPorEstado = React.useCallback(async (uf: string) => {
+    if (!uf || uf.length !== 2) return;
+    setLoadingCidadesNascimento(true);
+    try {
+      const res = await fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${uf}/municipios`);
+      if (res.ok) {
+        const data: Array<{ nome: string }> = await res.json();
+        setCidadesNascimento(data.map((c) => ({ nome: c.nome })));
+      } else {
+        setCidadesNascimento([]);
+      }
+    } catch (e) {
+      console.error("Erro ao buscar cidades:", e);
+      setCidadesNascimento([]);
+    } finally {
+      setLoadingCidadesNascimento(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const uf = ESTADO_TO_UF[estadoNascimentoPessoa];
+    if (uf) {
+      buscarCidadesPorEstado(uf);
+    } else {
+      setCidadesNascimento([]);
+    }
+  }, [estadoNascimentoPessoa, buscarCidadesPorEstado]);
+
   // Carregar dados existentes quando o formulário for carregado
   useEffect(() => {
     if (formulario) {
       setNumeroRg(formulario.NumeroRg || "");
-      setDataEmissaoRg(formulario.DataEmissaoRg || "");
+      const deRaw = formulario.DataEmissaoRg || "";
+      const de = typeof deRaw === "string" && deRaw.includes("T") ? deRaw.slice(0, 10) : deRaw;
+      setDataEmissaoRg(de);
+      if (de) {
+        try {
+          const d = parseYYYYMMDDToDate(de);
+          setDataEmissaoInput(d ? format(d, "dd/MM/yyyy", { locale: ptBR }) : "");
+        } catch {
+          setDataEmissaoInput("");
+        }
+      } else {
+        setDataEmissaoInput("");
+      }
       setOrgaoEmissor(formulario.OrgaoEmissor || "");
       setUfOrgaoEmissor(formulario.UfOrgaoEmissor || "SP");
       setDataNascimento(formulario.DataNascimento || "");
@@ -230,7 +280,64 @@ export const FormularioSaqueAutonomo: React.FC<FormularioSaqueAutonomoProps> = (
               </div>
               <div>
                 <label className="block text-[14px] font-medium text-[#23253a] mb-2">Data da emissão</label>
-                <input type="text" value={dataEmissaoRg} onChange={e => setDataEmissaoRg(e.target.value)} className="w-full px-4 py-2.5 rounded-[8px] border border-[#E5E7EB] text-[14px]" placeholder="DD/MM/AAAA" />
+                <div className="relative flex items-center">
+                  <input
+                    type="text"
+                    value={dataEmissaoInput || (dataEmissaoRg && (() => {
+                      try {
+                        const d = parseYYYYMMDDToDate(dataEmissaoRg);
+                        return d ? format(d, "dd/MM/yyyy", { locale: ptBR }) : "";
+                      } catch { return ""; }
+                    })()) || ""}
+                    onChange={(e) => {
+                      const masked = maskDate(e.target.value);
+                      setDataEmissaoInput(masked);
+                      if (masked.length === 10) {
+                        const yyyy = parseDDMMYYYYToYYYYMMDD(masked);
+                        if (yyyy) setDataEmissaoRg(yyyy);
+                      } else if (masked.length === 0) {
+                        setDataEmissaoRg("");
+                      }
+                    }}
+                    onBlur={() => {
+                      if (dataEmissaoInput && dataEmissaoInput.length > 0 && dataEmissaoInput.length < 10) {
+                        const yyyy = parseDDMMYYYYToYYYYMMDD(dataEmissaoInput);
+                        if (yyyy) setDataEmissaoRg(yyyy);
+                      }
+                    }}
+                    placeholder="DD/MM/AAAA"
+                    maxLength={10}
+                    className="w-full px-4 py-2.5 pr-10 rounded-[8px] border border-[#E5E7EB] text-[14px] bg-white"
+                  />
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-100 rounded text-[#6B7280]"
+                      >
+                        <CalendarIcon className="h-4 w-4" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0 bg-white border border-[#E3E6E8] rounded-md shadow-lg" align="end">
+                      <Calendar
+                        mode="single"
+                        selected={dataEmissaoRg?.trim() ? (parseYYYYMMDDToDate(dataEmissaoRg) ?? undefined) : undefined}
+                        onSelect={(date) => {
+                          if (date) {
+                            setDataEmissaoRg(formatDateToYYYYMMDD(date));
+                            setDataEmissaoInput(format(date, "dd/MM/yyyy", { locale: ptBR }));
+                          } else {
+                            setDataEmissaoRg("");
+                            setDataEmissaoInput("");
+                          }
+                        }}
+                        locale={ptBR}
+                        fromYear={1900}
+                        toYear={new Date().getFullYear()}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
               </div>
               <div>
                 <label className="block text-[14px] font-medium text-[#23253a] mb-2">Órgão emissor</label>
@@ -307,14 +414,70 @@ export const FormularioSaqueAutonomo: React.FC<FormularioSaqueAutonomoProps> = (
                 <input type="text" value={nacionalidade} onChange={e => setNacionalidade(e.target.value)} className="w-full px-4 py-2.5 rounded-[8px] border border-[#E5E7EB] text-[14px]" />
               </div>
               <div>
-                <label className="block text-[14px] font-medium text-[#23253a] mb-2">Cidade de nascimento</label>
-                <input type="text" value={cidadeNascimentoPessoa} onChange={e => setCidadeNascimentoPessoa(e.target.value)} className="w-full px-4 py-2.5 rounded-[8px] border border-[#E5E7EB] text-[14px]" />
-              </div>
-              <div>
                 <label className="block text-[14px] font-medium text-[#23253a] mb-2">Estado</label>
-                <select value={estadoNascimentoPessoa} onChange={e => setEstadoNascimentoPessoa(e.target.value)} className="w-full px-4 py-2.5 rounded-[8px] border border-[#E5E7EB] text-[14px]">
+                <select
+                  value={estadoNascimentoPessoa}
+                  onChange={(e) => {
+                    setEstadoNascimentoPessoa(e.target.value);
+                    setCidadeNascimentoPessoa("");
+                    setCidadeBusca("");
+                  }}
+                  className="w-full px-4 py-2.5 rounded-[8px] border border-[#E5E7EB] text-[14px]"
+                >
                   {estados.map(estado => <option key={estado} value={estado}>{estado}</option>)}
                 </select>
+              </div>
+              <div className="relative">
+                <label className="block text-[14px] font-medium text-[#23253a] mb-2">Cidade de nascimento</label>
+                <input
+                  type="text"
+                  value={cidadeDropdownOpen ? cidadeBusca : cidadeNascimentoPessoa}
+                  onChange={(e) => {
+                    setCidadeBusca(e.target.value);
+                    setCidadeDropdownOpen(true);
+                    setCidadeNascimentoPessoa("");
+                  }}
+                  onFocus={() => {
+                    setCidadeDropdownOpen(true);
+                    setCidadeBusca(cidadeNascimentoPessoa);
+                  }}
+                  onBlur={() => {
+                    setTimeout(() => setCidadeDropdownOpen(false), 200);
+                    if (!cidadeNascimentoPessoa && cidadeBusca) setCidadeBusca("");
+                  }}
+                  placeholder={loadingCidadesNascimento ? "Carregando cidades..." : "Buscar cidade"}
+                  className="w-full px-4 py-2.5 rounded-[8px] border border-[#E5E7EB] text-[14px] bg-white"
+                />
+                {cidadeDropdownOpen && (
+                  <ul className="absolute z-50 mt-1 w-full max-h-48 overflow-y-auto rounded-[8px] border border-[#E5E7EB] bg-white shadow-lg py-1">
+                    {loadingCidadesNascimento ? (
+                      <li className="px-4 py-2 text-[14px] text-[#6B7280]">Carregando...</li>
+                    ) : (() => {
+                      const term = cidadeBusca.trim().toLowerCase();
+                      const filtered = term
+                        ? cidadesNascimento.filter((c) => c.nome.toLowerCase().includes(term)).slice(0, 100)
+                        : cidadesNascimento.slice(0, 100);
+                      return filtered.length === 0 ? (
+                        <li className="px-4 py-2 text-[14px] text-[#6B7280]">Nenhuma cidade encontrada</li>
+                      ) : (
+                        filtered.map((c) => (
+                          <li
+                            key={c.nome}
+                            className="px-4 py-2 text-[14px] cursor-pointer hover:bg-[#F6F7FB]"
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              setCidadeNascimentoPessoa(c.nome);
+                              setCidadeBusca("");
+                              setCidadeDropdownOpen(false);
+                            }}
+                          >
+                            {c.nome}
+                          </li>
+                        ))
+                      );
+                    })()}
+                  </ul>
+                )}
               </div>
               <div>
                 <label className="block text-[14px] font-medium text-[#23253a] mb-2">Sexo</label>

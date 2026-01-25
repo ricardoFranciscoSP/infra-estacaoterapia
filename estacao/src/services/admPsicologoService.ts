@@ -14,12 +14,13 @@ export const admPsicologoService = () => {
             }
         }),
         calcularPagamento: () => api.get(`/psicologo/financeiro/calcular-pagamento`),
-        getHistoricoSessoes: (mes?: number, ano?: number, page?: number, pageSize?: number) => {
+        getHistoricoSessoes: (mes?: number, ano?: number, page?: number, pageSize?: number, todosStatus?: boolean) => {
             const params = new URLSearchParams();
             if (mes !== undefined) params.append('mes', mes.toString());
             if (ano !== undefined) params.append('ano', ano.toString());
             if (page !== undefined) params.append('page', page.toString());
             if (pageSize !== undefined) params.append('pageSize', pageSize.toString());
+            if (todosStatus) params.append('todosStatus', '1');
             const queryString = params.toString();
             return api.get(`/psicologo/financeiro/historico-sessoes${queryString ? `?${queryString}` : ''}`);
         },

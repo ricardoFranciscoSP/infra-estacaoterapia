@@ -30,15 +30,19 @@ export function useObterPagamentos() {
     };
 }
 
-export function useHistoricoSessoes(mes?: number, ano?: number, page?: number, pageSize?: number) {
+/** Debug: quando true, busca todas as sessões do período com todos os status (sem filtrar só Realizada/Cancelada) */
+const DEBUG_HISTORICO_TODOS_STATUS = true;
+
+export function useHistoricoSessoes(mes?: number, ano?: number, page?: number, pageSize?: number, todosStatus?: boolean) {
     const obterHistoricoSessoes = useFinanceiroStore(state => state.obterHistoricoSessoes);
     const isLoadingHistorico = useFinanceiroStore(state => state.isLoadingHistorico);
     const pagination = useFinanceiroStore(state => state.pagination);
+    const effectiveTodosStatus = todosStatus ?? DEBUG_HISTORICO_TODOS_STATUS;
 
     const query = useQuery<HistoricoSessao[]>({
-        queryKey: ['historico-sessoes', mes, ano, page, pageSize],
+        queryKey: ['historico-sessoes', mes, ano, page, pageSize, effectiveTodosStatus],
         queryFn: async () => {
-            await obterHistoricoSessoes(mes, ano, page, pageSize);
+            await obterHistoricoSessoes(mes, ano, page, pageSize, effectiveTodosStatus);
             // Buscar o valor atualizado do store após o await
             const historicoAtual = useFinanceiroStore.getState().historicoSessoes;
             return historicoAtual;
@@ -54,6 +58,8 @@ export function useHistoricoSessoes(mes?: number, ano?: number, page?: number, p
         isLoading: query.isLoading || isLoadingHistorico,
         isError: query.isError,
         refetch: query.refetch,
+        /** Debug ativo: exibindo todas as sessões com todos os status */
+        debugTodosStatus: effectiveTodosStatus,
     };
 }
 

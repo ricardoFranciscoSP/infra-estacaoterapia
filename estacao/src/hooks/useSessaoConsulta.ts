@@ -33,7 +33,7 @@ export function useSessaoConsulta(consulta: ConsultaSessao): UseSessaoConsulta {
     const [sessaoAtiva, setSessaoAtiva] = useState(false);
     const [sessaoEncerrada, setSessaoEncerrada] = useState(false);
     const [tempoAposInicio, setTempoAposInicio] = useState(0);
-    
+
     // Usa o contador global compartilhado em vez de criar um novo intervalo
     const { timestamp } = useContadorGlobal();
 
@@ -46,8 +46,8 @@ export function useSessaoConsulta(consulta: ConsultaSessao): UseSessaoConsulta {
             // ScheduledAt está no formato 'YYYY-MM-DD HH:mm:ss'
             const [datePart, timePart] = scheduledAt.split(' ');
             if (datePart && timePart) {
-                return { 
-                    data: datePart, 
+                return {
+                    data: datePart,
                     horario: timePart.split(':').slice(0, 2).join(':') // Remove segundos
                 };
             }
@@ -67,7 +67,7 @@ export function useSessaoConsulta(consulta: ConsultaSessao): UseSessaoConsulta {
     // Função memoizada para calcular a diferença em segundos
     const getDiffSeconds = useCallback((agoraTimestamp: number) => {
         const { data, horario } = consultaData;
-        
+
         if (!data || !horario) return 0;
 
         // Aceita data/hora nos dois formatos
@@ -86,7 +86,7 @@ export function useSessaoConsulta(consulta: ConsultaSessao): UseSessaoConsulta {
                 consultaDate = new Date(Number(ano), Number(mes) - 1, Number(dia), Number(hora), Number(minuto));
             }
         }
-        
+
         return consultaDate
             ? Math.floor((consultaDate.getTime() - agoraTimestamp) / 1000)
             : 0;
@@ -156,7 +156,7 @@ export function useSessaoConsulta(consulta: ConsultaSessao): UseSessaoConsulta {
         if (!data || !horario) return true; // Se não tem data/hora, considera como passada
 
         let dataConsulta: Date;
-        
+
         // Prioriza usar Date se disponível (já vem com data/hora completa)
         if (consulta?.Date && typeof consulta.Date === 'string') {
             dataConsulta = new Date(consulta.Date);
@@ -173,11 +173,11 @@ export function useSessaoConsulta(consulta: ConsultaSessao): UseSessaoConsulta {
             const [hora, minuto] = horario.split(":");
             dataConsulta = new Date(Number(ano), Number(mes) - 1, Number(dia), Number(hora), Number(minuto) || 0, 0, 0);
         }
-        
+
         const agora = new Date();
         // Considera duração de 60 minutos - consulta termina 1h após o início
         const fimConsulta = dataConsulta.getTime() + 60 * 60 * 1000;
-        
+
         // Retorna true se a consulta já terminou (agora > fim da consulta)
         return agora.getTime() > fimConsulta;
     }

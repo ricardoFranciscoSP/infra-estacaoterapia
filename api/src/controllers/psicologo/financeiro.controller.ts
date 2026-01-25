@@ -66,14 +66,16 @@ export class FinanceiroController {
             const ano = normalizeQueryInt(req.query.ano);
             const page = normalizeQueryInt(req.query.page) ?? 1;
             const pageSize = normalizeQueryInt(req.query.pageSize) ?? 10;
+            const todosStatus = req.query.todosStatus === '1' || req.query.todosStatus === 'true';
 
-            console.log('[getHistoricoSessoes] Buscando histórico:', { psicologoId, mes, ano, page, pageSize });
+            console.log('[getHistoricoSessoes] Buscando histórico:', { psicologoId, mes, ano, page, pageSize, todosStatus });
 
-            const historico = await (this.financeiroService as any).getHistoricoSessoes(psicologoId, { mes, ano, page, pageSize });
+            const historico = await (this.financeiroService as any).getHistoricoSessoes(psicologoId, { mes, ano, page, pageSize, todosStatus });
             
             console.log('[getHistoricoSessoes] Histórico encontrado:', { 
                 count: historico?.data?.length || 0, 
-                pagination: historico?.pagination 
+                pagination: historico?.pagination,
+                todosStatus 
             });
 
             // Garante que sempre retorna no formato esperado
