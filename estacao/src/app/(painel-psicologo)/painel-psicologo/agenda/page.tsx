@@ -197,8 +197,6 @@ export default function AgendaConfigPage() {
     return false;
   }
 
-  const isMobile = typeof window !== "undefined" && window.innerWidth < 640;
-
   function getMonthName(month: number) {
     const meses = [
       "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
@@ -209,16 +207,17 @@ export default function AgendaConfigPage() {
 
   return (
     <div className="min-h-screen bg-[#F7F8FA]">
-      <div className="max-w-7xl mx-auto w-full flex">
-        <div className="hidden md:flex">
+      <div className="w-full max-w-[1200px] mx-auto flex flex-col md:flex-row">
+        <aside className="hidden md:flex flex-shrink-0">
           <SidebarPsicologo />
-        </div>
-        <div className="flex-1 py-4 sm:py-8 px-4 sm:px-6 w-full">
+        </aside>
+        <main className="flex-1 min-w-0 w-full py-4 sm:py-6 md:py-8 px-3 sm:px-4 md:px-6 pb-32 sm:pb-6 md:pb-8 overflow-x-hidden">
+          <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-4 sm:p-5 md:p-6 w-full">
           <h1 className="text-center text-lg sm:text-[22px] fira-sans font-semibold mb-4 sm:mb-6 text-primary">
             Configurar agenda do mês
           </h1>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-8 mb-24 sm:mb-8">
-            <div className={`bg-white shadow-lg rounded-xl p-4 sm:p-6 ${isMobile ? "mb-12" : ""}`}>
+            <div className="bg-white shadow-md rounded-xl p-4 sm:p-6 border border-gray-100">
               <div className="mb-4 flex items-center justify-between">
                 <span className="fira-sans font-medium text-base sm:text-[18px] leading-[24px] align-middle text-[#26220D]">
                   Selecione uma data
@@ -345,7 +344,7 @@ export default function AgendaConfigPage() {
               </div>
             </div>
 
-            <div className="bg-white shadow-lg rounded-xl p-4 sm:p-6 min-h-[400px] flex flex-col">
+            <div className="bg-white shadow-md rounded-xl p-4 sm:p-6 min-h-[400px] flex flex-col border border-gray-100">
               {selectedDate ? (
                 <>
                   <h3 className="fira-sans font-medium text-base sm:text-[18px] leading-[24px] align-middle text-[#26220D] mb-2">
@@ -518,7 +517,8 @@ export default function AgendaConfigPage() {
               )}
             </div>
           </div>
-        </div>
+          </div>
+        </main>
       </div>
     </div>
   );

@@ -13,6 +13,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import SidebarPsicologo from "./SidebarPsicologo";
 import Image from "next/image";
 import { useObterPagamentos } from "@/hooks/psicologos/financeiro.hook";
+import useFinanceiroStore from "@/store/psicologos/financeiroStore";
 import { useObterConsultasRealizadas, useObterTaxaOcupacao, useObterConsultasPendentes, useObterProximasConsultas, useObterProximaConsultaPsicologo, useObterConsultasNoMes } from "@/hooks/psicologos/consultas.hook";
 import { useUserBasic } from "@/hooks/user/userHook";
 import PainelCardsPsicologo from "@/components/PainelCardsPsicologo";
@@ -78,7 +79,9 @@ function getNomePacienteSeguro(paciente: string | undefined | null): string {
     // Filtro de status
     const [statusFiltro, setStatusFiltro] = useState<string>('todos');
     const itemsPerPage = 10;
-    const { calculoPagamento, isLoading: loadingPagamentos} = useObterPagamentos();
+    const { calculoPagamento, isLoading: loadingPagamentos } = useObterPagamentos();
+    const obterFaturaPeriodo = useFinanceiroStore((s) => s.obterFaturaPeriodo);
+    const faturaPeriodo = useFinanceiroStore((s) => s.faturaPeriodo);
     const { isLoading: loadingConsultas } = useObterConsultasRealizadas();
     const { taxaOcupacao, isLoading: loadingOcupacao } = useObterTaxaOcupacao();
     const { consultasPendentes } = useObterConsultasPendentes();
@@ -155,6 +158,10 @@ function getNomePacienteSeguro(paciente: string | undefined | null): string {
 
     return () => clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    obterFaturaPeriodo();
+  }, [obterFaturaPeriodo]);
 
   // Helper para extrair data (YYYY-MM-DD) do campo Data (que pode vir como timestamp)
   const extrairDataString = (data: string | Date | undefined): string | null => {
@@ -809,7 +816,9 @@ function getNomePacienteSeguro(paciente: string | undefined | null): string {
               className="mb-8"
             >
               <PainelCardsPsicologo
-                calculoPagamento={calculoPagamento}
+                calculoPagamento={{
+                  totalPagamento: faturaPeriodo?.total ?? calculoPagamento?.totalPagamento ?? 0,
+                }}
                 consultasPendentes={consultasPendentes}
                 taxaOcupacao={taxaOcupacao}
                 consultasNoMes={totalConsultasNoMes}

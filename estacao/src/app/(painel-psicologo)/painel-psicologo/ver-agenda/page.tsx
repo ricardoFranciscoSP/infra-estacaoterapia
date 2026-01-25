@@ -68,12 +68,13 @@ export default function VerAgendaPage() {
   }, [visibleCount, diasOrdenados.length]);
 
   return (
-    <div className="min-h-screen">
-      <div className="max-w-7xl mx-auto w-full flex">
-        <div className="hidden md:flex">
+    <div className="min-h-screen bg-[#F7F8FA]">
+      <div className="w-full max-w-[1200px] mx-auto flex flex-col md:flex-row">
+        <aside className="hidden md:flex flex-shrink-0">
           <SidebarPsicologo />
-        </div>
-        <div className="flex-1 py-4 sm:py-8 px-4 sm:px-6 w-full mb-24 sm:mb-8">
+        </aside>
+        <main className="flex-1 min-w-0 w-full py-4 sm:py-6 md:py-8 px-3 sm:px-4 md:px-6 pb-32 sm:pb-6 md:pb-8 overflow-x-hidden">
+          <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-4 sm:p-5 md:p-6 w-full">
           <h1 className="text-lg sm:text-2xl font-semibold mb-6 text-primary">
             Ver Agenda
           </h1>
@@ -152,7 +153,8 @@ export default function VerAgendaPage() {
               </AnimatePresence>
             </div>
           )}
-        </div>
+          </div>
+        </main>
       </div>
     </div>
   );
