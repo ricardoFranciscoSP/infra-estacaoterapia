@@ -4,6 +4,14 @@ import prisma from "../../prisma/client";
 import { getRepassePercentForPsychologist } from "../../utils/repasse.util";
 import { Prisma, $Enums } from "../../generated/prisma/index";
 import { calcularStatusRepassePorDataCorte } from "../../scripts/processarRepassesConsultas";
+import dayjs from "dayjs";
+import timezone from "dayjs/plugin/timezone";
+import utc from "dayjs/plugin/utc";
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
+
+const BRASILIA_TZ = "America/Sao_Paulo";
 
 export interface FiltroFinanceiro {
     mes?: number;
@@ -882,16 +890,15 @@ export class FinanceiroService implements IFinanceiroService {
         console.log(`[getFaturaPeriodo] Total de consultas concluídas do psicólogo: ${totalConsultasConcluidas}`);
 
         // Buscar TODAS as consultas concluídas do psicólogo (sem filtro de data inicial)
-        // Depois vamos filtrar comparando apenas a data (sem hora)
-        // TABELA: Consulta
+        // Depois vamos filtrar comparando a data em America/Sao_Paulo (evita UTC vs local)
         const consultas = await prisma.consulta.findMany({
             where: {
                 PsicologoId: psicologoId,
                 Status: "Realizada",
             },
             include: {
-                // TABELA: Commission - Busca TODAS as comissões relacionadas
                 Commission: {
+                    where: { PsicologoId: psicologoId },
                     select: {
                         Valor: true,
                         CreatedAt: true,
@@ -899,16 +906,11 @@ export class FinanceiroService implements IFinanceiroService {
                     },
                     orderBy: { CreatedAt: "desc" },
                 },
-                // Incluir dados do paciente
                 Paciente: {
-                    select: {
-                        Nome: true,
-                    },
+                    select: { Nome: true },
                 },
             },
-            orderBy: {
-                Date: "asc",
-            },
+            orderBy: { Date: "asc" },
         });
 
         console.log(`[getFaturaPeriodo] Total de consultas concluídas encontradas: ${consultas.length}`);
@@ -928,19 +930,14 @@ export class FinanceiroService implements IFinanceiroService {
             console.log(`[getFaturaPeriodo] ⚠️ NENHUMA consulta concluída encontrada para este psicólogo!`);
         }
 
-        // Filtrar consultas que estão realmente no período (comparando apenas a data, sem hora)
-        // A data vem no formato "2025-12-06 03:00:00", então precisamos comparar apenas a parte da data
+        // Filtrar consultas no período (20 do mês anterior a 20 do mês atual)
+        // Usar America/Sao_Paulo para evitar exclusão por diferença UTC vs local
         const consultasFiltradas = consultas.filter((consulta) => {
-            const dataConsulta = new Date(consulta.Date);
-            // Extrair apenas a data (ano, mês, dia) sem a hora
-            const anoConsulta = dataConsulta.getFullYear();
-            const mesConsulta = dataConsulta.getMonth(); // 0-indexado
-            const diaConsulta = dataConsulta.getDate();
+            const d = dayjs.tz(consulta.Date, BRASILIA_TZ);
+            const anoConsulta = d.year();
+            const mesConsulta = d.month(); // 0-11
+            const diaConsulta = d.date();
 
-            // Verificar se está no período: 20 do mês anterior até 20 do mês atual
-            // Exemplo: Se estamos em dezembro/2025, período é 20/11/2025 até 20/12/2025
-            // - Consultas de novembro/2025 com dia >= 20
-            // - Consultas de dezembro/2025 com dia <= 20
             const estaNoPeriodo =
                 (anoConsulta === anoAnterior && mesConsulta === mesAnterior && diaConsulta >= 20) ||
                 (anoConsulta === ano && mesConsulta === mes && diaConsulta <= 20);
@@ -948,14 +945,10 @@ export class FinanceiroService implements IFinanceiroService {
             if (estaNoPeriodo) {
                 const comissao = consulta.Commission && consulta.Commission.length > 0 ? consulta.Commission[0] : null;
                 console.log(`[getFaturaPeriodo] ✅ Consulta incluída: ${diaConsulta}/${mesConsulta + 1}/${anoConsulta} - Comissão: R$ ${comissao?.Valor || 0}`);
-            } else {
-                // Log apenas algumas consultas excluídas para não poluir o console
-                if (consultas.indexOf(consulta) < 5) {
-                    const comissao = consulta.Commission && consulta.Commission.length > 0 ? consulta.Commission[0] : null;
-                    console.log(`[getFaturaPeriodo] ❌ Consulta excluída: ${diaConsulta}/${mesConsulta + 1}/${anoConsulta} (fora do período: esperado ${mesAnterior + 1}/${anoAnterior} dia>=20 OU ${mes + 1}/${ano} dia<=20) - Comissão: R$ ${comissao?.Valor || 0}`);
-                }
+            } else if (consultas.indexOf(consulta) < 5) {
+                const comissao = consulta.Commission && consulta.Commission.length > 0 ? consulta.Commission[0] : null;
+                console.log(`[getFaturaPeriodo] ❌ Consulta excluída: ${diaConsulta}/${mesConsulta + 1}/${anoConsulta} (fora do período) - Comissão: R$ ${comissao?.Valor || 0}`);
             }
-
             return estaNoPeriodo;
         });
 
@@ -968,7 +961,7 @@ export class FinanceiroService implements IFinanceiroService {
             console.log(`[getFaturaPeriodo] ⚠️ ATENÇÃO: Existem ${consultas.length} consultas concluídas, mas nenhuma está no período 20/${mesAnteriorStr}/${anoAnterior} até 20/${mesAtualStr}/${ano}`);
             console.log(`[getFaturaPeriodo] Verifique se as consultas estão nas datas corretas.`);
         } else if (consultas.length === 0) {
-            console.log(`[getFaturaPeriodo] ⚠️ ATENÇÃO: Nenhuma consulta com status "Concluido" encontrada para este psicólogo.`);
+            console.log(`[getFaturaPeriodo] ⚠️ ATENÇÃO: Nenhuma consulta com status "Realizada" encontrada para este psicólogo.`);
         }
 
         // Calcular total somando as comissões das consultas filtradas

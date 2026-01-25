@@ -13,6 +13,12 @@ import { useFormularioSaqueAutonomoStatus } from '@/hooks/formularioSaqueAutonom
 import { solicitacaoSaqueService } from '@/services/solicitacaoSaqueService';
 import toast from 'react-hot-toast';
 import useFinanceiroStore from '@/store/psicologos/financeiroStore';
+import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc';
+import timezone from 'dayjs/plugin/timezone';
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 // Mock de dados
 const pagamentosAReceber = [
@@ -202,24 +208,30 @@ export default function FinanceiroPage() {
     buscarUltimaSolicitacao();
   }, []);
 
-  // Função para verificar se o botão deve estar bloqueado
+  // Janela de saque: botão "Receber valor" e link "Enviar documento fiscal" disponíveis somente entre 21 e 23
+  const estaNaJanelaSaque = useMemo(() => {
+    const dia = dayjs().tz('America/Sao_Paulo').date();
+    return dia >= 21 && dia <= 23;
+  }, []);
+
+  // Função para verificar se o botão deve estar bloqueado (após último saque, até dia 20 do mês seguinte)
   const isBotaoSaqueBloqueado = useMemo(() => {
     if (!ultimaSolicitacao) return false;
     
-    // Se não há data de criação, não bloqueia
     if (!ultimaSolicitacao.createdAt) return false;
 
     const dataCriacao = new Date(ultimaSolicitacao.createdAt);
     const hoje = new Date();
     
-    // Calcular o dia 20 do mês seguinte ao mês da criação
     const mesSeguinte = dataCriacao.getMonth() === 11 ? 0 : dataCriacao.getMonth() + 1;
     const anoSeguinte = dataCriacao.getMonth() === 11 ? dataCriacao.getFullYear() + 1 : dataCriacao.getFullYear();
     const dataLiberacao = new Date(anoSeguinte, mesSeguinte, 20, 0, 0, 0, 0);
     
-    // Bloquear se ainda não passou do dia 20 do mês seguinte
     return hoje < dataLiberacao;
   }, [ultimaSolicitacao]);
+
+  const bloqueadoReceberValor = !estaNaJanelaSaque || isBotaoSaqueBloqueado;
+  const bloqueadoEnviarDoc = !estaNaJanelaSaque || isBotaoSaqueBloqueado;
 
   // Função para renderizar tag de status (baseado no Status do FinanceiroPsicologo)
   function StatusTag({ status }: { status: string }) {
@@ -450,16 +462,13 @@ export default function FinanceiroPage() {
   }, [psicologoData]);
 
   async function handleSolicitarSaque() {
-    // Se for autônomo, verificar se o formulário foi preenchido
+    if (bloqueadoReceberValor) return;
+
+    // Autônomo: formulário 1x — se já preenchido, nunca mais solicitar; abrir direto na nota fiscal
     if (isAutonomo) {
-      // Atualizar status do formulário antes de verificar
       await refetchFormularioStatus();
-      
-      // Verificar status do formulário antes de abrir o modal
-      // formularioStatus pode ser null (carregando), false (não preenchido) ou true (preenchido)
       if (formularioStatus !== true) {
         toast.error('É necessário preencher o formulário de saque autônomo antes de solicitar o saque');
-        // Abrir modal do formulário
         setSaqueStep('formulario');
         setSaqueModalOpen(true);
         return;
@@ -570,6 +579,7 @@ export default function FinanceiroPage() {
   }
 
   function handleEnviarReceita() {
+    if (bloqueadoEnviarDoc) return;
     setModalType('receita');
     setModalOpen(true);
   }
@@ -761,10 +771,14 @@ export default function FinanceiroPage() {
                     )}
                   </div>
                   <span className="fira-sans text-[14px] text-[#6B7280]">Valor liberado para saque</span>
-                  {isBotaoSaqueBloqueado && ultimaSolicitacao && (
+                  {bloqueadoReceberValor && (
                     <div className="p-2 bg-yellow-50 border border-yellow-200 rounded-[6px]">
                       <p className="text-[12px] text-yellow-800">
-                        Você só poderá solicitar um novo saque a partir do dia 20 do mês seguinte ao último saque.
+                        {!estaNaJanelaSaque
+                          ? 'Receber valor e enviar documento fiscal estão disponíveis apenas entre os dias 21 e 23 de cada mês.'
+                          : ultimaSolicitacao
+                            ? 'Você só poderá solicitar um novo saque a partir do dia 20 do mês seguinte ao último saque.'
+                            : ''}
                       </p>
                     </div>
                   )}
@@ -785,15 +799,21 @@ export default function FinanceiroPage() {
                   )}
                   <button
                     className={`px-6 py-2 rounded-[8px] font-semibold shadow-sm transition whitespace-nowrap text-[16px] leading-[24px] ${
-                      saldoDisponivelResgate === 0 || isBotaoSaqueBloqueado
+                      saldoDisponivelResgate === 0 || bloqueadoReceberValor
                         ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                         : 'bg-[#8494E9] text-white hover:bg-[#6D75C0] cursor-pointer'
                     }`}
                     onClick={handleSolicitarSaque}
-                    disabled={saldoDisponivelResgate === 0 || isBotaoSaqueBloqueado}
-                    title={isBotaoSaqueBloqueado ? 'Você só pode solicitar um novo saque a partir do dia 20 do mês seguinte ao último saque' : ''}
+                    disabled={saldoDisponivelResgate === 0 || bloqueadoReceberValor}
+                    title={
+                      !estaNaJanelaSaque
+                        ? 'Disponível apenas entre os dias 21 e 23 de cada mês.'
+                        : isBotaoSaqueBloqueado
+                          ? 'Você só pode solicitar um novo saque a partir do dia 20 do mês seguinte ao último saque.'
+                          : ''
+                    }
                   >
-                    {isBotaoSaqueBloqueado ? 'Aguardando liberação' : 'Receber valor'}
+                    Receber valor
                   </button>
                 </div>
               </div>
@@ -826,18 +846,28 @@ export default function FinanceiroPage() {
                     <div className="flex items-center gap-2">
                       <Image src="/icons/alert-finaceiro.svg" alt="Documento fiscal pendente de envio" width={16} height={16} />
                       <span className="fira-sans font-normal text-[12px] leading-[16px] align-middle text-[#49525A] break-words">
-                        {isBotaoSaqueBloqueado ? 'Aguardando próximo período' : 'Documento fiscal pendente de envio'}
+                        {!estaNaJanelaSaque
+                          ? 'Disponível entre os dias 21 e 23'
+                          : isBotaoSaqueBloqueado
+                            ? 'Aguardando próximo período'
+                            : 'Documento fiscal pendente de envio'}
                       </span>
                     </div>
                     <button
                       className={`px-4 py-2 font-semibold transition whitespace-nowrap text-[15px] leading-[22px] self-start sm:self-auto ${
-                        isBotaoSaqueBloqueado
+                        bloqueadoEnviarDoc
                           ? 'text-gray-400 cursor-not-allowed no-underline'
                           : 'text-[#6D75C0] cursor-pointer hover:underline'
                       }`}
                       onClick={handleEnviarReceita}
-                      disabled={isBotaoSaqueBloqueado}
-                      title={isBotaoSaqueBloqueado ? 'Você só pode enviar documento fiscal a partir do dia 20 do mês seguinte ao último saque' : ''}
+                      disabled={bloqueadoEnviarDoc}
+                      title={
+                        !estaNaJanelaSaque
+                          ? 'Disponível apenas entre os dias 21 e 23 de cada mês.'
+                          : isBotaoSaqueBloqueado
+                            ? 'Você só pode enviar documento fiscal a partir do dia 20 do mês seguinte ao último saque.'
+                            : ''
+                      }
                     >
                       Enviar documento fiscal
                     </button>
