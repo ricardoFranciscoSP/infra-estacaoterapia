@@ -246,7 +246,6 @@ export default function ConsultaAtualPsicologo({ consulta: consultaProp = null, 
     
     try {
       let inicioConsulta: number | null = null;
-      
       if (scheduledAt) {
         const [datePart, timePart] = scheduledAt.split(' ');
         if (datePart && timePart) {
@@ -259,31 +258,28 @@ export default function ConsultaAtualPsicologo({ consulta: consultaProp = null, 
           inicioConsulta = inicioConsultaDate.valueOf();
         }
       }
-      
       if (!inicioConsulta) {
         const dateOnly = extractDateOnly(normalized.date);
         if (!dateOnly) return;
         const [hh, mm] = normalized.time.split(':').map(Number);
         inicioConsulta = dayjs.tz(`${dateOnly} ${hh}:${mm}:00`, 'America/Sao_Paulo').valueOf();
       }
-      
       if (inicioConsulta) {
         const fimConsulta = inicioConsulta + (60 * 60 * 1000); // 60 minutos
         const agoraTimestamp = dayjs().tz("America/Sao_Paulo").valueOf();
         const tempoRestante = fimConsulta - agoraTimestamp;
-        
         if (tempoRestante > 0) {
           const timeoutId = setTimeout(() => {
             // Força atualização quando passar de 60 minutos
             queryClient.invalidateQueries({ queryKey: ['consultaAtualEmAndamento'] });
             queryClient.invalidateQueries({ queryKey: ['reservas/consultas-agendadas'] });
           }, tempoRestante);
-          
           return () => clearTimeout(timeoutId);
         }
       }
     } catch (error) {
-      console.error('[ConsultaAtualPsicologo] Erro ao calcular timeout de 60 minutos:', error);
+      // Silencia erros de timeout para evitar toast/console excessivo
+      // (erro de cálculo de tempo não impacta experiência do usuário)
     }
   }, [normalized]);
 

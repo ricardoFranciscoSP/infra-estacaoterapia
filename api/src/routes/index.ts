@@ -46,9 +46,13 @@ import politicasRoutes from "./politicas.routes";
 import policyDocumentsRoutes from "./policyDocuments.routes";
 import internalRoutes from "./internal.routes";
 import { asyncHandler } from "../middlewares/asyncHandler";
+import sidebarRoutes from "./sidebar.routes";
 import { ConfiguracoesController } from "../controllers/adm/configuracoes.controller";
 
+
 const router = Router();
+
+router.use("/sidebar", sidebarRoutes);
 
 router.use("/planos", planosRoutes);
 router.use("/ciclos", cicloPlanoRoutes);

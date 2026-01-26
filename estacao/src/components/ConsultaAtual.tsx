@@ -588,9 +588,20 @@ export default function ConsultaAtual({ consulta: consultaProp = null, role = "p
       }
     }
     
-    // Status padrão: Em Andamento
-    return "Em Andamento";
-  }, [socketStatus, normalized]);
+    // Prioridade 5: Verifica se está dentro do horário da consulta (60 minutos)
+    // Se estiver dentro do período, mostra "Em Andamento"
+    if (estaDentroDoPeriodo50Minutos || contador50MinutosAtualizado.estaDentroDoPeriodo) {
+      return "Em Andamento";
+    }
+    
+    // Prioridade 6: Verifica status do backend para "Em Andamento"
+    if (statusBackend === "Andamento" || statusBackend === "andamento" || statusBackend === "EmAndamento" || statusBackend === "Em Andamento") {
+      return "Em Andamento";
+    }
+    
+    // Status padrão: Reservado
+    return "Reservado";
+  }, [socketStatus, normalized, estaDentroDoPeriodo50Minutos, contador50MinutosAtualizado]);
 
   // Não mostra nada se não houver consulta ou se não deve mostrar o card
   // Mas ainda mostra se a consulta foi concluída (para mostrar status)

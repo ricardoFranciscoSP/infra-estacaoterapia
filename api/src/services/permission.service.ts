@@ -94,20 +94,15 @@ export class PermissionService {
     }
 
     async bulkCreateUserPermissions(data: BulkUserPermissionData) {
+        // Remove todas as permissões específicas do usuário antes de inserir as novas
+        await prisma.userPermission.deleteMany({
+            where: { UserId: data.userId }
+        });
+        // Insere todas as permissões enviadas
         const permissions = await Promise.all(
             data.permissions.map(perm =>
-                prisma.userPermission.upsert({
-                    where: {
-                        UserId_Module_Action: {
-                            UserId: data.userId,
-                            Module: perm.module as any,
-                            Action: perm.action as any,
-                        }
-                    },
-                    update: {
-                        Allowed: perm.allowed,
-                    },
-                    create: {
+                prisma.userPermission.create({
+                    data: {
                         UserId: data.userId,
                         Module: perm.module as any,
                         Action: perm.action as any,

@@ -5,7 +5,8 @@ import { useEffect, useState } from "react";
 import { useDraftSession } from "@/hooks/useDraftSession";
 import { useAuth } from "@/hooks/authHook";
 import { useGetUserPlano } from "@/hooks/user/userHook";
-import { limparDadosPrimeiraCompra } from "@/utils/primeiraCompraStorage";
+import { limparDadosPrimeiraCompra, recuperarDadosPrimeiraCompra } from "@/utils/primeiraCompraStorage";
+import { consultaService } from "@/services/consultaService";
 
 export default function SuccessPage() {
 	const router = useRouter();
@@ -15,6 +16,7 @@ export default function SuccessPage() {
 	const [feedback, setFeedback] = useState<string | null>(null);
 	const [loading, setLoading] = useState(false);
 	const [planoAtivado, setPlanoAtivado] = useState(false);
+	const [agendamentoConfirmado, setAgendamentoConfirmado] = useState(false);
 
 		useEffect(() => {
 			const tryConfirmDraft = async () => {
@@ -88,6 +90,70 @@ export default function SuccessPage() {
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [refetchPlano]); // plano não precisa estar nas deps (é atualizado pelo refetch)
 
+	// Verifica se o agendamento foi confirmado (polling)
+	useEffect(() => {
+		let intervalId: NodeJS.Timeout | null = null;
+		let attempts = 0;
+		const maxAttempts = 20; // 20 tentativas = 1 minuto (3s * 20)
+
+		const verificarAgendamento = async () => {
+			// Só verifica se há dados de agendamento salvos
+			const dadosSalvos = await recuperarDadosPrimeiraCompra();
+			if (!dadosSalvos?.dadosAgendamento?.agendaId) {
+				// Se não há dados de agendamento, considera que não precisa verificar
+				setAgendamentoConfirmado(true);
+				return;
+			}
+
+			attempts++;
+			try {
+				// Busca consultas agendadas do usuário
+				const response = await consultaService().getAgendadas();
+				const consultas = response.data || [];
+
+				// Verifica se há uma consulta com o agendaId que foi agendado
+				const consultaConfirmada = consultas.some((consulta: any) => {
+					const agendaIdConsulta = consulta.Agenda?.Id || consulta.AgendaId;
+					return agendaIdConsulta === dadosSalvos.dadosAgendamento.agendaId;
+				});
+
+				if (consultaConfirmada) {
+					setAgendamentoConfirmado(true);
+					if (intervalId) {
+						clearInterval(intervalId);
+					}
+					return;
+				}
+
+				// Para após maxAttempts tentativas
+				if (attempts >= maxAttempts && intervalId) {
+					clearInterval(intervalId);
+					// Após timeout, considera confirmado para não bloquear o fluxo
+					setAgendamentoConfirmado(true);
+				}
+			} catch (error) {
+				console.error('[SuccessPage] Erro ao verificar agendamento:', error);
+				// Em caso de erro, considera confirmado após algumas tentativas
+				if (attempts >= 5) {
+					setAgendamentoConfirmado(true);
+					if (intervalId) {
+						clearInterval(intervalId);
+					}
+				}
+			}
+		};
+
+		// Inicia verificação imediatamente e depois a cada 3 segundos
+		verificarAgendamento();
+		intervalId = setInterval(verificarAgendamento, 3000);
+
+		return () => {
+			if (intervalId) {
+				clearInterval(intervalId);
+			}
+		};
+	}, []);
+
 	// Limpa dados temporários da primeira compra ao montar a página (garantia final)
 	useEffect(() => {
 		limparDadosPrimeiraCompra();
@@ -99,6 +165,30 @@ export default function SuccessPage() {
 		sessionStorage.removeItem('contratoHtmlAssinado');
 		// Garante limpeza final dos dados temporários
 		limparDadosPrimeiraCompra();
+		
+		// IMPORTANTE: Só redireciona para onboarding se o agendamento foi confirmado
+		if (!agendamentoConfirmado) {
+			// Se o agendamento ainda não foi confirmado, não permite concluir
+			// O botão já está desabilitado, mas adiciona feedback visual
+			return;
+		}
+		
+		// Verifica se o usuário completou o onboarding
+		if (user) {
+			const hasCompletedOnboarding = Array.isArray(user.Onboardings) && user.Onboardings.length > 0 
+				? user.Onboardings.some((onboarding: { Completed?: string | boolean }) => {
+					const completed = onboarding.Completed;
+					return completed === 'true' || completed === true;
+				})
+				: false;
+			
+			// Se não completou onboarding E o agendamento foi confirmado, redireciona para boas-vindas
+			if (!hasCompletedOnboarding) {
+				router.push("/boas-vindas");
+				return;
+			}
+		}
+		
 		router.push("/painel");
 	};
 
@@ -126,7 +216,10 @@ export default function SuccessPage() {
 				{feedback && (
 					<div className="mb-4 text-[#6D75C0] text-lg font-semibold">{feedback}</div>
 				)}
-				{!loading && !feedback && (
+				{!agendamentoConfirmado && !loading && !feedback && (
+					<div className="mb-4 text-[#6D75C0] text-lg font-semibold">Aguardando confirmação do agendamento...</div>
+				)}
+				{!loading && !feedback && agendamentoConfirmado && (
 					<div className="mb-6 text-center space-y-2">
 						<p className="text-[#6D75C0] text-lg font-semibold">✅ Pagamento realizado com sucesso!</p>
 						{planoAtivado ? (
@@ -143,17 +236,23 @@ export default function SuccessPage() {
 					</div>
 				)}
 				<button 
-					className="
+					className={`
 						w-full max-w-[384px] h-12
 						px-6
 						flex items-center justify-center gap-3
 						rounded-lg border border-[#6D75C0]
-						bg-[#6D75C0] text-white font-semibold text-base
-						transition hover:bg-[#5a61a8]"
+						text-white font-semibold text-base
+						transition
+						${agendamentoConfirmado 
+							? 'bg-[#6D75C0] hover:bg-[#5a61a8] cursor-pointer' 
+							: 'bg-gray-400 cursor-not-allowed'
+						}
+					`}
 					style={{ opacity: 1 }}
 					onClick={handleConcluir}
+					disabled={!agendamentoConfirmado}
 				>
-					Concluir
+					{agendamentoConfirmado ? 'Concluir' : 'Aguardando confirmação...'}
 				</button>
 			</div>
 		</div>

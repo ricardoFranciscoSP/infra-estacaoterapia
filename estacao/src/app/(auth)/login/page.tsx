@@ -169,6 +169,24 @@ const LoginPage = () => {
               })
             : false;
 
+        // Verifica se há dados de agendamento salvos (fluxo de primeira sessão)
+        // Se tiver, não vai para onboarding - o onboarding será feito após finalizar o pedido
+        if (!completedOnboarding && typeof window !== 'undefined') {
+          try {
+            const { recuperarDadosPrimeiraCompra } = await import('@/utils/primeiraCompraStorage');
+            const dadosSalvos = await recuperarDadosPrimeiraCompra();
+            
+            // Se tem dados de agendamento, vai para painel (onboarding será após finalizar pedido)
+            if (dadosSalvos?.dadosAgendamento) {
+              console.log('[LOGIN] Dados de agendamento encontrados, redirecionando para painel (onboarding após finalizar pedido)');
+              router.push('/painel');
+              return;
+            }
+          } catch (error) {
+            console.error('[LOGIN] Erro ao verificar dados de agendamento:', error);
+          }
+        }
+
         const redirectRoute = completedOnboarding ? '/painel' : '/boas-vindas';
         console.log('[LOGIN] Redirecionando paciente para:', redirectRoute, {
           completedOnboarding,

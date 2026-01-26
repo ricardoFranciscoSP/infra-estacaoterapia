@@ -1,5 +1,6 @@
 "use client";
 import SalaVideo from '@/components/SalaVideo';
+import SemPermissaoSala from '@/components/SemPermissaoSala';
 import { useParams, useRouter } from 'next/navigation';
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { useReservaSessao } from '@/hooks/reservaSessao';
@@ -85,7 +86,10 @@ export default function Room() {
       rs.ScheduledAt &&
       rs.PsychologistId;
 
-    if (channelParam && !isLoadingFromChannel && !hasAllData && !reservaSessaoFromChannel) {
+    // 🎯 Se já tem token do psicólogo, não busca pelo channel (preserva tokens ao recarregar)
+    const hasPsychologistToken = rs?.AgoraTokenPsychologist && rs.AgoraTokenPsychologist.trim().length > 0;
+
+    if (channelParam && !isLoadingFromChannel && !hasAllData && !reservaSessaoFromChannel && !hasPsychologistToken) {
       setIsLoadingFromChannel(true);
       try {
         const service = reservaSessaoService();
@@ -147,16 +151,17 @@ export default function Room() {
 
     // 🎯 Evita buscar token se já existe e está funcional
     // Só busca token se realmente não tiver (evita timeout desnecessário)
+    // Aguarda a reserva carregar completamente antes de tentar buscar
     const shouldFetchToken = 
       !isLoadingToken && 
       hasChannel && 
       !hasTokenFromChannel &&
-      !isLoadingReserva &&
+      !isLoadingReserva && // 🎯 Aguarda reserva carregar
       tokenFetchAttempts < MAX_TOKEN_FETCH_ATTEMPTS && // Limita tentativas
       !hasToken && // 🎯 IMPORTANTE: Só busca se realmente não tiver token
       (
-        // Caso 1: Reserva não encontrada mas temos channel - tenta buscar token
-        !hasReserva ||
+        // Caso 1: Reserva não encontrada mas temos channel (após tentar carregar)
+        (!hasReserva && !isLoadingReserva) ||
         // Caso 2: Reserva encontrada mas não tem token do psicólogo - GERA/BUSCA token
         (hasReserva && !hasToken)
       );
@@ -349,6 +354,19 @@ export default function Room() {
     }
   }, [noTokenAfterAttempts, isLoadingToken, isLoadingReserva, router]);
 
+  // ✅ Verifica se o psicólogo tem seu token (não precisa verificar token do paciente)
+  const hasPsychologistToken = !!finalReservaSessao?.AgoraTokenPsychologist || !!tokenFromChannel;
+
+  // ✅ Verifica se o psicólogo não tem seu token após carregar tudo
+  // Só verifica quando realmente terminou de carregar e tem dados da reserva
+  const shouldShowNoPermission = 
+    !isLoadingReserva && 
+    !isLoadingToken && 
+    !isLoadingFromChannel && 
+    !noTokenAfterAttempts &&
+    finalReservaSessao && // Tem dados da reserva
+    !hasPsychologistToken; // Mas não tem o token do psicólogo
+
   const isReady =
     !isLoadingReserva &&
     !isLoadingToken &&
@@ -436,6 +454,13 @@ export default function Room() {
         toast.error("Sessão cancelada. Voltando para o painel.");
         router.replace("/painel-psicologo");
       }
+      // ✅ Se a consulta foi finalizada/concluída, fecha a room
+      if (status === "Concluido" || status === "Concluído" || status === "Realizada" || status === "realizada") {
+        console.log("🚪 [Psychologist Room] Consulta finalizada - fechando room");
+        toast.dismiss();
+        toast.success("Sessão finalizada.");
+        router.replace("/painel-psicologo");
+      }
     };
 
     const handleRoomClosed = (data: { event?: string; consultationId?: string; reason?: string; message?: string }) => {
@@ -446,9 +471,20 @@ export default function Room() {
       }
     };
 
+    // ✅ Handler para fechamento forçado quando outro participante finalizar
+    const handleForceCloseRoom = (data: { consultationId?: string; reason?: string; timestamp?: string }) => {
+      if (data.consultationId === consultationId || !data.consultationId) {
+        console.log("🚪 [Psychologist Room] Evento consultation:force-close-room recebido - fechando room");
+        toast.dismiss();
+        toast.error("A sessão foi encerrada pelo outro participante.");
+        router.replace("/painel-psicologo");
+      }
+    };
+
     // Escuta eventos da sala da consulta
     socket.on(`consultation:${consultationId}`, handleConsultationEvent);
     socket.on("room:close", handleRoomClosed);
+    socket.on("consultation:force-close-room", handleForceCloseRoom); // ✅ Escuta fechamento forçado
     
     // Também escuta eventos diretos
     onConsultationEvent(handleConsultationEvent, consultationId);
@@ -457,6 +493,7 @@ export default function Room() {
     return () => {
       socket.off(`consultation:${consultationId}`, handleConsultationEvent);
       socket.off("room:close", handleRoomClosed);
+      socket.off("consultation:force-close-room", handleForceCloseRoom);
       offRoomClosed(consultationId);
     };
   }, [finalReservaSessao?.ConsultaId, id, router]);
@@ -498,6 +535,15 @@ export default function Room() {
         </div>
       </div>
     );
+  }
+
+  // Se não tiver o token do psicólogo após carregar, mostra tela de sem permissão
+  if (shouldShowNoPermission) {
+    console.log("🚫 [Psychologist Room] Token do psicólogo ausente - mostrando tela de sem permissão", {
+      hasPsychologistToken,
+      finalReservaSessao: !!finalReservaSessao
+    });
+    return <SemPermissaoSala redirectPath="/painel-psicologo" />;
   }
 
   if (!isReady) {

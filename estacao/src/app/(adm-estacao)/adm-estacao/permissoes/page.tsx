@@ -643,20 +643,62 @@ export default function PerfisAcessoPage() {
                                     <p className="text-xs text-gray-500 mt-2">O cargo define o padrão de módulos. Abaixo você restringe ou amplia por usuário.</p>
                                 </div>
 
-                                {/* Permissões por Módulo */}
+                                {/* Permissões de Links do Menu (Sidebar) */}
+                                <div className="bg-white border-2 border-[#8494E9]/10 rounded-xl p-5 mb-6">
+                                    <h4 className="text-base font-bold text-gray-800 mb-2 flex items-center gap-2">
+                                        <svg className="w-5 h-5 text-[#8494E9]" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fillRule="evenodd" d="M3 5a2 2 0 012-2h10a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V5zm2 0v10h10V5H5z" clipRule="evenodd" />
+                                        </svg>
+                                        Links do Menu (Sidebar)
+                                    </h4>
+                                    <p className="text-xs text-gray-600 mb-4">Selecione quais links do menu este usuário pode visualizar (permite apenas "Ver").</p>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                                        {require("@/config/sidebarConfig").SIDEBAR_MODULES.filter((m: any) => m.module).map((mod: any) => (
+                                            <label
+                                                key={mod.module}
+                                                className={
+                                                    'flex items-center gap-2 p-3 rounded-lg border-2 cursor-pointer transition-all ' +
+                                                    ((userModulePermissions as Record<string, Record<ActionType, boolean>>)[mod.module]?.Read
+                                                        ? 'border-[#8494E9] bg-[#8494E9]/10'
+                                                        : 'border-gray-200 hover:border-[#8494E9]/30 hover:bg-gray-50')
+                                                }
+                                            >
+                                                <input
+                                                    type="checkbox"
+                                                    checked={(userModulePermissions as Record<string, Record<ActionType, boolean>>)[mod.module]?.Read || false}
+                                                    onChange={() => {
+                                                        setUserModulePermissions(prev => ({
+                                                            ...prev,
+                                                            [mod.module]: {
+                                                                ...((prev as Record<string, Record<ActionType, boolean>>)[mod.module]),
+                                                                Read: !((prev as Record<string, Record<ActionType, boolean>>)[mod.module]?.Read)
+                                                            }
+                                                        }));
+                                                    }}
+                                                    className="w-4 h-4 text-[#8494E9] rounded border-gray-300 focus:ring-[#8494E9] cursor-pointer"
+                                                />
+                                                <span className="text-xs font-medium text-gray-700 flex items-center gap-1">
+                                                    <span>{mod.icon && <i className={`icon-${mod.icon}`}></i>}</span>
+                                                    {mod.label}
+                                                </span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Permissões por Módulo (avançado) */}
                                 <div>
                                     <div className="flex items-center justify-between mb-4">
                                         <div>
                                             <h4 className="text-base font-bold text-gray-800 flex items-center gap-2">
                                                 <svg className="w-5 h-5 text-[#8494E9]" fill="currentColor" viewBox="0 0 20 20">
                                                     <path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
-                                                </svg>
-                                                Permissões por módulo (este usuário)
-                                            </h4>
-                                            <p className="text-xs text-gray-600 mt-1">Para este usuário <strong>não ver</strong> um módulo, desmarque todas as ações (Ver, Criar, Editar, etc.) desse módulo.</p>
-                                        </div>
+                                            </svg>
+                                            Permissões por módulo (avançado)
+                                        </h4>
+                                        <p className="text-xs text-gray-600 mt-1">Para este usuário <strong>não ver</strong> um módulo, desmarque todas as ações (Ver, Criar, Editar, etc.) desse módulo.</p>
                                     </div>
-                                    
+                                    </div>
                                     <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
                                         {allModules.map((module) => (
                                             <div key={module} className="bg-white border-2 border-gray-200 rounded-xl p-4 hover:border-[#8494E9]/30 transition-all">
@@ -674,7 +716,6 @@ export default function PerfisAcessoPage() {
                                                             Manage: "⚙️",
                                                             Approve: "✅"
                                                         };
-                                                        
                                                         const actionLabels: Record<ActionType, string> = {
                                                             Read: "Ver",
                                                             Create: "Criar",
@@ -683,7 +724,6 @@ export default function PerfisAcessoPage() {
                                                             Manage: "Gerenciar",
                                                             Approve: "Aprovar"
                                                         };
-                                                        
                                                         return (
                                                             <label
                                                                 key={action}
@@ -749,20 +789,27 @@ export default function PerfisAcessoPage() {
                                         }
                                         
                                         // 2. Salvar permissões específicas do usuário
+                                        const validModules = [
+                                            "Users","Reports","Plans","Payments","Sessions","Profiles","Evaluations","Onboarding","Finance","Agenda","Notifications","Promotions","SystemSettings","Psychologists","Patients","Clients","Contracts","Reviews","Cancelamentos","WorkSchedule","RedesSociais","Faq","Configuracoes","Admin"
+                                        ];
+                                        const validActions = ["Read", "Create", "Update", "Delete", "Manage"];
                                         const permissions: Array<{module: Module, action: ActionType, allowed: boolean}> = [];
-                                        
                                         allModules.forEach(module => {
-                                            (["Read", "Create", "Update", "Delete", "Manage"] as ActionType[]).forEach(action => {
-                                                if (userModulePermissions[module]?.[action] !== undefined) {
-                                                    permissions.push({
-                                                        module,
-                                                        action,
-                                                        allowed: userModulePermissions[module][action]
-                                                    });
-                                                }
+                                            if (!validModules.includes(module)) return;
+                                            (validActions as ActionType[]).forEach(action => {
+                                                // Sempre envia, mesmo que seja false
+                                                permissions.push({
+                                                    module,
+                                                    action,
+                                                    allowed: !!userModulePermissions[module]?.[action]
+                                                });
                                             });
                                         });
-                                        
+                                        // Log para depuração
+                                        console.log("Enviando permissões para API:", {
+                                            userId: editingUser.Id,
+                                            permissions
+                                        });
                                         if (permissions.length > 0) {
                                             await permissionsService.bulkCreateUserPermissions({
                                                 userId: editingUser.Id,

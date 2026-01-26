@@ -488,18 +488,16 @@ const ModalAgendarProximaSessaoPsicologo: React.FC<ModalAgendarProximaSessaoPsic
             </button>
             
             <div className="px-4 pt-12 pb-2 flex-1 overflow-y-auto relative">
-              {/* BreadcrumbsVoltar */}
-              <div className="mb-4">
-                <BreadcrumbsVoltar />
+              {/* BreadcrumbsVoltar - agora fecha o modal */}
+              <div className="mb-1">
+                <BreadcrumbsVoltar onClick={onClose} />
               </div>
               
-              {/* Título maior */}
-              <h1 className="text-2xl font-bold text-gray-900 mb-3">
+              {/* Título e subtítulo ainda mais compactos */}
+              <h1 className="text-base font-bold text-gray-900 mb-0.5 fira-sans">
                 Agendar próxima sessão
               </h1>
-              
-              {/* Subtítulo maior */}
-              <p className="text-gray-700 mb-8 text-lg">
+              <p className="text-gray-700 mb-2 text-xs fira-sans">
                 Escolha o melhor dia e horário para agendar a próxima sessão com o(a) paciente
               </p>
               
@@ -510,31 +508,31 @@ const ModalAgendarProximaSessaoPsicologo: React.FC<ModalAgendarProximaSessaoPsic
                 </div>
               )}
               
-              <div className="mb-6">
-                <div className="flex items-center justify-between mb-4">
+              <div className="mb-2">
+                <div className="flex items-center justify-between mb-1">
                   <button 
                     onClick={() => setCurrentMonthOffset((prev) => Math.max(prev - 1, 0))} 
-                    className="p-3 hover:bg-gray-100 rounded text-lg" 
+                    className="p-1 hover:bg-gray-100 rounded text-xs" 
                     disabled={currentMonthOffset === 0}
                   >
                     ←
                   </button>
-                  <h4 className="font-semibold text-lg">{monthNames[calendarMonth]} — {calendarYear}</h4>
+                  <h4 className="font-semibold text-xs">{monthNames[calendarMonth]} — {calendarYear}</h4>
                   <button 
                     onClick={() => setCurrentMonthOffset((prev) => prev + 1)} 
-                    className="p-3 hover:bg-gray-100 rounded text-lg"
+                    className="p-1 hover:bg-gray-100 rounded text-xs"
                   >
                     →
                   </button>
                 </div>
                 
-                <div className="grid grid-cols-7 gap-1 text-center text-base font-medium text-gray-500 mb-2">
+                <div className="grid grid-cols-7 gap-0.5 text-center text-[10px] font-medium text-gray-500 mb-0.5 w-full max-w-[210px]">
                   {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map((day) => (
-                    <div key={day} className="py-2">{day}</div>
+                    <div key={day} className="py-0.5">{day}</div>
                   ))}
                 </div>
                 
-                <div className="grid grid-cols-7 gap-2">
+                <div className="grid grid-cols-7 gap-0.5 w-full max-w-[210px]">
                   {daysOfMonth.map((date: Date, index: number) => {
                     const ymd = formatDateToYMD(date);
                     const isDisabled = isPastDate(date);
@@ -566,7 +564,7 @@ const ModalAgendarProximaSessaoPsicologo: React.FC<ModalAgendarProximaSessaoPsic
                             }
                           }
                         }}
-                        className={`w-10 h-10 text-base rounded transition-all font-medium
+                        className={`w-6 h-6 text-[10px] rounded transition-all font-medium
                           ${isDisabled ? "text-gray-300 cursor-not-allowed" : ""}
                           ${isSelected ? "bg-[#8494E9] text-white" : ""}
                           ${isToday && (!isSelected) && !isDisabled ? "bg-blue-100 text-blue-700" : ""}
@@ -579,8 +577,8 @@ const ModalAgendarProximaSessaoPsicologo: React.FC<ModalAgendarProximaSessaoPsic
                 </div>
               </div>
               
-              <div className="mb-6">
-                <label className="block text-lg font-medium text-gray-700 mb-3">
+              <div className="mb-2">
+                <label className="block text-xs font-medium text-gray-700 mb-1">
                   Escolha um horário
                 </label>
                 <select
@@ -588,7 +586,7 @@ const ModalAgendarProximaSessaoPsicologo: React.FC<ModalAgendarProximaSessaoPsic
                   value={selectedHorario}
                   onChange={(e) => setSelectedHorario(e.target.value)}
                   disabled={!selectedDate || loadingAgenda || horariosDisponiveis.length === 0}
-                  className={`w-full p-4 border-2 rounded-md text-base focus:outline-none focus:ring-2 focus:ring-[#8494E9] ${
+                  className={`w-full p-2 border rounded text-xs focus:outline-none focus:ring-2 focus:ring-[#8494E9] ${
                     !selectedDate || loadingAgenda || horariosDisponiveis.length === 0 
                       ? "bg-gray-50 text-gray-400 cursor-not-allowed border-gray-200" 
                       : "bg-white text-gray-700 border-gray-300 hover:border-[#8494E9]"
@@ -611,14 +609,14 @@ const ModalAgendarProximaSessaoPsicologo: React.FC<ModalAgendarProximaSessaoPsic
                 </select>
                 
                 {selectedDate && !loadingAgenda && horariosDisponiveis.length === 0 && (
-                  <div className="mt-2 p-3 text-center text-gray-500 text-sm bg-gray-50 rounded-md">
+                  <div className="mt-1 p-2 text-center text-gray-500 text-xs bg-gray-50 rounded-md">
                     Nenhum horário disponível para esta data
                   </div>
                 )}
                 
                 {selectedDate && loadingAgenda && (
-                  <div className="mt-2 p-3 text-center text-gray-500 text-sm bg-gray-50 rounded-md flex items-center justify-center gap-2">
-                    <svg className="animate-spin h-4 w-4 text-[#8494E9]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <div className="mt-1 p-2 text-center text-gray-500 text-xs bg-gray-50 rounded-md flex items-center justify-center gap-2">
+                    <svg className="animate-spin h-3 w-3 text-[#8494E9]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
@@ -626,6 +624,44 @@ const ModalAgendarProximaSessaoPsicologo: React.FC<ModalAgendarProximaSessaoPsic
                   </div>
                 )}
               </div>
+            
+              <div className="p-2 border-t bg-white flex-shrink-0">
+                <button
+                  onClick={handleAgendarConsulta}
+                  disabled={!selectedDate || !selectedHorario || isLoading}
+                  className={`w-full h-9 font-semibold text-xs rounded-lg transition mb-1 ${
+                    selectedDate && selectedHorario && !isLoading 
+                      ? "bg-[#8494E9] text-white hover:bg-[#6D75C0] cursor-pointer" 
+                      : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                  }`}
+                >
+                  {isLoading ? "Agendando..." : "Agendar"}
+                </button>
+                <button
+                  onClick={onClose}
+                  className="w-full h-9 border-2 border-[#6D75C0] text-[#6D75C0] font-semibold text-xs rounded-lg hover:bg-[#E6E9FF] transition"
+                >
+                  Cancelar
+                </button>
+              </div>
+            
+              {/* PIP do paciente - em cima do modal mobile (z-index maior) */}
+              {remoteVideoTrack && (
+                <div className="fixed bottom-4 right-4 w-[180px] h-[135px] z-[10001]">
+                  <VideoPIP videoTrack={remoteVideoTrack} label="Paciente" />
+                </div>
+              )}
+              
+              {successMsg && (
+                <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-green-100 text-green-700 px-4 py-2 rounded shadow z-[10002]">
+                  {successMsg}
+                </div>
+              )}
+              {errorMsg && (
+                <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-red-100 text-red-700 px-4 py-2 rounded shadow z-[10002]">
+                  {errorMsg}
+                </div>
+              )}
             </div>
             
             <div className="p-4 border-t bg-white flex-shrink-0">
@@ -648,9 +684,9 @@ const ModalAgendarProximaSessaoPsicologo: React.FC<ModalAgendarProximaSessaoPsic
               </button>
             </div>
             
-            {/* PIP do paciente - em cima do modal mobile (z-index maior) */}
+            {/* PIP do paciente - em cima do modal (z-index maior) */}
             {remoteVideoTrack && (
-              <div className="fixed bottom-4 right-4 w-[180px] h-[135px] z-[10001]">
+              <div className="fixed bottom-8 right-8 w-[280px] h-[200px] z-[10001]">
                 <VideoPIP videoTrack={remoteVideoTrack} label="Paciente" />
               </div>
             )}
@@ -695,48 +731,46 @@ const ModalAgendarProximaSessaoPsicologo: React.FC<ModalAgendarProximaSessaoPsic
                   {/* Container em bloco alinhado */}
                   <div className="w-full">
                     <div className="max-w-[1200px] mx-auto">
-                      {/* BreadcrumbsVoltar */}
-                      <div className="mb-4">
-                        <BreadcrumbsVoltar />
+                      {/* BreadcrumbsVoltar - agora fecha o modal */}
+                      <div className="mb-1">
+                        <BreadcrumbsVoltar onClick={onClose} />
                       </div>
                       
-                      {/* Título maior */}
-                      <h1 className="w-full text-left text-3xl sm:text-4xl font-bold text-gray-900 mb-3">
+                      {/* Título e subtítulo ainda mais compactos */}
+                      <h1 className="text-base font-bold text-gray-900 mb-0.5">
                         Agendar próxima sessão
                       </h1>
-                      
-                      {/* Subtítulo maior */}
-                      <p className="w-full text-left text-lg sm:text-xl text-gray-700 mb-8">
+                      <p className="text-gray-700 mb-2 text-xs">
                         Escolha o melhor dia e horário para agendar a próxima sessão com o(a) paciente
                       </p>
                       
-                      <div className="flex flex-row gap-12">
-                      {/* Calendário à esquerda - maior */}
-                      <div className="w-[480px] bg-white rounded-lg border border-[#E6E9FF] p-8 flex flex-col items-center justify-start shadow-sm">
-                      <div className="flex items-center justify-between w-full mb-6">
+                      <div className="flex flex-row gap-8">
+                      {/* Calendário à esquerda - um pouco maior */}
+                      <div className="w-[360px] bg-white rounded-lg border border-[#E6E9FF] p-5 flex flex-col items-center justify-start shadow-sm">
+                      <div className="flex items-center justify-between w-full mb-4">
                         <button 
                           onClick={() => setCurrentMonthOffset((prev) => Math.max(prev - 1, 0))} 
-                          className="p-3 hover:bg-gray-100 rounded text-lg" 
+                          className="p-2 hover:bg-gray-100 rounded text-base" 
                           disabled={currentMonthOffset === 0}
                         >
                           ←
                         </button>
-                        <h4 className="font-semibold text-xl text-[#8494E9]">{monthNames[calendarMonth]} — {calendarYear}</h4>
+                        <h4 className="font-semibold text-base text-[#8494E9]">{monthNames[calendarMonth]} — {calendarYear}</h4>
                         <button 
                           onClick={() => setCurrentMonthOffset((prev) => prev + 1)} 
-                          className="p-3 hover:bg-gray-100 rounded text-lg"
+                          className="p-2 hover:bg-gray-100 rounded text-base"
                         >
                           →
                         </button>
                       </div>
                       
-                      <div className="grid grid-cols-7 gap-2 text-center text-base font-medium text-gray-500 mb-3 w-full">
+                      <div className="grid grid-cols-7 gap-1.5 text-center text-sm font-medium text-gray-500 mb-2 w-full max-w-[320px]">
                         {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map((day) => (
-                          <div key={day} className="py-2">{day}</div>
+                          <div key={day} className="py-1.5">{day}</div>
                         ))}
                       </div>
                       
-                      <div className="grid grid-cols-7 gap-2 w-full">
+                      <div className="grid grid-cols-7 gap-1.5 w-full max-w-[320px]">
                         {daysOfMonth.map((date: Date, index: number) => {
                           const ymd = formatDateToYMD(date);
                           const isDisabled = isPastDate(date);
@@ -752,13 +786,11 @@ const ModalAgendarProximaSessaoPsicologo: React.FC<ModalAgendarProximaSessaoPsic
                                   const newDate = new Date(date);
                                   const newDateString = formatDateToYMD(newDate);
                                   const currentDateString = selectedDate ? formatDateToYMD(selectedDate) : null;
-                                  
                                   if (newDateString !== currentDateString) {
                                     setSelectedHorario("");
                                     setHorariosDisponiveis([]);
                                     setLoadingAgenda(true);
                                     setSelectedDate(newDate);
-                                    
                                     if (psicologoId) {
                                       fetchHorariosParaData(newDate).catch((error) => {
                                         console.error('Erro ao buscar horários:', error);
@@ -768,7 +800,7 @@ const ModalAgendarProximaSessaoPsicologo: React.FC<ModalAgendarProximaSessaoPsic
                                   }
                                 }
                               }}
-                              className={`w-12 h-12 text-base rounded transition-all border font-medium
+                              className={`w-10 h-10 text-sm rounded transition-all border font-medium
                                 ${isDisabled ? "text-gray-300 cursor-not-allowed" : ""}
                                 ${isSelected ? "bg-[#8494E9] text-white border-[#8494E9]" : "border-gray-200"}
                                 ${isToday && !isSelected && !isDisabled ? "bg-blue-100 text-blue-700" : ""}
@@ -781,10 +813,10 @@ const ModalAgendarProximaSessaoPsicologo: React.FC<ModalAgendarProximaSessaoPsic
                       </div>
                     </div>
                     
-                    {/* Select e botões à direita - maior */}
-                    <div className="flex-1 flex flex-col justify-start gap-6 items-start max-w-[500px]">
+                    {/* Select e botões à direita - reduzidos pela metade */}
+                    <div className="flex-1 flex flex-col justify-start gap-2 items-start max-w-[400px]">
                       <div className="w-full">
-                        <label className="block text-lg font-medium text-gray-700 mb-3">
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
                           Escolha um horário
                         </label>
                         <select
@@ -792,7 +824,7 @@ const ModalAgendarProximaSessaoPsicologo: React.FC<ModalAgendarProximaSessaoPsic
                           value={selectedHorario}
                           onChange={(e) => setSelectedHorario(e.target.value)}
                           disabled={!selectedDate || loadingAgenda}
-                          className={`w-full p-4 border-2 rounded-md text-base focus:outline-none focus:ring-2 focus:ring-[#8494E9] ${
+                          className={`w-full p-1.5 border rounded-md text-xs focus:outline-none focus:ring-1 focus:ring-[#8494E9] ${
                             !selectedDate || loadingAgenda 
                               ? "bg-gray-50 text-gray-400 cursor-not-allowed border-gray-200" 
                               : "bg-white text-gray-700 border-gray-300 hover:border-[#8494E9]"
@@ -815,14 +847,14 @@ const ModalAgendarProximaSessaoPsicologo: React.FC<ModalAgendarProximaSessaoPsic
                         </select>
                         
                         {selectedDate && !loadingAgenda && horariosDisponiveis.length === 0 && (
-                          <div className="mt-3 p-4 text-center text-gray-500 text-base bg-gray-50 rounded-md w-full">
+                          <div className="mt-1 p-1.5 text-center text-gray-500 text-xs bg-gray-50 rounded-md w-full">
                             Nenhum horário disponível para esta data
                           </div>
                         )}
                         
                         {selectedDate && loadingAgenda && (
-                          <div className="mt-3 p-4 text-center text-gray-500 text-base bg-gray-50 rounded-md w-full flex items-center justify-center gap-3">
-                            <svg className="animate-spin h-5 w-5 text-[#8494E9]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <div className="mt-1 p-1.5 text-center text-gray-500 text-xs bg-gray-50 rounded-md w-full flex items-center justify-center gap-1.5">
+                            <svg className="animate-spin h-3 w-3 text-[#8494E9]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                             </svg>
@@ -834,7 +866,7 @@ const ModalAgendarProximaSessaoPsicologo: React.FC<ModalAgendarProximaSessaoPsic
                       <button
                         onClick={handleAgendarConsulta}
                         disabled={!selectedDate || !selectedHorario || isLoading}
-                        className={`w-full h-14 font-semibold text-lg rounded-lg transition ${
+                        className={`w-full h-6 font-semibold text-xs rounded transition ${
                           selectedDate && selectedHorario && !isLoading 
                             ? "bg-[#8494E9] text-white hover:bg-[#6D75C0] cursor-pointer" 
                             : "bg-gray-200 text-gray-500 cursor-not-allowed"
@@ -845,7 +877,7 @@ const ModalAgendarProximaSessaoPsicologo: React.FC<ModalAgendarProximaSessaoPsic
                       
                       <button
                         onClick={onClose}
-                        className="w-full h-14 border-2 border-[#8494E9] text-[#8494E9] font-semibold text-lg rounded-lg bg-white hover:bg-[#F0F2FF] transition"
+                        className="w-full h-6 border border-[#8494E9] text-[#8494E9] font-semibold text-xs rounded bg-white hover:bg-[#F0F2FF] transition"
                       >
                         Cancelar
                       </button>

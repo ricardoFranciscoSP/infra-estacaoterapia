@@ -171,20 +171,26 @@ export default function ProximaConsultaPsicologo({ consultas = null, role = "pac
         if (agoraTimestamp >= inicioConsulta && agoraTimestamp <= fimConsulta) {
           return true;
         }
+        
+        // Se passou dos 50 minutos, não mostra mais
+        if (agoraTimestamp > fimConsulta) {
+          return false;
+        }
       }
       
       // Para consultas não em andamento, aplica a lógica original
       // Compara primeiro a data
       if (dateOnly < dataAtualStr) {
-        // Data passada, não é válida (a menos que esteja dentro dos 50 minutos)
+        // Data passada, não é válida (a menos que esteja dentro dos 50 minutos, já verificado acima)
         return false;
       } else if (dateOnly > dataAtualStr) {
         // Data futura, é válida
         return true;
       } else {
         // Se é o mesmo dia, compara o horário
-        // Só mostra se o horário da consulta ainda não passou
-        return normalized.time > horaAtualBr;
+        // Mostra se o horário da consulta ainda não passou OU se está no horário exato ou depois (dentro dos 50 minutos)
+        // Permite mostrar no horário exato ou até 50 minutos depois
+        return normalized.time >= horaAtualBr;
       }
     } catch {
       // Em caso de erro, confia no backend (se next existe, é válida)

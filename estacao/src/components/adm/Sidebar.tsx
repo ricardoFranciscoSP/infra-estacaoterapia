@@ -3,6 +3,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
 import Link from "next/link";
+import { SIDEBAR_MODULES } from "@/config/sidebarConfig";
 
 
 interface SidebarProps {
@@ -94,20 +95,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobile = false, onClose, modul
     };
   }, [configOpen, relatoriosOpen, gestaoConsultasOpen]);
 
-  const allLinks: Array<{ href: string; label: string; icon: string; config?: boolean }> = [
-    { href: `${basePath}`, label: "Dashboard", icon: "dashboard" },
-    { href: `${basePath}/psicologos`, label: "Psicólogos", icon: "users" },
-    { href: `${basePath}/pacientes`, label: "Pacientes", icon: "users-alt" },
-    { href: `${basePath}/depoimentos`, label: "Depoimentos", icon: "chat" },
-    { href: `${basePath}/faq`, label: "Faq", icon: "question" },
-    { href: `${basePath}/gestao-consultas`, label: "Gestão de Consultas", icon: "calendar" },
-    { href: `${basePath}/gerar-agenda-manual`, label: "Gerar Agenda Manual", icon: "calendar" },
-    { href: `${basePath}/relatorios`, label: "Relatórios", icon: "report" },
-    { href: `${basePath}/financeiro`, label: "Financeiro", icon: "money" },
-    { href: `${basePath}/notificacoes`, label: "Notificações", icon: "bell" },
-    { href: `${basePath}/solicitacoes`, label: "Solicitações", icon: "inbox" },
-    { href: `${basePath}/configuracoes`, label: "Configurações", icon: "cog", config: true },
-  ];
+  // Usa a configuração centralizada do sidebar
+  const allLinks = SIDEBAR_MODULES.map((mod) => ({
+    href: mod.path,
+    label: mod.label,
+    icon: mod.icon,
+    config: mod.label === "Configurações"
+  }));
   // Se modules for passado, filtra os links
   const links = modules
     ? allLinks.filter((l) => modules.includes(l.label))
@@ -269,7 +263,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobile = false, onClose, modul
                   </button>
                   {gestaoConsultasOpen && (
                     <ul className="ml-8 mt-2 space-y-1">
-                      <li>
+                      {/* Submenu oculto: Consultas */}
+                      {/* <li>
                         <Link
                           href={`${basePath}/gestao-consultas/consultas`}
                           className={`block px-3 py-2 rounded-md text-sm ${
@@ -280,7 +275,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobile = false, onClose, modul
                         >
                           Consultas
                         </Link>
-                      </li>
+                      </li> */}
                       <li>
                         <Link
                           href={`${basePath}/gestao-consultas/cancelamentos`}
@@ -468,6 +463,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobile = false, onClose, modul
                           <span>Geral</span>
                         </Link>
                       </li>
+                      {/*
                       <li>
                         <Link
                           href={`${basePath}/configuracoes/gerar-token-manual`}
@@ -498,20 +494,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobile = false, onClose, modul
                       </li>
                       <li>
                         <Link
-                          href={`${basePath}/configuracoes/log-view`}
-                          className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded hover:bg-[#F2F4FD] ${
-                            isActive(`${basePath}/configuracoes/log-view`)
-                              ? "text-[#8494E9] bg-[#F2F4FD]"
-                              : "text-[#6C757D]"
-                          }`}
-                          onClick={onClose}
-                        >
-                          <span className="w-1.5 h-1.5 rounded-full bg-current"></span>
-                          <span>Logs</span>
-                        </Link>
-                      </li>
-                      <li>
-                        <Link
                           href={`${basePath}/permissoes`}
                           className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded hover:bg-[#F2F4FD] ${
                             isActive(`${basePath}/permissoes`)
@@ -522,20 +504,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobile = false, onClose, modul
                         >
                           <span className="w-1.5 h-1.5 rounded-full bg-current"></span>
                           <span>Permissões</span>
-                        </Link>
-                      </li>
-                      <li>
-                        <Link
-                          href={`${basePath}/configuracoes/seguranca/redefinicao-senha`}
-                          className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded hover:bg-[#F2F4FD] ${
-                            isActive(`${basePath}/configuracoes/seguranca/redefinicao-senha`)
-                              ? "text-[#8494E9] bg-[#F2F4FD]"
-                              : "text-[#6C757D]"
-                          }`}
-                          onClick={onClose}
-                        >
-                          <span className="w-1.5 h-1.5 rounded-full bg-current"></span>
-                          <span>Redefinição de Senha</span>
                         </Link>
                       </li>
                       <li>
@@ -552,6 +520,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobile = false, onClose, modul
                           <span>Backups</span>
                         </Link>
                       </li>
+                      */}
                       <li>
                         <Link
                           href={`${basePath}/configuracoes/gestao-documentos`}

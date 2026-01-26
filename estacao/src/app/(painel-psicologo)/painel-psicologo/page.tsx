@@ -1,5 +1,7 @@
 "use client";
 import React, { useEffect, useMemo, useState, useCallback } from "react";
+import ConsultaAtualPsicologo from "@/components/ConsultaAtualPsicologo";
+
 // Status normatizados possíveis para consultas
 const STATUS_CONSULTA = [
   { value: 'todos', label: 'Todos' },

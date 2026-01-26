@@ -464,6 +464,17 @@ export default function SalaVideo({ appId, channel, token, uid, role, consultati
           ]);
           await queryClient.refetchQueries({ queryKey: ['consultaAtualEmAndamento'] });
           
+          // ✅ Emite evento para fechar a room do outro participante quando finaliza
+          if (isConnected && consultationIdString) {
+            try {
+              const { emitForceCloseRoom } = await import('@/lib/socket');
+              emitForceCloseRoom(consultationIdString, `Consulta finalizada pelo ${role === "PATIENT" ? "paciente" : "psicólogo"}`);
+              console.log("🚪 [SalaVideo] Evento emitido para fechar room do outro participante");
+            } catch (error) {
+              console.error("❌ [SalaVideo] Erro ao emitir evento de fechar room:", error);
+            }
+          }
+          
           // Retorna informações sobre review
           return {
             requiresReview: response.data.requiresReview,
@@ -483,7 +494,7 @@ export default function SalaVideo({ appId, channel, token, uid, role, consultati
       // Continua o fluxo mesmo se houver erro na verificação
       return null;
     }
-  }, [consultationIdString, verificarAmbosEstiveramNaSala, queryClient]);
+  }, [consultationIdString, verificarAmbosEstiveramNaSala, queryClient, isConnected, role]);
   
   // Log para debug do PsychologistId
   useEffect(() => {
@@ -1664,10 +1675,13 @@ export default function SalaVideo({ appId, channel, token, uid, role, consultati
         }
       }
 
-      // Passo 3: Notifica o backend que está saindo (isso fecha a sala e limpa tokens se ainda não foi feito)
+      // Passo 3: Notifica o backend que está saindo e emite evento para fechar room do outro participante
       if (isConnected && consultationIdString) {
         leaveConsultation(consultationIdString, String(uid));
-        console.log("🚪 [SalaVideo] [AUTO-END] Notificado backend - sala será fechada e tokens limpos");
+        // ✅ Emite evento para fechar a room do outro participante também
+        const { emitForceCloseRoom } = await import('@/lib/socket');
+        emitForceCloseRoom(consultationIdString, `Consulta finalizada automaticamente após 60 minutos (${role === "PATIENT" ? "paciente" : "psicólogo"})`);
+        console.log("🚪 [SalaVideo] [AUTO-END] Notificado backend - sala será fechada, tokens limpos e room do outro fechada");
       }
 
       // Passo 4: Desconecta da sala Agora.io
@@ -2022,9 +2036,17 @@ export default function SalaVideo({ appId, channel, token, uid, role, consultati
       console.log("🔒 [SalaVideo] Chamando função fecharSalaAmbosLogados...");
       await fecharSalaAmbosLogados();
       
-      // Notifica o backend que está saindo antes de sair da sala (finaliza a consulta)
+      // Notifica o backend que está saindo e emite evento para fechar room do paciente
       if (isConnected && consultationIdString) {
         leaveConsultation(consultationIdString, String(uid));
+        // ✅ Emite evento para fechar a room do paciente quando psicólogo clica em sair
+        try {
+          const { emitForceCloseRoom } = await import('@/lib/socket');
+          emitForceCloseRoom(consultationIdString, "Psicólogo está saindo da consulta");
+          console.log("🚪 [SalaVideo] Evento emitido para fechar room do paciente");
+        } catch (error) {
+          console.error("❌ [SalaVideo] Erro ao emitir evento de fechar room:", error);
+        }
         console.log("🚪 [SalaVideo] Notificado backend - Psicólogo está saindo da consulta", {
           consultationId: consultationIdString,
           userId: uid
@@ -2036,18 +2058,26 @@ export default function SalaVideo({ appId, channel, token, uid, role, consultati
       return;
     } else if (role === "PATIENT") {
       console.log("🧑 [SalaVideo] PACIENTE clicou em sair");
-      // Se foi cancelamento automático, não abre modal de avaliações
-      if (isAutoCancelled) {
-        console.log("⚠️ [SalaVideo] Consulta cancelada automaticamente - não abre modal de avaliações");
-        if (isConnected && consultationIdString) {
-          leaveConsultation(consultationIdString, String(uid));
+        // Se foi cancelamento automático, não abre modal de avaliações
+        if (isAutoCancelled) {
+          console.log("⚠️ [SalaVideo] Consulta cancelada automaticamente - não abre modal de avaliações");
+          if (isConnected && consultationIdString) {
+            leaveConsultation(consultationIdString, String(uid));
+            // ✅ Emite evento para fechar a room do psicólogo quando paciente cancela
+            try {
+              const { emitForceCloseRoom } = await import('@/lib/socket');
+              emitForceCloseRoom(consultationIdString, "Paciente está saindo da consulta (cancelamento automático)");
+              console.log("🚪 [SalaVideo] Evento emitido para fechar room do psicólogo");
+            } catch (error) {
+              console.error("❌ [SalaVideo] Erro ao emitir evento de fechar room:", error);
+            }
+          }
+          leaveRoom();
+          setTimeout(() => {
+            router.push("/painel");
+          }, 500);
+          return;
         }
-        leaveRoom();
-        setTimeout(() => {
-          router.push("/painel");
-        }, 500);
-        return;
-      }
       
       // NOVO FLUXO: Verifica diretamente se ambos estiveram e se precisa abrir modal de depoimento
       console.log("🔍 [SalaVideo] [PACIENTE] Verificando condições para modal de depoimento...");
@@ -2080,6 +2110,14 @@ export default function SalaVideo({ appId, channel, token, uid, role, consultati
           console.log("ℹ️ [SalaVideo] [PACIENTE] Já existe depoimento - fechando sala");
           if (isConnected && consultationIdString) {
             leaveConsultation(consultationIdString, String(uid));
+            // ✅ Emite evento para fechar a room do psicólogo quando paciente sai
+            try {
+              const { emitForceCloseRoom } = await import('@/lib/socket');
+              emitForceCloseRoom(consultationIdString, "Paciente está saindo da consulta");
+              console.log("🚪 [SalaVideo] Evento emitido para fechar room do psicólogo");
+            } catch (error) {
+              console.error("❌ [SalaVideo] Erro ao emitir evento de fechar room:", error);
+            }
           }
           leaveRoom();
           setTimeout(() => {
@@ -2092,6 +2130,14 @@ export default function SalaVideo({ appId, channel, token, uid, role, consultati
         console.log("❌ [SalaVideo] [PACIENTE] Psicólogo não esteve na sala - fechando sala");
         if (isConnected && consultationIdString) {
           leaveConsultation(consultationIdString, String(uid));
+          // ✅ Emite evento para fechar a room do psicólogo quando paciente sai
+          try {
+            const { emitForceCloseRoom } = await import('@/lib/socket');
+            emitForceCloseRoom(consultationIdString, "Paciente está saindo da consulta");
+            console.log("🚪 [SalaVideo] Evento emitido para fechar room do psicólogo");
+          } catch (error) {
+            console.error("❌ [SalaVideo] Erro ao emitir evento de fechar room:", error);
+          }
         }
         leaveRoom();
         setTimeout(() => {
@@ -2124,16 +2170,30 @@ export default function SalaVideo({ appId, channel, token, uid, role, consultati
         const { consultaService } = await import('@/services/consultaService');
         await consultaService().finalizarConsulta(consultaIdParaFinalizar, true);
         console.log("✅ [SalaVideo] Consulta finalizada via ReservaSessao/Consulta após avaliação", consultaIdParaFinalizar);
+        
+        // ✅ Emite evento para fechar a room do outro participante após finalizar
+        if (isConnected && consultaIdParaFinalizar) {
+          try {
+            const { emitForceCloseRoom } = await import('@/lib/socket');
+            emitForceCloseRoom(consultaIdParaFinalizar, "Consulta finalizada pelo paciente após avaliação");
+            console.log("🚪 [SalaVideo] Evento emitido para fechar room do outro participante após avaliação");
+          } catch (error) {
+            console.error("❌ [SalaVideo] Erro ao emitir evento de fechar room:", error);
+          }
+        }
       } catch (error) {
         console.error("❌ [SalaVideo] Erro ao finalizar consulta após avaliação:", error);
       }
     }
 
-    // Notifica o backend que está saindo (após enviar avaliação)
+    // Notifica o backend que está saindo e emite evento para fechar room do outro participante (após enviar avaliação)
     const consultationIdParaLeave = consultationIdString || consultaIdParaFinalizar;
     if (isConnected && consultationIdParaLeave) {
       leaveConsultation(consultationIdParaLeave, String(uid));
-      console.log("🚪 [SalaVideo] Notificado backend após avaliação - Usuário está saindo da consulta", consultationIdParaLeave);
+      // ✅ Emite evento para fechar a room do outro participante também
+      const { emitForceCloseRoom } = await import('@/lib/socket');
+      emitForceCloseRoom(consultationIdParaLeave, "Consulta finalizada pelo paciente após avaliação");
+      console.log("🚪 [SalaVideo] Notificado backend após avaliação - Usuário está saindo da consulta e fechando room do outro", consultationIdParaLeave);
     }
     
     // Invalida todas as queries relacionadas à consulta
@@ -2399,6 +2459,17 @@ export default function SalaVideo({ appId, channel, token, uid, role, consultati
               queryClient.invalidateQueries({ queryKey: ['consultasFuturas'] }),
               queryClient.invalidateQueries({ queryKey: ['consultasAgendadas'] }),
             ]);
+            
+            // ✅ Emite evento para fechar a room do paciente quando psicólogo finaliza
+            if (isConnected && consultationIdString) {
+              try {
+                const { emitForceCloseRoom } = await import('@/lib/socket');
+                emitForceCloseRoom(consultationIdString, "Consulta finalizada pelo psicólogo");
+                console.log("🚪 [SalaVideo] [PSICÓLOGO] Evento emitido para fechar room do paciente");
+              } catch (error) {
+                console.error("❌ [SalaVideo] [PSICÓLOGO] Erro ao emitir evento de fechar room:", error);
+              }
+            }
           } catch (error) {
             console.error("❌ [SalaVideo] [PSICÓLOGO] Erro ao finalizar consulta:", error);
           }
@@ -2406,10 +2477,13 @@ export default function SalaVideo({ appId, channel, token, uid, role, consultati
           console.log("⚠️ [SalaVideo] [PSICÓLOGO] Ambos não estiveram na sala - consulta não será finalizada");
         }
         
-        // Notifica o backend que está saindo (isso vai emitir consultation:force-close-room para o paciente)
+        // Notifica o backend que está saindo e emite evento para fechar room do paciente
         if (isConnected && consultationIdString) {
           leaveConsultation(consultationIdString, String(uid));
-          console.log("🚪 [SalaVideo] Psicólogo confirmou saída - notificando backend", {
+          // ✅ Emite evento para fechar a room do paciente também
+          const { emitForceCloseRoom } = await import('@/lib/socket');
+          emitForceCloseRoom(consultationIdString, "Consulta finalizada pelo psicólogo");
+          console.log("🚪 [SalaVideo] Psicólogo confirmou saída - notificando backend e fechando room do paciente", {
             consultationId: consultationIdString,
             userId: uid
           });
@@ -2461,9 +2535,12 @@ export default function SalaVideo({ appId, channel, token, uid, role, consultati
             console.log("  - Review já existe: ✅");
             console.log("  - Modal NÃO será aberto (já avaliou)");
             
-            // Notifica o backend que está saindo (isso vai emitir consultation:force-close-room para o psicólogo)
+            // Notifica o backend que está saindo e emite evento para fechar room do psicólogo
             if (isConnected && consultationIdString) {
               leaveConsultation(consultationIdString, String(uid));
+              // ✅ Emite evento para fechar a room do psicólogo também
+              const { emitForceCloseRoom } = await import('@/lib/socket');
+              emitForceCloseRoom(consultationIdString, "Consulta finalizada pelo paciente");
             }
             
             leaveRoom();
@@ -2479,9 +2556,12 @@ export default function SalaVideo({ appId, channel, token, uid, role, consultati
           console.log("  - Ambos estiveram na sala: ❌");
           console.log("  - Modal NÃO será aberto (psicólogo não compareceu)");
           
-          // Notifica o backend que está saindo (isso vai emitir consultation:force-close-room para o psicólogo)
+          // Notifica o backend que está saindo e emite evento para fechar room do psicólogo
           if (isConnected && consultationIdString) {
             leaveConsultation(consultationIdString, String(uid));
+            // ✅ Emite evento para fechar a room do psicólogo também
+            const { emitForceCloseRoom } = await import('@/lib/socket');
+            emitForceCloseRoom(consultationIdString, "Consulta finalizada pelo paciente");
           }
           
           leaveRoom();

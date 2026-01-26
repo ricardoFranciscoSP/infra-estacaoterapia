@@ -221,7 +221,54 @@ const RegisterPageInner = () => {
           }
           
           if (user?.Role === "Patient") {
-            // Verifica se há planoId na query string (fluxo de primeira sessão)
+            // Verifica se há dados de agendamento salvos (novo fluxo)
+            if (typeof window !== 'undefined') {
+              const { recuperarDadosPrimeiraCompra, salvarDadosPrimeiraCompra } = await import('@/utils/primeiraCompraStorage');
+              let dadosSalvos = await recuperarDadosPrimeiraCompra();
+              
+              // Se não tem dados salvos mas tem planoId no sessionStorage e contexto de primeira sessão,
+              // cria os dados salvos (caso o usuário tenha pulado alguma etapa)
+              if (!dadosSalvos) {
+                const planoIdSession = window.sessionStorage.getItem('primeira-sessao-planoId');
+                const contexto = searchParams?.get("contexto");
+                const psicologoId = searchParams?.get("psicologoId");
+                const origem = searchParams?.get("origem");
+                
+                if (planoIdSession && contexto === "primeira_sessao" && origem === "marketplace" && psicologoId) {
+                  // Tenta recuperar dados do agendamento pendente
+                  const agendamentoPendente = window.sessionStorage.getItem('agendamento-pendente');
+                  if (agendamentoPendente) {
+                    try {
+                      const agendamento = JSON.parse(agendamentoPendente);
+                      await salvarDadosPrimeiraCompra({
+                        planoId: planoIdSession,
+                        psicologoId: psicologoId,
+                        contexto: 'primeira_sessao',
+                        origem: 'marketplace',
+                        dadosAgendamento: {
+                          psicologoId: agendamento.psicologoId || psicologoId,
+                          agendaId: agendamento.agendaId,
+                          data: agendamento.data,
+                          horario: agendamento.horario,
+                          nomePsicologo: agendamento.nome,
+                        },
+                      });
+                      dadosSalvos = await recuperarDadosPrimeiraCompra();
+                    } catch (error) {
+                      console.error('[Register] Erro ao criar dados salvos:', error);
+                    }
+                  }
+                }
+              }
+              
+              // Se tem dados de agendamento salvos, redireciona para pagamento
+              if (dadosSalvos?.dadosAgendamento && dadosSalvos.planoId) {
+                router.push(`/painel/comprar-consulta/${dadosSalvos.planoId}`);
+                return;
+              }
+            }
+            
+            // Verifica se há planoId na query string (fluxo de primeira sessão antigo)
             const planoId = searchParams?.get("planoId");
             const productId = searchParams?.get("productId");
             const redirect = searchParams?.get("redirect");
@@ -277,8 +324,9 @@ const RegisterPageInner = () => {
             }
             
             // Fluxo normal: verifica onboarding
-            // Sempre redireciona para boas-vindas se não tiver onboarding completo
-            // O fluxo de primeira consulta será gerenciado após o onboarding
+            // IMPORTANTE: Se veio do fluxo de primeira sessão (com dados de agendamento),
+            // o onboarding será feito APÓS finalizar o pedido (pagamento + agendamento)
+            // Por isso, não redireciona para boas-vindas aqui se tiver dados de agendamento
             const hasCompletedOnboarding = Array.isArray(user.Onboardings) && user.Onboardings.length > 0 
               ? user.Onboardings.some((onboarding: { Completed?: string | boolean }) => {
                   const completed = onboarding.Completed;
@@ -286,7 +334,27 @@ const RegisterPageInner = () => {
                 })
               : false;
             
-            router.push(hasCompletedOnboarding ? "/painel" : "/boas-vindas");
+            // Se não completou onboarding e não tem dados de agendamento pendentes, vai para onboarding
+            // Caso contrário, vai para o painel (o onboarding será feito após finalizar o pedido)
+            if (!hasCompletedOnboarding) {
+              // Verifica se há dados de agendamento salvos (fluxo de primeira sessão)
+              if (typeof window !== 'undefined') {
+                const { recuperarDadosPrimeiraCompra } = await import('@/utils/primeiraCompraStorage');
+                const dadosSalvos = await recuperarDadosPrimeiraCompra();
+                
+                // Se tem dados de agendamento, não vai para onboarding agora
+                // O onboarding será feito após finalizar o pedido
+                if (dadosSalvos?.dadosAgendamento) {
+                  router.push("/painel");
+                  return;
+                }
+              }
+              
+              // Se não tem dados de agendamento, segue fluxo normal de onboarding
+              router.push("/boas-vindas");
+            } else {
+              router.push("/painel");
+            }
           } else if (user?.Role === "Psychologist") {
             router.push("/painel-psicologo");
           }

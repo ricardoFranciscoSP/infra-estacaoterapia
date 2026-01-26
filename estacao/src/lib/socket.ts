@@ -757,6 +757,36 @@ export const leaveConsultation = (consultationId: string, userId: string) => {
     s.emit("consultation:leave", { consultationId, userId });
 };
 
+/**
+ * Emite evento para forçar fechamento da room do outro participante
+ * Usado quando um participante finaliza a consulta para fechar ambas as rooms
+ */
+export const emitForceCloseRoom = (consultationId: string, reason?: string) => {
+    const s = getSocket();
+    if (!s) return;
+    console.log("🚪 [Socket] Emitindo evento para fechar room do outro participante:", { consultationId, reason });
+    
+    // Garante que está na sala da consulta antes de emitir
+    ensureSocketConnection();
+    const roomName = `consulta_${consultationId}`;
+    s.emit("join-room", roomName);
+    
+    // Emite para a sala da consulta (todos os participantes na sala receberão)
+    s.emit("consultation:force-close-room", { 
+        consultationId, 
+        reason: reason || "Consulta finalizada pelo outro participante",
+        timestamp: new Date().toISOString()
+    });
+    
+    // Também emite via evento da consulta para garantir que seja recebido
+    s.emit(`consultation:${consultationId}`, {
+        event: "room-closed",
+        consultationId,
+        reason: reason || "Consulta finalizada pelo outro participante",
+        message: reason || "A sessão foi encerrada pelo outro participante."
+    });
+};
+
 // Listener para quando alguém entra na consulta
 export const onUserJoinedConsultation = (
     callback: (data: UserJoinedData) => void,

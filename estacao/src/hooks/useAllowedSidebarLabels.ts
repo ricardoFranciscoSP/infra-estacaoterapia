@@ -3,11 +3,7 @@
 import { useMemo } from "react";
 import { useUserBasic } from "@/hooks/user/userHook";
 import { usePermissionsForUser } from "@/hooks/usePermissions";
-import {
-  allowedSidebarLabelsFromPermissions,
-  ALWAYS_VISIBLE_LABELS,
-  SIDEBAR_LABEL_TO_MODULE,
-} from "@/utils/sidebarPermissions";
+import { allowedSidebarLabelsFromPermissions, allSidebarLabels } from "@/utils/sidebarPermissions";
 
 /**
  * Retorna os labels do sidebar que o usuário pode ver, com base em
@@ -32,11 +28,7 @@ export function useAllowedSidebarLabels(): string[] | null | undefined {
     const rolePerms = (data as { rolePermissions?: Array<{ Module: string; Action: string }> }).rolePermissions ?? [];
     const userPerms = (data as { userPermissions?: Array<{ Module: string; Action: string; Allowed: boolean }> }).userPermissions ?? [];
     const allowed = allowedSidebarLabelsFromPermissions(rolePerms, userPerms);
-    return allowed.length > 0 ? allowed : Array.from(ALWAYS_VISIBLE_LABELS);
+    return allowed.length > 0 ? allowed : allSidebarLabels();
   }, [user, isAdminRole, isLoading, isError, data]);
 }
 
-/** Todos os labels do sidebar para fallback (mostrar tudo). */
-export function allSidebarLabels(): string[] {
-  return Object.keys(SIDEBAR_LABEL_TO_MODULE);
-}

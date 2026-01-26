@@ -8,6 +8,7 @@ import { getAvatarUrl } from "@/utils/avatarUtils";
 import { AgendamentoParams } from "@/utils/agendamentoUtils";
 import { useDraftSession } from "@/hooks/useDraftSession";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
+import { atualizarDadosAgendamento, salvarDadosPrimeiraCompra } from "@/utils/primeiraCompraStorage";
 
 type Props = {
   open: boolean;
@@ -40,6 +41,7 @@ export default function ModalLoginAgendamento({
         agendamento.agendaId
       );
       window.localStorage.setItem("draftId", String(draftId));
+      
       // Salva agendamento pendente com contexto de primeira sessão
       const agendamentoComContexto = {
         ...agendamento,
@@ -48,6 +50,32 @@ export default function ModalLoginAgendamento({
         timestamp: Date.now(),
       };
       window.sessionStorage.setItem("agendamento-pendente", JSON.stringify(agendamentoComContexto));
+      
+      // Salva dados de agendamento no storage para uso no fluxo de compra
+      // IMPORTANTE: O planoId deve estar no sessionStorage (salvo ao clicar no botão)
+      const planoId = typeof window !== 'undefined' ? window.sessionStorage.getItem('primeira-sessao-planoId') : null;
+      
+      if (!planoId) {
+        console.error('[ModalLoginAgendamento] PlanoId não encontrado no sessionStorage. O usuário deve ter clicado no botão primeiro.');
+        alert('Erro: Plano não encontrado. Por favor, volte e clique no botão novamente.');
+        return;
+      }
+      
+      // Salva dados completos da primeira compra com agendamento
+      await salvarDadosPrimeiraCompra({
+        planoId,
+        psicologoId: agendamento.psicologoId,
+        contexto: 'primeira_sessao',
+        origem: 'marketplace',
+        dadosAgendamento: {
+          psicologoId: agendamento.psicologoId,
+          agendaId: agendamento.agendaId,
+          data: agendamento.data,
+          horario: agendamento.horario,
+          nomePsicologo: agendamento.nome,
+        },
+      });
+      
       // Redireciona para registro com contexto de primeira sessão
       router.push(`/register?tab=paciente&psicologoId=${agendamento.psicologoId}&contexto=primeira_sessao&origem=marketplace`);
     } catch {

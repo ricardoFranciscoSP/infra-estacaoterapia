@@ -382,8 +382,10 @@ const ListPsicologo: React.FC<ListPsicologoProps> = ({
                     horario: hora,
                   };
                   const isUserValid = !!user && !!user.Id;
+                  
                   if (isUserValid) {
-                    // Verifica saldo APENAS para usuários logados
+                    // Usuário logado: segue fluxo normal de agendamento
+                    // Verifica saldo e efetiva agendamento direto
                     if (isLoadingSaldo) {
                       // Aguarda carregar o saldo
                       toast.error("Aguarde enquanto verificamos seu saldo...");
@@ -413,8 +415,8 @@ const ListPsicologo: React.FC<ListPsicologoProps> = ({
                       );
                     }
                   } else {
-                    // Usuário NÃO logado: segue fluxo normal com DraftSession
-                    // Abre modal de login que cria DraftSession
+                    // Usuário NÃO logado: segue fluxo de primeira sessão
+                    // Abre modal de login que cria DraftSession e salva dados para compra
                     setAgendamentoPendente(agendamento);
                     setModalLoginOpen(true);
                   }
@@ -480,8 +482,10 @@ const ListPsicologo: React.FC<ListPsicologoProps> = ({
                     horario: hora,
                   };
                   const isUserValid = !!user && !!user.Id;
+                  
                   if (isUserValid) {
-                    // Verifica saldo APENAS para usuários logados
+                    // Usuário logado: segue fluxo normal de agendamento
+                    // Verifica saldo e efetiva agendamento direto
                     if (isLoadingSaldo) {
                       // Aguarda carregar o saldo
                       toast.error("Aguarde enquanto verificamos seu saldo...");
@@ -511,8 +515,8 @@ const ListPsicologo: React.FC<ListPsicologoProps> = ({
                       );
                     }
                   } else {
-                    // Usuário NÃO logado: segue fluxo normal com DraftSession
-                    // Abre modal de login que cria DraftSession
+                    // Usuário NÃO logado: segue fluxo de primeira sessão
+                    // Abre modal de login que cria DraftSession e salva dados para compra
                     setAgendamentoPendente(agendamento);
                     setModalLoginOpen(true);
                   }
