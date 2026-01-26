@@ -605,12 +605,10 @@ function getNomePacienteSeguro(paciente: string | undefined | null): string {
 
               {/* Consulta em andamento - aparece antes da próxima consulta */}
               {consultaEmAndamento && (() => {
-                const status = consultaEmAndamento.Status || (consultaEmAndamento as any).status;
+                const status = consultaEmAndamento.Status || (consultaEmAndamento as { status?: string }).status;
                 const isEmAndamento = status === 'EmAndamento' || status === 'Andamento' || status === 'Em Andamento';
                 
                 if (isEmAndamento) {
-                  // Normaliza a consulta para o formato esperado pelo componente
-                  const consultaNormalizada = normalizeConsulta(consultaEmAndamento as unknown as GenericObject);
                   return (
                     <section className="mb-6">
                       <h3 className="fira-sans font-semibold text-xl sm:text-2xl leading-tight tracking-normal text-[#49525A] mb-4">

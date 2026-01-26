@@ -25,6 +25,23 @@ interface FormularioSaqueAutonomoProps {
   onClose: () => void;
 }
 
+// Constantes movidas para fora do componente para evitar recriação
+const UFS = [
+  "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS", "MG", "PA", "PB", "PR", "PE", "PI", "RJ", "RN", "RS", "RO", "RR", "SC", "SP", "SE", "TO"
+];
+
+const ESTADOS = [
+  "Acre", "Alagoas", "Amapá", "Amazonas", "Bahia", "Ceará", "Distrito Federal",
+  "Espírito Santo", "Goiás", "Maranhão", "Mato Grosso", "Mato Grosso do Sul",
+  "Minas Gerais", "Pará", "Paraíba", "Paraná", "Pernambuco", "Piauí",
+  "Rio de Janeiro", "Rio Grande do Norte", "Rio Grande do Sul", "Rondônia",
+  "Roraima", "Santa Catarina", "São Paulo", "Sergipe", "Tocantins"
+];
+
+const ESTADO_TO_UF: Record<string, string> = Object.fromEntries(
+  ESTADOS.map((e, i) => [e, UFS[i]])
+);
+
 export const FormularioSaqueAutonomo: React.FC<FormularioSaqueAutonomoProps> = ({ onClose }) => {
     // Hooks para gerenciar o formulário
     const { formulario, isLoading: isLoadingFormulario, refetch } = useFormularioSaqueAutonomo();
@@ -47,9 +64,6 @@ export const FormularioSaqueAutonomo: React.FC<FormularioSaqueAutonomoProps> = (
     const [nomeConjuge, setNomeConjuge] = useState("");
     const [regimeBens, setRegimeBens] = useState("Comunhão parcial de bens");
 
-    const ufs = [
-      "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS", "MG", "PA", "PB", "PR", "PE", "PI", "RJ", "RN", "RS", "RO", "RR", "SC", "SP", "SE", "TO"
-    ];
     const estadosCivis = ["Solteiro(a)", "Casado(a)", "Divorciado(a)", "Viúvo(a)", "Separado(a)"];
     const sexos = ["Feminino", "Masculino", "Outro"];
     const racas = ["Branca", "Preta", "Parda", "Amarela", "Indígena"];
@@ -69,20 +83,9 @@ export const FormularioSaqueAutonomo: React.FC<FormularioSaqueAutonomoProps> = (
   const [cidadeNascimento, setCidadeNascimento] = useState("");
   const [estadoNascimento, setEstadoNascimento] = useState("Bahia");
   const [possuiDeficiencia, setPossuiDeficiencia] = useState<"nao" | "sim">("nao");
-  const [chavePix, setChavePix] = useState("");
+    const [chavePix, setChavePix] = useState("");
 
   // Para manter o layout igual ao da imagem, garantir que os campos estejam alinhados lado a lado quando possível
-
-  const estados = [
-    "Acre", "Alagoas", "Amapá", "Amazonas", "Bahia", "Ceará", "Distrito Federal",
-    "Espírito Santo", "Goiás", "Maranhão", "Mato Grosso", "Mato Grosso do Sul",
-    "Minas Gerais", "Pará", "Paraíba", "Paraná", "Pernambuco", "Piauí",
-    "Rio de Janeiro", "Rio Grande do Norte", "Rio Grande do Sul", "Rondônia",
-    "Roraima", "Santa Catarina", "São Paulo", "Sergipe", "Tocantins"
-  ];
-  const ESTADO_TO_UF: Record<string, string> = Object.fromEntries(
-    estados.map((e, i) => [e, ufs[i]])
-  );
 
   const tiposDependente = ["Cônjuge", "Filho(a)", "Pai/Mãe", "Outro"];
 
@@ -346,7 +349,7 @@ export const FormularioSaqueAutonomo: React.FC<FormularioSaqueAutonomoProps> = (
               <div>
                 <label className="block text-[14px] font-medium text-[#23253a] mb-2">UF</label>
                 <select value={ufOrgaoEmissor} onChange={e => setUfOrgaoEmissor(e.target.value)} className="w-full px-4 py-2.5 rounded-[8px] border border-[#E5E7EB] text-[14px]">
-                  {ufs.map(uf => <option key={uf} value={uf}>{uf}</option>)}
+                  {UFS.map(uf => <option key={uf} value={uf}>{uf}</option>)}
                 </select>
               </div>
               <div>
@@ -424,7 +427,7 @@ export const FormularioSaqueAutonomo: React.FC<FormularioSaqueAutonomoProps> = (
                   }}
                   className="w-full px-4 py-2.5 rounded-[8px] border border-[#E5E7EB] text-[14px]"
                 >
-                  {estados.map(estado => <option key={estado} value={estado}>{estado}</option>)}
+                  {ESTADOS.map(estado => <option key={estado} value={estado}>{estado}</option>)}
                 </select>
               </div>
               <div className="relative">
@@ -669,7 +672,7 @@ export const FormularioSaqueAutonomo: React.FC<FormularioSaqueAutonomoProps> = (
                     onChange={(e) => setEstadoNascimento(e.target.value)}
                     className="w-full px-4 py-2.5 rounded-[8px] border border-[#E5E7EB] text-[14px] text-[#23253a] bg-white focus:outline-none focus:ring-2 focus:ring-[#6D75C0] focus:border-[#6D75C0]"
                   >
-                    {estados.map((estado) => (
+                    {ESTADOS.map((estado) => (
                       <option key={estado} value={estado}>
                         {estado}
                       </option>

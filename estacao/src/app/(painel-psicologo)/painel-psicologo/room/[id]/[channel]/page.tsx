@@ -455,7 +455,7 @@ export default function Room() {
         router.replace("/painel-psicologo");
       }
       // ✅ Se a consulta foi finalizada/concluída, fecha a room
-      if (status === "Concluido" || status === "Concluído" || status === "Realizada" || status === "realizada") {
+      if (status === "Concluido") {
         console.log("🚪 [Psychologist Room] Consulta finalizada - fechando room");
         toast.dismiss();
         toast.success("Sessão finalizada.");

@@ -120,13 +120,8 @@ export default function FinanceiroPage() {
   const currentMonthYearLabel = now
     ? now.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
     : '--';
-  const currentMonthLabel = now
-    ? now.toLocaleDateString('pt-BR', { month: 'long' })
-    : '--';
-  const currentYearLabel = now ? String(now.getFullYear()) : '----';
   
   const { historicoSessoes, pagination, isLoading: isLoadingHistorico } = useHistoricoSessoes(mesFiltro, anoFiltro, page, pageSize);
-  const { historicoSessoes: historicoSessoesMesAtual } = useHistoricoSessoes(mesAtual, anoAtual, 1, 1000); // Buscar todas as sessões do mês atual
   const { ganhosMensais, isLoading: isLoadingGanhos } = useGanhosMensais(anoFiltroGrafico, mesFiltroGrafico);
   const { atendimentosMensais, isLoading: isLoadingAtendimentos } = useAtendimentosMensais(anoFiltroAtendimentos, mesFiltroAtendimentos);
   const { saldoDisponivelResgate, isLoading: isLoadingSaldo } = useSaldoDisponivelResgate();

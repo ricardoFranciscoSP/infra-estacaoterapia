@@ -112,10 +112,10 @@ export default function SuccessPage() {
 				const consultas = response.data || [];
 
 				// Verifica se há uma consulta com o agendaId que foi agendado
-				const consultaConfirmada = consultas.some((consulta: any) => {
+				const consultaConfirmada = dadosSalvos.dadosAgendamento ? consultas.some((consulta: { Agenda?: { Id?: string | number }; AgendaId?: string | number }) => {
 					const agendaIdConsulta = consulta.Agenda?.Id || consulta.AgendaId;
-					return agendaIdConsulta === dadosSalvos.dadosAgendamento.agendaId;
-				});
+					return agendaIdConsulta === dadosSalvos.dadosAgendamento?.agendaId;
+				}) : false;
 
 				if (consultaConfirmada) {
 					setAgendamentoConfirmado(true);

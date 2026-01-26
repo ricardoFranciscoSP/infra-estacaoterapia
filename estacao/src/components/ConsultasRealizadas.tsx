@@ -618,7 +618,7 @@ const ConsultasRealizadas: React.FC = () => {
               </svg>
             </div>
             <p className="text-[#6B7280] text-center font-medium">
-              Nenhuma consulta encontrada com o status "{STATUS_TAGS.find(t => t.key === statusFilter)?.label || statusFilter}".
+              Nenhuma consulta encontrada com o status &quot;{STATUS_TAGS.find(t => t.key === statusFilter)?.label || statusFilter}&quot;.
             </p>
             <p className="text-[#9CA3AF] text-sm text-center mt-1">
               Tente selecionar outro filtro ou verifique suas consultas.

@@ -13,6 +13,7 @@ import {
 } from "@/services/permissionsService";
 import { User, userService } from "@/services/userService";
 import toast from "react-hot-toast";
+import { SIDEBAR_MODULES } from "@/config/sidebarConfig";
 
 // Ícones SVG
 
@@ -651,38 +652,41 @@ export default function PerfisAcessoPage() {
                                         </svg>
                                         Links do Menu (Sidebar)
                                     </h4>
-                                    <p className="text-xs text-gray-600 mb-4">Selecione quais links do menu este usuário pode visualizar (permite apenas "Ver").</p>
+                                    <p className="text-xs text-gray-600 mb-4">Selecione quais links do menu este usuário pode visualizar (permite apenas &quot;Ver&quot;).</p>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                                        {require("@/config/sidebarConfig").SIDEBAR_MODULES.filter((m: any) => m.module).map((mod: any) => (
-                                            <label
-                                                key={mod.module}
-                                                className={
-                                                    'flex items-center gap-2 p-3 rounded-lg border-2 cursor-pointer transition-all ' +
-                                                    ((userModulePermissions as Record<string, Record<ActionType, boolean>>)[mod.module]?.Read
-                                                        ? 'border-[#8494E9] bg-[#8494E9]/10'
-                                                        : 'border-gray-200 hover:border-[#8494E9]/30 hover:bg-gray-50')
-                                                }
-                                            >
-                                                <input
-                                                    type="checkbox"
-                                                    checked={(userModulePermissions as Record<string, Record<ActionType, boolean>>)[mod.module]?.Read || false}
-                                                    onChange={() => {
-                                                        setUserModulePermissions(prev => ({
-                                                            ...prev,
-                                                            [mod.module]: {
-                                                                ...((prev as Record<string, Record<ActionType, boolean>>)[mod.module]),
-                                                                Read: !((prev as Record<string, Record<ActionType, boolean>>)[mod.module]?.Read)
-                                                            }
-                                                        }));
-                                                    }}
-                                                    className="w-4 h-4 text-[#8494E9] rounded border-gray-300 focus:ring-[#8494E9] cursor-pointer"
-                                                />
-                                                <span className="text-xs font-medium text-gray-700 flex items-center gap-1">
-                                                    <span>{mod.icon && <i className={`icon-${mod.icon}`}></i>}</span>
-                                                    {mod.label}
-                                                </span>
-                                            </label>
-                                        ))}
+                                        {SIDEBAR_MODULES.filter((m): m is typeof m & { module: Module } => m.module !== null).map((mod) => {
+                                            const moduleKey = mod.module;
+                                            return (
+                                                <label
+                                                    key={moduleKey}
+                                                    className={
+                                                        'flex items-center gap-2 p-3 rounded-lg border-2 cursor-pointer transition-all ' +
+                                                        ((userModulePermissions as Record<string, Record<ActionType, boolean>>)[moduleKey]?.Read
+                                                            ? 'border-[#8494E9] bg-[#8494E9]/10'
+                                                            : 'border-gray-200 hover:border-[#8494E9]/30 hover:bg-gray-50')
+                                                    }
+                                                >
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={(userModulePermissions as Record<string, Record<ActionType, boolean>>)[moduleKey]?.Read || false}
+                                                        onChange={() => {
+                                                            setUserModulePermissions(prev => ({
+                                                                ...prev,
+                                                                [moduleKey]: {
+                                                                    ...((prev as Record<string, Record<ActionType, boolean>>)[moduleKey]),
+                                                                    Read: !((prev as Record<string, Record<ActionType, boolean>>)[moduleKey]?.Read)
+                                                                }
+                                                            }));
+                                                        }}
+                                                        className="w-4 h-4 text-[#8494E9] rounded border-gray-300 focus:ring-[#8494E9] cursor-pointer"
+                                                    />
+                                                    <span className="text-xs font-medium text-gray-700 flex items-center gap-1">
+                                                        <span>{mod.icon && <i className={`icon-${mod.icon}`}></i>}</span>
+                                                        {mod.label}
+                                                    </span>
+                                                </label>
+                                            );
+                                        })}
                                     </div>
                                 </div>
 

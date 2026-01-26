@@ -277,7 +277,7 @@ export default function ConsultaAtualPsicologo({ consulta: consultaProp = null, 
           return () => clearTimeout(timeoutId);
         }
       }
-    } catch (error) {
+    } catch {
       // Silencia erros de timeout para evitar toast/console excessivo
       // (erro de cálculo de tempo não impacta experiência do usuário)
     }

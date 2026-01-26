@@ -302,4 +302,4 @@ $$ LANGUAGE plpgsql;
 COMMENT ON FUNCTION atualizar_reservasessao_status_direto IS 
 'Função helper para atualizar status de ReservaSessao diretamente.
 IMPORTANTE: Use apenas para correções de dados. O fluxo normal deve atualizar via Consulta.Status.
-Exemplo de uso: SELECT atualizar_reservasessao_status_direto('consulta-id', 'Cancelled_no_show'::"AgendaStatus");';
+Exemplo de uso: SELECT atualizar_reservasessao_status_direto(''consulta-id'', ''Cancelled_no_show''::"AgendaStatus");';

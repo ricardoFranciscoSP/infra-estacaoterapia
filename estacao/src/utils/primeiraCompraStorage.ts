@@ -24,6 +24,13 @@ export interface PrimeiraCompraTempData {
     utm_term?: string;
     utm_content?: string;
   };
+  dadosAgendamento?: {
+    psicologoId: string;
+    agendaId: string;
+    data: string;
+    horario: string;
+    nomePsicologo: string;
+  };
   endereco?: {
     cep: string;
     rua: string;

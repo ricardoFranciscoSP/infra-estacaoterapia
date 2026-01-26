@@ -19,10 +19,12 @@ const userController = new UserController(authService, userService, getUserBasic
 
 const upload = multer();
 
-router.use(protect); // Middleware to handle async errors
 // Rotas relacionadas ao usuário
-router.get('/me', asyncHandler(userController.me.bind(userController)));
 router.get('/user-basic', asyncHandler(userController.getUserBasic.bind(userController)));
+
+router.use(protect); // Middleware de autenticação para rotas abaixo
+
+router.get('/me', asyncHandler(userController.me.bind(userController)));
 router.get('/user-details', asyncHandler(userController.getUserFullDetails.bind(userController)));
 router.get('/plano', asyncHandler(userController.getUserPlano.bind(userController)));
 // ConsultaAvulsa e CreditoAvulso

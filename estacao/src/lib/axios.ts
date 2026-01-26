@@ -6,6 +6,7 @@ import axios, {
     RawAxiosRequestHeaders,
 } from 'axios';
 import { getApiUrl } from '@/config/env';
+import { parseCookies } from 'nookies';
 
 /**
  * Configuração do cliente HTTP Axios
@@ -45,6 +46,32 @@ export const api = axios.create({
     withCredentials: true,
     timeout: 30000, // 30 segundos de timeout
 });
+
+// Função auxiliar para verificar se há token (cacheada para performance)
+let hasTokenCache: boolean | null = null;
+let tokenCheckTime = 0;
+const TOKEN_CACHE_TTL = 1000; // Cache por 1 segundo
+
+function checkHasToken(): boolean {
+    if (typeof window === 'undefined') return false;
+    
+    // Usa cache para evitar múltiplas verificações em sequência
+    const now = Date.now();
+    if (hasTokenCache !== null && (now - tokenCheckTime) < TOKEN_CACHE_TTL) {
+        return hasTokenCache;
+    }
+    
+    try {
+        const cookies = parseCookies();
+        hasTokenCache = !!cookies.token;
+        tokenCheckTime = now;
+        return hasTokenCache;
+    } catch {
+        hasTokenCache = false;
+        tokenCheckTime = now;
+        return false;
+    }
+}
 
 // Interceptor de REQUEST - debug opcional
 api.interceptors.request.use(
@@ -97,12 +124,33 @@ api.interceptors.response.use(
         return response;
     },
     (error: AxiosError<unknown>) => {
-        // Log detalhado de erro
+        const statusCode = error.response?.status;
+        
+        // Verifica se é erro 401 e se há token salvo
+        // Se não houver token (usuário não logado), não exibe log de erro
+        // Esta verificação deve ser feita ANTES de qualquer processamento para evitar logs desnecessários
+        if (statusCode === 401) {
+            const hasToken = checkHasToken();
+            
+            if (!hasToken) {
+                // Usuário não logado - não loga o erro e rejeita silenciosamente
+                // Marca o erro como silencioso para evitar qualquer log adicional
+                (error as AxiosError<unknown> & { __silent?: boolean }).__silent = true;
+                return Promise.reject(error);
+            }
+            // Se houver token, continua com o log detalhado (é relevante para debug)
+        }
+
+        // Log detalhado de erro (apenas se não for silencioso)
         const url = error.config?.url || 'unknown';
         const method = error.config?.method?.toUpperCase() || 'UNKNOWN';
         const baseURL = error.config?.baseURL || '';
         const fullUrl = baseURL ? `${baseURL}${url}` : url;
-        const statusCode = error.response?.status;
+        
+        // Se o erro foi marcado como silencioso, pula todos os logs
+        if ((error as AxiosError<unknown> & { __silent?: boolean }).__silent) {
+            return Promise.reject(error);
+        }
 
         // Endpoints que podem retornar erro 500 e devem ser logados de forma mais silenciosa
         const endpointsSilenciosos = [

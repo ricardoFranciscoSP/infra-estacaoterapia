@@ -137,7 +137,7 @@ function getNomePacienteSeguro(paciente: string | undefined | null): string {
 export default function ConsultasPage() {
   const [page, setPage] = useState(1);
   const [busca, setBusca] = useState("");
-  const [filtro, setFiltro] = useState<string>("todos");
+  const [filtro, setFiltro] = useState<'todos' | 'efetuada' | 'cancelada'>("todos");
   const [dataInicial, setDataInicial] = useState("");
   const [dataFinal, setDataFinal] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
@@ -258,7 +258,7 @@ export default function ConsultasPage() {
 
   // Busca histórico de consultas com filtros
   const { consultas, totalPages, isLoading, isError } = useObterHistoricoConsultas({
-    status: filtro,
+    status: filtro === 'todos' ? undefined : filtro,
     buscaPaciente: busca || undefined,
     dataInicial: dataInicial || undefined,
     dataFinal: dataFinal || undefined,
@@ -414,7 +414,7 @@ export default function ConsultasPage() {
           <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-4 sm:p-5 md:p-6 w-full">
             {/* Consulta em andamento - aparece quando status for EmAndamento (durante os 50 minutos) */}
             {consultaAtualFromHook && (() => {
-              const status = consultaAtualFromHook.Status || (consultaAtualFromHook as any).status;
+              const status = consultaAtualFromHook.Status || (consultaAtualFromHook as { status?: string }).status;
               const isEmAndamento = status === 'EmAndamento' || status === 'Andamento' || status === 'Em Andamento';
               
               // 🎯 Mostra consulta em andamento se o status for EmAndamento (independente do tempo)
@@ -500,7 +500,12 @@ export default function ConsultasPage() {
                         ? "bg-[#6D75C0] text-white border-[#6D75C0] shadow-md scale-105"
                         : "bg-white text-[#6D75C0] border-[#6D75C0] hover:bg-[#F0F1FA] hover:border-[#4B51A6]"
                     }`}
-                    onClick={() => { setFiltro(tag.key); setPage(1); }}
+                    onClick={() => { 
+                      if (tag.key === 'todos' || tag.key === 'efetuada' || tag.key === 'cancelada') {
+                        setFiltro(tag.key);
+                        setPage(1);
+                      }
+                    }}
                     disabled={isLoading}
                     aria-label={`Filtrar por ${tag.label}`}
                   >

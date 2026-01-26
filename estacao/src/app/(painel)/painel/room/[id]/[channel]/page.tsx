@@ -350,7 +350,7 @@ export default function Room() {
         router.replace("/painel");
       }
       // ✅ Se a consulta foi finalizada/concluída, fecha a room
-      if (status === "Concluido" || status === "Concluído" || status === "Realizada" || status === "realizada") {
+      if (status === "Concluido") {
         console.log("🚪 [Patient Room] Consulta finalizada - fechando room");
         toast.dismiss();
         toast.success("Sessão finalizada.");
@@ -452,6 +452,9 @@ export default function Room() {
 
   // ✅ Verifica se o paciente tem seu token (não precisa verificar token do psicólogo)
   const hasPatientToken = !!finalReservaSessao?.AgoraTokenPatient || !!tokenFromChannel;
+
+  // ✅ Verifica se deve mostrar tela de sem permissão (não tem token e não está carregando)
+  const shouldShowNoPermission = !hasPatientToken && !isLoadingReserva && !isLoadingToken && !isLoadingFromChannel && !error;
 
   // ✅ NOVA LÓGICA: Permite entrar na sala se tiver token (de qualquer fonte) E channel e appId
   // Não aguarda todos os dados da reserva se conseguir o token por outro caminho

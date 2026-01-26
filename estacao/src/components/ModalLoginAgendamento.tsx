@@ -8,7 +8,7 @@ import { getAvatarUrl } from "@/utils/avatarUtils";
 import { AgendamentoParams } from "@/utils/agendamentoUtils";
 import { useDraftSession } from "@/hooks/useDraftSession";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
-import { atualizarDadosAgendamento, salvarDadosPrimeiraCompra } from "@/utils/primeiraCompraStorage";
+import { salvarDadosPrimeiraCompra } from "@/utils/primeiraCompraStorage";
 
 type Props = {
   open: boolean;
