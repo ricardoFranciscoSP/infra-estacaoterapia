@@ -71,14 +71,15 @@ export class CancelamentoController {
                         upsert: true
                     });
 
-                if (uploadResult.error) {
-                    // Tratamento específico para erro de verificação de assinatura
-                    const error = uploadResult.error;
-                    const errorMessage = error.message?.toLowerCase() || '';
-                    const hasSignatureError = errorMessage.includes('signature verification failed') || 
-                                             errorMessage.includes('signature');
-                    const hasStatusError = 'statusCode' in error && (error.statusCode === '403' || error.statusCode === 403) ||
-                                         'status' in error && (error.status === 403 || error.status === '403');
+                    if (uploadResult.error) {
+                        // Tratamento específico para erro de verificação de assinatura
+                        const error = uploadResult.error;
+                        const errorMessage = error.message?.toLowerCase() || '';
+                        const hasSignatureError = errorMessage.includes('signature verification failed') || 
+                                                 errorMessage.includes('signature');
+                        const statusCode = 'statusCode' in error ? (typeof error.statusCode === 'string' ? parseInt(error.statusCode, 10) : error.statusCode) : undefined;
+                        const status = 'status' in error ? (typeof error.status === 'string' ? parseInt(error.status, 10) : error.status) : undefined;
+                        const hasStatusError = (statusCode !== undefined && statusCode === 403) || (status !== undefined && status === 403);
                     
                     if (hasSignatureError || hasStatusError) {
                         return res.status(500).json({ 

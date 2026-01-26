@@ -1329,14 +1329,18 @@ export class ContratoService {
         const { error: uploadError } = await storageClient.storage
             .from(bucketName)
             .upload(filePath, fileBuffer, { contentType: 'application/pdf', upsert: true });
-        if (uploadError) {
-            const errorCode = 'statusCode' in uploadError ? (uploadError.statusCode as number | undefined) : undefined;
-            console.error(`[Contrato] Erro ao fazer upload:`, {
-                bucket: bucketName,
-                filePath,
-                error: uploadError.message,
-                code: errorCode
-            });
+            if (uploadError) {
+                const errorCode = 'statusCode' in uploadError 
+                    ? (typeof uploadError.statusCode === 'string' 
+                        ? parseInt(uploadError.statusCode, 10) 
+                        : uploadError.statusCode as number | undefined)
+                    : undefined;
+                console.error(`[Contrato] Erro ao fazer upload:`, {
+                    bucket: bucketName,
+                    filePath,
+                    error: uploadError.message,
+                    code: errorCode
+                });
 
             // Mensagem mais clara para erro de bucket não encontrado
             if (uploadError.message?.toLowerCase().includes('bucket not found') ||
@@ -1409,7 +1413,11 @@ export class ContratoService {
                 });
 
             if (uploadError) {
-                const errorCode = 'statusCode' in uploadError ? (uploadError.statusCode as number | undefined) : undefined;
+                const errorCode = 'statusCode' in uploadError 
+                    ? (typeof uploadError.statusCode === 'string' 
+                        ? parseInt(uploadError.statusCode, 10) 
+                        : uploadError.statusCode as number | undefined)
+                    : undefined;
                 console.error('[Contrato Psicólogo] Erro ao fazer upload:', {
                     bucket: bucketName,
                     filePath,
