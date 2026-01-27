@@ -57,18 +57,21 @@ const ComoFunciona = () => {
             <h2 className="text-center mb-12 md:mb-8 text-2xl md:text-4xl font-fira-sans font-bold text-[#262B58]">
                 Como funciona            
             </h2>
-            <div className="relative flex flex-col md:flex-row md:items-start justify-center gap-6 md:gap-8" style={{ zIndex: '10' }}>
+            <div className="relative">
                 {/* Linha cinza centralizada atrás dos ícones (desktop) */}
                 <div className="hidden md:block absolute top-[40px] left-0 right-0 mx-auto bg-[#B3BBC1] h-0.5 opacity-50"
-                    style={{ height: '2px', zIndex: '1', width: '100%' }}
-                ></div>
-                {/* Linha vertical contínua no mobile */}
-                <div className="md:hidden absolute top-[-50px] bottom-0 left-1/2 transform -translate-x-1/2 bg-[#B3BBC1] w-[2px] z-0"></div>
-                {cards.map((card, index) => (
-                    <div key={`card-${index}`} className="flex flex-col md:flex-row items-center justify-center w-full">
-                        <Card {...card} />
-                    </div>
-                ))}
+                    style={{ height: '2px', zIndex: 0, width: '100%' }}
+                />
+                {/* Linha vertical no mobile — ATRÁS dos logos (z-0); logos e texto em cima */}
+                <div className="md:hidden absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-[2px] bg-[#B3BBC1] opacity-50 z-0" aria-hidden />
+                {/* Conteúdo (logos + texto) em cima da linha */}
+                <div className="relative z-10 flex flex-col md:flex-row md:items-start justify-center gap-5 md:gap-12 lg:gap-16">
+                    {cards.map((card, index) => (
+                        <div key={`card-${index}`} className="flex flex-col md:flex-row items-center justify-center w-full md:w-auto">
+                            <Card {...card} />
+                        </div>
+                    ))}
+                </div>
             </div>
         </motion.div>
     );

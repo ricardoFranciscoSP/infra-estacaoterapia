@@ -10,18 +10,27 @@ interface CardProps {
 }
 
 const Card: React.FC<CardProps> = ({ imgSrc, title, text, align, style }) => {
-    const textPositionClasses =
-        align === 'left'
-            ? 'col-start-1 text-right pr-3'
-            : 'col-start-3 text-left pl-3';
-
     return (
-        <div className="w-full relative">
-            {/* Mobile: ícone e texto lado a lado, alinhados verticalmente */}
-            <div className="flex flex-row items-center justify-center w-full max-w-[320px] md:grid md:grid-cols-1 md:items-center md:max-w-[200px] md:min-h-[200px] mx-auto">
-                {/* Ícone */}
-                <div className="flex-shrink-0 flex items-center justify-center md:col-start-1 md:row-start-1 md:mb-0 mr-3 md:mr-0" style={{ zIndex: 20 }}>
-                    <div className="bg-transparent w-[48px] h-[48px] md:w-[78px] md:h-[78px] flex items-center justify-center" style={{ aspectRatio: '1/1', zIndex: 20 }}>
+        <div className="w-full relative" style={style}>
+            {/* Mobile: layout em blocos — ícone na linha central (círculo roxo) + texto alternando esq/dir */}
+            <div className="flex flex-col md:grid md:grid-cols-1 md:items-center md:max-w-[240px] md:min-h-[200px] mx-auto">
+                {/* Container mobile: grid 3 colunas — [texto esq] | [ícone centro] | [texto dir] */}
+                <div className="md:hidden w-full grid grid-cols-[1fr_auto_1fr] gap-0 items-center">
+                    {/* Coluna esquerda: texto à esquerda da linha (align left) */}
+                    <div className={`min-w-0 ${align === 'left' ? 'pr-3' : ''}`}>
+                        {align === 'left' && (
+                            <div className="text-right">
+                                <h2 className="text-[14px] leading-[16px] text-[#212529] font-bold">
+                                    {title}
+                                </h2>
+                                <p className="text-[#212529] text-[12px] leading-[16px] mt-1">
+                                    {text}
+                                </p>
+                            </div>
+                        )}
+                    </div>
+                    {/* Centro: logo em cima da linha (SVG já tem círculo lilás + ícone branco) */}
+                    <div className="flex-shrink-0 flex items-center justify-center relative z-10">
                         <Image
                             src={imgSrc}
                             alt={title}
@@ -29,22 +38,45 @@ const Card: React.FC<CardProps> = ({ imgSrc, title, text, align, style }) => {
                             height={78}
                             priority
                             sizes="(max-width: 768px) 48px, 78px"
-                            className="w-[48px] h-[48px] md:w-[78px] md:h-[78px]"
-                            style={{ aspectRatio: '1/1', zIndex: 20 }}
+                            className="w-12 h-12 object-contain"
                         />
                     </div>
+                    {/* Coluna direita: texto à direita da linha (align right) */}
+                    <div className={`min-w-0 ${align === 'right' ? 'pl-3' : ''}`}>
+                        {align === 'right' && (
+                            <div className="text-left">
+                                <h2 className="text-[14px] leading-[16px] text-[#212529] font-bold">
+                                    {title}
+                                </h2>
+                                <p className="text-[#212529] text-[12px] leading-[16px] mt-1">
+                                    {text}
+                                </p>
+                            </div>
+                        )}
+                    </div>
                 </div>
-                {/* Texto */}
-                <div
-                    className={`flex-1 ${textPositionClasses} md:col-start-1 md:row-start-2 md:w-full md:text-center md:px-0`}
-                    style={style}
-                >
-                    <h2 className="inline-block text-[14px] leading-[16px] text-[#212529] font-bold whitespace-nowrap overflow-hidden text-ellipsis mx-[5px] md:text-[18px] md:leading-[22px] md:mt-4">
-                        {title}
-                    </h2>
-                    <p className="text-[#212529] text-[12px] leading-[16px] mt-[4px] md:text-[16px] md:leading-[24px] md:mt-[15px]">
-                        {text}
-                    </p>
+
+                {/* Desktop: ícone + texto centralizado em coluna (SVG já tem círculo lilás + ícone branco) */}
+                <div className="hidden md:grid md:grid-cols-1 md:items-center md:gap-0">
+                    <div className="flex items-center justify-center md:col-start-1 md:row-start-1" style={{ zIndex: 20 }}>
+                        <Image
+                            src={imgSrc}
+                            alt={title}
+                            width={78}
+                            height={78}
+                            priority
+                            sizes="78px"
+                            className="w-[78px] h-[78px] object-contain"
+                        />
+                    </div>
+                    <div className="md:col-start-1 md:row-start-2 md:w-full md:text-center md:px-0 md:mt-6">
+                        <h2 className="text-[18px] leading-[22px] text-[#212529] font-bold">
+                            {title}
+                        </h2>
+                        <p className="text-[#212529] text-[16px] leading-[24px] mt-4">
+                            {text}
+                        </p>
+                    </div>
                 </div>
             </div>
         </div>
