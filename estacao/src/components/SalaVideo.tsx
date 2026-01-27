@@ -1037,13 +1037,13 @@ export default function SalaVideo({ appId, channel, token, uid, role, consultati
     if (!consultationIdString || !socket) return;
 
     const handleTimeRemainingWarning = (data: TimeRemainingWarningData) => {
-      console.log("⏰ [SalaVideo] Aviso de tempo restante recebido:", data);
-      // Usa o timeRemaining atual do contador para sincronizar com o contador visual
-      setTimeRemainingWarning({
-        ...data,
-        // Garante que o tempo restante seja sincronizado com o contador
-        timestamp: new Date().toISOString()
-      });
+      // Só exibe avisos a partir de 15 minutos para o final
+      if (data.minutesRemaining <= 15) {
+        setTimeRemainingWarning({
+          ...data,
+          timestamp: new Date().toISOString()
+        });
+      }
     };
 
     onTimeRemainingWarning(handleTimeRemainingWarning, consultationIdString);
@@ -2920,12 +2920,14 @@ export default function SalaVideo({ appId, channel, token, uid, role, consultati
 
             {/* Notificação de Tempo Restante - Estilo Google Meet (banner no topo, integrado ao contador) */}
             {timeRemainingWarning && (
-              <TimeRemainingBanner
-                timeRemaining={Math.max(0, timeRemaining)} // Usa o tempo restante do contador em tempo real
-                minutesRemaining={timeRemainingWarning.minutesRemaining || Math.ceil(Math.max(0, timeRemaining) / 60)}
-                onClose={() => setTimeRemainingWarning(null)}
-                autoClose={10000} // 10 segundos
-              />
+              <div className="fixed bottom-24 sm:bottom-28 md:bottom-32 right-2 sm:right-4 md:right-6 z-50 max-w-[calc(100vw-1rem)] sm:max-w-sm animate-fade-in">
+                <TimeRemainingBanner
+                  timeRemaining={Math.max(0, timeRemaining)}
+                  minutesRemaining={timeRemainingWarning.minutesRemaining || Math.ceil(Math.max(0, timeRemaining) / 60)}
+                  onClose={() => setTimeRemainingWarning(null)}
+                  autoClose={15000} // 15 segundos
+                />
+              </div>
             )}
 
             {/* Notificação de Inatividade - Estilo Google Meet (canto inferior direito) - otimizado para mobile */}

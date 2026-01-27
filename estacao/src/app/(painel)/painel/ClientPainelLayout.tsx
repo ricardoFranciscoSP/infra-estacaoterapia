@@ -11,10 +11,10 @@ import { useProtectedRoute } from '@/hooks/useProtectedRoute';
 import { SocketProvider } from '@/components/SocketProvider';
 import LoggedErrorBoundary from '@/components/LoggedErrorBoundary';
 import { useClearFiltersOnNavigation } from '@/hooks/useClearFiltersOnNavigation';
-import WhatsAppFloatingButton from '@/components/WhatsAppFloatingButton';
 import { useRouter } from 'next/navigation';
 import { getRedirectRouteByRole } from '@/utils/redirectByRole';
 import PainelFooter from '@/components/PainelFooter';
+import { usePathname } from 'next/navigation';
 
 // ⚡ OTIMIZAÇÃO: Dynamic import do PainelHeader com loading skeleton
 const PainelHeader = dynamic(() => import('@/components/PainelHeader'), {
@@ -64,13 +64,19 @@ const ClientPainelLayout: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [user, router]);
 
+  const pathname = usePathname();
+  const isRoomPage = pathname?.startsWith('/painel/room/');
+
   return (
     <LoggedErrorBoundary>
       <SocketProvider userId={user?.Id}>
         <div className="flex flex-col min-h-screen">
-          <Suspense fallback={<PainelHeaderSkeleton isPainelPsicologo={false} />}>
-            <PainelHeader user={user} />
-          </Suspense>
+          {/* Só renderiza o PainelHeader se não estiver na sala de vídeo */}
+          {!isRoomPage && (
+            <Suspense fallback={<PainelHeaderSkeleton isPainelPsicologo={false} />}>
+              <PainelHeader user={user} />
+            </Suspense>
+          )}
           <div className="flex-1 pb-20 md:pb-0">
             <Suspense fallback={<PainelLoadingSkeleton />}>
               {children}
@@ -79,14 +85,6 @@ const ClientPainelLayout: React.FC<{ children: React.ReactNode }> = ({ children 
           {/* Footer fixo mobile/logado - só renderiza se usuário estiver logado (paciente) */}
           {user?.Id && user?.Role === 'Patient' && <PainelFooter />}
           <CustomToastProvider />
-          {/* Botão flutuante do WhatsApp - renderizado apenas após hidratação */}
-          {mounted && (
-            <WhatsAppFloatingButton 
-              phoneNumber="5511960892131"
-              message="Olá, preciso de suporte na Estação Terapia."
-              position="bottom-right"
-            />
-          )}
         </div>
       </SocketProvider>
     </LoggedErrorBoundary>

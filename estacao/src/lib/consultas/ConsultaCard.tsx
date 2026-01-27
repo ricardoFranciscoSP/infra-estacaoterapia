@@ -7,6 +7,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { getAvatarUrl } from '@/utils/avatarUtils';
 import { formatDateBR, formatTimeBR } from '@/utils/formatarDataHora';
+import { useContadorGlobal } from '@/hooks/useContadorGlobal';
 import ConsultaModal from '@/components/ConsultaModal';
 import ModalReagendar from '@/components/ModalReagendar';
 import { obterPrimeiroUltimoNome } from '@/utils/nomeUtils';
@@ -77,6 +78,38 @@ export function ConsultaCard({
   const nomePsicologo = obterPrimeiroUltimoNome(nomePsicologoCompleto) || nomePsicologoCompleto;
   const fotoPsicologo = getAvatarUrl(consulta.Psicologo?.Images?.[0]);
   const psicologoId = consulta.Psicologo?.Id;
+
+  // Sincronização do contador usando timestamp do backend
+  // startTime deve vir da API (ex: consulta.startTime ou consulta.Agenda?.startTime)
+  // Se não vier, fallback para Date.now()
+  // Usa a data da consulta como referência de início
+  let startTime: number;
+  if (consulta.Agenda && 'Data' in consulta.Agenda && consulta.Agenda.Data) {
+    startTime = new Date(consulta.Agenda.Data).getTime();
+  } else if (consulta.Date) {
+    startTime = new Date(consulta.Date).getTime();
+  } else {
+    startTime = Date.now();
+  }
+  const { timestamp } = useContadorGlobal();
+  // Calcula tempo decorrido desde o início da consulta
+  const tempoDecorridoSegundos = Math.floor((timestamp - startTime) / 1000);
+  // Exemplo de formatação: HH:mm:ss
+  function formatarTempo(segundos: number) {
+    const h = Math.floor(segundos / 3600);
+    const m = Math.floor((segundos % 3600) / 60);
+    const s = segundos % 60;
+    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  }
+  // Atualiza contador. Se já existir, sobrescreve tempo; se não, cria novo objeto.
+  const contadorSincronizado = contador ? {
+    ...contador,
+    tempo: formatarTempo(tempoDecorridoSegundos),
+  } : {
+    frase: 'Tempo de consulta',
+    tempo: formatarTempo(tempoDecorridoSegundos),
+    mostrar: true,
+  };
 
   const handleCloseModal = () => setShowModal(false);
   const handleCloseReagendar = () => setShowModalReagendar(false);
@@ -192,17 +225,17 @@ export function ConsultaCard({
             {/* Mobile Layout */}
             <div className="flex flex-col sm:hidden gap-3 h-full overflow-visible pt-8">
               {/* Contador no mobile (se houver) - estilo consultas restantes com ícone de relógio */}
-              {contador?.mostrar && !supportOnly && (
+              {contadorSincronizado.mostrar && !supportOnly && (
                 <div className="flex items-center gap-2 rounded-lg px-3 py-1.5 bg-[#E6E9FF] w-fit">
                   <ClockIcon className="w-4 h-4 text-[#8494E9] shrink-0" />
-                  {contador.frase && (
+                  {contadorSincronizado.frase && (
                     <span className="text-[#232A5C] text-xs font-medium">
-                      {contador.frase}
+                      {contadorSincronizado.frase}
                     </span>
                   )}
-                  {contador.tempo && (
+                  {contadorSincronizado.tempo && (
                     <span className="text-[#8494E9] text-sm font-bold">
-                      {contador.tempo}
+                      {contadorSincronizado.tempo}
                     </span>
                   )}
                 </div>
