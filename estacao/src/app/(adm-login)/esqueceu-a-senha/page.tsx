@@ -48,6 +48,10 @@ export default function EsqueceuSenhaPage() {
               value={email}
               onChange={e => setEmail(e.target.value)}
               required
+              // Permite copiar/colar normalmente
+              onCopy={undefined}
+              onPaste={undefined}
+              onCut={undefined}
             />
           </div>
           <button

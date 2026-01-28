@@ -47,6 +47,10 @@ export default function ResetSenhaPage() {
                 placeholder="Digite a nova senha"
                 autoComplete="off"
                 required
+                // Permite copiar/colar normalmente
+                onCopy={undefined}
+                onPaste={undefined}
+                onCut={undefined}
               />
               <button
                 type="button"
@@ -73,6 +77,10 @@ export default function ResetSenhaPage() {
                 placeholder="Confirme a nova senha"
                 autoComplete="off"
                 required
+                // Permite copiar/colar normalmente
+                onCopy={undefined}
+                onPaste={undefined}
+                onCut={undefined}
               />
               <button
                 type="button"

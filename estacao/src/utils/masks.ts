@@ -23,11 +23,11 @@ export function maskCpfCnpj(value: string): string {
 export function maskCrpAutonomo(value: string): string {
     // Permite números e letras, mas remove caracteres especiais exceto a barra
     const clean = value.replace(/[^\dA-Za-z\/]/g, "").toUpperCase();
-    
+
     if (clean.length <= 2) {
         return clean;
     }
-    
+
     // Adiciona a barra após os dois primeiros caracteres
     const parts = clean.split("/");
     if (parts.length === 1) {
@@ -47,21 +47,21 @@ export function maskCrpAutonomo(value: string): string {
 export function maskCrpJuridico(value: string): string {
     // Permite números e letras, mas remove caracteres especiais exceto as barras
     const clean = value.replace(/[^\dA-Za-z\/]/g, "").toUpperCase();
-    
+
     if (clean.length <= 2) {
         return clean.replace(/\D/g, "").slice(0, 2);
     }
-    
+
     // Divide por barras
     const parts = clean.split("/");
     const firstPart = (parts[0] || "").replace(/\D/g, "").slice(0, 2);
-    
+
     if (parts.length === 1) {
         // Se não tem barra, adiciona após 2 dígitos
         const remaining = clean.slice(2);
         const secondPart = remaining.replace(/\D/g, "").slice(0, 4);
         const letter = remaining.replace(/[^A-Z]/g, "").slice(0, 1);
-        
+
         if (letter && secondPart.length === 4) {
             return `${firstPart}/${secondPart}/${letter}`;
         } else if (secondPart) {
@@ -73,7 +73,7 @@ export function maskCrpJuridico(value: string): string {
         // Se tem uma barra
         const secondPart = parts[1].replace(/\D/g, "").slice(0, 4);
         const letter = parts[1].replace(/[^A-Z]/g, "").slice(0, 1);
-        
+
         if (letter && secondPart.length === 4) {
             return `${firstPart}/${secondPart}/${letter}`;
         } else if (secondPart) {
@@ -85,7 +85,7 @@ export function maskCrpJuridico(value: string): string {
         // Se já tem duas barras
         const secondPart = (parts[1] || "").replace(/\D/g, "").slice(0, 4);
         const thirdPart = (parts[2] || "").replace(/[^A-Z]/g, "").slice(0, 1);
-        
+
         if (thirdPart && secondPart.length === 4) {
             return `${firstPart}/${secondPart}/${thirdPart}`;
         } else if (secondPart) {
@@ -197,10 +197,10 @@ export function dateToMonthYear(date: string): string {
 export function maskDate(value: string): string {
     // Remove tudo que não é número
     const numeric = value.replace(/\D/g, "");
-    
+
     // Limita a 8 dígitos (DDMMYYYY)
     const limited = numeric.slice(0, 8);
-    
+
     // Aplica a máscara: DD/MM/YYYY
     if (limited.length <= 2) {
         return limited;
@@ -219,6 +219,7 @@ export function handleMaskedBackspace(
     maskFn: (value: string) => string,
     setValue: (value: string) => void
 ): void {
+    // Remove restrições de copiar/colar: não bloqueia eventos de copy/paste/cut
     if (e.key !== 'Backspace' && e.key !== 'Delete') {
         return;
     }
@@ -243,31 +244,31 @@ export function handleMaskedBackspace(
 
     // Se o cursor está em um caractere de máscara (backspace)
     if (e.key === 'Backspace' && cursorPosition > 0 && maskChars.includes(value[cursorPosition - 1])) {
-        e.preventDefault();
-        
+        // Removido e.preventDefault() para permitir copiar/colar normalmente
+
         // Remove o dígito anterior ao caractere de máscara
         const beforeMask = value.slice(0, cursorPosition - 1);
         const afterMask = value.slice(cursorPosition);
-        
+
         // Encontra o último dígito antes do caractere de máscara
         let lastDigitIndex = beforeMask.length - 1;
         while (lastDigitIndex >= 0 && maskChars.includes(beforeMask[lastDigitIndex])) {
             lastDigitIndex--;
         }
-        
+
         if (lastDigitIndex >= 0) {
             // Remove o último dígito encontrado
             const newValue = beforeMask.slice(0, lastDigitIndex) + afterMask;
             const maskedValue = maskFn(newValue);
             setValue(maskedValue);
-            
+
             // Reposiciona o cursor após a máscara ser aplicada
             setTimeout(() => {
                 // Calcula a nova posição do cursor baseado na posição do dígito removido
                 const digitsBefore = beforeMask.slice(0, lastDigitIndex).replace(/\D/g, '').length;
                 let newCursorPos = 0;
                 let digitCount = 0;
-                
+
                 for (let i = 0; i < maskedValue.length; i++) {
                     if (/\d/.test(maskedValue[i])) {
                         digitCount++;
@@ -277,31 +278,31 @@ export function handleMaskedBackspace(
                         }
                     }
                 }
-                
+
                 input.setSelectionRange(newCursorPos, newCursorPos);
             }, 0);
         }
     }
     // Se o cursor está em um caractere de máscara (delete)
     else if (e.key === 'Delete' && cursorPosition < value.length && maskChars.includes(value[cursorPosition])) {
-        e.preventDefault();
-        
+        // Removido e.preventDefault() para permitir copiar/colar normalmente
+
         // Remove o dígito após o caractere de máscara
         const beforeMask = value.slice(0, cursorPosition);
         const afterMask = value.slice(cursorPosition + 1);
-        
+
         // Encontra o primeiro dígito após o caractere de máscara
         let firstDigitIndex = 0;
         while (firstDigitIndex < afterMask.length && maskChars.includes(afterMask[firstDigitIndex])) {
             firstDigitIndex++;
         }
-        
+
         if (firstDigitIndex < afterMask.length) {
             // Remove o primeiro dígito encontrado
             const newValue = beforeMask + afterMask.slice(0, firstDigitIndex) + afterMask.slice(firstDigitIndex + 1);
             const maskedValue = maskFn(newValue);
             setValue(maskedValue);
-            
+
             // Mantém o cursor na mesma posição
             setTimeout(() => {
                 input.setSelectionRange(cursorPosition, cursorPosition);
