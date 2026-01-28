@@ -168,43 +168,25 @@ export function ProximaConsulta({
            statusLower === 'cancelado';
   }, [proximaConsulta]);
 
-  // Verifica se está dentro do período da consulta (início até fim)
+  // Verifica se está dentro do período da consulta (início até fim da janela de 60 minutos)
   const estaNoPeriodo = useMemo(() => {
     if (!proximaConsulta) return false;
     try {
-      const dataConsulta = proximaConsulta.Date || proximaConsulta.Agenda?.Data;
-      const horarioConsulta = proximaConsulta.Time || proximaConsulta.Agenda?.Horario;
-      if (!dataConsulta || !horarioConsulta) return false;
-
-      const dateOnly = dataConsulta.split('T')[0].split(' ')[0];
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(dateOnly)) return false;
-
-      const horarioTrimmed = horarioConsulta.trim();
-      if (!/^\d{1,2}:\d{2}$/.test(horarioTrimmed)) return false;
-
-      const [hora, minuto] = horarioTrimmed.split(':').map(Number);
-      if (hora < 0 || hora >= 24 || minuto < 0 || minuto >= 60) return false;
-
-      const horarioNormalizado = `${String(hora).padStart(2, '0')}:${String(minuto).padStart(2, '0')}`;
-      const agora = dayjs().tz('America/Sao_Paulo');
-      const dataHoraConsulta = dayjs.tz(
-        `${dateOnly} ${horarioNormalizado}`,
-        'America/Sao_Paulo'
-      );
-
-      if (!dataHoraConsulta.isValid()) return false;
-
-      // Fim do período: início + 50 minutos (duração padrão)
-      const fimPeriodoConsulta = dataHoraConsulta.add(50, 'minute');
-      
-      // Está no período se agora >= início E agora <= fim
-      return agora.isSameOrAfter(dataHoraConsulta) && agora.isSameOrBefore(fimPeriodoConsulta);
+      // Usa utilitário para considerar janela de 60 minutos
+      const scheduledAt = proximaConsulta.ScheduledAt || proximaConsulta.Agenda?.ScheduledAt;
+      const date = proximaConsulta.Date || proximaConsulta.Agenda?.Data;
+      const time = proximaConsulta.Time || proximaConsulta.Agenda?.Horario;
+      // Importação dinâmica para evitar dependência circular
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { isConsultaDentro60MinutosComScheduledAt } = require('@/utils/consultaTempoUtils');
+      return isConsultaDentro60MinutosComScheduledAt(scheduledAt, date, time);
     } catch {
       return false;
     }
   }, [proximaConsulta]);
 
   // O botão está desabilitado se NÃO pode entrar E a sessão ainda não começou
+  // Mas o card e botão devem aparecer durante toda a janela de 60 minutos
   const botaoDesabilitado = !podeEntrar && !sessaoJaComecou;
 
   // Mostra botão de suporte se estiver cancelada E dentro do período
@@ -235,7 +217,8 @@ export function ProximaConsulta({
   };
 
   // Se não houver consulta, exibe estado vazio
-  if (!proximaConsulta) {
+  // Se está no período da consulta (janela de 60 minutos), mantém o card visível
+  if (!proximaConsulta && !estaNoPeriodo) {
     return (
       <ConsultaEmptyState
         titulo="Você não tem consultas agendadas hoje"

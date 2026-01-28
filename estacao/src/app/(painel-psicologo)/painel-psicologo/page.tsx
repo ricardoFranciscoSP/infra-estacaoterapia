@@ -604,10 +604,18 @@ function getNomePacienteSeguro(paciente: string | undefined | null): string {
               <AlertCompletarPerfil show={isPerfilIncompleto} />
 
               {/* Consulta em andamento - aparece antes da próxima consulta */}
+              {/* Exibe o card de consulta ativa durante toda a janela da sessão (60min após início) */}
               {consultaEmAndamento && (() => {
+                // Importa utilitário para checar se está dentro do período de 60 minutos
+                // (já está importado em ConsultaAtualPsicologo, mas garantimos aqui)
+                const { isConsultaDentro60MinutosComScheduledAt } = require("@/utils/consultaTempoUtils");
                 const status = consultaEmAndamento.Status || (consultaEmAndamento as { status?: string }).status;
-                const isEmAndamento = status === 'EmAndamento' || status === 'Andamento' || status === 'Em Andamento';
-                
+                // Considera "em andamento" se status for EmAndamento/Andamento/Em Andamento OU se estiver dentro da janela de 60min
+                const scheduledAt = (consultaEmAndamento as any)?.ReservaSessao?.ScheduledAt || (consultaEmAndamento as any)?.reservaSessao?.ScheduledAt;
+                const date = consultaEmAndamento.Date || (consultaEmAndamento as any)?.Agenda?.Data;
+                const time = consultaEmAndamento.Time || (consultaEmAndamento as any)?.Agenda?.Horario;
+                const dentroJanela = isConsultaDentro60MinutosComScheduledAt(scheduledAt, date, time);
+                const isEmAndamento = status === 'EmAndamento' || status === 'Andamento' || status === 'Em Andamento' || dentroJanela;
                 if (isEmAndamento) {
                   return (
                     <section className="mb-6">

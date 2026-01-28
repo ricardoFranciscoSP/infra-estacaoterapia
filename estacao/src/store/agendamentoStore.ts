@@ -19,45 +19,53 @@ const useAgendamentoStore = create<AgendamentoStore>((set, get) => ({
     setReservas: (reservas: Reserva[]) => set({ reservas }),
     criarAgendamento: async (id: string) => {
         const state = get();
-        
         // 🔒 PROTEÇÃO: Evita múltiplas chamadas simultâneas para o mesmo ID
         if (state.processingIds.has(id)) {
             console.warn('[AgendamentoStore] Tentativa de criar agendamento duplicado para ID:', id);
             throw new Error('Já existe um agendamento sendo processado para este horário. Aguarde um momento.');
         }
-        
         // 🔒 PROTEÇÃO: Evita múltiplas chamadas simultâneas no geral
         if (state.isCreating) {
             console.warn('[AgendamentoStore] Tentativa de criar agendamento enquanto outro está em processamento');
             throw new Error('Já existe um agendamento sendo processado. Aguarde a conclusão.');
         }
-        
         try {
-            // Marca como em processamento
-            set({ 
+            set({
                 isCreating: true,
                 processingIds: new Set(state.processingIds).add(id)
             });
-            
             console.log('[AgendamentoStore] Criando agendamento para ID:', id);
-            
             const response = await agendamentoService().createAgendamento(id);
-            const reserva = response.data as Reserva;
-            
-            set({ reservas: [...state.reservas, reserva] });
-            
-            console.log('[AgendamentoStore] Agendamento criado com sucesso:', reserva.Id);
-            
-            return;
+            console.log('[AgendamentoStore] Resposta bruta do backend:', response);
+            // Corrige: trata resposta do backend para garantir reserva válida
+            const data = response.data;
+            // Caso backend retorne { reservation, message }
+            if (data && typeof data === 'object' && 'reservation' in data) {
+                if (!data.reservation || !data.reservation.Id) {
+                    const msg = data.message || 'Não foi possível reservar o horário. Tente novamente em instantes.';
+                    console.error('[AgendamentoStore] Reserva inválida recebida:', data.reservation, 'Response:', response);
+                    throw new Error(msg);
+                }
+                set({ reservas: [...state.reservas, data.reservation] });
+                console.log('[AgendamentoStore] Agendamento criado com sucesso:', data.reservation.Id, 'Reserva:', data.reservation);
+                return data.reservation;
+            }
+            // Caso resposta seja Reserva direta (legado)
+            if (!data || !data.Id) {
+                console.error('[AgendamentoStore] Reserva inválida recebida:', data, 'Response:', response);
+                throw new Error('Não foi possível reservar o horário. Tente novamente em instantes.');
+            }
+            set({ reservas: [...state.reservas, data] });
+            console.log('[AgendamentoStore] Agendamento criado com sucesso:', data.Id, 'Reserva:', data);
+            return data;
         } catch (error) {
             console.error('[AgendamentoStore] Erro ao criar agendamento:', error);
             throw error;
         } finally {
-            // Remove o ID do processamento e marca como não criando
             const currentState = get();
             const newProcessingIds = new Set(currentState.processingIds);
             newProcessingIds.delete(id);
-            set({ 
+            set({
                 isCreating: false,
                 processingIds: newProcessingIds
             });

@@ -177,6 +177,7 @@ export default function ModalCadastroAgendamento({
       const consultaConflito = consultas.find((c: ConsultaLike) => {
         const dataApi = c?.Agenda?.Data || c?.agenda?.data || c?.Date || c?.date;
         const horaApi = c?.Agenda?.Horario || c?.agenda?.horario || c?.Time || c?.time;
+        const statusApi = c?.Status || c?.status || c?.Agenda?.Status || c?.agenda?.status;
         if (!dataApi || !horaApi) return false;
 
         const ymdApi = normalizarData(String(dataApi));
@@ -193,15 +194,18 @@ export default function ModalCadastroAgendamento({
         if (!inicioConsultaExistente.isValid()) return false;
 
         // Janela de conflito: 60 minutos antes do início até 60 minutos depois do fim
-        const inicioJanelaConflito = inicioConsultaExistente.subtract(50, 'minute');
-        const fimJanelaConflito = fimConsultaExistente.add(50, 'minute');
+        const inicioJanelaConflito = inicioConsultaExistente.subtract(60, 'minute');
+        const fimJanelaConflito = fimConsultaExistente.add(60, 'minute');
 
         // Verifica se a nova consulta (início ou fim) está dentro da janela de conflito
         const inicioDentro = novaConsultaInicio.isSameOrAfter(inicioJanelaConflito) && novaConsultaInicio.isBefore(fimJanelaConflito);
         const fimDentro = novaConsultaFim.isAfter(inicioJanelaConflito) && novaConsultaFim.isSameOrBefore(fimJanelaConflito);
         const englobaCompleto = novaConsultaInicio.isBefore(inicioJanelaConflito) && novaConsultaFim.isAfter(fimJanelaConflito);
 
-        return inicioDentro || fimDentro || englobaCompleto;
+        // Só bloqueia se o status for 'Reservado'
+        const statusNorm = String(statusApi || '').toLowerCase();
+        const isReservado = statusNorm === 'reservado';
+        return (inicioDentro || fimDentro || englobaCompleto) && isReservado;
       });
 
       if (consultaConflito) {
@@ -230,7 +234,18 @@ export default function ModalCadastroAgendamento({
       console.warn('[ModalCadastroAgendamento] Tentativa de confirmar agendamento enquanto já está em processamento');
       return;
     }
-    
+
+    // Validação extra: garantir que o slot pertence ao dia da coluna selecionada
+    // (psicologo.Data deve ser igual ao dia da coluna ativa)
+    // Supondo que a data da coluna selecionada está em psicologo.Data
+    // e que o slot selecionado também está em psicologo.Data
+    // Se houver prop/estado para o dia da coluna, use aqui. Exemplo:
+    // const dataColunaSelecionada = ...
+    // if (normalizarData(psicologo.Data) !== normalizarData(dataColunaSelecionada)) {
+    //   toast.error('O horário selecionado não pertence ao dia da coluna ativa. Selecione um horário do dia correto.');
+    //   return;
+    // }
+
     setLoading(true);
     try {
       // 1) Checagem preventiva de conflito: verifica se há consulta dentro de 60 minutos antes ou depois
@@ -247,11 +262,21 @@ export default function ModalCadastroAgendamento({
       // IMPORTANTE: O backend deve debitar APENAS 1 consulta por reserva
       // Se o backend estiver debitando todas as consultas, isso é um bug no backend
       if (psicologoAgendaId) {
-        console.log('[ModalCadastroAgendamento] Criando agendamento para ID:', psicologoAgendaId);
+        console.log('[ModalCadastroAgendamento] Criando agendamento para ID:', psicologoAgendaId, '| Data do slot:', psicologo.Data);
+        let reservaCriada = null;
         try {
-          await criarAgendamento(psicologoAgendaId);
-          console.log('[ModalCadastroAgendamento] Agendamento criado com sucesso');
+          toast.loading('Reservando horário, aguarde...');
+          reservaCriada = await criarAgendamento(psicologoAgendaId);
+          if (!reservaCriada || !reservaCriada.Id) {
+            toast.dismiss();
+            toast.error('Não foi possível reservar o horário. Tente novamente em instantes.');
+            setLoading(false);
+            return;
+          }
+          toast.dismiss();
+          toast.success('Agendamento realizado com sucesso! Em breve sua consulta ficará visível em seu painel.');
         } catch (error: unknown) {
+          toast.dismiss();
           // Trata erro de conflito do backend
           const axiosError = error as AxiosErrorResponse;
           const errorMessage = axiosError?.response?.data?.message || (error instanceof Error ? error.message : 'Erro ao criar agendamento');
@@ -260,14 +285,12 @@ export default function ModalCadastroAgendamento({
             setLoading(false);
             return;
           }
-          throw error; // Re-lança outros erros
+          toast.error(errorMessage);
+          setLoading(false);
+          return;
         }
       }
       await Promise.resolve(onConfirm?.());
-      
-      // Toast de sucesso
-      toast.success("Agendamento realizado com sucesso! Em breve sua consulta ficará visível em seu painel.");
-      
       // Se veio do agendamento rápido, fecha o popup principal
       if (source === "agendamento-rapido") {
         window.dispatchEvent(new CustomEvent("close-agendamento-rapido"));

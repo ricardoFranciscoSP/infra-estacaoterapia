@@ -158,9 +158,32 @@ export default function Room() {
     const MAX_TOKEN_FETCH_ATTEMPTS = 3;
     const TOKEN_FETCH_TIMEOUT = 10000; // 10 segundos
 
-    // 🎯 IMPORTANTE: Só busca token se realmente não tiver token válido
+    // 🎯 NOVO: Só busca token se realmente não tiver token válido E não estiver dentro do período de validade (1h)
     // Se já tem token (seja da reserva ou do channel), não busca novamente
     // Aguarda a reserva carregar completamente antes de tentar buscar
+    // O token é considerado válido se existe e a consulta está dentro do período de 60 minutos
+    const isWithinValidPeriod = (() => {
+      // Usa ScheduledAt, Date, Time da reserva para validar janela de 60 minutos
+      const scheduledAt = finalReservaSessao?.ScheduledAt || finalReservaSessao?.Agenda?.ScheduledAt;
+      const date = finalReservaSessao?.ConsultaDate || finalReservaSessao?.Agenda?.Data;
+      const time = finalReservaSessao?.ConsultaTime || finalReservaSessao?.Agenda?.Horario;
+      if (!hasToken) return false;
+      // Função utilitária já importada
+      // Se não tiver info suficiente, considera não válido
+      if (!scheduledAt && (!date || !time)) return false;
+      // Função utilitária para validar janela de 60 minutos
+      // Importa de utils/consultaTempoUtils
+      // isConsultaDentro60MinutosComScheduledAt(scheduledAt, date, time)
+      try {
+        // Importação dinâmica para evitar dependência circular
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const { isConsultaDentro60MinutosComScheduledAt } = require('@/utils/consultaTempoUtils');
+        return isConsultaDentro60MinutosComScheduledAt(scheduledAt, date, time);
+      } catch {
+        return false;
+      }
+    })();
+
     const shouldFetchToken = 
       !isLoadingToken && 
       hasChannel && 
@@ -168,12 +191,12 @@ export default function Room() {
       !isLoadingReserva && // 🎯 Aguarda reserva carregar
       !toastShownRef.current && // Não tenta se já mostrou toast
       tokenFetchAttempts < MAX_TOKEN_FETCH_ATTEMPTS && // Limita tentativas
-      !hasToken && // 🎯 CRÍTICO: Só busca se realmente não tiver token
+      (!hasToken || !isWithinValidPeriod) && // Só busca se não tem token válido ou está fora do período
       (
         // Caso 1: Reserva não encontrada mas temos channel (após tentar carregar)
         (!hasReserva && !isLoadingReserva) ||
-        // Caso 2: Reserva encontrada mas não tem token do paciente
-        (hasReserva && !hasToken)
+        // Caso 2: Reserva encontrada mas não tem token do paciente válido
+        (hasReserva && (!hasToken || !isWithinValidPeriod))
       );
 
     if (shouldFetchToken) {
@@ -296,7 +319,8 @@ export default function Room() {
     channelParam,
     tokenFromChannel,
     tokenFetchAttempts,
-    router
+    router,
+    finalReservaSessao
   ]);
 
   // Cleanup: limpa timeout quando o componente desmonta
