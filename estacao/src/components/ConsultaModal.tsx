@@ -21,6 +21,7 @@ interface PessoaConsulta {
 export interface ConsultaModalProps {
     open: boolean;
     onClose: () => void;
+    onAfterClose?: () => void;
     consulta: {
         data: string;
         horario: string;
@@ -28,11 +29,13 @@ export interface ConsultaModalProps {
         psicologo: PessoaConsulta;
     };
     botaoEntrarDesabilitado?: boolean;
-    consultaId?: string | number; // ID da consulta para navegação
-    sessaoAtiva?: boolean; // novo prop para indicar se o contador da sessão foi disparado
-    statusCancelamento?: string | null; // status de cancelamento
-    status?: string | null; // status da consulta (ex: "Disponivel", "Reservado", etc)
-    onAbrirCancelar?: (consultaId?: string | number) => void; // nova prop para abrir modal de cancelamento
+    consultaId?: string | number;
+    sessaoAtiva?: boolean;
+    statusCancelamento?: string | null;
+    status?: string | null;
+    onAbrirCancelar?: (consultaId?: string | number) => void;
+    onAbrirReagendar?: () => void;
+    dataConsulta?: string;
 }
 
 /**
@@ -42,6 +45,7 @@ export interface ConsultaModalProps {
 export default function ConsultaModal({
     open,
     onClose,
+    onAfterClose,
     consulta,
     botaoEntrarDesabilitado,
     consultaId,
@@ -49,6 +53,7 @@ export default function ConsultaModal({
     statusCancelamento,
     status,
     onAbrirCancelar,
+    onAbrirReagendar,
 }: ConsultaModalProps) {
     const router = useRouter();
     const [isMobile, setIsMobile] = useState(false);
@@ -60,34 +65,12 @@ export default function ConsultaModal({
     const handleCancelarConsulta = (e: React.MouseEvent<HTMLButtonElement>) => {
         e.preventDefault();
         e.stopPropagation();
-        
-        const debugInfo = {
-            onAbrirCancelar: !!onAbrirCancelar,
-            onAbrirCancelarType: typeof onAbrirCancelar,
-            consultaId,
-            consultaData: consulta.data,
-            consultaHorario: consulta.horario,
-            timestamp: new Date().toISOString()
-        };
-        
-        console.log('[ConsultaModal] handleCancelarConsulta chamado', debugInfo);
-        
         if (!onAbrirCancelar) {
-            console.error('[ConsultaModal] onAbrirCancelar não foi passado como prop', debugInfo);
-            console.error('[ConsultaModal] Props recebidos:', { open, consultaId, statusCancelamento });
-            console.warn('[ConsultaModal] Verifique se a página (consultas/page.tsx) está passando o prop onAbrirCancelar para ConsultaModal');
             toast.error('Erro: função de cancelamento não disponível. Por favor, recarregue a página.');
             return;
         }
-        
-        console.log('[ConsultaModal] Chamando onAbrirCancelar com consultaId:', consultaId);
-        try {
-            onAbrirCancelar(consultaId);
-            console.log('[ConsultaModal] onAbrirCancelar executado com sucesso');
-        } catch (error) {
-            console.error('[ConsultaModal] Erro ao chamar onAbrirCancelar:', error);
-            toast.error('Erro ao abrir modal de cancelamento. Por favor, tente novamente.');
-        }
+        // Chama o callback para abrir o modal correto (ConsultaAtual faz o controle de fechar/abrir)
+        onAbrirCancelar(consultaId);
     };
 
     useEffect(() => {
@@ -262,7 +245,7 @@ export default function ConsultaModal({
     // Versão Mobile
     if (isMobile) {
         return (
-            <AnimatePresence mode="wait">
+            <AnimatePresence mode="wait" onExitComplete={onAfterClose}>
                 {open && (
                     <motion.div
                         key="mobile-modal"
@@ -444,8 +427,21 @@ export default function ConsultaModal({
     }
 
     // Versão Desktop
+    // Adiciona lógica para mostrar botão "Reagendar" se não for o dia da consulta
+    const hoje = (() => {
+        if (!dataParaFormatar) return false;
+        const hojeData = new Date();
+        const [ano, mes, dia] = dataParaFormatar.split("-");
+        if (!ano || !mes || !dia) return false;
+        return (
+            hojeData.getFullYear() === Number(ano) &&
+            hojeData.getMonth() + 1 === Number(mes) &&
+            hojeData.getDate() === Number(dia)
+        );
+    })();
+
     return (
-        <AnimatePresence mode="wait">
+        <AnimatePresence mode="wait" onExitComplete={onAfterClose}>
             {open && (
                 <motion.div
                     key="desktop-modal"
@@ -525,51 +521,60 @@ export default function ConsultaModal({
                         )}
                     </div>
 
-                                        {/* Botões: Cancelar e Entrar lado a lado, Fechar abaixo (desktop) */}
-                                        {!isCancelada && !horarioPassou && (
-                                            <>
-                                                <div className="flex gap-4 mt-6 w-full">
-                                                    {/* Botão Cancelar - sempre visível se onAbrirCancelar estiver disponível */}
-                                                    {onAbrirCancelar && (
-                                                        <button
-                                                            type="button"
-                                                            onClick={(e) => {
-                                                                if (cancelamentoBloqueado) return;
-                                                                console.log('[ConsultaModal] Botão Cancelar clicado (desktop)');
-                                                                handleCancelarConsulta(e);
-                                                            }}
-                                                            aria-label="Cancelar consulta"
-                                                            disabled={cancelamentoBloqueado}
-                                                            className={`w-1/2 h-10 rounded-[6px] border font-medium text-base transition ${
-                                                                cancelamentoBloqueado
-                                                                    ? "border-gray-300 text-gray-400 bg-gray-100 cursor-not-allowed"
-                                                                    : "border-[#6D75C0] text-[#6D75C0] bg-white hover:bg-[#E6E9FF] cursor-pointer"
-                                                            }`}
-                                                        >
-                                                            Cancelar consulta
-                                                        </button>
-                                                    )}
-                                                    <button
-                                                        onClick={handleEntrarNaConsulta}
-                                                        disabled={!habilitarEntrar || !consultaId || isCheckingTokens || isProcessingEntry}
-                                                        className={`${onAbrirCancelar ? 'w-1/2' : 'w-full'} h-10 rounded-[6px] font-medium text-base transition ${
-                                                            habilitarEntrar && consultaId && !isCheckingTokens && !isProcessingEntry
-                                                                ? "bg-[#8494E9] hover:bg-[#6D75C0] text-white cursor-pointer"
-                                                                : "bg-gray-300 text-gray-500 cursor-not-allowed"
-                                                        }`}
-                                                    >
-                                                        {isCheckingTokens || isProcessingEntry ? "Preparando..." : "Entrar na consulta"}
-                                                    </button>
-                                                </div>
-                                                <button
-                                                    onClick={onClose}
-                                                    className="w-full mt-2 text-[#6D75C0] font-medium text-base bg-transparent border-none shadow-none hover:underline focus:outline-none"
-                                                    style={{ border: 'none', background: 'none', boxShadow: 'none' }}
-                                                >
-                                                    Fechar
-                                                </button>
-                                            </>
-                                        )}
+                    {/* Botões: Cancelar, Entrar/Reagendar lado a lado, Fechar abaixo (desktop) */}
+                    {!isCancelada && !horarioPassou && (
+                        <>
+                            <div className="flex gap-4 mt-6 w-full">
+                                {/* Botão Cancelar - sempre visível se onAbrirCancelar estiver disponível */}
+                                {onAbrirCancelar && (
+                                    <button
+                                        type="button"
+                                        onClick={(e) => {
+                                            if (cancelamentoBloqueado) return;
+                                            handleCancelarConsulta(e);
+                                        }}
+                                        aria-label="Cancelar consulta"
+                                        disabled={cancelamentoBloqueado}
+                                        className={`w-1/2 h-10 rounded-[6px] border font-medium text-base transition ${
+                                            cancelamentoBloqueado
+                                                ? "border-gray-300 text-gray-400 bg-gray-100 cursor-not-allowed"
+                                                : "border-[#6D75C0] text-[#6D75C0] bg-white hover:bg-[#E6E9FF] cursor-pointer"
+                                        }`}
+                                    >
+                                        Cancelar consulta
+                                    </button>
+                                )}
+                                {/* Botão dinâmico: Entrar na consulta (se hoje) ou Reagendar (se outro dia) */}
+                                {hoje ? (
+                                    <button
+                                        onClick={handleEntrarNaConsulta}
+                                        disabled={!habilitarEntrar || !consultaId || isCheckingTokens || isProcessingEntry}
+                                        className={`${onAbrirCancelar ? 'w-1/2' : 'w-full'} h-10 rounded-[6px] font-medium text-base transition ${
+                                            habilitarEntrar && consultaId && !isCheckingTokens && !isProcessingEntry
+                                                ? "bg-[#8494E9] hover:bg-[#6D75C0] text-white cursor-pointer"
+                                                : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                                        }`}
+                                    >
+                                        {isCheckingTokens || isProcessingEntry ? "Preparando..." : "Entrar na consulta"}
+                                    </button>
+                                ) : (
+                                    <button
+                                        onClick={onAbrirReagendar}
+                                        className={`${onAbrirCancelar ? 'w-1/2' : 'w-full'} h-10 rounded-[6px] font-medium text-base transition bg-[#B6A7F7] hover:bg-[#6D75C0] text-white cursor-pointer`}
+                                    >
+                                        Reagendar
+                                    </button>
+                                )}
+                            </div>
+                            <button
+                                onClick={onClose}
+                                className="w-full mt-2 text-[#6D75C0] font-medium text-base bg-transparent border-none shadow-none hover:underline focus:outline-none"
+                                style={{ border: 'none', background: 'none', boxShadow: 'none' }}
+                            >
+                                Fechar
+                            </button>
+                        </>
+                    )}
                                         {/* Botões quando consulta cancelada ou horário passou (desktop) */}
                                         {(isCancelada || horarioPassou) && (
                                             <div className="flex gap-4 mt-6 w-full">

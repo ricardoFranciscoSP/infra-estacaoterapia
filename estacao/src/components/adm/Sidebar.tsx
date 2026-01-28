@@ -463,6 +463,25 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobile = false, onClose, modul
                           <span>Geral</span>
                         </Link>
                       </li>
+                      <li>
+                        <span className="flex items-center gap-2 px-3 py-2 text-sm font-semibold text-[#232A5C] select-none">Segurança</span>
+                        <ul className="ml-4 mt-1 space-y-1">
+                          <li>
+                            <Link
+                              href={`${basePath}/configuracoes/seguranca/redefinicao-senha`}
+                              className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded hover:bg-[#F2F4FD] ${
+                                isActive(`${basePath}/configuracoes/seguranca/redefinicao-senha`)
+                                  ? "text-[#8494E9] bg-[#F2F4FD]"
+                                  : "text-[#6C757D]"
+                              }`}
+                              onClick={onClose}
+                            >
+                              <span className="w-1.5 h-1.5 rounded-full bg-current"></span>
+                              <span>Redefinir senha</span>
+                            </Link>
+                          </li>
+                        </ul>
+                      </li>
                       {/*
                       <li>
                         <Link

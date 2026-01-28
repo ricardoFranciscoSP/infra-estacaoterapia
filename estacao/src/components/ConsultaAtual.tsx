@@ -1,7 +1,7 @@
 "use client";
-import { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
 import ConsultaModal from "./ConsultaModal";
 import ModalCancelarSessao from "./ModalCancelarSessao";
@@ -92,14 +92,13 @@ const ANIMATION_VARIANTS = {
   },
 } as const;
 
+import ModalReagendar from "./ModalReagendar";
+
 export default function ConsultaAtual({ consulta: consultaProp = null, role = "paciente", hidePerfil = false }: ConsultaAtualProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const [showModal, setShowModal] = useState<boolean>(false);
-  const [showModalCancelar, setShowModalCancelar] = useState<boolean>(false);
-  const [showModalCancelarDentroPrazo, setShowModalCancelarDentroPrazo] = useState<boolean>(false);
-  const [showModalReagendarAposCancelamento, setShowModalReagendarAposCancelamento] = useState<boolean>(false);
   const [socketStatus, setSocketStatus] = useState<ConsultationStatus | null>(null);
+
   const { checkAndGenerateTokens, isLoading: isCheckingTokens } = useCheckTokens();
   const [isProcessingEntry, setIsProcessingEntry] = useState(false);
 
@@ -120,7 +119,6 @@ export default function ConsultaAtual({ consulta: consultaProp = null, role = "p
       Image?: { Url?: string }[];
     };
   }
-  const [consultaSelecionada, setConsultaSelecionada] = useState<ConsultaModalData | null>(null);
 
   // Função para extrair apenas a data no formato yyyy-mm-dd
   function extractDateOnly(dateStr: string | undefined): string | null {
@@ -131,6 +129,8 @@ export default function ConsultaAtual({ consulta: consultaProp = null, role = "p
     }
     return null;
   }
+
+  // Efeito legado removido: controle de modais agora é feito via reducer
 
   // Normaliza a consulta
   const normalized = useMemo(() => {
@@ -722,7 +722,99 @@ export default function ConsultaAtual({ consulta: consultaProp = null, role = "p
     }
   };
 
-  // Função para abrir o modal de detalhes da consulta
+
+
+
+
+  // --- useReducer para controle de modais ---
+  type PendingAction =
+    | { type: 'cancelar'; cancelType: 'dentro' | 'fora' }
+    | { type: 'reagendar' };
+
+  type ModalAction =
+    | { type: 'OPEN_DETALHES'; payload?: ConsultaModalData }
+    | { type: 'CLOSE_DETALHES' }
+    | { type: 'OPEN_REAGENDAR' }
+    | { type: 'CLOSE_REAGENDAR' }
+    | { type: 'OPEN_CANCELAR'; cancelType: 'dentro' | 'fora' | null }
+    | { type: 'CLOSE_CANCELAR_DENTRO' }
+    | { type: 'CLOSE_CANCELAR_FORA' }
+    | { type: 'OPEN_REAGENDAR_APOS_CANCELAMENTO' }
+    | { type: 'CLOSE_REAGENDAR_APOS_CANCELAMENTO' }
+    | { type: 'SET_PENDING_ACTION'; pendingAction: PendingAction | null };
+
+  type ModalState = {
+    showModal: boolean;
+    showModalReagendar: boolean;
+    showModalCancelarDentroPrazo: boolean;
+    showModalCancelar: boolean;
+    showModalReagendarAposCancelamento: boolean;
+    consultaSelecionada: ConsultaModalData | null;
+    pendingCancelType: 'dentro' | 'fora' | null;
+    pendingAction: PendingAction | null;
+  };
+
+  const initialModalState: ModalState = {
+    showModal: false,
+    showModalReagendar: false,
+    showModalCancelarDentroPrazo: false,
+    showModalCancelar: false,
+    showModalReagendarAposCancelamento: false,
+    consultaSelecionada: null,
+    pendingCancelType: null,
+    pendingAction: null,
+  };
+
+  function modalReducer(state: ModalState, action: ModalAction): ModalState {
+    switch (action.type) {
+      case 'OPEN_DETALHES':
+        return { ...state, showModal: true, consultaSelecionada: action.payload || null };
+      case 'CLOSE_DETALHES':
+        return { ...state, showModal: false };
+      case 'SET_PENDING_ACTION':
+        return { ...state, pendingAction: action.pendingAction };
+      case 'OPEN_REAGENDAR':
+        return { ...state, showModalReagendar: true };
+      case 'CLOSE_REAGENDAR':
+        return { ...state, showModalReagendar: false };
+      case 'OPEN_CANCELAR':
+        if (action.cancelType === 'dentro') {
+          return { ...state, showModalCancelarDentroPrazo: true, pendingCancelType: null };
+        } else if (action.cancelType === 'fora') {
+          return { ...state, showModalCancelar: true, pendingCancelType: null };
+        } else {
+          return { ...state, pendingCancelType: action.cancelType };
+        }
+      case 'CLOSE_CANCELAR_DENTRO':
+        return { ...state, showModalCancelarDentroPrazo: false };
+      case 'CLOSE_CANCELAR_FORA':
+        return { ...state, showModalCancelar: false };
+      case 'OPEN_REAGENDAR_APOS_CANCELAMENTO':
+        return { ...state, showModalReagendarAposCancelamento: true };
+      case 'CLOSE_REAGENDAR_APOS_CANCELAMENTO':
+        return { ...state, showModalReagendarAposCancelamento: false };
+      default:
+        return state;
+    }
+  }
+
+  const [modalState, dispatchModal] = React.useReducer(modalReducer, initialModalState);
+
+  const handleDetalhesAfterClose = () => {
+    if (!modalState.pendingAction) return;
+
+    if (modalState.pendingAction.type === 'cancelar') {
+      dispatchModal({ type: 'OPEN_CANCELAR', cancelType: modalState.pendingAction.cancelType });
+    } else if (modalState.pendingAction.type === 'reagendar') {
+      dispatchModal({ type: 'OPEN_REAGENDAR' });
+    }
+
+    dispatchModal({ type: 'SET_PENDING_ACTION', pendingAction: null });
+  };
+
+
+
+  // Handlers usando o reducer
   const handleAbrirModalConsulta = () => {
     if (normalized) {
       const avatarPsicologo = getContextualAvatar(isInPsicologoPanel, normalized.psicologo, normalized.paciente);
@@ -748,12 +840,15 @@ export default function ConsultaAtual({ consulta: consultaProp = null, role = "p
           Image: normalized.paciente.imageUrl ? [{ Url: normalized.paciente.imageUrl }] : (avatarPsicologo ? [{ Url: avatarPsicologo }] : undefined),
         } : undefined,
       };
-      setConsultaSelecionada(consultaData);
+      dispatchModal({ type: 'OPEN_DETALHES', payload: consultaData });
     }
-    setShowModal(true);
   };
 
-  // Handler para ver detalhes (abre modal)
+  const handleReagendar = () => {
+    dispatchModal({ type: 'SET_PENDING_ACTION', pendingAction: { type: 'reagendar' } });
+    dispatchModal({ type: 'CLOSE_DETALHES' });
+  };
+
   const handleVerDetalhes = () => {
     handleAbrirModalConsulta();
   };
@@ -790,6 +885,8 @@ export default function ConsultaAtual({ consulta: consultaProp = null, role = "p
     ? contador50MinutosAtualizado.tempoFormatado
     : contadorSessao;
 
+
+
   return (
     <motion.section
       className="w-full flex flex-col items-start"
@@ -824,73 +921,165 @@ export default function ConsultaAtual({ consulta: consultaProp = null, role = "p
         }}
       />
 
-      {/* Modal de detalhes da consulta */}
-      {consultaSelecionada && consultaSelecionada.data && consultaSelecionada.horario && (
-        <ConsultaModal
-          open={showModal}
-          onClose={() => {
-            setShowModal(false);
-            setConsultaSelecionada(null);
-          }}
+
+      {/* Animação swipe entre detalhes e cancelamento */}
+      <AnimatePresence mode="wait">
+        {modalState.consultaSelecionada && modalState.consultaSelecionada.data && modalState.consultaSelecionada.horario && modalState.showModal && (
+          <motion.div
+            key="detalhes-modal"
+            initial={{ x: 0, opacity: 1 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: -400, opacity: 0 }}
+            transition={{ duration: 0.35, ease: "easeInOut" }}
+            style={{ position: 'fixed', left: 0, top: 0, width: '100vw', zIndex: 1000 }}
+          >
+            <ConsultaModal
+              open={modalState.showModal}
+              onClose={() => {
+                dispatchModal({ type: 'CLOSE_DETALHES' });
+              }}
+              onAfterClose={handleDetalhesAfterClose}
+              consulta={{
+                data: modalState.consultaSelecionada.data || "",
+                horario: modalState.consultaSelecionada.horario || "",
+                psicologo: {
+                  nome: modalState.consultaSelecionada.psicologo?.nome || "Psicólogo",
+                  avatarUrl: modalState.consultaSelecionada.psicologo?.avatarUrl,
+                },
+                paciente: modalState.consultaSelecionada.paciente ? {
+                  nome: modalState.consultaSelecionada.paciente.nome || "Paciente",
+                  avatarUrl: modalState.consultaSelecionada.paciente.avatarUrl,
+                } : undefined,
+              }}
+              botaoEntrarDesabilitado={finalButtons.botaoEntrarDesabilitado}
+              consultaId={normalized?.id ? String(normalized.id) : undefined}
+              sessaoAtiva={sessaoConsulta.sessaoAtiva}
+              statusCancelamento={socketStatus ? String(socketStatus) : null}
+              status={typeof normalized?.raw?.Status === 'string' ? normalized.raw.Status : (typeof normalized?.raw?.status === 'string' ? normalized.raw.status : (typeof normalized?.status === 'string' ? normalized.status : null))}
+              onAbrirCancelar={() => {
+                const dentroPrazo = isCancelamentoDentroPrazo(normalized?.date, normalized?.time);
+                dispatchModal({ type: 'SET_PENDING_ACTION', pendingAction: { type: 'cancelar', cancelType: dentroPrazo ? 'dentro' : 'fora' } });
+                dispatchModal({ type: 'CLOSE_DETALHES' });
+              }}
+              onAbrirReagendar={handleReagendar}
+              dataConsulta={normalized?.date}
+            />
+          </motion.div>
+        )}
+        {modalState.showModalCancelarDentroPrazo && normalized && (
+          <motion.div
+            key="cancelar-dentro"
+            initial={{ x: 400, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: 400, opacity: 0 }}
+            transition={{ duration: 0.35, ease: "easeInOut" }}
+            style={{ position: 'fixed', left: 0, top: 0, width: '100vw', zIndex: 1100 }}
+          >
+            <ModalCancelarSessaoDentroPrazo
+              open={modalState.showModalCancelarDentroPrazo}
+              onClose={() => { dispatchModal({ type: 'CLOSE_CANCELAR_DENTRO' }); }}
+              consulta={{
+                id: normalized.id !== undefined ? String(normalized.id) : undefined,
+                date: normalized.date,
+                time: normalized.time,
+                pacienteId: normalized.pacienteId !== undefined ? String(normalized.pacienteId) : undefined,
+                psicologoId: normalized.psicologoId !== undefined ? String(normalized.psicologoId) : undefined,
+                linkDock: undefined,
+                status: "Deferido",
+                tipo: "Paciente"
+              }}
+              onConfirm={async () => {
+                dispatchModal({ type: 'CLOSE_CANCELAR_DENTRO' });
+                setSocketStatus("Cancelado");
+                await Promise.all([
+                  queryClient.invalidateQueries({ queryKey: ['consultasFuturas'] }),
+                  queryClient.invalidateQueries({ queryKey: ['consultasAgendadas'] }),
+                  queryClient.invalidateQueries({ queryKey: ['consultaAtualEmAndamento'] }),
+                  queryClient.invalidateQueries({ queryKey: ['reservas/consultas-agendadas'] }),
+                  queryClient.invalidateQueries({ queryKey: ['ciclos-plano'] }),
+                  queryClient.invalidateQueries({ queryKey: ['ciclo-ativo'] }),
+                  queryClient.invalidateQueries({ queryKey: ['userPlano'] }),
+                  queryClient.invalidateQueries({ queryKey: ['userMe'] }),
+                  queryClient.refetchQueries({ queryKey: ['consultasFuturas'] }),
+                  queryClient.refetchQueries({ queryKey: ['consultasAgendadas'] }),
+                  queryClient.refetchQueries({ queryKey: ['consultaAtualEmAndamento'] }),
+                  queryClient.refetchQueries({ queryKey: ['reservas/consultas-agendadas'] }),
+                  queryClient.refetchQueries({ queryKey: ['ciclo-ativo'] }),
+                  queryClient.refetchQueries({ queryKey: ['userPlano'] }),
+                ]);
+                setTimeout(() => {
+                  dispatchModal({ type: 'OPEN_REAGENDAR_APOS_CANCELAMENTO' });
+                }, 300);
+              }}
+            />
+          </motion.div>
+        )}
+        {modalState.showModalCancelar && normalized && (
+          <motion.div
+            key="cancelar-fora"
+            initial={{ x: 400, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: 400, opacity: 0 }}
+            transition={{ duration: 0.35, ease: "easeInOut" }}
+            style={{ position: 'fixed', left: 0, top: 0, width: '100vw', zIndex: 1100 }}
+          >
+            <ModalCancelarSessao
+              open={modalState.showModalCancelar}
+              onClose={() => { dispatchModal({ type: 'CLOSE_CANCELAR_FORA' }); }}
+              consulta={{
+                id: normalized.id !== undefined ? String(normalized.id) : undefined,
+                date: normalized.date,
+                time: normalized.time,
+                pacienteId: normalized.pacienteId !== undefined ? String(normalized.pacienteId) : undefined,
+                psicologoId: normalized.psicologoId !== undefined ? String(normalized.psicologoId) : undefined,
+                linkDock: undefined,
+                status: 'EmAnalise',
+                tipo: undefined
+              }}
+              onConfirm={async () => {
+                dispatchModal({ type: 'CLOSE_CANCELAR_FORA' });
+                setSocketStatus("Cancelado");
+                await Promise.all([
+                  queryClient.invalidateQueries({ queryKey: ['consultasFuturas'] }),
+                  queryClient.invalidateQueries({ queryKey: ['consultasAgendadas'] }),
+                  queryClient.invalidateQueries({ queryKey: ['consultaAtualEmAndamento'] }),
+                  queryClient.invalidateQueries({ queryKey: ['reservas/consultas-agendadas'] }),
+                  queryClient.refetchQueries({ queryKey: ['consultasFuturas'] }),
+                  queryClient.refetchQueries({ queryKey: ['consultasAgendadas'] }),
+                  queryClient.refetchQueries({ queryKey: ['consultaAtualEmAndamento'] }),
+                  queryClient.refetchQueries({ queryKey: ['reservas/consultas-agendadas'] }),
+                ]);
+              }}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal de reagendamento direto */}
+      {modalState.showModalReagendar && normalized && (
+        <ModalReagendar
+          isOpen={modalState.showModalReagendar}
+          onClose={() => dispatchModal({ type: 'CLOSE_REAGENDAR' })}
           consulta={{
-            data: consultaSelecionada.data || "",
-            horario: consultaSelecionada.horario || "",
-            psicologo: {
-              nome: consultaSelecionada.psicologo?.nome || "Psicólogo",
-              avatarUrl: consultaSelecionada.psicologo?.avatarUrl,
-            },
-            paciente: consultaSelecionada.paciente ? {
-              nome: consultaSelecionada.paciente.nome || "Paciente",
-              avatarUrl: consultaSelecionada.paciente.avatarUrl,
+            data: normalized.date,
+            horario: normalized.time,
+            paciente: normalized.paciente ? { nome: normalized.paciente.nome } : undefined,
+            psicologo: normalized.psicologo ? {
+              nome: normalized.psicologo.nome,
+              id: normalized.psicologo.id ? String(normalized.psicologo.id) : undefined,
+              Image: normalized.psicologo.imageUrl ? [{ Url: normalized.psicologo.imageUrl }] : undefined
             } : undefined,
           }}
-          botaoEntrarDesabilitado={finalButtons.botaoEntrarDesabilitado}
-          consultaId={normalized?.id ? String(normalized.id) : undefined}
-          sessaoAtiva={sessaoConsulta.sessaoAtiva}
-          statusCancelamento={socketStatus ? String(socketStatus) : null}
-          status={typeof normalized?.raw?.Status === 'string' ? normalized.raw.Status : (typeof normalized?.raw?.status === 'string' ? normalized.raw.status : (typeof normalized?.status === 'string' ? normalized.status : null))}
-          onAbrirCancelar={(consultaIdParam) => {
-            console.log('[ConsultaAtual] onAbrirCancelar chamado', {
-              consultaIdParam,
-              normalized: !!normalized,
-              role
-            });
-            
-            setShowModal(false);
-            setTimeout(() => {
-              // Verifica se está dentro ou fora do prazo de 24h
-              const dentroPrazo = isCancelamentoDentroPrazo(normalized?.date, normalized?.time);
-              // Verifica se é paciente (padrão é paciente se não for psicólogo)
-              const isPaciente = role !== "psicologo";
-              
-              console.log('[ConsultaAtual] Verificação de prazo', {
-                date: normalized?.date,
-                time: normalized?.time,
-                dentroPrazo,
-                role,
-                isPaciente,
-                vaiAbrirDentroPrazo: dentroPrazo && isPaciente
-              });
-              
-              if (dentroPrazo && isPaciente) {
-                // Dentro do prazo: usa modal simples sem motivo
-                console.log('[ConsultaAtual] Abrindo modal de cancelamento dentro do prazo');
-                setShowModalCancelarDentroPrazo(true);
-              } else {
-                // Fora do prazo: usa modal com motivo e upload
-                console.log('[ConsultaAtual] Abrindo modal de cancelamento fora do prazo');
-                setShowModalCancelar(true);
-              }
-            }, 200);
-          }}
+          consultaIdAtual={normalized.id ? String(normalized.id) : ""}
         />
       )}
 
       {/* Modal de cancelamento dentro do prazo (>24h) - apenas para pacientes */}
-      {showModalCancelarDentroPrazo && normalized && (
+      {modalState.showModalCancelarDentroPrazo && normalized && (
+        (() => { console.log('[ConsultaAtual] Renderizando ModalCancelarSessaoDentroPrazo', { showModalCancelarDentroPrazo: modalState.showModalCancelarDentroPrazo }); return null; })() ||
         <ModalCancelarSessaoDentroPrazo
-          open={showModalCancelarDentroPrazo}
-          onClose={() => setShowModalCancelarDentroPrazo(false)}
+          open={modalState.showModalCancelarDentroPrazo}
+          onClose={() => { console.log('[ConsultaAtual] Fechando ModalCancelarSessaoDentroPrazo'); dispatchModal({ type: 'CLOSE_CANCELAR_DENTRO' }); }}
           consulta={{
             id: normalized.id !== undefined ? String(normalized.id) : undefined,
             date: normalized.date,
@@ -902,7 +1091,7 @@ export default function ConsultaAtual({ consulta: consultaProp = null, role = "p
             tipo: "Paciente"
           }}
           onConfirm={async () => {
-            setShowModalCancelarDentroPrazo(false);
+            dispatchModal({ type: 'CLOSE_CANCELAR_DENTRO' });
             setSocketStatus("Cancelado");
             await Promise.all([
               queryClient.invalidateQueries({ queryKey: ['consultasFuturas'] }),
@@ -922,17 +1111,17 @@ export default function ConsultaAtual({ consulta: consultaProp = null, role = "p
             ]);
             // Após cancelar, pergunta se quer reagendar
             setTimeout(() => {
-              setShowModalReagendarAposCancelamento(true);
+              dispatchModal({ type: 'OPEN_REAGENDAR_APOS_CANCELAMENTO' });
             }, 300);
           }}
         />
       )}
 
       {/* Modal de reagendamento após cancelamento dentro do prazo */}
-      {showModalReagendarAposCancelamento && normalized && (
+      {modalState.showModalReagendarAposCancelamento && normalized && (
         <ModalReagendarAposCancelamento
-          open={showModalReagendarAposCancelamento}
-          onClose={() => setShowModalReagendarAposCancelamento(false)}
+          open={modalState.showModalReagendarAposCancelamento}
+          onClose={() => dispatchModal({ type: 'CLOSE_REAGENDAR_APOS_CANCELAMENTO' })}
           consultaOriginal={normalized ? {
             Id: normalized.id ? String(normalized.id) : "",
             Date: normalized.date || "",
@@ -941,8 +1130,8 @@ export default function ConsultaAtual({ consulta: consultaProp = null, role = "p
             PacienteId: normalized.pacienteId ? String(normalized.pacienteId) : "",
             PsicologoId: normalized.psicologoId ? String(normalized.psicologoId) : "",
             AgendaId: (normalized.raw?.AgendaId || normalized.raw?.agendaId) ? String(normalized.raw.AgendaId || normalized.raw.agendaId) : "",
-            CreatedAt: normalized.raw?.CreatedAt ? String(normalized.raw.CreatedAt) : new Date().toISOString(),
-            UpdatedAt: normalized.raw?.UpdatedAt ? String(normalized.raw.UpdatedAt) : new Date().toISOString(),
+            CreatedAt: normalized.raw?.CreatedAt ? String(normalized.raw?.CreatedAt) : new Date().toISOString(),
+            UpdatedAt: normalized.raw?.UpdatedAt ? String(normalized.raw?.UpdatedAt) : new Date().toISOString(),
             Psicologo: normalized.psicologo ? {
               Id: normalized.psicologo.id ? String(normalized.psicologo.id) : "",
               Nome: normalized.psicologo.nome || "",
@@ -953,10 +1142,11 @@ export default function ConsultaAtual({ consulta: consultaProp = null, role = "p
       )}
 
       {/* Modal de cancelamento fora do prazo (<24h) - com motivo e upload */}
-      {showModalCancelar && normalized && (
+      {modalState.showModalCancelar && normalized && (
+        (() => { console.log('[ConsultaAtual] Renderizando ModalCancelarSessao', { showModalCancelar: modalState.showModalCancelar }); return null; })() ||
         <ModalCancelarSessao
-          open={showModalCancelar}
-          onClose={() => setShowModalCancelar(false)}
+          open={modalState.showModalCancelar}
+          onClose={() => { console.log('[ConsultaAtual] Fechando ModalCancelarSessao'); dispatchModal({ type: 'CLOSE_CANCELAR_FORA' }); }}
           consulta={{
             id: normalized.id !== undefined ? String(normalized.id) : undefined,
             date: normalized.date,
@@ -968,7 +1158,7 @@ export default function ConsultaAtual({ consulta: consultaProp = null, role = "p
             tipo: undefined
           }}
           onConfirm={async () => {
-            setShowModalCancelar(false);
+            dispatchModal({ type: 'CLOSE_CANCELAR_FORA' });
             setSocketStatus("Cancelado");
             await Promise.all([
               queryClient.invalidateQueries({ queryKey: ['consultasFuturas'] }),
